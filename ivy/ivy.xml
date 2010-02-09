@@ -1,0 +1,41 @@
+<ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="com.twitter"
+    module="gizzard"
+    revision="1.0"
+    e:buildpackage="com.twitter.gizzard"
+    e:testclass="com.twitter.gizzard.TestRunner"
+    e:jarclassname="com.twitter.gizzard.Main"
+    e:thriftpackage="com.twitter.gizzard.gen"
+  />
+
+  <configurations>
+    <conf name="bootstrap" visibility="private" description="load scala compiler and libraries" />
+    <conf name="default" description="normal build" />
+    <conf name="test" extends="default" visibility="private" description="build and run tests" />
+  </configurations>
+
+  <publications>
+    <artifact />
+    <artifact type="pom" />
+  </publications>
+
+  <dependencies>
+    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.7" />
+    <dependency org="org.scala-lang" name="scala-library" rev="2.7.7" />
+    <dependency org="org.scala-tools.testing" name="specs" rev="1.6.1" conf="test->*" />
+    <dependency org="org.scala-tools" name="vscaladoc" rev="1.1-md-3" conf="bootstrap->*" />
+
+    <dependency org="com.twitter" name="scala-db" rev="1.0.5" />
+
+    <dependency org="net.lag" name="configgy" rev="1.4" />
+    <dependency org="commons-logging" name="commons-logging" rev="1.1" />
+    <dependency org="commons-lang" name="commons-lang" rev="2.2" />
+    <dependency org="thrift" name="libthrift" rev="751142" conf="*" /> <!--auto-->
+    <dependency org="org.jmock" name="jmock" rev="2.4.0" conf="test->*" /> <!--auto-->
+    <dependency org="org.hamcrest" name="hamcrest-all" rev="1.1" conf="test->*" /> <!--auto-->
+    <dependency org="cglib" name="cglib" rev="2.1_3" conf="test->*" /> <!--auto-->
+    <dependency org="asm" name="asm" rev="1.5.3" conf="test->*" /> <!--auto-->
+    <dependency org="org.objenesis" name="objenesis" rev="1.1" conf="test->*" /> <!--auto-->
+    <dependency org="com.twitter" name="xrayspecs" rev="1.0.7" conf="*" /> <!--auto-->
+  </dependencies>
+</ivy-module>
