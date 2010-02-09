@@ -1,7 +1,6 @@
 package com.twitter.gizzard.sharding
 
 import java.sql.SQLException
-import gen.ShardInfo
 
 
 trait Shard {

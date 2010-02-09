@@ -44,11 +44,13 @@ object Conversions {
 
   class RichJavaList[T <: AnyRef](list: JList[T]) {
     def toSeq = new ScalaSeqAdapter(list)(id => id)
+    def toList = toSeq.toList
   }
   implicit def javaListToRichSeq[T <: AnyRef](list: JList[T]) = new RichJavaList(list)
 
   class RichJavaIntList(list: JList[java.lang.Integer]) {
     def toSeq = new ScalaSeqAdapter(list)(_.asInstanceOf[Int])
+    def toList = toSeq.toList
   }
   implicit def javaIntListToRichSeq(list: JList[java.lang.Integer]) = new RichJavaIntList(list)
 }

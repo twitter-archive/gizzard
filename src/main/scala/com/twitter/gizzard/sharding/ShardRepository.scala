@@ -1,7 +1,6 @@
 package com.twitter.gizzard.sharding
 
 import scala.collection.mutable
-import gen.ShardInfo
 
 
 class ShardRepository[S <: Shard] {
@@ -12,10 +11,10 @@ class ShardRepository[S <: Shard] {
   }
 
   def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
-    shardFactories(shardInfo.class_name).instantiate(shardInfo, weight, children)
+    shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
   def create(shardInfo: ShardInfo) {
-    shardFactories(shardInfo.class_name).materialize(shardInfo)
+    shardFactories(shardInfo.className).materialize(shardInfo)
   }
 }

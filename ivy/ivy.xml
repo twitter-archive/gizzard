@@ -5,7 +5,7 @@
     e:buildpackage="com.twitter.gizzard"
     e:testclass="com.twitter.gizzard.TestRunner"
     e:jarclassname="com.twitter.gizzard.Main"
-    e:thriftpackage="com.twitter.gizzard.gen"
+    e:thriftpackage="com.twitter.gizzard.thrift"
   />
 
   <configurations>

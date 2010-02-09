@@ -5,7 +5,6 @@ import scala.collection.mutable
 import com.twitter.db.QueryEvaluator
 import net.lag.configgy.Configgy
 import net.lag.logging.Logger
-import gen.{Forwarding, ShardChild, ShardInfo}
 
 
 object NameServer {
@@ -25,7 +24,7 @@ object NameServer {
     queryEvaluator.select("SELECT * FROM shards") { result =>
       val shardInfo = new ShardInfo(result.getString("class_name"), result.getString("table_prefix"),
         result.getString("hostname"), result.getString("source_type"), result.getString("destination_type"),
-        result.getInt("busy"), result.getInt("id"))
+        Busy.fromThrift(result.getInt("busy")), result.getInt("id"))
       newShardInfos += (result.getInt("id") -> shardInfo)
     }
     shardInfos = newShardInfos
@@ -50,20 +49,20 @@ abstract class NameServer[Key, S <: Shard] {
 
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
-      row.getString("source_type"), row.getString("destination_type"), row.getInt("busy"),
+      row.getString("source_type"), row.getString("destination_type"), Busy.fromThrift(row.getInt("busy")),
       row.getInt("id"))
   }
 
   def createShard(shardInfo: ShardInfo) = {
     queryEvaluator.transaction { transaction =>
       try {
-        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.table_prefix, shardInfo.hostname) { row =>
-          if (row.getString("class_name") != shardInfo.class_name || row.getString("source_type") != shardInfo.source_type || row.getString("destination_type") != shardInfo.destination_type) {
+        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.tablePrefix, shardInfo.hostname) { row =>
+          if (row.getString("class_name") != shardInfo.className || row.getString("source_type") != shardInfo.sourceType || row.getString("destination_type") != shardInfo.destinationType) {
             throw new NameServer.InvalidShard
           }
           row.getInt("id")
         } getOrElse {
-          transaction.insert("INSERT INTO shards (class_name, table_prefix, hostname, source_type, destination_type) VALUES (?, ?, ?, ?, ?)", shardInfo.class_name, shardInfo.table_prefix, shardInfo.hostname, shardInfo.source_type, shardInfo.destination_type)
+          transaction.insert("INSERT INTO shards (class_name, table_prefix, hostname, source_type, destination_type) VALUES (?, ?, ?, ?, ?)", shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
         }
         shardRepository.create(shardInfo)
         shardId
@@ -75,7 +74,7 @@ abstract class NameServer[Key, S <: Shard] {
   }
 
   def findShard(shardInfo: ShardInfo): Int = {
-    queryEvaluator.selectOne("SELECT id FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.table_prefix, shardInfo.hostname) { row =>
+    queryEvaluator.selectOne("SELECT id FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.tablePrefix, shardInfo.hostname) { row =>
       row.getInt("id")
     } getOrElse {
       throw new NameServer.NonExistentShard
@@ -94,8 +93,8 @@ abstract class NameServer[Key, S <: Shard] {
     val rows = queryEvaluator.execute(
       "UPDATE shards SET class_name = ?, table_prefix = ?, hostname = ?, source_type = ?, " +
       "destination_type = ? WHERE id = ?",
-      shardInfo.class_name, shardInfo.table_prefix, shardInfo.hostname, shardInfo.source_type,
-      shardInfo.destination_type, shardInfo.shard_id)
+      shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname, shardInfo.sourceType,
+      shardInfo.destinationType, shardInfo.shardId)
     if (rows < 1) {
       throw new NameServer.NonExistentShard
     }
@@ -125,7 +124,7 @@ abstract class NameServer[Key, S <: Shard] {
 
   def listShardChildren(shardId: Int) = {
     queryEvaluator.select("SELECT child_id, position, weight FROM shard_children WHERE parent_id = ? ORDER BY position ASC", shardId) { row =>
-      new ShardChild(row.getInt("child_id"), row.getInt("position"), row.getInt("weight"))
+      new ChildInfo(row.getInt("child_id"), row.getInt("position"), row.getInt("weight"))
     }.toList
   }
 
@@ -173,8 +172,8 @@ abstract class NameServer[Key, S <: Shard] {
 
   def getChildShardsOfClass(parentShardId: Int, className: String): List[ShardInfo] = {
     val childIds = listShardChildren(parentShardId)
-    childIds.map { child => getShard(child.shard_id) }.filter { _.class_name == className }.toList ++
-      childIds.flatMap { child => getChildShardsOfClass(child.shard_id, className) }
+    childIds.map { child => getShard(child.shardId) }.filter { _.className == className }.toList ++
+      childIds.flatMap { child => getChildShardsOfClass(child.shardId, className) }
   }
 
   def reload() {
@@ -197,13 +196,13 @@ abstract class NameServer[Key, S <: Shard] {
 
   def setForwarding(forwarding: Forwarding)
 
-  def getForwarding(tableId: Seq[Int], baseId: Long): ShardInfo
+  def getForwarding(tableId: List[Int], baseId: Long): ShardInfo
 
   def getForwardingForShard(shardId: Int): Forwarding
 
-  def getForwardings(): Seq[Forwarding]
+  def getForwardings(): List[Forwarding]
 
   protected def reloadForwardings()
 
-  def findCurrentForwarding(tableId: Seq[Int], id: Long): ShardInfo
+  def findCurrentForwarding(tableId: List[Int], id: Long): ShardInfo
 }

@@ -1,7 +1,5 @@
 package com.twitter.gizzard.sharding
 
-import gen.ShardInfo
-
 
 abstract class BlockedShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, children: Seq[ConcreteShard])

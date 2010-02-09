@@ -1,7 +1,6 @@
 package com.twitter.gizzard.sharding
 
 import scala.collection.mutable
-import gen.ShardInfo
 
 
 abstract class WriteOnlyShard[ConcreteShard <: Shard]

@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.util.Sorting
 import net.lag.logging.{Logger, ThrottledLogger}
-import gen.ShardInfo
 import com.twitter.gizzard.Conversions._
 import com.twitter.ostrich.W3CStats
 
@@ -64,7 +63,7 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
     } catch {
       case e: SQLException =>
         val shardInfo = shard.shardInfo
-        val shardId = shardInfo.hostname + "/" + shardInfo.table_prefix
+        val shardId = shardInfo.hostname + "/" + shardInfo.tablePrefix
         e match {
           case _: ShardRejectedOperationException =>
           case _ =>

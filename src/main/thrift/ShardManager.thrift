@@ -1,4 +1,4 @@
-namespace java com.twitter.gizzard.gen
+namespace java com.twitter.gizzard.thrift
 namespace rb Gizzard
 
 exception ShardException {
@@ -15,17 +15,17 @@ struct ShardInfo {
   7: i32 shard_id
 }
 
+struct ChildInfo {
+  1: i32 shard_id
+  2: i32 position
+  3: i32 weight
+}
+
 struct ShardMigration {
   1: i32 source_shard_id
   2: i32 destination_shard_id
   3: i32 replicating_shard_id
   4: i32 write_only_shard_id
-}
-
-struct ShardChild {
-  1: i32 shard_id
-  2: i32 position
-  3: i32 weight
 }
 
 struct Forwarding {
@@ -34,7 +34,7 @@ struct Forwarding {
   3: i32 shard_id
 }
 
-service Shards {
+service ShardManager {
   i32 create_shard(1: ShardInfo shard) throws(ShardException ex)
   i32 find_shard(1: ShardInfo shard) throws(ShardException ex)
   ShardInfo get_shard(1: i32 shard_id) throws(ShardException ex)
@@ -44,7 +44,7 @@ service Shards {
   void add_child_shard(1: i32 parent_shard_id, 2: i32 child_shard_id, 3: i32 position, 4: i32 weight) throws(ShardException ex)
   void remove_child_shard(1: i32 parent_shard_id, 2: i32 child_shard_id) throws(ShardException ex)
   void replace_child_shard(1: i32 old_child_shard_id, 2: i32 new_child_shard_id) throws(ShardException ex)
-  list<ShardChild> list_shard_children(1: i32 shard_id) throws(ShardException ex)
+  list<ChildInfo> list_shard_children(1: i32 shard_id) throws(ShardException ex)
 
   void mark_shard_busy(1: i32 shard_id, 2: i32 busy) throws(ShardException ex)
   void copy_shard(1: i32 source_shard_id, 2: i32 destination_shard_id) throws(ShardException ex)
