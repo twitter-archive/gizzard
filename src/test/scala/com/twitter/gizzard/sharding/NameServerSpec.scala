@@ -18,7 +18,6 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     val config = Configgy.config
     val database = config("db.database")
 
-    var queryEvaluatorFactory: QueryEvaluatorFactory = null
     var queryEvaluator: QueryEvaluator = null
     var shardRepository: ShardRepository[Shard] = null
     var forwardingManager: ForwardingManager[Shard] = null
@@ -26,10 +25,11 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     var forwardShard: Shard = null
     var backwardShard: Shard = null
 
+    val queryEvaluatorFactory = new QueryEvaluatorFactory(new ApacheConnectionPoolFactory(config.configMap("db")), config.configMap("db"))
+    queryEvaluatorFactory("localhost", null).execute("DROP DATABASE IF EXISTS " + database)
+    queryEvaluatorFactory("localhost", null).execute("CREATE DATABASE " + database)
+
     doBefore {
-      queryEvaluatorFactory = new QueryEvaluatorFactory(new ApacheConnectionPoolFactory(config.configMap("db")), config.configMap("db"))
-      queryEvaluatorFactory("localhost", null).execute("DROP DATABASE IF EXISTS " + database)
-      queryEvaluatorFactory("localhost", null).execute("CREATE DATABASE " + database)
       queryEvaluator = queryEvaluatorFactory("localhost", database)
       shardRepository = mock[ShardRepository[Shard]]
       forwardingManager = mock[ForwardingManager[Shard]]
@@ -37,11 +37,6 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       nameServer = new NameServer(queryEvaluator, shardRepository, forwardingManager)
       forwardShard = mock[Shard]
       backwardShard = mock[Shard]
-    }
-
-    doAfter {
-      queryEvaluatorFactory("localhost", null).execute("DROP DATABASE IF EXISTS " + database)
-      queryEvaluatorFactory.close()
     }
 
     "create" in {
