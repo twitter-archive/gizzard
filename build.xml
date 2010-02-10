@@ -8,12 +8,4 @@
 
   <property name="ivy.settings.file" value="${basedir}/ivy/ivysettings.xml" />
   <import file="${basedir}/ant/bootstrap.xml" />
-
-  <property name="install.dir" location="/usr/local/gizzard" />
-  <target name="install" depends="package">
-    <mkdir dir="${install.dir}" />
-    <copy todir="${install.dir}">
-      <fileset dir="${dist.dir}" includes="**" />
-    </copy>
-  </target>
 </project>

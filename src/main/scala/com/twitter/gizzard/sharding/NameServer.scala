@@ -8,6 +8,35 @@ import net.lag.logging.Logger
 
 
 object NameServer {
+  val SHARDS_DDL = """
+CREATE TABLE shards (
+    id                      INT          NOT NULL AUTO_INCREMENT,
+    class_name              VARCHAR(125) NOT NULL,
+    table_prefix            VARCHAR(125) NOT NULL,
+    hostname                VARCHAR(25)  NOT NULL,
+    source_type             VARCHAR(125),
+    destination_type        VARCHAR(125),
+    busy                    TINYINT      NOT NULL DEFAULT 0,
+
+    PRIMARY KEY primary_key_id (id),
+
+    UNIQUE unique_name (table_prefix, hostname)
+) ENGINE=INNODB
+"""
+
+  val SHARD_CHILDREN_DDL = """
+CREATE TABLE shard_children (
+    parent_id               INT NOT NULL,
+    child_id                INT NOT NULL,
+    position                INT NOT NULL,
+    weight                  INT NOT NULL DEFAULT 1,
+
+    UNIQUE unique_family (parent_id, child_id),
+    UNIQUE unique_child (child_id)
+) ENGINE=INNODB
+/* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
+"""
+
   private val config = Configgy.config
   private val log = Logger.get(getClass.getName)
 
@@ -36,6 +65,13 @@ object NameServer {
   }
 
   def getShardInfo(id: Int) = shardInfos(id)
+
+  def rebuildSchema(queryEvaluator: QueryEvaluator) {
+    queryEvaluator.execute("DROP TABLE IF EXISTS shards")
+    queryEvaluator.execute("DROP TABLE IF EXISTS shard_children")
+    queryEvaluator.execute(SHARDS_DDL)
+    queryEvaluator.execute(SHARD_CHILDREN_DDL)
+  }
 }
 
 class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: ShardRepository[S], forwardingManager: ForwardingManager[S]) {
