@@ -5,7 +5,7 @@ import net.lag.logging.Logger
 import com.twitter.gizzard.Conversions._
 
 
-class ShardManager[Key, S <: Shard](nameServer: NameServer[Key, S]) extends thrift.ShardManager.Iface {
+class ShardManager[S <: Shard](nameServer: NameServer[S]) extends thrift.ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def create_shard(shard: thrift.ShardInfo) = {
@@ -87,7 +87,7 @@ class ShardManager[Key, S <: Shard](nameServer: NameServer[Key, S]) extends thri
   }
 
   def find_current_forwarding(tableId: JList[java.lang.Integer], id: Long) = {
-    ShardInfo.toThrift(nameServer.findCurrentForwarding(tableId.toList, id))
+    ShardInfo.toThrift(nameServer.findCurrentForwarding(tableId.toList, id).shardInfo)
   }
 
   def shard_ids_for_hostname(hostname: String, className: String): JList[java.lang.Integer] = {

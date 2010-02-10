@@ -6,15 +6,15 @@ import com.twitter.gizzard.Conversions._
 
 
 object ShardManagerSpec extends Specification with JMocker with ClassMocker {
-  var manager: ShardManager[Int, Shard] = null
-  var nameServer: NameServer[Int, Shard] = null
-  val thriftShardInfo1 = new thrift.ShardInfo("com.twitter.service.flock.edges.SqlShard",
+  var manager: ShardManager[Shard] = null
+  var nameServer: NameServer[Shard] = null
+  val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
-  val shardInfo1 = new ShardInfo("com.twitter.service.flock.edges.SqlShard",
+  val shardInfo1 = new ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
-  val thriftShardInfo2 = new thrift.ShardInfo("com.twitter.service.flock.edges.SqlShard",
+  val thriftShardInfo2 = new thrift.ShardInfo("com.example.SqlShard",
     "other_table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
-  val shardInfo2 = new ShardInfo("com.twitter.service.flock.edges.SqlShard",
+  val shardInfo2 = new ShardInfo("com.example.SqlShard",
     "other_table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
   val hostname = "host1"
   val classname = "com.example.Classname"
@@ -25,11 +25,15 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
   val tableId = List(1, 2, 3)
   val forwarding = new Forwarding(List(1, 2, 3), 0, shardId)
   val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
+  val shard = new Shard {
+    def shardInfo = shardInfo1
+    def weight = 3
+  }
 
 
   "ShardManager" should {
     doBefore {
-      nameServer = mock[NameServer[Int, Shard]]
+      nameServer = mock[NameServer[Shard]]
       manager = new ShardManager(nameServer)
     }
 
@@ -169,7 +173,7 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
 
     "find_current_forwarding" in {
       expect {
-        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shardInfo1
+        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shard
       }
       manager.find_current_forwarding(tableId.toJavaList, 23L) mustEqual thriftShardInfo1
     }

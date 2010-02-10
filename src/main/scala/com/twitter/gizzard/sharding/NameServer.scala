@@ -38,38 +38,7 @@ object NameServer {
   def getShardInfo(id: Int) = shardInfos(id)
 }
 
-abstract class NameServer[Key, S <: Shard] {
-  def create(key: Key, shardId: Int)
-
-  def find(key: Key): S
-
-  protected val queryEvaluator: QueryEvaluator
-
-  protected val shardRepository: ShardRepository[S]
-
-  def replaceForwarding(oldShardId: Int, newShardId: Int)
-
-  def setForwarding(forwarding: Forwarding)
-
-  def getForwarding(tableId: List[Int], baseId: Long): ShardInfo
-
-  def getForwardingForShard(shardId: Int): Forwarding
-
-  def getForwardings(): List[Forwarding]
-
-  protected def reloadForwardings()
-
-  def findCurrentForwarding(tableId: List[Int], id: Long): ShardInfo
-
-  def copyShard(sourceShardId: Int, destinationShardId: Int)
-
-  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo): ShardMigration
-
-  def migrateShard(migration: ShardMigration)
-
-
-  // implemented:
-
+class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: ShardRepository[S], forwardingManager: ForwardingManager[S]) {
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
       row.getString("source_type"), row.getString("destination_type"), Busy.fromThrift(row.getInt("busy")),
@@ -157,6 +126,60 @@ abstract class NameServer[Key, S <: Shard] {
     }
   }
 
+  def copyShard(sourceShardId: Int, destinationShardId: Int) {
+    // FIXME
+  }
+
+  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
+    val lastDot = sourceShardInfo.className.lastIndexOf('.')
+    val packageName = if (lastDot >= 0) sourceShardInfo.className.substring(0, lastDot + 1) else ""
+    val sourceShardId = findShard(sourceShardInfo)
+    val destinationShardId = createShard(destinationShardInfo)
+
+    val writeOnlyShard = new ShardInfo(packageName + "WriteOnlyShard",
+      sourceShardInfo.tablePrefix + "_migrate_write_only", "localhost", "", "", Busy.Normal, 0)
+    val writeOnlyShardId = createShard(writeOnlyShard)
+    addChildShard(writeOnlyShardId, destinationShardId, 1, 1)
+
+    val replicatingShard = new ShardInfo(packageName + "ReplicatingShard",
+      sourceShardInfo.tablePrefix + "_migrate_replicating", "localhost", "", "", Busy.Normal, 0)
+    val replicatingShardId = createShard(replicatingShard)
+    replaceChildShard(sourceShardId, replicatingShardId)
+    addChildShard(replicatingShardId, sourceShardId, 1, 1)
+    addChildShard(replicatingShardId, writeOnlyShardId, 2, 1)
+
+    forwardingManager.replaceForwarding(sourceShardId, replicatingShardId)
+    new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
+  }
+
+  def migrateShard(migration: ShardMigration) {
+    // FIXME
+  }
+
+  def setForwarding(forwarding: Forwarding) {
+    forwardingManager.setForwarding(forwarding)
+  }
+
+  def replaceForwarding(oldShardId: Int, newShardId: Int) {
+    forwardingManager.replaceForwarding(oldShardId, newShardId)
+  }
+
+  def getForwarding(tableId: List[Int], baseId: Long): ShardInfo = {
+    getShard(forwardingManager.getForwarding(tableId, baseId))
+  }
+
+  def getForwardingForShard(shardId: Int): Forwarding = {
+    forwardingManager.getForwardingForShard(shardId)
+  }
+
+  def getForwardings(): List[Forwarding] = {
+    forwardingManager.getForwardings()
+  }
+
+  def findCurrentForwarding(tableId: List[Int], id: Long): S = {
+    forwardingManager.findCurrentForwarding(tableId, id)
+  }
+
   def shardIdsForHostname(hostname: String, className: String): List[Int] = {
     val shardIds = new mutable.ListBuffer[Int]
     queryEvaluator.select("SELECT id FROM shards WHERE hostname = ? AND class_name = ?", hostname, className) { row =>
@@ -201,7 +224,7 @@ abstract class NameServer[Key, S <: Shard] {
 
   def reload() {
     NameServer.reload(queryEvaluator)
-    reloadForwardings()
+    forwardingManager.reloadForwardings()
   }
 
   def findShardById(shardId: Int, weight: Int): S = {
