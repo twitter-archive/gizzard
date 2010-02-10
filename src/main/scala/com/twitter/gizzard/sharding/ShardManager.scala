@@ -49,17 +49,16 @@ class ShardManager[Key, S <: Shard](nameServer: NameServer[Key, S]) extends thri
   }
 
   def copy_shard(sourceShardId: Int, destinationShardId: Int) {
-    // FIXME
+    nameServer.copyShard(sourceShardId, destinationShardId)
   }
 
   def setup_migration(sourceShardInfo: thrift.ShardInfo, destinationShardInfo: thrift.ShardInfo) = {
-    // FIXME
-//    new thrift.ShardMigration(...)
-    null
+    ShardMigration.toThrift(nameServer.setupMigration(ShardInfo.fromThrift(sourceShardInfo),
+                                                      ShardInfo.fromThrift(destinationShardInfo)))
   }
 
   def migrate_shard(migration: thrift.ShardMigration) {
-    // FIXME
+    nameServer.migrateShard(ShardMigration.fromThrift(migration))
   }
 
   def set_forwarding(forwarding: thrift.Forwarding) {

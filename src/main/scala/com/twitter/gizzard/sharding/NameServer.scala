@@ -14,10 +14,8 @@ object NameServer {
   class NonExistentShard extends Exception("Shard does not exist")
   class InvalidShard extends Exception("Shard has invalid attributes (such as hostname)")
 
-  case class ChildShard(shardId: Int, weight: Int)
-
   @volatile protected var shardInfos = mutable.Map.empty[Int, ShardInfo]
-  @volatile private var familyTree = mutable.Map.empty[Int, mutable.ArrayBuffer[ChildShard]]
+  @volatile private var familyTree = mutable.Map.empty[Int, mutable.ArrayBuffer[ChildInfo]]
 
   def reload(queryEvaluator: QueryEvaluator) {
     val newShardInfos = mutable.Map.empty[Int, ShardInfo]
@@ -29,10 +27,10 @@ object NameServer {
     }
     shardInfos = newShardInfos
 
-    val newFamilyTree = new mutable.HashMap[Int, mutable.ArrayBuffer[ChildShard]] { override def initialSize = shardInfos.size * 10 }
+    val newFamilyTree = new mutable.HashMap[Int, mutable.ArrayBuffer[ChildInfo]] { override def initialSize = shardInfos.size * 10 }
     queryEvaluator.select(config("nameserver.query_timeout").toInt, "SELECT * FROM shard_children ORDER BY parent_id, position ASC") { result =>
-      val children = newFamilyTree.getOrElseUpdate(result.getInt("parent_id"), new mutable.ArrayBuffer[ChildShard])
-      children += ChildShard(result.getInt("child_id"), result.getInt("weight"))
+      val children = newFamilyTree.getOrElseUpdate(result.getInt("parent_id"), new mutable.ArrayBuffer[ChildInfo])
+      children += ChildInfo(result.getInt("child_id"), result.getInt("position"), result.getInt("weight"))
     }
     familyTree = newFamilyTree
   }
@@ -42,10 +40,35 @@ object NameServer {
 
 abstract class NameServer[Key, S <: Shard] {
   def create(key: Key, shardId: Int)
+
   def find(key: Key): S
 
   protected val queryEvaluator: QueryEvaluator
+
   protected val shardRepository: ShardRepository[S]
+
+  def replaceForwarding(oldShardId: Int, newShardId: Int)
+
+  def setForwarding(forwarding: Forwarding)
+
+  def getForwarding(tableId: List[Int], baseId: Long): ShardInfo
+
+  def getForwardingForShard(shardId: Int): Forwarding
+
+  def getForwardings(): List[Forwarding]
+
+  protected def reloadForwardings()
+
+  def findCurrentForwarding(tableId: List[Int], id: Long): ShardInfo
+
+  def copyShard(sourceShardId: Int, destinationShardId: Int)
+
+  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo): ShardMigration
+
+  def migrateShard(migration: ShardMigration)
+
+
+  // implemented:
 
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
@@ -184,25 +207,11 @@ abstract class NameServer[Key, S <: Shard] {
   def findShardById(shardId: Int, weight: Int): S = {
     val shardInfo = NameServer.shardInfos.getOrElse(shardId, throw new NameServer.NonExistentShard)
     val children =
-      NameServer.familyTree.getOrElse(shardId, new mutable.ArrayBuffer[NameServer.ChildShard]).map { child =>
+      NameServer.familyTree.getOrElse(shardId, new mutable.ArrayBuffer[ChildInfo]).map { child =>
         findShardById(child.shardId, child.weight)
       }.toList
     shardRepository.find(shardInfo, weight, children)
   }
 
   def findShardById(shardId: Int): S = findShardById(shardId, 1)
-
-  def replaceForwarding(oldShardId: Int, newShardId: Int)
-
-  def setForwarding(forwarding: Forwarding)
-
-  def getForwarding(tableId: List[Int], baseId: Long): ShardInfo
-
-  def getForwardingForShard(shardId: Int): Forwarding
-
-  def getForwardings(): List[Forwarding]
-
-  protected def reloadForwardings()
-
-  def findCurrentForwarding(tableId: List[Int], id: Long): ShardInfo
 }

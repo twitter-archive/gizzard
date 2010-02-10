@@ -8,13 +8,24 @@ import com.twitter.gizzard.Conversions._
 object ShardManagerSpec extends Specification with JMocker with ClassMocker {
   var manager: ShardManager[Int, Shard] = null
   var nameServer: NameServer[Int, Shard] = null
-  val thriftForwardShardInfo = new thrift.ShardInfo("com.twitter.service.flock.edges.SqlShard",
-    "forward_table_prefix", "forward_hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
-  val forwardShardInfo = new ShardInfo("com.twitter.service.flock.edges.SqlShard",
-    "forward_table_prefix", "forward_hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
+  val thriftShardInfo1 = new thrift.ShardInfo("com.twitter.service.flock.edges.SqlShard",
+    "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
+  val shardInfo1 = new ShardInfo("com.twitter.service.flock.edges.SqlShard",
+    "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
+  val thriftShardInfo2 = new thrift.ShardInfo("com.twitter.service.flock.edges.SqlShard",
+    "other_table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
+  val shardInfo2 = new ShardInfo("com.twitter.service.flock.edges.SqlShard",
+    "other_table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
+  val hostname = "host1"
+  val classname = "com.example.Classname"
   val shardId = 100
+  val parentShardId = 900
   val childShardId1 = 200
   val childShardId2 = 201
+  val tableId = List(1, 2, 3)
+  val forwarding = new Forwarding(List(1, 2, 3), 0, shardId)
+  val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
+
 
   "ShardManager" should {
     doBefore {
@@ -24,30 +35,30 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
 
     "create_shard" in {
       expect {
-        one(nameServer).createShard(forwardShardInfo) willReturn shardId
+        one(nameServer).createShard(shardInfo1) willReturn shardId
       }
-      manager.create_shard(thriftForwardShardInfo) mustEqual shardId
+      manager.create_shard(thriftShardInfo1) mustEqual shardId
     }
 
     "find_shard" in {
       expect {
-        one(nameServer).findShard(forwardShardInfo) willReturn shardId
+        one(nameServer).findShard(shardInfo1) willReturn shardId
       }
-      manager.find_shard(thriftForwardShardInfo) mustEqual shardId
+      manager.find_shard(thriftShardInfo1) mustEqual shardId
     }
 
     "get_shard" in {
       expect {
-        one(nameServer).getShard(shardId) willReturn forwardShardInfo
+        one(nameServer).getShard(shardId) willReturn shardInfo1
       }
-      manager.get_shard(shardId) mustEqual thriftForwardShardInfo
+      manager.get_shard(shardId) mustEqual thriftShardInfo1
     }
 
     "update_shard" in {
       expect {
-        one(nameServer).updateShard(forwardShardInfo)
+        one(nameServer).updateShard(shardInfo1)
       }
-      manager.update_shard(thriftForwardShardInfo)
+      manager.update_shard(thriftShardInfo1)
     }
 
     "delete_shard" in {
@@ -93,41 +104,32 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
       manager.mark_shard_busy(shardId, Busy.Busy.id)
     }
 
+    "copy_shard" in {
+      expect {
+        one(nameServer).copyShard(1, 2)
+      }
+      manager.copy_shard(1, 2)
+    }
+
+    "setup_migration" in {
+      expect {
+        one(nameServer).setupMigration(shardInfo1, shardInfo2) willReturn new ShardMigration(1, 2, 3, 4)
+      }
+      manager.setup_migration(thriftShardInfo1, thriftShardInfo2) mustEqual new thrift.ShardMigration(1, 2, 3, 4)
+    }
+
+    "migrate_shard" in {
+      expect {
+        one(nameServer).migrateShard(new ShardMigration(1, 2, 3, 4))
+      }
+      manager.migrate_shard(new thrift.ShardMigration(1, 2, 3, 4))
+    }
+
     "set_forwarding" in {
-      val forwarding = new Forwarding(List(1, 2, 3), 0, 12)
-      val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, 12)
       expect {
         one(nameServer).setForwarding(forwarding)
       }
       manager.set_forwarding(thriftForwarding)
-    }
-
-    "get_forwarding" in {
-      val tableId = List(1, 2, 3)
-      expect {
-        one(nameServer).getForwarding(tableId, 0) willReturn forwardShardInfo
-      }
-      manager.get_forwarding(tableId.toJavaList, 0) mustEqual thriftForwardShardInfo
-    }
-
-    "get_forwarding_for_shard" in {
-      val shardId = 23
-      val forwarding = new Forwarding(List(1, 2, 3), 0, shardId)
-      val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
-      expect {
-        one(nameServer).getForwardingForShard(shardId) willReturn forwarding
-      }
-      manager.get_forwarding_for_shard(shardId) mustEqual thriftForwarding
-    }
-
-    "get_forwardings" in {
-      val shardId = 23
-      val forwarding = new Forwarding(List(1, 2, 3), 0, shardId)
-      val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
-      expect {
-        one(nameServer).getForwardings() willReturn List(forwarding)
-      }
-      manager.get_forwardings() mustEqual List(thriftForwarding).toJavaList
     }
 
     "replace_forwarding" in {
@@ -137,6 +139,27 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
       manager.replace_forwarding(1, 2)
     }
 
+    "get_forwarding" in {
+      expect {
+        one(nameServer).getForwarding(tableId, 0) willReturn shardInfo1
+      }
+      manager.get_forwarding(tableId.toJavaList, 0) mustEqual thriftShardInfo1
+    }
+
+    "get_forwarding_for_shard" in {
+      expect {
+        one(nameServer).getForwardingForShard(shardId) willReturn forwarding
+      }
+      manager.get_forwarding_for_shard(shardId) mustEqual thriftForwarding
+    }
+
+    "get_forwardings" in {
+      expect {
+        one(nameServer).getForwardings() willReturn List(forwarding)
+      }
+      manager.get_forwardings() mustEqual List(thriftForwarding).toJavaList
+    }
+
     "reload_forwardings" in {
       expect {
         one(nameServer).reload()
@@ -144,9 +167,14 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
       manager.reload_forwardings()
     }
 
+    "find_current_forwarding" in {
+      expect {
+        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shardInfo1
+      }
+      manager.find_current_forwarding(tableId.toJavaList, 23L) mustEqual thriftShardInfo1
+    }
+
     "shard_ids_for_hostname" in {
-      val hostname = "host1"
-      val classname = "com.example.Classname"
       expect {
         one(nameServer).shardIdsForHostname(hostname, classname) willReturn List(3, 5)
       }
@@ -154,44 +182,38 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
     }
 
     "shards_for_hostname" in {
-      val hostname = "host1"
-      val classname = "com.example.Classname"
       expect {
-        one(nameServer).shardsForHostname(hostname, classname) willReturn List(forwardShardInfo)
+        one(nameServer).shardsForHostname(hostname, classname) willReturn List(shardInfo1)
       }
-      manager.shards_for_hostname(hostname, classname) mustEqual List(thriftForwardShardInfo).toJavaList
+      manager.shards_for_hostname(hostname, classname) mustEqual List(thriftShardInfo1).toJavaList
     }
 
     "get_busy_shards" in {
       expect {
-        one(nameServer).getBusyShards() willReturn List(forwardShardInfo)
+        one(nameServer).getBusyShards() willReturn List(shardInfo1)
       }
-      manager.get_busy_shards() mustEqual List(thriftForwardShardInfo).toJavaList
+      manager.get_busy_shards() mustEqual List(thriftShardInfo1).toJavaList
     }
 
     "get_parent_shard" in {
-      val shardId = 23
       expect {
-        one(nameServer).getParentShard(shardId) willReturn forwardShardInfo
+        one(nameServer).getParentShard(shardId) willReturn shardInfo1
       }
-      manager.get_parent_shard(shardId) mustEqual thriftForwardShardInfo
+      manager.get_parent_shard(shardId) mustEqual thriftShardInfo1
     }
 
     "get_root_shard" in {
-      val shardId = 23
       expect {
-        one(nameServer).getRootShard(shardId) willReturn forwardShardInfo
+        one(nameServer).getRootShard(shardId) willReturn shardInfo1
       }
-      manager.get_root_shard(shardId) mustEqual thriftForwardShardInfo
+      manager.get_root_shard(shardId) mustEqual thriftShardInfo1
     }
 
     "get_child_shards_of_class" in {
-      val parentShardId = 900
-      val classname = "com.example.Classname"
       expect {
-        one(nameServer).getChildShardsOfClass(parentShardId, classname) willReturn List(forwardShardInfo)
+        one(nameServer).getChildShardsOfClass(parentShardId, classname) willReturn List(shardInfo1)
       }
-      manager.get_child_shards_of_class(parentShardId, classname) mustEqual List(thriftForwardShardInfo).toJavaList
+      manager.get_child_shards_of_class(parentShardId, classname) mustEqual List(thriftShardInfo1).toJavaList
     }
   }
 }
