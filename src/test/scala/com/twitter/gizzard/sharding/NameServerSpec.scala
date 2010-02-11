@@ -1,8 +1,11 @@
 package com.twitter.gizzard.sharding
 
 import scala.collection.mutable
-import com.twitter.db.{ApacheConnectionPoolFactory, QueryEvaluator, QueryEvaluatorFactory}
+import com.twitter.querulous.connectionpool.ApacheConnectionPoolFactory
+import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
+import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.gizzard.Conversions._
+import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -25,12 +28,25 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     var forwardShard: Shard = null
     var backwardShard: Shard = null
 
-    val queryEvaluatorFactory = new QueryEvaluatorFactory(new ApacheConnectionPoolFactory(config.configMap("db")), config.configMap("db"))
-    queryEvaluatorFactory("localhost", null).execute("DROP DATABASE IF EXISTS " + database)
-    queryEvaluatorFactory("localhost", null).execute("CREATE DATABASE " + database)
+    val connectionPoolFactory = new ApacheConnectionPoolFactory(
+      config("db.connection_pool.size_min").toInt,
+      config("db.connection_pool.size_max").toInt,
+      config("db.connection_pool.test_idle_msec").toLong.millis,
+      config("db.connection_pool.max_wait").toLong.millis,
+      config("db.connection_pool.test_on_borrow").toBoolean,
+      config("db.connection_pool.min_evictable_idle_msec").toLong.millis)
+    val sqlQueryFactory = new SqlQueryFactory
+    val queryEvaluatorFactory = new StandardQueryEvaluatorFactory(connectionPoolFactory, sqlQueryFactory)
+    val dbHostname = config("db.hostname")
+    val dbUsername = config("db.username")
+    val dbPassword = config("db.password")
+
+    val topLevelEvaluator = queryEvaluatorFactory(dbHostname, null, dbUsername, dbPassword)
+    topLevelEvaluator.execute("DROP DATABASE IF EXISTS " + database)
+    topLevelEvaluator.execute("CREATE DATABASE " + database)
 
     doBefore {
-      queryEvaluator = queryEvaluatorFactory("localhost", database)
+      queryEvaluator = queryEvaluatorFactory(dbHostname, database, dbUsername, dbPassword)
       shardRepository = mock[ShardRepository[Shard]]
       forwardingManager = mock[ForwardingManager[Shard]]
       NameServer.rebuildSchema(queryEvaluator)

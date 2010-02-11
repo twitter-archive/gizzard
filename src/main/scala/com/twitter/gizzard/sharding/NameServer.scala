@@ -2,8 +2,7 @@ package com.twitter.gizzard.sharding
 
 import java.sql.{ResultSet, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
-import com.twitter.db.QueryEvaluator
-import net.lag.configgy.Configgy
+import com.twitter.querulous.evaluator.QueryEvaluator
 import net.lag.logging.Logger
 
 
@@ -37,7 +36,6 @@ CREATE TABLE shard_children (
 /* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
 """
 
-  private val config = Configgy.config
   private val log = Logger.get(getClass.getName)
 
   class NonExistentShard extends Exception("Shard does not exist")
@@ -57,7 +55,7 @@ CREATE TABLE shard_children (
     shardInfos = newShardInfos
 
     val newFamilyTree = new mutable.HashMap[Int, mutable.ArrayBuffer[ChildInfo]] { override def initialSize = shardInfos.size * 10 }
-    queryEvaluator.select(config("nameserver.query_timeout").toInt, "SELECT * FROM shard_children ORDER BY parent_id, position ASC") { result =>
+    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_id, position ASC") { result =>
       val children = newFamilyTree.getOrElseUpdate(result.getInt("parent_id"), new mutable.ArrayBuffer[ChildInfo])
       children += ChildInfo(result.getInt("child_id"), result.getInt("position"), result.getInt("weight"))
     }
