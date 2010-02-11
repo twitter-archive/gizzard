@@ -18,5 +18,5 @@ trait ForwardingManager[S <: Shard] {
 
   def findCurrentForwarding(tableId: List[Int], id: Long): S
 
-  def reloadForwardings()
+  def reloadForwardings(nameServer: NameServer[S])
 }
