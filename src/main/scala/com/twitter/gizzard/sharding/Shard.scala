@@ -1,11 +1,13 @@
 package com.twitter.gizzard.sharding
 
-import java.sql.SQLException
-
 
 trait Shard {
   def shardInfo: ShardInfo
   def weight: Int
 }
 
-class ShardRejectedOperationException(description: String) extends SQLException(description)
+class ShardException(description: String) extends Exception(description)
+
+class ShardTimeoutException extends ShardException("timeout")
+
+class ShardRejectedOperationException(description: String) extends ShardException(description)
