@@ -44,11 +44,14 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     topLevelEvaluator.execute("DROP DATABASE IF EXISTS " + database)
     topLevelEvaluator.execute("CREATE DATABASE " + database)
 
+    queryEvaluator = queryEvaluatorFactory(dbHostname, database, dbUsername, dbPassword)
+    NameServer.rebuildSchema(queryEvaluator)
+
     doBefore {
-      queryEvaluator = queryEvaluatorFactory(dbHostname, database, dbUsername, dbPassword)
+      queryEvaluator.execute("DELETE FROM shards")
+      queryEvaluator.execute("DELETE FROM shard_children")
       shardRepository = mock[ShardRepository[Shard]]
       forwardingManager = mock[ForwardingManager[Shard]]
-      NameServer.rebuildSchema(queryEvaluator)
       nameServer = new NameServer(queryEvaluator, shardRepository, forwardingManager)
       forwardShard = mock[Shard]
       backwardShard = mock[Shard]

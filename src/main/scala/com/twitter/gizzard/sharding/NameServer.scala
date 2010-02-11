@@ -258,7 +258,7 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
 
   def reload() {
     NameServer.reload(queryEvaluator)
-    forwardingManager.reloadForwardings()
+    forwardingManager.reloadForwardings(this)
   }
 
   def findShardById(shardId: Int, weight: Int): S = {
