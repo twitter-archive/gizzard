@@ -1,6 +1,5 @@
 package com.twitter.gizzard.thrift
 
-import java.util.{List => JList}
 import net.lag.logging.Logger
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.Busy._
@@ -14,19 +13,19 @@ import com.twitter.gizzard.sharding._
 class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
-  def create_shard(shard: thrift.ShardInfo) = {
+  def create_shard(shard:ShardInfo) = {
     nameServer.createShard(shard.fromThrift)
   }
 
-  def find_shard(shard: thrift.ShardInfo) = {
+  def find_shard(shard:ShardInfo) = {
     nameServer.findShard(shard.fromThrift)
   }
 
-  def get_shard(shardId: Int): thrift.ShardInfo = {
+  def get_shard(shardId: Int):ShardInfo = {
     nameServer.getShard(shardId).toThrift
   }
 
-  def update_shard(shard: thrift.ShardInfo) {
+  def update_shard(shard:ShardInfo) {
     nameServer.updateShard(shard.fromThrift)
   }
 
@@ -46,7 +45,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.replaceChildShard(oldChildShardId, newChildShardId)
   }
 
-  def list_shard_children(shardId: Int): JList[thrift.ChildInfo] = {
+  def list_shard_children(shardId: Int): java.util.List[ChildInfo] = {
     nameServer.listShardChildren(shardId).map(_.toThrift).toJavaList
   }
 
@@ -58,15 +57,15 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.copyShard(sourceShardId, destinationShardId)
   }
 
-  def setup_migration(sourceShardInfo: thrift.ShardInfo, destinationShardInfo: thrift.ShardInfo) = {
+  def setup_migration(sourceShardInfo:ShardInfo, destinationShardInfo:ShardInfo) = {
     nameServer.setupMigration(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift).toThrift
   }
 
-  def migrate_shard(migration: thrift.ShardMigration) {
+  def migrate_shard(migration:ShardMigration) {
     nameServer.migrateShard(migration.fromThrift)
   }
 
-  def set_forwarding(forwarding: thrift.Forwarding) {
+  def set_forwarding(forwarding:Forwarding) {
     nameServer.setForwarding(forwarding.fromThrift)
   }
 
@@ -74,7 +73,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.replaceForwarding(oldShardId, newShardId)
   }
 
-  def get_forwarding(tableId: JList[java.lang.Integer], baseId: Long) = {
+  def get_forwarding(tableId: java.util.List[java.lang.Integer], baseId: Long) = {
     nameServer.getForwarding(tableId.toList, baseId).toThrift
   }
 
@@ -82,7 +81,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.getForwardingForShard(shardId).toThrift
   }
 
-  def get_forwardings(): JList[thrift.Forwarding] = {
+  def get_forwardings(): java.util.List[Forwarding] = {
     nameServer.getForwardings().map(_.toThrift).toJavaList
   }
 
@@ -91,19 +90,19 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.reload()
   }
 
-  def find_current_forwarding(tableId: JList[java.lang.Integer], id: Long) = {
+  def find_current_forwarding(tableId: java.util.List[java.lang.Integer], id: Long) = {
     nameServer.findCurrentForwarding(tableId.toList, id).shardInfo.toThrift
   }
 
-  def shard_ids_for_hostname(hostname: String, className: String): JList[java.lang.Integer] = {
+  def shard_ids_for_hostname(hostname: String, className: String): java.util.List[java.lang.Integer] = {
     nameServer.shardIdsForHostname(hostname, className).toJavaList
   }
 
-  def shards_for_hostname(hostname: String, className: String): JList[thrift.ShardInfo] = {
+  def shards_for_hostname(hostname: String, className: String): java.util.List[ShardInfo] = {
     nameServer.shardsForHostname(hostname, className).map(_.toThrift).toJavaList
   }
 
-  def get_busy_shards(): JList[thrift.ShardInfo] = {
+  def get_busy_shards(): java.util.List[ShardInfo] = {
     nameServer.getBusyShards().map(_.toThrift).toJavaList
   }
 
@@ -115,7 +114,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.getRootShard(shardId).toThrift
   }
 
-  def get_child_shards_of_class(parentShardId: Int, className: String): JList[thrift.ShardInfo] = {
+  def get_child_shards_of_class(parentShardId: Int, className: String): java.util.List[ShardInfo] = {
     nameServer.getChildShardsOfClass(parentShardId, className).map(_.toThrift).toJavaList
   }
 }
