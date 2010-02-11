@@ -2,12 +2,11 @@ package com.twitter.gizzard.sharding
 
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import com.twitter.gizzard.Conversions._
-
+import com.twitter.gizzard.thrift.conversions.Sequences._
 
 object ShardManagerSpec extends Specification with JMocker with ClassMocker {
-  var manager: ShardManager[Shard] = null
-  var nameServer: NameServer[Shard] = null
+  val nameServer = mock[NameServer[Shard]]
+  val manager = new thrift.ShardManagerService(nameServer)
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
   val shardInfo1 = new ShardInfo("com.example.SqlShard",
@@ -32,11 +31,6 @@ object ShardManagerSpec extends Specification with JMocker with ClassMocker {
 
 
   "ShardManager" should {
-    doBefore {
-      nameServer = mock[NameServer[Shard]]
-      manager = new ShardManager(nameServer)
-    }
-
     "create_shard" in {
       expect {
         one(nameServer).createShard(shardInfo1) willReturn shardId
