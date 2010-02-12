@@ -7,12 +7,12 @@ import scala.collection.mutable
 import scala.util.Sorting
 import net.lag.logging.{Logger, ThrottledLogger}
 import com.twitter.gizzard.Conversions._
-import com.twitter.ostrich.W3CStats
+import com.twitter.ostrich.W3CReporter
 
 
 abstract class ReplicatingShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val replicas: Seq[ConcreteShard],
-   log: ThrottledLogger[String], future: Future, eventLogger: Option[W3CStats])
+   log: ThrottledLogger[String], future: Future, eventLogger: Option[W3CReporter])
   extends ReadWriteShard[ConcreteShard] {
 
   private val random = new Random
@@ -57,22 +57,29 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
   private def failover[A](f: ConcreteShard => A): A = failover(f, replicas)
 
   private def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
-    val (shard, remainder) = getNext(random.nextFloat, replicas)
+    val (shard, remainder) = try {
+      getNext(random.nextFloat, replicas)
+    } catch {
+      case e: NoSuchElementException =>
+        throw new ShardException("All shard replicas are down")
+    }
+
     try {
       f(shard)
     } catch {
-      case e: SQLException =>
+      case e: ShardException =>
         val shardInfo = shard.shardInfo
         val shardId = shardInfo.hostname + "/" + shardInfo.tablePrefix
         e match {
           case _: ShardRejectedOperationException =>
           case _ =>
             log.error(shardId, e, "Error on %s: %s", shardId, e)
-            eventLogger.map { _.log("db_error-" + shardId, e.getClass.getName) }
+            // FIXME kind of an abuse of w3c. make a real event log.
+            eventLogger.map { _.report(Map("db_error-" + shardId -> e.getClass.getName)) }
         }
         failover(f, remainder)
       case e: NoSuchElementException =>
-        throw new SQLException("All shard replicas are down")
+        throw new ShardException("All shard replicas are down")
     }
   }
 }
