@@ -38,9 +38,16 @@ object Conversions {
   implicit def seqToRichSeq[A <: AnyRef](seq: Seq[A]) = new RichSeq(seq)
 
   class RichIntSeq(seq: Seq[Int]) {
+    def parallel(future: Future) = new ParallelSeq(seq, future)
     def toJavaList = new JavaListAdapter(seq)(_.asInstanceOf[java.lang.Integer])
   }
   implicit def seqToRichIntSeq(seq: Seq[Int]) = new RichIntSeq(seq)
+
+  class RichLongSeq(seq: Seq[Long]) {
+    def parallel(future: Future) = new ParallelSeq(seq, future)
+    def toJavaList = new JavaListAdapter(seq)(_.asInstanceOf[java.lang.Long])
+  }
+  implicit def seqToRichLongSeq(seq: Seq[Long]) = new RichLongSeq(seq)
 
   class RichJavaList[T <: AnyRef](list: JList[T]) {
     def toSeq = new ScalaSeqAdapter(list)(id => id)
