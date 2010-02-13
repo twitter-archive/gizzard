@@ -4,7 +4,6 @@ import scala.collection.mutable
 import com.twitter.querulous.connectionpool.ApacheConnectionPoolFactory
 import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
 import com.twitter.querulous.query.SqlQueryFactory
-import com.twitter.gizzard.Conversions._
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.Configgy
 import org.specs.Specification

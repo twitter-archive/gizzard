@@ -14,17 +14,3 @@ case class ShardInfo(var className: String, var tablePrefix: String, var hostnam
   override def clone(): ShardInfo =
     new ShardInfo(className, tablePrefix, hostname, sourceType, destinationType, busy, shardId)
 }
-
-object ShardInfo {
-  def fromThrift(shardInfo: thrift.ShardInfo) = {
-    new ShardInfo(shardInfo.class_name, shardInfo.table_prefix, shardInfo.hostname,
-                  shardInfo.source_type, shardInfo.destination_type,
-                  Busy.fromThrift(shardInfo.busy), shardInfo.shard_id)
-  }
-
-  def toThrift(shardInfo: ShardInfo) = {
-    new thrift.ShardInfo(shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname,
-                         shardInfo.sourceType, shardInfo.destinationType,
-                         Busy.toThrift(shardInfo.busy), shardInfo.shardId)
-  }
-}

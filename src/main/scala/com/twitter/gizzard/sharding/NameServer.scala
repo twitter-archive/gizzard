@@ -49,7 +49,7 @@ CREATE TABLE shard_children (
     queryEvaluator.select("SELECT * FROM shards") { result =>
       val shardInfo = new ShardInfo(result.getString("class_name"), result.getString("table_prefix"),
         result.getString("hostname"), result.getString("source_type"), result.getString("destination_type"),
-        Busy.fromThrift(result.getInt("busy")), result.getInt("id"))
+        Busy(result.getInt("busy")), result.getInt("id"))
       newShardInfos += (result.getInt("id") -> shardInfo)
     }
     shardInfos = newShardInfos
@@ -76,7 +76,7 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
                              forwardingManager: ForwardingManager[S]) {
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
-      row.getString("source_type"), row.getString("destination_type"), Busy.fromThrift(row.getInt("busy")),
+      row.getString("source_type"), row.getString("destination_type"), Busy(row.getInt("busy")),
       row.getInt("id"))
   }
 

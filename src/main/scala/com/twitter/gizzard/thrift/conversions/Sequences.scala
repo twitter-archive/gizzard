@@ -1,4 +1,4 @@
-package com.twitter.gizzard
+package com.twitter.gizzard.thrift.conversions
 
 import java.util.{AbstractList => JAbstractList, List => JList}
 
@@ -30,7 +30,7 @@ class JavaListAdapter[A, B](seq: Seq[A])(f: A => B) extends JAbstractList[B] {
   def get(i: Int) = f(seq(i))
 }
 
-object Conversions {
+object Sequences {
   class RichSeq[A <: AnyRef](seq: Seq[A]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
     def toJavaList = new JavaListAdapter(seq)(x => x)

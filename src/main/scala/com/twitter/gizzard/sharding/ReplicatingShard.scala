@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.util.Sorting
 import net.lag.logging.{Logger, ThrottledLogger}
-import com.twitter.gizzard.Conversions._
+import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.ostrich.W3CReporter
 
 
