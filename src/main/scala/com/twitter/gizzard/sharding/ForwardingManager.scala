@@ -2,10 +2,6 @@ package com.twitter.gizzard.sharding
 
 
 trait ForwardingManager[S <: Shard] {
-  //def create(key: Key, shardId: Int)
-
-  //def find(key: Key): S
-
   def setForwarding(forwarding: Forwarding)
 
   def replaceForwarding(oldShardId: Int, newShardId: Int)
@@ -19,4 +15,8 @@ trait ForwardingManager[S <: Shard] {
   def findCurrentForwarding(tableId: List[Int], id: Long): S
 
   def reloadForwardings(nameServer: NameServer[S])
+
+  // FIXME on these two:
+  def copyShard(nameServer: NameServer[S], sourceShardId: Int, destinationShardId: Int)
+  def migrateShard(nameServer: NameServer[S], migration: ShardMigration)
 }
