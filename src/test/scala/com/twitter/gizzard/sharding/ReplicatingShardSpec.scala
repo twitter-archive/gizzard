@@ -6,9 +6,7 @@ import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.{Logger, ThrottledLogger}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-/*
-import net.lag.configgy.Configgy
-*/
+
 
 object ReplicatingShardSpec extends Specification with JMocker with ClassMocker {
   abstract class FakeShard extends Shard {

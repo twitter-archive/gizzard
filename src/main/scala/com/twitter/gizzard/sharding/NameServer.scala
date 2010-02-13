@@ -162,7 +162,8 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def copyShard(sourceShardId: Int, destinationShardId: Int) {
-    // FIXME
+    // FIXME -- not really related to forwarding. move the logic back in here once we have jobs.
+    forwardingManager.copyShard(this, sourceShardId, destinationShardId)
   }
 
   def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
@@ -188,7 +189,8 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def migrateShard(migration: ShardMigration) {
-    // FIXME
+    // FIXME -- not really related to forwarding. move the logic back in here once we have jobs.
+    forwardingManager.migrateShard(this, migration)
   }
 
   def setForwarding(forwarding: Forwarding) {
