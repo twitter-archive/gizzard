@@ -22,7 +22,7 @@ class KestrelMessageQueue(queueName: String, config: ConfigMap, jobParser: jobs.
   queue.setup()
 
   /** Length (in items) of this queue. */
-  def length = queue.length
+  def size = queue.length.toInt
 
   /** Age (in seconds) of items in this queue. */
   def age = queue.currentAge / 1000.0
@@ -36,7 +36,6 @@ class KestrelMessageQueue(queueName: String, config: ConfigMap, jobParser: jobs.
     }
   }
 
-  def size = queue.length.toInt
   def isShutdown = queue.isClosed
 
   def poll(): Option[QItem] = {
