@@ -40,7 +40,7 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
       replicatingShard = new FakeReplicatingShard(null, 1, List(shard1, shard2), log, future, None)
     }
 
-    "weights are honored" >> {
+    "weights are honored" in {
       expect {
         allowing(shard1).weight willReturn 1
         allowing(shard2).weight willReturn 2
@@ -57,8 +57,8 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
       replicatingShard.getNext(1.0f, shards) mustEqual (shard3, List(shard1, shard2))
     }
 
-    "failover" >> {
-      "when shard1 throws an exception" >> {
+    "failover" in {
+      "when shard1 throws an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
         expect {
@@ -71,7 +71,7 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
         replicatingShard.getName() mustEqual "bob"
       }
 
-      "when all shards throw an exception" >> {
+      "when all shards throw an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
         expect {
@@ -86,8 +86,8 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
       }
     }
 
-    "writes happen to all shards" >> {
-      "when they succeed" >> {
+    "writes happen to all shards" in {
+      "when they succeed" in {
         expect {
           allowing(shard1).weight willReturn 1
           allowing(shard2).weight willReturn 0
@@ -97,7 +97,7 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
         replicatingShard.setName("alice")
       }
 
-      "when the first one fails" >> {
+      "when the first one fails" in {
         expect {
           allowing(shard1).weight willReturn 1
           allowing(shard2).weight willReturn 0
@@ -108,8 +108,8 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
       }
     }
 
-    "reads happen to shards according to weight" >> {
-      "zero percent" >> {
+    "reads happen to shards according to weight" in {
+      "zero percent" in {
         expect {
           allowing(shard1).weight willReturn 1
           allowing(shard2).weight willReturn 0
@@ -118,7 +118,7 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
         replicatingShard.getName() mustEqual "ted"
       }
 
-      "one hundred percent" >> {
+      "one hundred percent" in {
         expect {
           allowing(shard1).weight willReturn 0
           allowing(shard2).weight willReturn 1

@@ -61,5 +61,3 @@ object Sequences {
   }
   implicit def javaIntListToRichSeq(list: JList[java.lang.Integer]) = new RichJavaIntList(list)
 }
-
-
