@@ -36,7 +36,7 @@ class KestrelMessageQueue(queueName: String, config: ConfigMap, jobParser: jobs.
     }
   }
 
-  def size = queue.length.toInt - queue.openTransactionCount
+  def size = queue.length.toInt
   def isShutdown = queue.isClosed
 
   def poll(): Option[QItem] = {
@@ -57,11 +57,12 @@ class KestrelMessageQueue(queueName: String, config: ConfigMap, jobParser: jobs.
       val string = new String(item.data)
       try {
         f(jobParser(string))
-        queue.confirmRemove(item.xid)
       } catch {
         case e: Throwable =>
           log.error(e, "Exception parsing job: %s", string)
           badJobsLogger(string)
+      } finally {
+        queue.confirmRemove(item.xid)
       }
     }
     item
