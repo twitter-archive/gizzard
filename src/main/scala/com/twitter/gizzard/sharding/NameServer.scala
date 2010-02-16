@@ -4,6 +4,7 @@ import java.sql.{ResultSet, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import net.lag.logging.Logger
+import jobs.JobScheduler
 
 
 object NameServer {
@@ -73,7 +74,7 @@ CREATE TABLE shard_children (
 }
 
 class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: ShardRepository[S],
-                             forwardingManager: ForwardingManager[S]) {
+                             forwardingManager: ForwardingManager[S], copyManager: CopyManager[S]) {
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
       row.getString("source_type"), row.getString("destination_type"), Busy(row.getInt("busy")),
@@ -162,8 +163,7 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def copyShard(sourceShardId: Int, destinationShardId: Int) {
-    // FIXME -- not really related to forwarding. move the logic back in here once we have jobs.
-    forwardingManager.copyShard(this, sourceShardId, destinationShardId)
+    copyManager.newCopyJob(sourceShardId, destinationShardId).start(this, copyManager.scheduler)
   }
 
   def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
@@ -189,8 +189,7 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def migrateShard(migration: ShardMigration) {
-    // FIXME -- not really related to forwarding. move the logic back in here once we have jobs.
-    forwardingManager.migrateShard(this, migration)
+    copyManager.newMigrateJob(migration).start(this, copyManager.scheduler)
   }
 
   def setForwarding(forwarding: Forwarding) {

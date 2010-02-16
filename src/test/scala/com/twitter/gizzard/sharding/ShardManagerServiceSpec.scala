@@ -4,7 +4,8 @@ import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 
-object ShardManagerSpec extends Specification with JMocker with ClassMocker {
+
+object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
   val nameServer = mock[NameServer[Shard]]
   val manager = new thrift.ShardManagerService(nameServer)
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",

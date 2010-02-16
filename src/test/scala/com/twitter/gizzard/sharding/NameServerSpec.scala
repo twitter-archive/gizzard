@@ -8,6 +8,7 @@ import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import jobs.{CopyMachine, JobScheduler}
 
 
 object NameServerSpec extends Specification with JMocker with ClassMocker {
@@ -23,6 +24,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     var queryEvaluator: QueryEvaluator = null
     var shardRepository: ShardRepository[Shard] = null
     var forwardingManager: ForwardingManager[Shard] = null
+    var copyManager: CopyManager[Shard] = null
     var nameServer: NameServer[Shard] = null
     var forwardShard: Shard = null
     var backwardShard: Shard = null
@@ -52,7 +54,8 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       queryEvaluator.execute("DELETE FROM shard_children")
       shardRepository = mock[ShardRepository[Shard]]
       forwardingManager = mock[ForwardingManager[Shard]]
-      nameServer = new NameServer(queryEvaluator, shardRepository, forwardingManager)
+      copyManager = mock[CopyManager[Shard]]
+      nameServer = new NameServer(queryEvaluator, shardRepository, forwardingManager, copyManager)
       forwardShard = mock[Shard]
       backwardShard = mock[Shard]
     }
@@ -180,6 +183,19 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       nameServer.getShard(shardId).busy mustEqual Busy.Busy
     }
 
+    "copy shard" in {
+      val copyJob = mock[CopyMachine[Shard]]
+      val scheduler = mock[JobScheduler]
+
+      expect {
+        one(copyManager).newCopyJob(10, 20) willReturn copyJob
+        one(copyManager).scheduler willReturn scheduler
+        one(copyJob).start(nameServer, scheduler)
+      }
+
+      nameServer.copyShard(10, 20)
+    }
+
     "setup migration" in {
       val sourceShardInfo = new ShardInfo("com.example.SqlShard", "forward", "localhost")
       val destinationShardInfo = new ShardInfo("com.example.SqlShard", "forward", "remotehost")
@@ -216,6 +232,20 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
         List(migration.sourceShardId, migration.writeOnlyShardId)
       nameServer.listShardChildren(migration.writeOnlyShardId).map { _.shardId } mustEqual
         List(migration.destinationShardId)
+    }
+
+    "migrate shard" in {
+      val migration = new ShardMigration(1, 2, 3, 4)
+      val migrateJob = mock[CopyMachine[Shard]]
+      val scheduler = mock[JobScheduler]
+
+      expect {
+        one(copyManager).newMigrateJob(migration) willReturn migrateJob
+        one(copyManager).scheduler willReturn scheduler
+        one(migrateJob).start(nameServer, scheduler)
+      }
+
+      nameServer.migrateShard(migration)
     }
 
     "forwarding changes" in {

@@ -15,8 +15,4 @@ trait ForwardingManager[S <: Shard] {
   def findCurrentForwarding(tableId: List[Int], id: Long): S
 
   def reloadForwardings(nameServer: NameServer[S])
-
-  // FIXME on these two:
-  def copyShard(nameServer: NameServer[S], sourceShardId: Int, destinationShardId: Int)
-  def migrateShard(nameServer: NameServer[S], migration: ShardMigration)
 }
