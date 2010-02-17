@@ -248,6 +248,44 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       nameServer.migrateShard(migration)
     }
 
+    "finish migration" in {
+      // tediously set this up.
+      val sourceShardInfo = new ShardInfo("com.example.SqlShard", "forward", "localhost")
+      val destinationShardInfo = new ShardInfo("com.example.SqlShard", "forward", "remotehost")
+      val writeOnlyShardInfo = new ShardInfo("com.example.WriteOnlyShard",
+                                             "forward_migrate_write_only", "localhost")
+      val replicatingShardInfo = new ShardInfo("com.example.ReplicatingShard",
+                                               "forward_migrate_replicating", "localhost")
+
+      expect {
+        one(shardRepository).create(sourceShardInfo)
+        one(shardRepository).create(destinationShardInfo)
+        one(shardRepository).create(writeOnlyShardInfo)
+        one(shardRepository).create(replicatingShardInfo)
+      }
+
+      val sourceShardId = nameServer.createShard(sourceShardInfo)
+      val destinationShardId = nameServer.createShard(destinationShardInfo)
+      val writeOnlyShardId = nameServer.createShard(writeOnlyShardInfo)
+      val replicatingShardId = nameServer.createShard(replicatingShardInfo)
+      nameServer.addChildShard(replicatingShardId, sourceShardId, 0, 10)
+      nameServer.addChildShard(replicatingShardId, writeOnlyShardId, 1, 10)
+      nameServer.addChildShard(writeOnlyShardId, destinationShardId, 0, 20)
+
+      val migration = new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
+
+      expect {
+        one(forwardingManager).replaceForwarding(replicatingShardId, destinationShardId)
+      }
+
+      nameServer.finishMigration(migration)
+
+      nameServer.getShard(sourceShardId) must throwA[Exception]
+      nameServer.getShard(destinationShardId)
+      nameServer.getShard(writeOnlyShardId) must throwA[Exception]
+      nameServer.getShard(replicatingShardId) must throwA[Exception]
+    }
+
     "forwarding changes" in {
       var shardId: Int = 0
       var forwarding: Forwarding = null

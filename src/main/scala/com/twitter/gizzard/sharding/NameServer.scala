@@ -192,6 +192,16 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
     copyManager.newMigrateJob(migration).start(this, copyManager.scheduler)
   }
 
+  // to be called by Migrate jobs when they're finished. but also available as an RPC.
+  def finishMigration(migration: ShardMigration) {
+    removeChildShard(migration.writeOnlyShardId, migration.destinationShardId)
+    replaceChildShard(migration.replicatingShardId, migration.destinationShardId)
+    replaceForwarding(migration.replicatingShardId, migration.destinationShardId)
+    deleteShard(migration.replicatingShardId)
+    deleteShard(migration.writeOnlyShardId)
+    deleteShard(migration.sourceShardId)
+  }
+
   def setForwarding(forwarding: Forwarding) {
     forwardingManager.setForwarding(forwarding)
   }

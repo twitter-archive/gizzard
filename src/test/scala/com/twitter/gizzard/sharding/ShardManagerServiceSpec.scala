@@ -124,6 +124,13 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
       manager.migrate_shard(new thrift.ShardMigration(1, 2, 3, 4))
     }
 
+    "finish_migration" in {
+      expect {
+        one(nameServer).finishMigration(new ShardMigration(1, 2, 3, 4))
+      }
+      manager.finish_migration(new thrift.ShardMigration(1, 2, 3, 4))
+    }
+
     "set_forwarding" in {
       expect {
         one(nameServer).setForwarding(forwarding)

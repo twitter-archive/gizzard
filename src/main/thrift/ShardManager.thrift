@@ -50,6 +50,7 @@ service ShardManager {
   void copy_shard(1: i32 source_shard_id, 2: i32 destination_shard_id) throws(ShardException ex)
   ShardMigration setup_migration(1: ShardInfo source_shard_info, 2: ShardInfo destination_shard_info) throws(ShardException ex)
   void migrate_shard(1:ShardMigration migration) throws(ShardException ex)
+  void finish_migration(1: ShardMigration migration) throws(ShardException ex)
 
   void set_forwarding(1: Forwarding forwarding) throws(ShardException ex)
   void replace_forwarding(1: i32 old_shard_id, 2: i32 new_shard_id) throws(ShardException ex)

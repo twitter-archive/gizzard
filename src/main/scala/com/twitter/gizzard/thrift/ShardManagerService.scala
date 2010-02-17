@@ -57,15 +57,19 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.copyShard(sourceShardId, destinationShardId)
   }
 
-  def setup_migration(sourceShardInfo:ShardInfo, destinationShardInfo:ShardInfo) = {
+  def setup_migration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
     nameServer.setupMigration(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift).toThrift
   }
 
-  def migrate_shard(migration:ShardMigration) {
+  def migrate_shard(migration: ShardMigration) {
     nameServer.migrateShard(migration.fromThrift)
   }
 
-  def set_forwarding(forwarding:Forwarding) {
+  def finish_migration(migration: ShardMigration) {
+    nameServer.finishMigration(migration.fromThrift)
+  }
+
+  def set_forwarding(forwarding: Forwarding) {
     nameServer.setForwarding(forwarding.fromThrift)
   }
 
