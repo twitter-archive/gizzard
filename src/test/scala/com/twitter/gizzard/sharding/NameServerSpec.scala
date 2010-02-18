@@ -1,27 +1,19 @@
 package com.twitter.gizzard.sharding
 
 import scala.collection.mutable
-import com.twitter.querulous.connectionpool.ApacheConnectionPoolFactory
-import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
-import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.xrayspecs.TimeConversions._
-import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{CopyMachine, JobScheduler}
 
 
-object NameServerSpec extends Specification with JMocker with ClassMocker {
+object NameServerSpec extends Specification with JMocker with ClassMocker with Database {
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
     val otherShardInfo = new ShardInfo(SQL_SHARD, "other_table", "localhost")
 
-    val config = Configgy.config
-    val database = config("db.database")
-
-    var queryEvaluator: QueryEvaluator = null
     var shardRepository: ShardRepository[Shard] = null
     var forwardingManager: ForwardingManager[Shard] = null
     var copyManager: CopyManager[Shard] = null
@@ -29,24 +21,6 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     var forwardShard: Shard = null
     var backwardShard: Shard = null
 
-    val connectionPoolFactory = new ApacheConnectionPoolFactory(
-      config("db.connection_pool.size_min").toInt,
-      config("db.connection_pool.size_max").toInt,
-      config("db.connection_pool.test_idle_msec").toLong.millis,
-      config("db.connection_pool.max_wait").toLong.millis,
-      config("db.connection_pool.test_on_borrow").toBoolean,
-      config("db.connection_pool.min_evictable_idle_msec").toLong.millis)
-    val sqlQueryFactory = new SqlQueryFactory
-    val queryEvaluatorFactory = new StandardQueryEvaluatorFactory(connectionPoolFactory, sqlQueryFactory)
-    val dbHostname = config("db.hostname")
-    val dbUsername = config("db.username")
-    val dbPassword = config("db.password")
-
-    val topLevelEvaluator = queryEvaluatorFactory(dbHostname, null, dbUsername, dbPassword)
-    topLevelEvaluator.execute("DROP DATABASE IF EXISTS " + database)
-    topLevelEvaluator.execute("CREATE DATABASE " + database)
-
-    queryEvaluator = queryEvaluatorFactory(dbHostname, database, dbUsername, dbPassword)
     NameServer.rebuildSchema(queryEvaluator)
 
     doBefore {

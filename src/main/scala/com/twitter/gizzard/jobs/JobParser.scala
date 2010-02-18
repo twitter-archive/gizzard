@@ -45,10 +45,12 @@ class PolymorphicJobParser extends JobParser {
   }
 }
 
-class ErrorHandlingJobParser(jobParser: JobParser, errorQueue: MessageQueue, stats: StatsProvider) extends JobParser {
+class ErrorHandlingJobParser(jobParser: JobParser, config: ErrorHandlingConfig) extends JobParser {
+  var errorQueue: MessageQueue = null
+
   def apply(json: Map[String, Map[String, Any]]) = {
     val (_, attributes) = json.toList.first
-    new ErrorHandlingJob(jobParser(json), errorQueue, stats, attributes.getOrElse("error_count", 0).asInstanceOf[Int])
+    new ErrorHandlingJob(jobParser(json), errorQueue, config, attributes.getOrElse("error_count", 0).asInstanceOf[Int])
   }
 }
 

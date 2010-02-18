@@ -44,24 +44,25 @@ class LoggingJob(w3cStats: W3CStats, job: Job) extends JobProxy(job) {
   def apply() { LoggingProxy(w3cStats, job.loggingName, job).apply() }
 }
 
-class ErrorHandlingJob(job: Job, errorQueue: MessageQueue, stats: StatsProvider, var errorCount: Int) extends JobProxy(job) {
+case class ErrorHandlingConfig(maxErrorCount: Int, badJobsLogger: String => Unit, stats: Option[StatsProvider])
+
+class ErrorHandlingJob(job: Job, errorQueue: MessageQueue, config: ErrorHandlingConfig, var errorCount: Int) extends JobProxy(job) {
   private val log = Logger.get(getClass.getName)
-  private val config = Configgy.config
 
   def apply() {
     try {
       job()
-      stats.incr("job-success-count", 1)
+      config.stats.map { _.incr("job-success-count", 1) }
     } catch {
       case e: ShardRejectedOperationException =>
-        stats.incr("job-darkmoded-count", 1)
+        config.stats.map { _.incr("job-darkmoded-count", 1) }
         errorQueue.put(this)
       case e =>
-        stats.incr("job-error-count", 1)
+        config.stats.map { _.incr("job-error-count", 1) }
         log.error(e, "Error in Job: " + e)
         errorCount += 1
-        if (errorCount > config("errors.max_errors_per_job").toInt) {
-          Logger.get("bad_jobs").error(toJson)
+        if (errorCount > config.maxErrorCount) {
+          config.badJobsLogger(toJson)
         } else {
           errorQueue.put(this)
         }

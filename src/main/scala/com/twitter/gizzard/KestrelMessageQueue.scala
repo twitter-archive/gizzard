@@ -8,7 +8,7 @@ import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
 
-class KestrelMessageQueue(queueName: String, config: ConfigMap, jobParser: jobs.JobParser,
+class KestrelMessageQueue(queueName: String, config: ConfigMap, val jobParser: jobs.JobParser,
                           badJobsLogger: String => Unit, stats: Option[StatsProvider])
   extends MessageQueue {
 

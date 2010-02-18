@@ -1,5 +1,6 @@
 package com.twitter.gizzard.jobs
 
+import scala.collection.mutable
 import com.twitter.json.Json
 import com.twitter.ostrich.DevNullStats
 import net.lag.configgy.Configgy
@@ -10,27 +11,19 @@ import sharding.ShardRejectedOperationException
 
 
 object JobSpec extends Specification with JMocker with ClassMocker {
-  def badJobLogger = {
-    val badJobLogger = new StringHandler(new FileFormatter)
-    val logger = Logger.get("bad_jobs")
-    logger.setLevel(Level.INFO)
-    logger.addHandler(badJobLogger)
-    logger.setUseParentHandlers(false)
-    badJobLogger
-  }
-
   "ErrorHandlingJob" should {
     var job: Job = null
     var errorHandlingJob: ErrorHandlingJob = null
     var errorQueue: MessageQueue = null
-    var logger: StringHandler = null
+    var badJobs = new mutable.ListBuffer[String]
 
     doBefore {
-      Configgy.config("errors.max_errors_per_job") = 10
-      logger = badJobLogger
       job = mock[Job]
       errorQueue = mock[MessageQueue]
-      errorHandlingJob = new ErrorHandlingJob(job, errorQueue, DevNullStats, 0)
+      val config = new ErrorHandlingConfig(10, { badJobs += _ }, None)
+      errorHandlingJob = new ErrorHandlingJob(job, errorQueue, config, 0)
+      badJobs.clear()
+
       expect {
         allowing(job).className willReturn "foo"
         allowing(job).toMap willReturn Map("a" -> 1)
@@ -50,13 +43,15 @@ object JobSpec extends Specification with JMocker with ClassMocker {
     }
 
     "when the job errors too much" >> {
-      Configgy.config("errors.max_errors_per_job") = 0
+      val config = new ErrorHandlingConfig(0, { badJobs += _ }, None)
+      errorHandlingJob = new ErrorHandlingJob(job, errorQueue, config, 0)
       expect {
         one(job).apply() willThrow new Exception("ouch")
         never(errorQueue).put(errorHandlingJob)
       }
       errorHandlingJob()
-      logger.toString must include("foo")
+      badJobs.size mustEqual 1
+      badJobs(0) must include("foo")
     }
 
     "when the shard is darkmoded and the job has errored a lot" >> {
@@ -72,7 +67,10 @@ object JobSpec extends Specification with JMocker with ClassMocker {
     "ErrorHandlingJobParser" in {
       "register errors" >> {
         val jobParser = mock[JobParser]
-        val errorHandlingParser = new ErrorHandlingJobParser(jobParser, errorQueue, DevNullStats)
+        val config = new ErrorHandlingConfig(100, { _ => }, None)
+        val errorHandlingParser = new ErrorHandlingJobParser(jobParser, config)
+        errorHandlingParser.errorQueue = errorQueue
+
         expect {
           allowing(jobParser).apply(a[Map[String, Map[String, AnyVal]]]) willReturn job
           allowing(job).apply() willThrow new Exception("ouch")
@@ -97,12 +95,11 @@ object JobSpec extends Specification with JMocker with ClassMocker {
   }
 
   "BoundJob" should {
-    "uses the job's original class" in {
+    "use the job's original class" in {
       val job = new FakeJob(Map("a" -> 1))
       val boundJob = BoundJob(job, 1973)
       Json.parse(boundJob.toJson) mustEqual Map(job.className -> Map("a" -> 1))
     }
-
   }
 
   "JobWithTasks" should {
@@ -126,7 +123,8 @@ object JobSpec extends Specification with JMocker with ClassMocker {
       val job2 = mock[Job]
       val jobWithTasks = new JobWithTasks(List(job1, job2))
       val errorQueue = mock[MessageQueue]
-      val errorHandlingJob = new ErrorHandlingJob(jobWithTasks, errorQueue, DevNullStats, 0)
+      val config = new ErrorHandlingConfig(100, { _ => }, None)
+      val errorHandlingJob = new ErrorHandlingJob(jobWithTasks, errorQueue, config, 0)
       expect {
         allowing(job1).loggingName willReturn "Job1"
         allowing(job2).className willReturn "Job2"
