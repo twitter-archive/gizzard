@@ -32,6 +32,7 @@ class JobScheduler(val name: String, val threadCount: Int, val replayInterval: D
                    val jobQueue: MessageQueue, val errorQueue: MessageQueue) {
   private val log = Logger.get(getClass.getName)
   var executorThreads: Seq[JobEvaluatorThread] = Nil
+  @volatile var running = false
 
   val retryTask = new BackgroundProcess("Job") {
     def runLoop() {
@@ -68,6 +69,7 @@ class JobScheduler(val name: String, val threadCount: Int, val replayInterval: D
     pauseWork()
     jobQueue.shutdown()
     errorQueue.shutdown()
+    running = false
   }
 
   def isShutdown = jobQueue.isShutdown && errorQueue.isShutdown
@@ -82,11 +84,14 @@ class JobScheduler(val name: String, val threadCount: Int, val replayInterval: D
   def size = jobQueue.size
 
   def start() = {
-    log.info("Starting JobScheduler: %s", jobQueue)
-    executorThreads = (0 until threadCount).map { _ =>
-      new JobEvaluatorThread(new JobEvaluator(jobQueue))
-    }.toList
-    executorThreads foreach { thread => thread.start() }
-    retryTask.start()
+    if (!running) {
+      running = true
+      log.info("Starting JobScheduler: %s", jobQueue)
+      executorThreads = (0 until threadCount).map { _ =>
+        new JobEvaluatorThread(new JobEvaluator(jobQueue))
+      }.toList
+      executorThreads foreach { thread => thread.start() }
+      retryTask.start()
+    }
   }
 }
