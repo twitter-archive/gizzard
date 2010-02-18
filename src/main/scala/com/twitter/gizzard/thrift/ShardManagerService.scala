@@ -33,8 +33,8 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.deleteShard(shardId)
   }
 
-  def add_child_shard(parentShardId: Int, childShardId: Int, position: Int, weight: Int) {
-    nameServer.addChildShard(parentShardId, childShardId, position, weight)
+  def add_child_shard(parentShardId: Int, childShardId: Int, weight: Int) {
+    nameServer.addChildShard(parentShardId, childShardId, weight)
   }
 
   def remove_child_shard(parentShardId: Int, childShardId: Int) {

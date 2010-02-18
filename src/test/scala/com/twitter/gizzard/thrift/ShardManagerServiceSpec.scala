@@ -70,9 +70,9 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "add_child_shard" in {
       expect {
-        one(nameServer).addChildShard(shardId, childShardId1, 1, 2)
+        one(nameServer).addChildShard(shardId, childShardId1, 2)
       }
-      manager.add_child_shard(shardId, childShardId1, 1, 2)
+      manager.add_child_shard(shardId, childShardId1, 2)
     }
 
     "remove_child_shard" in {
@@ -91,10 +91,10 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "list_shard_children" in {
       expect {
-        one(nameServer).listShardChildren(shardId) willReturn List(new sharding.ChildInfo(childShardId1, 1, 1), new sharding.ChildInfo(childShardId2, 2, 1))
+        one(nameServer).listShardChildren(shardId) willReturn List(new sharding.ChildInfo(childShardId1, 1), new sharding.ChildInfo(childShardId2, 1))
       }
       manager.list_shard_children(shardId) mustEqual
-        List(new thrift.ChildInfo(childShardId1, 1, 1), new thrift.ChildInfo(childShardId2, 2, 1)).toJavaList
+        List(new thrift.ChildInfo(childShardId1, 1), new thrift.ChildInfo(childShardId2, 1)).toJavaList
     }
 
     "mark_shard_busy" in {

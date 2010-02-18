@@ -28,7 +28,6 @@ CREATE TABLE shards (
 CREATE TABLE shard_children (
     parent_id               INT NOT NULL,
     child_id                INT NOT NULL,
-    position                INT NOT NULL,
     weight                  INT NOT NULL DEFAULT 1,
 
     UNIQUE unique_family (parent_id, child_id),
@@ -56,9 +55,9 @@ CREATE TABLE shard_children (
     shardInfos = newShardInfos
 
     val newFamilyTree = new mutable.HashMap[Int, mutable.ArrayBuffer[ChildInfo]] { override def initialSize = shardInfos.size * 10 }
-    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_id, position ASC") { result =>
+    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_id") { result =>
       val children = newFamilyTree.getOrElseUpdate(result.getInt("parent_id"), new mutable.ArrayBuffer[ChildInfo])
-      children += ChildInfo(result.getInt("child_id"), result.getInt("position"), result.getInt("weight"))
+      children += ChildInfo(result.getInt("child_id"), result.getInt("weight"))
     }
     familyTree = newFamilyTree
   }
@@ -135,9 +134,9 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
     }
   }
 
-  def addChildShard(parentShardId: Int, childShardId: Int, position: Int, weight: Int) {
-    queryEvaluator.execute("INSERT INTO shard_children (parent_id, child_id, position, weight) VALUES (?, ?, ?, ?)",
-      parentShardId, childShardId, position, weight)
+  def addChildShard(parentShardId: Int, childShardId: Int, weight: Int) {
+    queryEvaluator.execute("INSERT INTO shard_children (parent_id, child_id, weight) VALUES (?, ?, ?)",
+      parentShardId, childShardId, weight)
   }
 
   def removeChildShard(parentShardId: Int, childShardId: Int) {
@@ -151,8 +150,8 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def listShardChildren(shardId: Int) = {
-    queryEvaluator.select("SELECT child_id, position, weight FROM shard_children WHERE parent_id = ? ORDER BY position ASC", shardId) { row =>
-      new ChildInfo(row.getInt("child_id"), row.getInt("position"), row.getInt("weight"))
+    queryEvaluator.select("SELECT child_id, weight FROM shard_children WHERE parent_id = ?", shardId) { row =>
+      new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
     }.toList
   }
 
@@ -175,14 +174,14 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
     val writeOnlyShard = new ShardInfo(packageName + "WriteOnlyShard",
       sourceShardInfo.tablePrefix + "_migrate_write_only", "localhost", "", "", Busy.Normal, 0)
     val writeOnlyShardId = createShard(writeOnlyShard)
-    addChildShard(writeOnlyShardId, destinationShardId, 1, 1)
+    addChildShard(writeOnlyShardId, destinationShardId, 1)
 
     val replicatingShard = new ShardInfo(packageName + "ReplicatingShard",
       sourceShardInfo.tablePrefix + "_migrate_replicating", "localhost", "", "", Busy.Normal, 0)
     val replicatingShardId = createShard(replicatingShard)
     replaceChildShard(sourceShardId, replicatingShardId)
-    addChildShard(replicatingShardId, sourceShardId, 1, 1)
-    addChildShard(replicatingShardId, writeOnlyShardId, 2, 1)
+    addChildShard(replicatingShardId, sourceShardId, 1)
+    addChildShard(replicatingShardId, writeOnlyShardId, 1)
 
     forwardingManager.replaceForwarding(sourceShardId, replicatingShardId)
     new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)

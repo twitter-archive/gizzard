@@ -115,36 +115,36 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
     }
 
     "add & find children" in {
-      nameServer.addChildShard(1, 100, 1, 2)
-      nameServer.addChildShard(1, 200, 2, 2)
-      nameServer.addChildShard(1, 300, 3, 1)
+      nameServer.addChildShard(1, 100, 2)
+      nameServer.addChildShard(1, 200, 2)
+      nameServer.addChildShard(1, 300, 1)
       nameServer.listShardChildren(1) mustEqual
-        List(ChildInfo(100, 1, 2), ChildInfo(200, 2, 2), ChildInfo(300, 3, 1))
+        List(ChildInfo(100, 2), ChildInfo(200, 2), ChildInfo(300, 1))
     }
 
     "remove children" in {
-      nameServer.addChildShard(1, 100, 1, 2)
-      nameServer.addChildShard(1, 200, 2, 2)
-      nameServer.addChildShard(1, 300, 3, 1)
+      nameServer.addChildShard(1, 100, 2)
+      nameServer.addChildShard(1, 200, 2)
+      nameServer.addChildShard(1, 300, 1)
       nameServer.removeChildShard(1, 200)
-      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 1, 2), ChildInfo(300, 3, 1))
+      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(300, 1))
     }
 
     "add & remove children, retaining order" in {
-      nameServer.addChildShard(1, 100, 1, 2)
-      nameServer.addChildShard(1, 200, 4, 2)
-      nameServer.addChildShard(1, 300, 6, 2)
+      nameServer.addChildShard(1, 100, 2)
+      nameServer.addChildShard(1, 200, 2)
+      nameServer.addChildShard(1, 300, 2)
       nameServer.removeChildShard(1, 200)
-      nameServer.addChildShard(1, 150, 3, 2)
-      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 1, 2), ChildInfo(150, 3, 2), ChildInfo(300, 6, 2))
+      nameServer.addChildShard(1, 150, 2)
+      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(150, 2), ChildInfo(300, 2))
     }
 
     "replace children" in {
-      nameServer.addChildShard(1, 100, 1, 2)
-      nameServer.addChildShard(1, 200, 2, 2)
-      nameServer.addChildShard(1, 300, 3, 1)
+      nameServer.addChildShard(1, 100, 2)
+      nameServer.addChildShard(1, 200, 2)
+      nameServer.addChildShard(1, 300, 1)
       nameServer.replaceChildShard(300, 400)
-      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 1, 2), ChildInfo(200, 2, 2), ChildInfo(400, 3, 1))
+      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(200, 2), ChildInfo(400, 1))
     }
 
     "set shard busy" in {
@@ -242,9 +242,9 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       val destinationShardId = nameServer.createShard(destinationShardInfo)
       val writeOnlyShardId = nameServer.createShard(writeOnlyShardInfo)
       val replicatingShardId = nameServer.createShard(replicatingShardInfo)
-      nameServer.addChildShard(replicatingShardId, sourceShardId, 0, 10)
-      nameServer.addChildShard(replicatingShardId, writeOnlyShardId, 1, 10)
-      nameServer.addChildShard(writeOnlyShardId, destinationShardId, 0, 20)
+      nameServer.addChildShard(replicatingShardId, sourceShardId, 10)
+      nameServer.addChildShard(replicatingShardId, writeOnlyShardId, 10)
+      nameServer.addChildShard(writeOnlyShardId, destinationShardId, 20)
 
       val migration = new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
 
@@ -333,8 +333,8 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
         id1 = nameServer.createShard(shard1)
         id2 = nameServer.createShard(shard2)
         id3 = nameServer.createShard(shard3)
-        nameServer.addChildShard(id1, id2, 1, 10)
-        nameServer.addChildShard(id2, id3, 1, 10)
+        nameServer.addChildShard(id1, id2, 10)
+        nameServer.addChildShard(id2, id3, 10)
       }
 
       "shardIdsForHostname" in {
