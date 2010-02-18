@@ -1,6 +1,6 @@
 package com.twitter.gizzard
 
-import com.twitter.ostrich.StatsProvider
+import com.twitter.ostrich.{Stats, StatsProvider}
 import com.twitter.xrayspecs.Time
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.{Config, ConfigMap}
@@ -20,6 +20,9 @@ class KestrelMessageQueue(queueName: String, config: ConfigMap, val jobParser: j
 
   var queue = new PersistentQueue(config("path", "/tmp"), queueName, config)
   queue.setup()
+
+  Stats.makeGauge(queueName + "_items") { size }
+  Stats.makeGauge(queueName + "_age") { age }
 
   /** Length (in items) of this queue. */
   def size = queue.length.toInt
