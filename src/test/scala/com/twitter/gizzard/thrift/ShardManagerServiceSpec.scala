@@ -1,20 +1,21 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.thrift
 
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
+import sharding.Busy
 
 
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
-  val nameServer = mock[NameServer[Shard]]
+  val nameServer = mock[sharding.NameServer[sharding.Shard]]
   val manager = new thrift.ShardManagerService(nameServer)
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
-  val shardInfo1 = new ShardInfo("com.example.SqlShard",
+  val shardInfo1 = new sharding.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
   val thriftShardInfo2 = new thrift.ShardInfo("com.example.SqlShard",
     "other_table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
-  val shardInfo2 = new ShardInfo("com.example.SqlShard",
+  val shardInfo2 = new sharding.ShardInfo("com.example.SqlShard",
     "other_table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, 1)
   val hostname = "host1"
   val classname = "com.example.Classname"
@@ -23,9 +24,9 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
   val childShardId1 = 200
   val childShardId2 = 201
   val tableId = List(1, 2, 3)
-  val forwarding = new Forwarding(List(1, 2, 3), 0, shardId)
+  val forwarding = new sharding.Forwarding(List(1, 2, 3), 0, shardId)
   val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
-  val shard = new Shard {
+  val shard = new sharding.Shard {
     def shardInfo = shardInfo1
     def weight = 3
   }
@@ -90,7 +91,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "list_shard_children" in {
       expect {
-        one(nameServer).listShardChildren(shardId) willReturn List(new ChildInfo(childShardId1, 1, 1), new ChildInfo(childShardId2, 2, 1))
+        one(nameServer).listShardChildren(shardId) willReturn List(new sharding.ChildInfo(childShardId1, 1, 1), new sharding.ChildInfo(childShardId2, 2, 1))
       }
       manager.list_shard_children(shardId) mustEqual
         List(new thrift.ChildInfo(childShardId1, 1, 1), new thrift.ChildInfo(childShardId2, 2, 1)).toJavaList
@@ -112,21 +113,21 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "setup_migration" in {
       expect {
-        one(nameServer).setupMigration(shardInfo1, shardInfo2) willReturn new ShardMigration(1, 2, 3, 4)
+        one(nameServer).setupMigration(shardInfo1, shardInfo2) willReturn new sharding.ShardMigration(1, 2, 3, 4)
       }
       manager.setup_migration(thriftShardInfo1, thriftShardInfo2) mustEqual new thrift.ShardMigration(1, 2, 3, 4)
     }
 
     "migrate_shard" in {
       expect {
-        one(nameServer).migrateShard(new ShardMigration(1, 2, 3, 4))
+        one(nameServer).migrateShard(new sharding.ShardMigration(1, 2, 3, 4))
       }
       manager.migrate_shard(new thrift.ShardMigration(1, 2, 3, 4))
     }
 
     "finish_migration" in {
       expect {
-        one(nameServer).finishMigration(new ShardMigration(1, 2, 3, 4))
+        one(nameServer).finishMigration(new sharding.ShardMigration(1, 2, 3, 4))
       }
       manager.finish_migration(new thrift.ShardMigration(1, 2, 3, 4))
     }

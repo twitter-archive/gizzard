@@ -1,6 +1,5 @@
 package com.twitter.gizzard.thrift
 
-import net.lag.logging.Logger
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.Busy._
 import com.twitter.gizzard.thrift.conversions.ChildInfo._
@@ -8,6 +7,7 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
 import com.twitter.gizzard.sharding._
+import net.lag.logging.Logger
 
 
 class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardManager.Iface {
