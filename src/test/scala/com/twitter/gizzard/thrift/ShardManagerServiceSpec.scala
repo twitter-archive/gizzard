@@ -32,7 +32,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
   }
 
 
-  "ShardManager" should {
+  "ShardManagerService" should {
     "create_shard" in {
       expect {
         one(nameServer).createShard(shardInfo1) willReturn shardId
