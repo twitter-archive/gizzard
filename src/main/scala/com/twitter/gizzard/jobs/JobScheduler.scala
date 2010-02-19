@@ -34,7 +34,7 @@ class JobScheduler(val name: String, val threadCount: Int, val replayInterval: D
   var executorThreads: Seq[JobEvaluatorThread] = Nil
   @volatile var running = false
 
-  val retryTask = new BackgroundProcess("Job") {
+  val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
       Thread.sleep(replayInterval.inMillis)
       log.info("Replaying %s errors queue...", name)
