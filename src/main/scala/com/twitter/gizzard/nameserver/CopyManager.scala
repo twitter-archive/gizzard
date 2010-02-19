@@ -1,7 +1,7 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.nameserver
 
 import jobs.{CopyMachine, JobScheduler}
-
+import shards.Shard
 
 trait CopyManager[S <: Shard] {
   /** Return a scheduler to be used for running copy/migrate jobs. */

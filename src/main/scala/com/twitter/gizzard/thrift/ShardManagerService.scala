@@ -6,26 +6,27 @@ import com.twitter.gizzard.thrift.conversions.ChildInfo._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
-import com.twitter.gizzard.sharding._
+import com.twitter.gizzard.shards._
+import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
 class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
-  def create_shard(shard:ShardInfo) = {
+  def create_shard(shard: ShardInfo) = {
     nameServer.createShard(shard.fromThrift)
   }
 
-  def find_shard(shard:ShardInfo) = {
+  def find_shard(shard: ShardInfo) = {
     nameServer.findShard(shard.fromThrift)
   }
 
-  def get_shard(shardId: Int):ShardInfo = {
+  def get_shard(shardId: Int): ShardInfo = {
     nameServer.getShard(shardId).toThrift
   }
 
-  def update_shard(shard:ShardInfo) {
+  def update_shard(shard: ShardInfo) {
     nameServer.updateShard(shard.fromThrift)
   }
 
@@ -33,8 +34,8 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.deleteShard(shardId)
   }
 
-  def add_child_shard(parentShardId: Int, childShardId: Int, position: Int, weight: Int) {
-    nameServer.addChildShard(parentShardId, childShardId, position, weight)
+  def add_child_shard(parentShardId: Int, childShardId: Int, weight: Int) {
+    nameServer.addChildShard(parentShardId, childShardId, weight)
   }
 
   def remove_child_shard(parentShardId: Int, childShardId: Int) {

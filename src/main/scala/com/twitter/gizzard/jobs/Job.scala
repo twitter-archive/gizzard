@@ -5,7 +5,7 @@ import com.twitter.json.Json
 import com.twitter.ostrich.{StatsProvider, W3CStats}
 import net.lag.configgy.Configgy
 import net.lag.logging.Logger
-import sharding.ShardRejectedOperationException
+import shards.ShardRejectedOperationException
 
 
 trait Schedulable {

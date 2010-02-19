@@ -7,7 +7,7 @@ import net.lag.configgy.Configgy
 import net.lag.logging.{Logger, Level, FileFormatter, StringHandler}
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import sharding.ShardRejectedOperationException
+import shards.ShardRejectedOperationException
 
 
 object JobSpec extends Specification with JMocker with ClassMocker {

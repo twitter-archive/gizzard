@@ -4,16 +4,16 @@ import com.twitter.gizzard.thrift.conversions.Busy._
 
 
 object ShardInfo {
-  class RichShardingShardInfo(shardInfo: sharding.ShardInfo) {
+  class RichShardingShardInfo(shardInfo: shards.ShardInfo) {
     def toThrift = new thrift.ShardInfo(shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname,
                                         shardInfo.sourceType, shardInfo.destinationType,
                                         shardInfo.busy.toThrift, shardInfo.shardId)
     
   }
-  implicit def shardingShardInfoToRichShardingShardInfo(shardInfo: sharding.ShardInfo) = new RichShardingShardInfo(shardInfo)
+  implicit def shardingShardInfoToRichShardingShardInfo(shardInfo: shards.ShardInfo) = new RichShardingShardInfo(shardInfo)
 
   class RichThriftShardInfo(shardInfo: thrift.ShardInfo) {
-    def fromThrift = new sharding.ShardInfo(shardInfo.class_name, shardInfo.table_prefix, shardInfo.hostname,
+    def fromThrift = new shards.ShardInfo(shardInfo.class_name, shardInfo.table_prefix, shardInfo.hostname,
                                             shardInfo.source_type, shardInfo.destination_type,
                                             shardInfo.busy.fromThrift, shardInfo.shard_id)
     

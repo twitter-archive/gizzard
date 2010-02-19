@@ -17,8 +17,7 @@ struct ShardInfo {
 
 struct ChildInfo {
   1: i32 shard_id
-  2: i32 position
-  3: i32 weight
+  2: i32 weight
 }
 
 struct ShardMigration {
@@ -41,7 +40,7 @@ service ShardManager {
   void update_shard(1: ShardInfo shard) throws(ShardException ex)
   void delete_shard(1: i32 shard_id) throws(ShardException ex)
 
-  void add_child_shard(1: i32 parent_shard_id, 2: i32 child_shard_id, 3: i32 position, 4: i32 weight) throws(ShardException ex)
+  void add_child_shard(1: i32 parent_shard_id, 2: i32 child_shard_id, 3: i32 weight) throws(ShardException ex)
   void remove_child_shard(1: i32 parent_shard_id, 2: i32 child_shard_id) throws(ShardException ex)
   void replace_child_shard(1: i32 old_child_shard_id, 2: i32 new_child_shard_id) throws(ShardException ex)
   list<ChildInfo> list_shard_children(1: i32 shard_id) throws(ShardException ex)

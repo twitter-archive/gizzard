@@ -1,4 +1,6 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.nameserver
+
+import shards.Shard
 
 
 trait ForwardingManager[S <: Shard] {
