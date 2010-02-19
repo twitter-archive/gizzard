@@ -19,9 +19,9 @@ object TSelectorServer {
   val log = Logger.get(getClass.getName)
 
   def makeThreadPoolExecutor(config: ConfigMap) = {
-    val stopTimeout = config("stop_timeout").toInt
+    val stopTimeout = config.getInt("stop_timeout", 60)
     val minThreads = config("min_threads").toInt
-    val maxThreads = config("max_threads").toInt
+    val maxThreads = config.getInt("max_threads", Math.MAX_INT)
     val queue = new LinkedBlockingQueue[Runnable]
     new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS, queue)
   }
