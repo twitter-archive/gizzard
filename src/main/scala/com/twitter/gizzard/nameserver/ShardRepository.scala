@@ -1,6 +1,7 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
+import shards.{Shard, ShardInfo, ShardFactory}
 
 
 class ShardRepository[S <: Shard] {

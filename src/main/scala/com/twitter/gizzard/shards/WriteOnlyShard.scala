@@ -1,4 +1,4 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.shards
 
 import scala.collection.mutable
 

@@ -1,4 +1,4 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.nameserver
 
 
 case class ShardMigration(sourceShardId: Int, destinationShardId: Int, replicatingShardId: Int,

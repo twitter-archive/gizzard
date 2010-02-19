@@ -1,7 +1,7 @@
 package com.twitter.gizzard.thrift
 
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.gizzard.sharding._
+import com.twitter.gizzard.shards._
 
 
 class JobManagerService(scheduler: jobs.PrioritizingScheduler) extends JobManager.Iface {

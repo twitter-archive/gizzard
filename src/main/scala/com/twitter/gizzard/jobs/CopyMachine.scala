@@ -3,7 +3,8 @@ package com.twitter.gizzard.jobs
 import java.lang.reflect.Constructor
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
-import sharding.{Busy, NameServer, Shard, ShardTimeoutException}
+import shards.{Busy, Shard, ShardTimeoutException}
+import nameserver.NameServer
 
 
 object CopyMachine {

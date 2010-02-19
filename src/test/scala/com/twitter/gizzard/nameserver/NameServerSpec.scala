@@ -1,6 +1,7 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
+import com.twitter.gizzard.shards.{ShardInfo, Shard, Busy, ChildInfo}
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}

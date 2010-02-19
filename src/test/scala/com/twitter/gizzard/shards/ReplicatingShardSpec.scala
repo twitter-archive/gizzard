@@ -1,4 +1,4 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.shards
 
 import com.twitter.ostrich.W3CReporter
 import com.twitter.xrayspecs.Time

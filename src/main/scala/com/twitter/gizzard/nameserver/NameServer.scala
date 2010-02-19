@@ -1,10 +1,11 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import net.lag.logging.Logger
 import jobs.JobScheduler
+import shards._
 
 
 object NameServer {

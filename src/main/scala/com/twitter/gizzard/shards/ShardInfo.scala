@@ -1,4 +1,4 @@
-package com.twitter.gizzard.sharding
+package com.twitter.gizzard.shards
 
 
 case class ShardInfo(var className: String, var tablePrefix: String, var hostname: String,
