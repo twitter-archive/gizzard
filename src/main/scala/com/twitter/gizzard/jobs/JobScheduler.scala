@@ -37,7 +37,6 @@ class JobScheduler(val name: String, val threadCount: Int, val replayInterval: D
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
       Thread.sleep(replayInterval.inMillis)
-      log.info("Replaying %s errors queue...", name)
       try {
         retryErrors()
       } catch {
@@ -53,6 +52,7 @@ class JobScheduler(val name: String, val threadCount: Int, val replayInterval: D
 
   @throws(classOf[Exception])
   def retryErrors() {
+    log.info("Replaying %s errors queue...", name)
     errorQueue.writeTo(jobQueue)
   }
 
