@@ -56,7 +56,7 @@ CREATE TABLE shard_children (
     shardInfos = newShardInfos
 
     val newFamilyTree = new mutable.HashMap[Int, mutable.ArrayBuffer[ChildInfo]] { override def initialSize = shardInfos.size * 10 }
-    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_id") { result =>
+    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_id, weight DESC") { result =>
       val children = newFamilyTree.getOrElseUpdate(result.getInt("parent_id"), new mutable.ArrayBuffer[ChildInfo])
       children += ChildInfo(result.getInt("child_id"), result.getInt("weight"))
     }
@@ -151,7 +151,7 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def listShardChildren(shardId: Int) = {
-    queryEvaluator.select("SELECT child_id, weight FROM shard_children WHERE parent_id = ?", shardId) { row =>
+    queryEvaluator.select("SELECT child_id, weight FROM shard_children WHERE parent_id = ? ORDER BY weight DESC", shardId) { row =>
       new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
     }.toList
   }

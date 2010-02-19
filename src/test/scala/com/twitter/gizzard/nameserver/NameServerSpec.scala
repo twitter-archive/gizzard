@@ -132,12 +132,12 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
     }
 
     "add & remove children, retaining order" in {
-      nameServer.addChildShard(1, 100, 2)
+      nameServer.addChildShard(1, 100, 5)
       nameServer.addChildShard(1, 200, 2)
-      nameServer.addChildShard(1, 300, 2)
+      nameServer.addChildShard(1, 300, 1)
       nameServer.removeChildShard(1, 200)
-      nameServer.addChildShard(1, 150, 2)
-      nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(150, 2), ChildInfo(300, 2))
+      nameServer.addChildShard(1, 150, 8)
+      nameServer.listShardChildren(1) mustEqual List(ChildInfo(150, 8), ChildInfo(100, 5), ChildInfo(300, 1))
     }
 
     "replace children" in {
