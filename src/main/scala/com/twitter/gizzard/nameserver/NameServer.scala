@@ -1,6 +1,6 @@
 package com.twitter.gizzard.nameserver
 
-import java.sql.{ResultSet, SQLIntegrityConstraintViolationException}
+import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import net.lag.logging.Logger
@@ -46,6 +46,14 @@ CREATE TABLE shard_children (
   @volatile private var familyTree = mutable.Map.empty[Int, mutable.ArrayBuffer[ChildInfo]]
 
   def reload(queryEvaluator: QueryEvaluator) {
+    try {
+      queryEvaluator.select("DESCRIBE shards") { row => }
+    } catch {
+      case e: SQLException =>
+        // try creating the schema
+        rebuildSchema(queryEvaluator)
+    }
+
     val newShardInfos = mutable.Map.empty[Int, ShardInfo]
     queryEvaluator.select("SELECT * FROM shards") { result =>
       val shardInfo = new ShardInfo(result.getString("class_name"), result.getString("table_prefix"),
@@ -283,4 +291,8 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def findShardById(shardId: Int): S = findShardById(shardId, 1)
+
+  def rebuildSchema() {
+    NameServer.rebuildSchema(queryEvaluator)
+  }
 }

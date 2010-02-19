@@ -65,4 +65,6 @@ service ShardManager {
   ShardInfo get_parent_shard(1: i32 shard_id) throws(ShardException ex)
   ShardInfo get_root_shard(1: i32 shard_id) throws(ShardException ex)
   list<ShardInfo> get_child_shards_of_class(1: i32 parent_shard_id, 2: string class_name) throws(ShardException ex)
+
+  void rebuild_schema() throws(ShardException ex)
 }

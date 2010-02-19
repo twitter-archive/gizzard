@@ -1,5 +1,6 @@
 package com.twitter.gizzard.nameserver
 
+import java.sql.SQLException
 import scala.collection.mutable
 import com.twitter.gizzard.shards.{ShardInfo, Shard, Busy, ChildInfo}
 import com.twitter.xrayspecs.TimeConversions._
@@ -22,15 +23,28 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
     var forwardShard: Shard = null
     var backwardShard: Shard = null
 
-    NameServer.rebuildSchema(queryEvaluator)
-
     doBefore {
-      queryEvaluator.execute("DELETE FROM shards")
-      queryEvaluator.execute("DELETE FROM shard_children")
+      try {
+        queryEvaluator.execute("DELETE FROM shards")
+      } catch {
+        case e: SQLException =>
+      }
+      try {
+        queryEvaluator.execute("DELETE FROM shard_children")
+      } catch {
+        case e: SQLException =>
+      }
+
       shardRepository = mock[ShardRepository[Shard]]
       forwardingManager = mock[ForwardingManager[Shard]]
       copyManager = mock[CopyManager[Shard]]
       nameServer = new NameServer(queryEvaluator, shardRepository, forwardingManager, copyManager)
+
+      expect {
+        one(forwardingManager).reloadForwardings(nameServer)
+      }
+      nameServer.reload()
+
       forwardShard = mock[Shard]
       backwardShard = mock[Shard]
     }
@@ -50,6 +64,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
           expect {
             exactly(2).of(shardRepository).create(forwardShardInfo)
           }
+
           val shardId = nameServer.createShard(forwardShardInfo)
           nameServer.findShard(forwardShardInfo) mustEqual shardId
           nameServer.createShard(forwardShardInfo)

@@ -122,4 +122,8 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
   def get_child_shards_of_class(parentShardId: Int, className: String): java.util.List[ShardInfo] = {
     nameServer.getChildShardsOfClass(parentShardId, className).map(_.toThrift).toJavaList
   }
+
+  def rebuild_schema() {
+    nameServer.rebuildSchema()
+  }
 }
