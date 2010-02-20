@@ -29,6 +29,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
   val shard = new shards.Shard {
     def shardInfo = shardInfo1
     def weight = 3
+    def children = Nil
   }
 
 

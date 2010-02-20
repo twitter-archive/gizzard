@@ -11,7 +11,7 @@ import com.twitter.ostrich.W3CReporter
 
 
 abstract class ReplicatingShard[ConcreteShard <: Shard]
-  (val shardInfo: ShardInfo, val weight: Int, val replicas: Seq[ConcreteShard],
+  (val shardInfo: ShardInfo, val weight: Int, val children: Seq[ConcreteShard],
    log: ThrottledLogger[String], future: Future, eventLogger: Option[W3CReporter])
   extends ReadWriteShard[ConcreteShard] {
 
@@ -24,7 +24,7 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
     val exceptions = new mutable.ArrayBuffer[Exception]()
     val results = new mutable.ArrayBuffer[A]()
 
-    replicas.map { replica => future(method(replica)) }.map { future =>
+    children.map { replica => future(method(replica)) }.map { future =>
       try {
         results += future.get(6000, TimeUnit.MILLISECONDS)
       } catch {
@@ -43,7 +43,8 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
     replicas.map { shard => ShardWithWeight(shard, shard.weight.toFloat / totalWeight.toFloat) }
   }
 
-  private def getNext(randomNumber: Float, skipped: List[ConcreteShard], replicas: Seq[ShardWithWeight]): (ConcreteShard, List[ConcreteShard]) = {
+  private def getNext(randomNumber: Float, skipped: List[ConcreteShard],
+                      replicas: Seq[ShardWithWeight]): (ConcreteShard, List[ConcreteShard]) = {
     val candidate = replicas.first
     if (replicas.size == 1 || randomNumber < candidate.weight) {
       (candidate.shard, skipped ++ replicas.drop(1).map { _.shard }.toList)
@@ -52,9 +53,10 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
     }
   }
 
-  def getNext(randomNumber: Float, replicas: Seq[ConcreteShard]): (ConcreteShard, List[ConcreteShard]) = getNext(randomNumber, Nil, computeWeights(replicas))
+  def getNext(randomNumber: Float, children: Seq[ConcreteShard]): (ConcreteShard, List[ConcreteShard]) =
+    getNext(randomNumber, Nil, computeWeights(children))
 
-  private def failover[A](f: ConcreteShard => A): A = failover(f, replicas)
+  private def failover[A](f: ConcreteShard => A): A = failover(f, children)
 
   private def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
     val (shard, remainder) = try {
