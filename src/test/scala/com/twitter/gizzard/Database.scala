@@ -1,6 +1,6 @@
 package com.twitter.gizzard
 
-import com.twitter.querulous.connectionpool.ApacheConnectionPoolFactory
+import com.twitter.querulous.database.ApachePoolingDatabaseFactory
 import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.xrayspecs.TimeConversions._
@@ -15,7 +15,7 @@ trait Database {
   val databasePassword = config("db.password")
 
   val queryEvaluatorFactory = {
-    val connectionPoolFactory = new ApacheConnectionPoolFactory(
+    val connectionPoolFactory = new ApachePoolingDatabaseFactory(
       config("db.connection_pool.size_min").toInt,
       config("db.connection_pool.size_max").toInt,
       config("db.connection_pool.test_idle_msec").toLong.millis,
