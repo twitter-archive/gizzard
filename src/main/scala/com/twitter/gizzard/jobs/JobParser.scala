@@ -67,7 +67,13 @@ class RecursiveJobParser(jobParser: JobParser) extends JobParser {
     val (jobClassName, attributes) = json.toList.first
     attributes.get("tasks").map { taskJsons =>
       val tasks = taskJsons.asInstanceOf[Iterable[Map[String, Map[String, Any]]]].map(this(_))
-      val jobClass = Class.forName(jobClassName).asInstanceOf[Class[Job]]
+      val jobClass = try {
+        Class.forName(jobClassName).asInstanceOf[Class[Job]]
+      } catch {
+        case e: java.lang.ClassNotFoundException =>
+          // temporary hack FIXME
+          Class.forName(jobClassName.replace("service.flock.jobs", "gizzard.jobs")).asInstanceOf[Class[Job]]
+      }
       jobClass.getConstructor(classOf[Iterable[Job]]).newInstance(tasks)
     } getOrElse {
       jobParser(json)
