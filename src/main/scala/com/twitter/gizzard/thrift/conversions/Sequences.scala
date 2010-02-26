@@ -1,5 +1,6 @@
 package com.twitter.gizzard.thrift.conversions
 
+import java.nio.{BufferUnderflowException, ByteBuffer, ByteOrder}
 import java.util.{AbstractList => JAbstractList, List => JList}
 
 
@@ -34,18 +35,37 @@ object Sequences {
   class RichSeq[A <: AnyRef](seq: Seq[A]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
     def toJavaList = new JavaListAdapter(seq)(x => x)
+    def double = for (i <- seq) yield (i, i)
   }
   implicit def seqToRichSeq[A <: AnyRef](seq: Seq[A]) = new RichSeq(seq)
 
   class RichIntSeq(seq: Seq[Int]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
     def toJavaList = new JavaListAdapter(seq)(_.asInstanceOf[java.lang.Integer])
+    def double = for (i <- seq) yield (i, i)
+
+    def pack: Array[Byte] = {
+      val buffer = new Array[Byte](seq.size * 4)
+      val byteBuffer = ByteBuffer.wrap(buffer)
+      byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+      seq.foreach { item => byteBuffer.putInt(item) }
+      buffer
+    }
   }
   implicit def seqToRichIntSeq(seq: Seq[Int]) = new RichIntSeq(seq)
 
   class RichLongSeq(seq: Seq[Long]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
     def toJavaList = new JavaListAdapter(seq)(_.asInstanceOf[java.lang.Long])
+    def double = for (i <- seq) yield (i, i)
+
+    def pack: Array[Byte] = {
+      val buffer = new Array[Byte](seq.size * 8)
+      val byteBuffer = ByteBuffer.wrap(buffer)
+      byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+      seq.foreach { item => byteBuffer.putLong(item) }
+      buffer
+    }
   }
   implicit def seqToRichLongSeq(seq: Seq[Long]) = new RichLongSeq(seq)
 
@@ -60,4 +80,25 @@ object Sequences {
     def toList = toSeq.toList
   }
   implicit def javaIntListToRichSeq(list: JList[java.lang.Integer]) = new RichJavaIntList(list)
+
+  class RichByteArray(byteArray: Array[Byte]) {
+    def toIntArray = {
+      val buffer = ByteBuffer.wrap(byteArray)
+      buffer.order(ByteOrder.LITTLE_ENDIAN)
+      val ints = buffer.asIntBuffer
+      val results = new Array[Int](ints.limit)
+      ints.get(results)
+      results
+    }
+
+    def toLongArray = {
+      val buffer = ByteBuffer.wrap(byteArray)
+      buffer.order(ByteOrder.LITTLE_ENDIAN)
+      val longs = buffer.asLongBuffer
+      val results = new Array[Long](longs.limit)
+      longs.get(results)
+      results
+    }
+  }
+  implicit def richByteArray(byteArray: Array[Byte]) = new RichByteArray(byteArray)
 }
