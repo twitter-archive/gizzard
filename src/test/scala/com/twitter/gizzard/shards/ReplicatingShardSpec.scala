@@ -30,7 +30,7 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
     var shard2: FakeShard = null
     var shard3: FakeShard = null
     var replicatingShard: FakeReplicatingShard = null
-    val future = new Future("Future!", 1, 1, 1.second)
+    val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val log = new ThrottledLogger[String](Logger(), 1, 1)
 
     doBefore {

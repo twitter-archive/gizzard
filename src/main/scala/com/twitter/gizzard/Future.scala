@@ -4,9 +4,10 @@ import java.util.concurrent._
 import com.twitter.xrayspecs.Duration
 
 
-class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration) {
-  private val executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds, TimeUnit.SECONDS,
-    new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
+class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
+             val timeout: Duration) {
+  private val executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
+    TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
 
   def apply[A](a: => A) = {
     val future = new FutureTask(new Callable[A] {
@@ -25,10 +26,10 @@ class ParallelSeq[A](seq: Seq[A], future: Future) extends Seq[A] {
   def elements = seq.elements
 
   override def map[B](f: A => B) = {
-    seq.map { a => future(f(a)) }.map(_.get(6000, TimeUnit.MILLISECONDS))
+    seq.map { a => future(f(a)) }.map { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
   }
 
   override def flatMap[B](f: A => Iterable[B]) = {
-    seq.map { a => future(f(a)) }.flatMap(_.get(6000, TimeUnit.MILLISECONDS))
+    seq.map { a => future(f(a)) }.flatMap { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
   }
 }
