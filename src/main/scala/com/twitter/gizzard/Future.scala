@@ -2,10 +2,18 @@ package com.twitter.gizzard
 
 import java.util.concurrent._
 import com.twitter.xrayspecs.Duration
+import com.twitter.xrayspecs.TimeConversions._
+import net.lag.configgy.ConfigMap
 
 
 class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
              val timeout: Duration) {
+
+  def this(name: String, config: ConfigMap) =
+    this(name, config("pool_size").toInt, config("max_pool_size").toInt,
+         config("keep_alive_time_seconds").toInt.seconds,
+         config("timeout_seconds").toInt.seconds)
+
   private val executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
     TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
 
