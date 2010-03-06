@@ -4,7 +4,6 @@ import java.sql.SQLException
 import scala.collection.mutable
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.querulous.evaluator.QueryEvaluator
-import com.twitter.querulous.query.SqlTimeoutException
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.{CopyManager, ForwardingManager, NameServer, ShardRepository}

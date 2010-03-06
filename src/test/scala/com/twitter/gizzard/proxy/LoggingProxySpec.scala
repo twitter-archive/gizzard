@@ -1,4 +1,4 @@
-package com.twitter.gizzard
+package com.twitter.gizzard.proxy
 
 import com.twitter.ostrich.W3CStats
 import net.lag.logging.Logger
