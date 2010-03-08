@@ -150,6 +150,7 @@ class TSelectorServer(processor: TProcessor, serverSocket: ServerSocketChannel, 
               try {
                 client.socketChannel.configureBlocking(true)
                 client.processor.process(client.inputProtocol, client.outputProtocol)
+                Stats.incr("thrift-calls")
                 registerQueue.add(client.socketChannel)
                 selector.wakeup()
               } catch {
