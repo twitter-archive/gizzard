@@ -45,6 +45,7 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
+      shardRepository += (("com.example.SqlShard", factory))
       forwardingManager = mock[ForwardingManager[UserShard]]
       copyManager = mock[CopyManager[UserShard]]
       nameServer = new NameServer[UserShard](queryEvaluator, shardRepository, forwardingManager, copyManager)

@@ -278,6 +278,8 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
 
   def reload() {
     NameServer.reload(queryEvaluator)
+    // force creation of db connections:
+    NameServer.shardInfos.values.foreach { shardInfo => shardRepository.create(shardInfo) }
     forwardingManager.reloadForwardings(this)
   }
 
