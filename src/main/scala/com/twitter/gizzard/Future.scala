@@ -29,6 +29,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
       val startTime = Time.now
       def call = {
         if (Time.now - startTime > timeout) {
+          Stats.incr("future-" + name + "-timeout")
           throw new TimeoutException("future spent too long in queue")
         }
         a

@@ -69,6 +69,7 @@ class TSelectorServer(processor: TProcessor, serverSocket: ServerSocketChannel,
 
       def run() {
         if (Time.now - startTime > timeout) {
+          Stats.incr("thrift-timeout")
           throw new TimeoutException("thrift connection spent too long in queue")
         }
         f
