@@ -1,7 +1,8 @@
 package com.twitter.gizzard
 
 import java.util.concurrent._
-import com.twitter.xrayspecs.Duration
+import com.twitter.ostrich.Stats
+import com.twitter.xrayspecs.{Duration, Time}
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.ConfigMap
 
@@ -18,15 +19,27 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
          config("keep_alive_time_seconds").toInt.seconds,
          config("timeout_seconds").toInt.seconds)
 
-  private val executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
+  var executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
     TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
+
+  Stats.makeGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
 
   def apply[A](a: => A) = {
     val future = new FutureTask(new Callable[A] {
-      def call = a
+      val startTime = Time.now
+      def call = {
+        if (Time.now - startTime > timeout) {
+          throw new TimeoutException("future spent too long in queue")
+        }
+        a
+      }
     })
     executor.execute(future)
     future
+  }
+
+  def shutdown() {
+    executor.shutdown()
   }
 }
 
