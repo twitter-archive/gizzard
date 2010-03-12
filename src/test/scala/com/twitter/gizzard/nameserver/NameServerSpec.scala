@@ -7,6 +7,7 @@ import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{CopyMachine, JobScheduler}
+import shards.ShardException
 
 
 object NameServerSpec extends Specification with JMocker with ClassMocker with Database {
@@ -17,7 +18,6 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
     val otherShardInfo = new ShardInfo(SQL_SHARD, "other_table", "localhost")
 
     var shardRepository: ShardRepository[Shard] = null
-    var forwardingManager: ForwardingManager[Shard] = null
     var copyManager: CopyManager[Shard] = null
     var nameServer: NameServer[Shard] = null
     var forwardShard: Shard = null
@@ -36,13 +36,9 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       shardRepository = mock[ShardRepository[Shard]]
-      forwardingManager = mock[ForwardingManager[Shard]]
       copyManager = mock[CopyManager[Shard]]
-      nameServer = new NameServer(queryEvaluator, shardRepository, forwardingManager, copyManager)
+      nameServer = new NameServer(queryEvaluator, shardRepository, "test", (id: Long) => id, copyManager)
 
-      expect {
-        one(forwardingManager).reloadForwardings(nameServer)
-      }
       nameServer.reload()
 
       forwardShard = mock[Shard]
@@ -199,14 +195,12 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       val sourceShardId = nameServer.createShard(sourceShardInfo)
-      val forwardingSourceId = capturingParam[Int]
-      val forwardingDestinationId = capturingParam[Int]
+      nameServer.setForwarding(new Forwarding(List(0), 1, sourceShardId))
 
       expect {
         one(shardRepository).create(destinationShardInfo)
         one(shardRepository).create(writeOnlyShardInfo)
         one(shardRepository).create(replicatingShardInfo)
-        one(forwardingManager).replaceForwarding(forwardingSourceId.capture(0), forwardingDestinationId.capture(1))
       }
 
       val migration = nameServer.setupMigration(sourceShardInfo, destinationShardInfo)
@@ -214,9 +208,8 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       nameServer.findShard(destinationShardInfo) mustEqual migration.destinationShardId
       nameServer.findShard(writeOnlyShardInfo) mustEqual migration.writeOnlyShardId
       nameServer.findShard(replicatingShardInfo) mustEqual migration.replicatingShardId
-
-      forwardingSourceId.captured mustEqual sourceShardId
-      forwardingDestinationId.captured mustEqual migration.replicatingShardId
+      nameServer.getForwardingForShard(migration.sourceShardId) must throwA[ShardException]
+      nameServer.getForwardingForShard(migration.replicatingShardId) mustNot throwA[ShardException]
 
       nameServer.listShardChildren(migration.replicatingShardId).map { _.shardId } mustEqual
         List(migration.sourceShardId, migration.writeOnlyShardId)
@@ -265,7 +258,6 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       val migration = new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
 
       expect {
-        one(forwardingManager).replaceForwarding(replicatingShardId, destinationShardId)
       }
 
       nameServer.finishMigration(migration)
@@ -290,44 +282,39 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       "setForwarding" in {
-        expect {
-          one(forwardingManager).setForwarding(forwarding)
-        }
         nameServer.setForwarding(forwarding)
+        nameServer.getForwardingForShard(forwarding.shardId) mustEqual forwarding
       }
 
       "replaceForwarding" in {
-        expect {
-          one(forwardingManager).replaceForwarding(1, 2)
-        }
-        nameServer.replaceForwarding(1, 2)
+        val newShardId = 2
+        nameServer.setForwarding(forwarding)
+        nameServer.replaceForwarding(forwarding.shardId, newShardId)
+        nameServer.getForwardingForShard(2).shardId mustEqual newShardId
       }
 
       "getForwarding" in {
-        expect {
-          one(forwardingManager).getForwarding(List(1, 2), 0L) willReturn shardId
-        }
+        nameServer.setForwarding(forwarding)
         nameServer.getForwarding(List(1, 2), 0L).shardId mustEqual shardId
       }
 
       "getForwardingForShard" in {
-        expect {
-          one(forwardingManager).getForwardingForShard(9) willReturn forwarding
-        }
-        nameServer.getForwardingForShard(9) mustEqual forwarding
+        nameServer.setForwarding(forwarding)
+        nameServer.getForwardingForShard(shardId) mustEqual forwarding
       }
 
       "getForwardings" in {
-        expect {
-          one(forwardingManager).getForwardings() willReturn List(forwarding)
-        }
+        nameServer.setForwarding(forwarding)
         nameServer.getForwardings() mustEqual List(forwarding)
       }
 
       "findCurrentForwarding" in {
+        forwardShardInfo.shardId = shardId
         expect {
-          one(forwardingManager).findCurrentForwarding(List(1, 2), 0L) willReturn forwardShard
+          one(shardRepository).find(forwardShardInfo, 1, List()) willReturn forwardShard
         }
+        nameServer.setForwarding(forwarding)
+        nameServer.reload()
         nameServer.findCurrentForwarding(List(1, 2), 0L) mustEqual forwardShard
       }
     }

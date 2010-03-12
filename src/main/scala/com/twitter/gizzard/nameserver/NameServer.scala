@@ -1,6 +1,7 @@
 package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
+import java.util.TreeMap
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import net.lag.logging.Logger
@@ -36,7 +37,6 @@ CREATE TABLE shard_children (
 ) ENGINE=INNODB
 /* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
 """
-
   private val log = Logger.get(getClass.getName)
 
   class NonExistentShard extends Exception("Shard does not exist")
@@ -46,14 +46,6 @@ CREATE TABLE shard_children (
   @volatile private var familyTree = mutable.Map.empty[Int, mutable.ArrayBuffer[ChildInfo]]
 
   def reload(queryEvaluator: QueryEvaluator) {
-    try {
-      queryEvaluator.select("DESCRIBE shards") { row => }
-    } catch {
-      case e: SQLException =>
-        // try creating the schema
-        rebuildSchema(queryEvaluator)
-    }
-
     val newShardInfos = mutable.Map.empty[Int, ShardInfo]
     queryEvaluator.select("SELECT * FROM shards") { result =>
       val shardInfo = new ShardInfo(result.getString("class_name"), result.getString("table_prefix"),
@@ -82,12 +74,39 @@ CREATE TABLE shard_children (
 }
 
 class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: ShardRepository[S],
-                             forwardingManager: ForwardingManager[S], copyManager: CopyManager[S]) {
+                             tablePrefix: String, mappingFunction: Long => Long,  copyManager: CopyManager[S]) {
+    val FORWARDINGS_DDL = """
+  CREATE TABLE """ + tablePrefix + """_forwardings (
+      base_source_id          BIGINT                  NOT NULL,
+      table_id                VARCHAR(255)            NOT NULL,
+      shard_id                INT                     NOT NULL,
+
+      PRIMARY KEY (base_source_id, table_id),
+
+      UNIQUE unique_shard_id (shard_id)
+  ) ENGINE=INNODB;
+  """
+
+    val SEQUENCE_DDL = """
+  CREATE TABLE IF NOT EXISTS """ + tablePrefix + """_sequence (
+      id                      INT UNSIGNED            NOT NULL
+  ) ENGINE=INNODB;
+  """
+
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
       row.getString("source_type"), row.getString("destination_type"), Busy(row.getInt("busy")),
       row.getInt("id"))
   }
+
+  private def rowToForwarding(row: ResultSet) = {
+    new Forwarding(List.fromString(row.getString("table_id"), '.').map(_.toInt), row.getLong("base_source_id"), row.getInt("shard_id"))
+  }
+
+  @volatile private var forwardings: scala.collection.Map[(Int, Int), TreeMap[Long, S]] = null
+  private val forwardingTable = tablePrefix + "_forwardings"
+  private def tableIdDbString(tableId: List[Int]) = tableId.mkString(".")
+  private def tableIdTuple(tableId: List[Int]) = (tableId(0), tableId(1))
 
   def createShard(shardInfo: ShardInfo) = {
     queryEvaluator.transaction { transaction =>
@@ -192,7 +211,7 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
     addChildShard(replicatingShardId, sourceShardId, 1)
     addChildShard(replicatingShardId, writeOnlyShardId, 1)
 
-    forwardingManager.replaceForwarding(sourceShardId, replicatingShardId)
+    replaceForwarding(sourceShardId, replicatingShardId)
     new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
   }
 
@@ -211,27 +230,57 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def setForwarding(forwarding: Forwarding) {
-    forwardingManager.setForwarding(forwarding)
+    if (queryEvaluator.execute("UPDATE " + forwardingTable + " SET shard_id = ? WHERE base_source_id = ? AND table_id = ?",
+                               forwarding.shardId, forwarding.baseId, tableIdDbString(forwarding.tableId)) == 0) {
+      queryEvaluator.execute("INSERT INTO " + forwardingTable + " (base_source_id, table_id, shard_id) VALUES (?, ?, ?)",
+                             forwarding.baseId, tableIdDbString(forwarding.tableId), forwarding.shardId)
+    }
   }
 
   def replaceForwarding(oldShardId: Int, newShardId: Int) {
-    forwardingManager.replaceForwarding(oldShardId, newShardId)
+    queryEvaluator.execute("UPDATE " + forwardingTable + " SET shard_id = ? WHERE shard_id = ?", newShardId, oldShardId)
   }
 
   def getForwarding(tableId: List[Int], baseId: Long): ShardInfo = {
-    getShard(forwardingManager.getForwarding(tableId, baseId))
+    getShard(queryEvaluator.select("SELECT shard_id FROM " + forwardingTable + " WHERE base_source_id = ? AND table_id = ?",
+                          baseId, tableIdDbString(tableId)) { row =>
+      row.getInt("shard_id")
+    }.firstOption.getOrElse { throw new ShardException("No such forwarding") })
   }
 
   def getForwardingForShard(shardId: Int): Forwarding = {
-    forwardingManager.getForwardingForShard(shardId)
+    queryEvaluator.select("SELECT * FROM " + forwardingTable + " WHERE shard_id = ?", shardId) { row =>
+      rowToForwarding(row)
+    }.firstOption.getOrElse { throw new ShardException("No such forwarding") }
   }
 
   def getForwardings(): List[Forwarding] = {
-    forwardingManager.getForwardings()
+    // XXX: REVISIT ORDERING
+    queryEvaluator.select("SELECT * FROM " + forwardingTable + " ORDER BY table_id, base_source_id DESC") { row =>
+      rowToForwarding(row)
+    }.toList
   }
 
   def findCurrentForwarding(tableId: List[Int], id: Long): S = {
-    forwardingManager.findCurrentForwarding(tableId, id)
+    forwardings.get(tableIdTuple(tableId)).flatMap { bySourceIds =>
+      val item = bySourceIds.floorEntry(mappingFunction(id))
+      if (item != null) {
+        Some(item.getValue)
+      } else {
+        None
+      }
+    } getOrElse {
+      throw new NameServer.NonExistentShard
+    }
+  }
+
+  def reloadForwardings() {
+    val newForwardings = new mutable.HashMap[(Int, Int), TreeMap[Long, S]]
+    queryEvaluator.select("SELECT * FROM " + forwardingTable) { result =>
+      val treeMap = newForwardings.getOrElseUpdate(tableIdTuple(List.fromString(result.getString("table_id"), '.').map(_.toInt)), new TreeMap[Long, S])
+      treeMap.put(result.getLong("base_source_id"), findShardById(result.getInt("shard_id")))
+    }
+    forwardings = newForwardings.readOnly
   }
 
   def shardIdsForHostname(hostname: String, className: String): List[Int] = {
@@ -277,9 +326,18 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
   }
 
   def reload() {
+    try {
+      List("shards", "shard_children", forwardingTable, tablePrefix + "_sequence").foreach { table =>
+        queryEvaluator.select("DESCRIBE " + table) { row => }
+      }
+    } catch {
+      case e: SQLException =>
+        // try creating the schema
+        rebuildSchema()
+    }
+
     NameServer.reload(queryEvaluator)
-    // force creation of db connections:
-    forwardingManager.reloadForwardings(this)
+    reloadForwardings()
   }
 
   def findShardById(shardId: Int, weight: Int): S = {
@@ -295,5 +353,10 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
 
   def rebuildSchema() {
     NameServer.rebuildSchema(queryEvaluator)
+    queryEvaluator.execute("DROP TABLE IF EXISTS " + forwardingTable)
+    queryEvaluator.execute("DROP TABLE IF EXISTS " + tablePrefix + "_sequence")
+    queryEvaluator.execute(FORWARDINGS_DDL)
+    queryEvaluator.execute(SEQUENCE_DDL)
+    queryEvaluator.execute("INSERT INTO " + tablePrefix + "_sequence VALUES (0)")
   }
 }

@@ -6,7 +6,7 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.querulous.evaluator.QueryEvaluator
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{CopyManager, ForwardingManager, NameServer, ShardRepository}
+import nameserver.{CopyManager, NameServer, ShardRepository}
 
 
 object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with Database {
@@ -39,20 +39,14 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
   "Shards" should {
     var shardRepository: ShardRepository[UserShard] = null
     var nameServer: NameServer[UserShard] = null
-    var forwardingManager: ForwardingManager[UserShard] = null
     var copyManager: CopyManager[UserShard] = null
 
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
-      forwardingManager = mock[ForwardingManager[UserShard]]
       copyManager = mock[CopyManager[UserShard]]
-      nameServer = new NameServer[UserShard](queryEvaluator, shardRepository, forwardingManager, copyManager)
-
-      expect {
-        one(forwardingManager).reloadForwardings(nameServer)
-      }
+      nameServer = new NameServer[UserShard](queryEvaluator, shardRepository, "test", (id: Long) => id, copyManager)
 
       nameServer.createShard(shardInfo1)
       nameServer.createShard(shardInfo2)
