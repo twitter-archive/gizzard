@@ -3,7 +3,8 @@ package com.twitter.gizzard.thrift
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.channels._
-import java.util.concurrent.{ConcurrentLinkedQueue, LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
+import java.util.concurrent.{ConcurrentLinkedQueue, LinkedBlockingQueue, ThreadPoolExecutor,
+  TimeoutException, TimeUnit}
 import scala.collection.jcl
 import scala.collection.mutable
 import com.facebook.thrift._
@@ -11,6 +12,7 @@ import com.facebook.thrift.protocol._
 import com.facebook.thrift.transport._
 import com.facebook.thrift.server._
 import com.twitter.ostrich.Stats
+import com.twitter.xrayspecs.{Duration, Time}
 import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
 
@@ -26,16 +28,17 @@ object TSelectorServer {
     new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS, queue)
   }
 
-  def apply(port: Int, processor: TProcessor, executor: ThreadPoolExecutor) = {
+  def apply(port: Int, processor: TProcessor, executor: ThreadPoolExecutor, timeout: Duration) = {
     val socket = ServerSocketChannel.open()
     socket.socket().setReuseAddress(true)
     socket.socket().bind(new InetSocketAddress(port), 8192)
     log.info("Starting %s on port %d", processor.getClass.getName, port)
-    new TSelectorServer(processor, socket, executor)
+    new TSelectorServer(processor, socket, executor, timeout)
   }
 }
 
-class TSelectorServer(processor: TProcessor, serverSocket: ServerSocketChannel, executor: ThreadPoolExecutor) extends TServer(null, null) {
+class TSelectorServer(processor: TProcessor, serverSocket: ServerSocketChannel,
+                      executor: ThreadPoolExecutor, timeout: Duration) extends TServer(null, null) {
   val log = Logger.get(getClass.getName)
 
   val processorFactory = new TProcessorFactory(processor)
@@ -61,7 +64,16 @@ class TSelectorServer(processor: TProcessor, serverSocket: ServerSocketChannel, 
   def isRunning = running
 
   def execute(f: => Unit) {
-    executor.execute(new Runnable() { def run() { f } })
+    executor.execute(new Runnable() {
+      val startTime = Time.now
+
+      def run() {
+        if (Time.now - startTime > timeout) {
+          throw new TimeoutException("thrift connection spent too long in queue")
+        }
+        f
+      }
+    })
   }
 
   def serve() {

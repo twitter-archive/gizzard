@@ -1,6 +1,7 @@
 package com.twitter.gizzard
 
-import java.util.concurrent.{CountDownLatch, ExecutionException, SynchronousQueue, ThreadPoolExecutor, TimeoutException, TimeUnit}
+import java.util.concurrent.{CountDownLatch, ExecutionException, SynchronousQueue,
+  ThreadPoolExecutor, TimeoutException, TimeUnit}
 import scala.collection.mutable
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
@@ -32,8 +33,7 @@ object FutureSpec extends Specification with JMocker with ClassMocker {
       val startFlag = new CountDownLatch(1)
       new Thread() {
         override def run() {
-          startFlag.countDown()
-          future { Thread.sleep(20) }
+          future { startFlag.countDown(); Thread.sleep(20) }
         }
       }.start()
       startFlag.await()
