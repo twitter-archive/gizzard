@@ -41,8 +41,8 @@ case class BoundJob[E](protected val unboundJob: UnboundJob[E], protected val en
   def apply() { unboundJob(environment) }
 }
 
-class LoggingJob(w3cStats: W3CStats, job: Job) extends JobProxy(job) {
-  def apply() { LoggingProxy(w3cStats, job.loggingName, job).apply() }
+class LoggingJob(stats: Option[StatsProvider], w3cStats: W3CStats, job: Job) extends JobProxy(job) {
+  def apply() { LoggingProxy(stats, w3cStats, job.loggingName, job).apply() }
 }
 
 case class ErrorHandlingConfig(maxErrorCount: Int, badJobsLogger: String => Unit, stats: Option[StatsProvider])

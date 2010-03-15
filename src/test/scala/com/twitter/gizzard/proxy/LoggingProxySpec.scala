@@ -15,7 +15,8 @@ object LoggingProxySpec extends Specification with JMocker with ClassMocker {
     "log stats on a proxied object" in {
       val logger = mock[Logger]
       val bob = new Named { def name = "bob" }
-      val bobProxy = LoggingProxy[Named](new W3CStats(logger, Array("operation", "arguments", "action-timing")), "Bob", bob)
+      val w3cStats = new W3CStats(logger, Array("operation", "arguments", "action-timing"))
+      val bobProxy = LoggingProxy[Named](None, w3cStats, "Bob", bob)
 
       val line = capturingParam[String]
       expect {
