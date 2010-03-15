@@ -37,7 +37,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
 
       shardRepository = mock[ShardRepository[Shard]]
       copyManager = mock[CopyManager[Shard]]
-      nameServer = new NameServer(queryEvaluator, shardRepository, "test", (id: Long) => id, copyManager)
+      nameServer = new SqlNameServer(queryEvaluator, shardRepository, "test", (id: Long) => id, copyManager)
 
       nameServer.reload()
 
@@ -75,7 +75,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
           nameServer.createShard(forwardShardInfo)
           val otherShard = forwardShardInfo.clone()
           otherShard.className = "garbage"
-          nameServer.createShard(otherShard) must throwA[NameServer.InvalidShard]
+          nameServer.createShard(otherShard) must throwA[InvalidShard]
         }
       }
     }
@@ -92,7 +92,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       "when the shard doesn't exist" >> {
-        nameServer.findShard(backwardShardInfo) must throwA[NameServer.NonExistentShard]
+        nameServer.findShard(backwardShardInfo) must throwA[NonExistentShard]
       }
     }
 
@@ -111,7 +111,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       "nonexistent shard" >> {
-        nameServer.updateShard(new ShardInfo(SQL_SHARD, "other_table", "localhost", "", "", Busy.Normal, 500)) must throwA[NameServer.NonExistentShard]
+        nameServer.updateShard(new ShardInfo(SQL_SHARD, "other_table", "localhost", "", "", Busy.Normal, 500)) must throwA[NonExistentShard]
       }
     }
 
@@ -123,7 +123,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       val shardId = nameServer.createShard(forwardShardInfo)
       nameServer.findShard(forwardShardInfo) mustEqual shardId
       nameServer.deleteShard(shardId)
-      nameServer.findShard(forwardShardInfo) must throwA[NameServer.NonExistentShard]
+      nameServer.findShard(forwardShardInfo) must throwA[NonExistentShard]
     }
 
     "add & find children" in {

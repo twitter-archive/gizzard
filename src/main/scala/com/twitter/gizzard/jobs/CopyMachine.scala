@@ -4,7 +4,7 @@ import java.lang.reflect.Constructor
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
 import shards.{Busy, Shard, ShardTimeoutException}
-import nameserver.NameServer
+import nameserver.{NameServer, NonExistentShard}
 
 
 object CopyMachine {
@@ -44,7 +44,7 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
       nameServer.markShardBusy(destinationShardId, Busy.Busy)
       copyPage(sourceShard, destinationShard, count)
     } catch {
-      case e: NameServer.NonExistentShard =>
+      case e: NonExistentShard =>
         log.error("Shard block copy failed because one of the shards doesn't exist. Terminating the copy.")
         return
       case e: ShardTimeoutException if (count > CopyMachine.MIN_COPY) =>
