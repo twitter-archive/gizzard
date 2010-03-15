@@ -76,10 +76,10 @@ object ReplicatingShardSpec extends Specification with JMocker with ClassMocker 
         val exception = new ShardException("o noes")
         expect {
           allowing(shard1).weight willReturn 1
-          allowing(shard2).weight willReturn 0
+          allowing(shard2).weight willReturn 1
           one(shard1).shardInfo willReturn shard1Info
           one(shard2).shardInfo willReturn shard1Info
-          one(shard1).getName().willThrow(exception) then
+          one(shard1).getName().willThrow(exception)
           one(shard2).getName().willThrow(exception)
         }
         replicatingShard.getName() must throwA[ShardException]

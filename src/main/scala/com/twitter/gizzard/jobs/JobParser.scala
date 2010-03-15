@@ -54,8 +54,8 @@ class ErrorHandlingJobParser(jobParser: JobParser, config: ErrorHandlingConfig) 
   }
 }
 
-class LoggingJobParser(w3cStats: W3CStats, jobParser: JobParser) extends JobParser {
-  def apply(json: Map[String, Map[String, Any]]) = new LoggingJob(w3cStats, jobParser(json))
+class LoggingJobParser(stats: Option[StatsProvider], w3cStats: W3CStats, jobParser: JobParser) extends JobParser {
+  def apply(json: Map[String, Map[String, Any]]) = new LoggingJob(stats, w3cStats, jobParser(json))
 }
 
 class JournaledJobParser(jobParser: JobParser, journaller: String => Unit) extends JobParser {

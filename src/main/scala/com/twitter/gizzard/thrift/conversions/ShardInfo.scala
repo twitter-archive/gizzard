@@ -8,7 +8,7 @@ object ShardInfo {
     def toThrift = new thrift.ShardInfo(shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname,
                                         shardInfo.sourceType, shardInfo.destinationType,
                                         shardInfo.busy.toThrift, shardInfo.shardId)
-    
+
   }
   implicit def shardingShardInfoToRichShardingShardInfo(shardInfo: shards.ShardInfo) = new RichShardingShardInfo(shardInfo)
 
@@ -16,7 +16,7 @@ object ShardInfo {
     def fromThrift = new shards.ShardInfo(shardInfo.class_name, shardInfo.table_prefix, shardInfo.hostname,
                                             shardInfo.source_type, shardInfo.destination_type,
                                             shardInfo.busy.fromThrift, shardInfo.shard_id)
-    
+
   }
   implicit def thriftShardInfoToRichThriftShardInfo(shardInfo: thrift.ShardInfo) = new RichThriftShardInfo(shardInfo)
 }
