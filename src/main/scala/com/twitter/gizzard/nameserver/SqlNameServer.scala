@@ -71,25 +71,29 @@ CREATE TABLE shard_children (
 }
 
 class SqlNameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: ShardRepository[S],
-                             tablePrefix: String, mappingFunction: Long => Long, copyManager: CopyManager[S])
+                                tablePrefix: String, mappingFunction: Long => Long, copyManager: CopyManager[S])
                            extends NameServer[S] {
-    val FORWARDINGS_DDL = """
-  CREATE TABLE """ + tablePrefix + """_forwardings (
-      base_source_id          BIGINT                  NOT NULL,
-      table_id                VARCHAR(255)            NOT NULL,
-      shard_id                INT                     NOT NULL,
+  val children = List()
+  val shardInfo = new ShardInfo("asdf", "asdf", "asdf")
+  val weight = 1 // hardcode for now
 
-      PRIMARY KEY (base_source_id, table_id),
+  val FORWARDINGS_DDL = """
+CREATE TABLE """ + tablePrefix + """_forwardings (
+    base_source_id          BIGINT                  NOT NULL,
+    table_id                VARCHAR(255)            NOT NULL,
+    shard_id                INT                     NOT NULL,
 
-      UNIQUE unique_shard_id (shard_id)
-  ) ENGINE=INNODB;
-  """
+    PRIMARY KEY (base_source_id, table_id),
 
-    val SEQUENCE_DDL = """
-  CREATE TABLE IF NOT EXISTS """ + tablePrefix + """_sequence (
-      id                      INT UNSIGNED            NOT NULL
-  ) ENGINE=INNODB;
-  """
+    UNIQUE unique_shard_id (shard_id)
+) ENGINE=INNODB;
+"""
+
+  val SEQUENCE_DDL = """
+CREATE TABLE IF NOT EXISTS """ + tablePrefix + """_sequence (
+    id                      INT UNSIGNED            NOT NULL
+) ENGINE=INNODB;
+"""
 
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),

@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import shards._
 
-trait NameServer[S <: Shard] {
+trait NameServer[S <: Shard] extends Shard {
   def createShard(shardInfo: ShardInfo): Int
   def findShard(shardInfo: ShardInfo): Int
   def getShard(shardId: Int): ShardInfo
