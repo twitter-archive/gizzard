@@ -71,10 +71,10 @@ CREATE TABLE shard_children (
 }
 
 class SqlNameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: ShardRepository[S],
-                                tablePrefix: String, mappingFunction: Long => Long, copyManager: CopyManager[S])
+                                tablePrefix: String, mappingFunction: Long => Long)
                            extends NameServer[S] {
   val children = List()
-  val shardInfo = new ShardInfo("asdf", "asdf", "asdf")
+  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlNameServer", tablePrefix, "")
   val weight = 1 // hardcode for now
 
   val FORWARDINGS_DDL = """
@@ -189,46 +189,6 @@ CREATE TABLE IF NOT EXISTS """ + tablePrefix + """_sequence (
     if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE id = ?", busy.id, shardId) == 0) {
       throw new NonExistentShard
     }
-  }
-
-  def copyShard(sourceShardId: Int, destinationShardId: Int) {
-    copyManager.newCopyJob(sourceShardId, destinationShardId).start(this, copyManager.scheduler)
-  }
-
-  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
-    val lastDot = sourceShardInfo.className.lastIndexOf('.')
-    val packageName = if (lastDot >= 0) sourceShardInfo.className.substring(0, lastDot + 1) else ""
-    val sourceShardId = findShard(sourceShardInfo)
-    val destinationShardId = createShard(destinationShardInfo)
-
-    val writeOnlyShard = new ShardInfo(packageName + "WriteOnlyShard",
-      sourceShardInfo.tablePrefix + "_migrate_write_only", "localhost", "", "", Busy.Normal, 0)
-    val writeOnlyShardId = createShard(writeOnlyShard)
-    addChildShard(writeOnlyShardId, destinationShardId, 1)
-
-    val replicatingShard = new ShardInfo(packageName + "ReplicatingShard",
-      sourceShardInfo.tablePrefix + "_migrate_replicating", "localhost", "", "", Busy.Normal, 0)
-    val replicatingShardId = createShard(replicatingShard)
-    replaceChildShard(sourceShardId, replicatingShardId)
-    addChildShard(replicatingShardId, sourceShardId, 1)
-    addChildShard(replicatingShardId, writeOnlyShardId, 1)
-
-    replaceForwarding(sourceShardId, replicatingShardId)
-    new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
-  }
-
-  def migrateShard(migration: ShardMigration) {
-    copyManager.newMigrateJob(migration).start(this, copyManager.scheduler)
-  }
-
-  // to be called by Migrate jobs when they're finished. but also available as an RPC.
-  def finishMigration(migration: ShardMigration) {
-    removeChildShard(migration.writeOnlyShardId, migration.destinationShardId)
-    replaceChildShard(migration.replicatingShardId, migration.destinationShardId)
-    replaceForwarding(migration.replicatingShardId, migration.destinationShardId)
-    deleteShard(migration.replicatingShardId)
-    deleteShard(migration.writeOnlyShardId)
-    deleteShard(migration.sourceShardId)
   }
 
   def setForwarding(forwarding: Forwarding) {

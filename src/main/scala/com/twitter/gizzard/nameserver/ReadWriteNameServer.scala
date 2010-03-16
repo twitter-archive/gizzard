@@ -32,8 +32,4 @@ trait ReadWriteNameServer[S <: Shard] extends NameServer[S] with ReadWriteShard[
   def findShardById(shardId: Int, weight: Int) = readOperation(_.findShardById(shardId, weight))
   def reload() = readOperation(_.reload())
   def reloadForwardings() = readOperation(_.reloadForwardings())
-  def finishMigration(migration: ShardMigration) = readOperation(_.finishMigration(migration)) // wtf
-  def migrateShard(migration: ShardMigration) = readOperation(_.migrateShard(migration)) // wtf
-  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = readOperation(_.setupMigration(sourceShardInfo, destinationShardInfo))
-  def copyShard(sourceShardId: Int, destinationShardId: Int) = readOperation(_.copyShard(sourceShardId, destinationShardId))
 }

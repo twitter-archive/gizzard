@@ -13,10 +13,6 @@ trait NameServer[S <: Shard] extends Shard {
   def replaceChildShard(oldChildShardId: Int, newChildShardId: Int)
   def listShardChildren(shardId: Int): Seq[ChildInfo]
   def markShardBusy(shardId: Int, busy: Busy.Value)
-  def copyShard(sourceShardId: Int, destinationShardId: Int)
-  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo): ShardMigration
-  def migrateShard(migration: ShardMigration)
-  def finishMigration(migration: ShardMigration)
   def setForwarding(forwarding: Forwarding)
   def replaceForwarding(oldShardId: Int, newShardId: Int)
   def getForwarding(tableId: List[Int], baseId: Long): ShardInfo

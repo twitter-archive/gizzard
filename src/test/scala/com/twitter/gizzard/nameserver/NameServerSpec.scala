@@ -36,8 +36,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       shardRepository = mock[ShardRepository[Shard]]
-      copyManager = mock[CopyManager[Shard]]
-      nameServer = new SqlNameServer(queryEvaluator, shardRepository, "test", (id: Long) => id, copyManager)
+      nameServer = new SqlNameServer(queryEvaluator, shardRepository, "test", (id: Long) => id)
 
       nameServer.reload()
 
@@ -167,105 +166,6 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       val shardId = nameServer.createShard(forwardShardInfo)
       nameServer.markShardBusy(shardId, Busy.Busy)
       nameServer.getShard(shardId).busy mustEqual Busy.Busy
-    }
-
-    "copy shard" in {
-      val copyJob = mock[CopyMachine[Shard]]
-      val scheduler = mock[JobScheduler]
-
-      expect {
-        one(copyManager).newCopyJob(10, 20) willReturn copyJob
-        one(copyManager).scheduler willReturn scheduler
-        one(copyJob).start(nameServer, scheduler)
-      }
-
-      nameServer.copyShard(10, 20)
-    }
-
-    "setup migration" in {
-      val sourceShardInfo = new ShardInfo("com.example.SqlShard", "forward", "localhost")
-      val destinationShardInfo = new ShardInfo("com.example.SqlShard", "forward", "remotehost")
-      val writeOnlyShardInfo = new ShardInfo("com.example.WriteOnlyShard",
-                                             "forward_migrate_write_only", "localhost")
-      val replicatingShardInfo = new ShardInfo("com.example.ReplicatingShard",
-                                               "forward_migrate_replicating", "localhost")
-
-      expect {
-        one(shardRepository).create(sourceShardInfo)
-      }
-
-      val sourceShardId = nameServer.createShard(sourceShardInfo)
-      nameServer.setForwarding(new Forwarding(List(0), 1, sourceShardId))
-
-      expect {
-        one(shardRepository).create(destinationShardInfo)
-        one(shardRepository).create(writeOnlyShardInfo)
-        one(shardRepository).create(replicatingShardInfo)
-      }
-
-      val migration = nameServer.setupMigration(sourceShardInfo, destinationShardInfo)
-      nameServer.getShard(migration.sourceShardId).shardId mustEqual sourceShardId
-      nameServer.findShard(destinationShardInfo) mustEqual migration.destinationShardId
-      nameServer.findShard(writeOnlyShardInfo) mustEqual migration.writeOnlyShardId
-      nameServer.findShard(replicatingShardInfo) mustEqual migration.replicatingShardId
-      nameServer.getForwardingForShard(migration.sourceShardId) must throwA[ShardException]
-      nameServer.getForwardingForShard(migration.replicatingShardId) mustNot throwA[ShardException]
-
-      nameServer.listShardChildren(migration.replicatingShardId).map { _.shardId } mustEqual
-        List(migration.sourceShardId, migration.writeOnlyShardId)
-      nameServer.listShardChildren(migration.writeOnlyShardId).map { _.shardId } mustEqual
-        List(migration.destinationShardId)
-    }
-
-    "migrate shard" in {
-      val migration = new ShardMigration(1, 2, 3, 4)
-      val migrateJob = mock[CopyMachine[Shard]]
-      val scheduler = mock[JobScheduler]
-
-      expect {
-        one(copyManager).newMigrateJob(migration) willReturn migrateJob
-        one(copyManager).scheduler willReturn scheduler
-        one(migrateJob).start(nameServer, scheduler)
-      }
-
-      nameServer.migrateShard(migration)
-    }
-
-    "finish migration" in {
-      // tediously set this up.
-      val sourceShardInfo = new ShardInfo("com.example.SqlShard", "forward", "localhost")
-      val destinationShardInfo = new ShardInfo("com.example.SqlShard", "forward", "remotehost")
-      val writeOnlyShardInfo = new ShardInfo("com.example.WriteOnlyShard",
-                                             "forward_migrate_write_only", "localhost")
-      val replicatingShardInfo = new ShardInfo("com.example.ReplicatingShard",
-                                               "forward_migrate_replicating", "localhost")
-
-      expect {
-        one(shardRepository).create(sourceShardInfo)
-        one(shardRepository).create(destinationShardInfo)
-        one(shardRepository).create(writeOnlyShardInfo)
-        one(shardRepository).create(replicatingShardInfo)
-      }
-
-      val sourceShardId = nameServer.createShard(sourceShardInfo)
-      val destinationShardId = nameServer.createShard(destinationShardInfo)
-      val writeOnlyShardId = nameServer.createShard(writeOnlyShardInfo)
-      val replicatingShardId = nameServer.createShard(replicatingShardInfo)
-      nameServer.addChildShard(replicatingShardId, sourceShardId, 10)
-      nameServer.addChildShard(replicatingShardId, writeOnlyShardId, 10)
-      nameServer.addChildShard(writeOnlyShardId, destinationShardId, 20)
-
-      val migration = new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
-
-      expect {
-      }
-
-      nameServer.finishMigration(migration)
-
-      nameServer.getShard(sourceShardId) must throwA[Exception]
-      nameServer.getShard(destinationShardId)
-      nameServer.getShard(writeOnlyShardId) must throwA[Exception]
-      nameServer.getShard(replicatingShardId) must throwA[Exception]
     }
 
     "forwarding changes" in {

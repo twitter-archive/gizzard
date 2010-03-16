@@ -3,12 +3,16 @@ package com.twitter.gizzard.thrift
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
+import com.twitter.gizzard.thrift.conversions.ShardInfo._
+import com.twitter.gizzard.thrift.conversions.ShardMigration._
 import shards.Busy
+import jobs.{CopyMachine, JobScheduler}
 
 
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
   val nameServer = mock[nameserver.NameServer[shards.Shard]]
-  val manager = new thrift.ShardManagerService(nameServer)
+  val copyManager = mock[nameserver.CopyManager[shards.Shard]]
+  val manager = new thrift.ShardManagerService(nameServer, copyManager)
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
   val shardInfo1 = new shards.ShardInfo("com.example.SqlShard",
@@ -106,31 +110,73 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
     }
 
     "copy_shard" in {
+      val copyJob = mock[CopyMachine[shards.Shard]]
+      val scheduler = mock[JobScheduler]
+
       expect {
-        one(nameServer).copyShard(1, 2)
+        one(copyManager).newCopyJob(10, 20) willReturn copyJob
+        one(copyManager).scheduler willReturn scheduler
+        one(copyJob).start(nameServer, scheduler)
       }
-      manager.copy_shard(1, 2)
+
+      manager.copy_shard(10, 20)
     }
 
     "setup_migration" in {
+      val writeOnlyShard = capturingParam[shards.ShardInfo]
+      val replicatingShard = capturingParam[shards.ShardInfo]
+      val sourceShardId = 1
+      val destinationShardId = 2
+      val writeOnlyShardId = 3
+      val replicatingShardId = 4
+
       expect {
-        one(nameServer).setupMigration(shardInfo1, shardInfo2) willReturn new nameserver.ShardMigration(1, 2, 3, 4)
+        one(nameServer).findShard(thriftShardInfo1.fromThrift) willReturn sourceShardId
+        one(nameServer).createShard(thriftShardInfo2.fromThrift) willReturn destinationShardId
+        one(nameServer).createShard(writeOnlyShard.capture) willReturn writeOnlyShardId
+        one(nameServer).addChildShard(writeOnlyShardId, destinationShardId, 1)
+        one(nameServer).createShard(replicatingShard.capture) willReturn replicatingShardId
+        one(nameServer).replaceChildShard(sourceShardId, replicatingShardId)
+        one(nameServer).addChildShard(replicatingShardId, sourceShardId, 1)
+        one(nameServer).addChildShard(replicatingShardId, writeOnlyShardId, 1)
+        one(nameServer).replaceForwarding(sourceShardId, replicatingShardId)
       }
-      manager.setup_migration(thriftShardInfo1, thriftShardInfo2) mustEqual new thrift.ShardMigration(1, 2, 3, 4)
+
+      val migration = new thrift.ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
+      manager.setup_migration(thriftShardInfo1, thriftShardInfo2) mustEqual migration
     }
 
-    "migrate_shard" in {
+    "migrate shard" in {
+      val migration = new ShardMigration(1, 2, 3, 4)
+      val migrateJob = mock[CopyMachine[shards.Shard]]
+      val scheduler = mock[JobScheduler]
+
       expect {
-        one(nameServer).migrateShard(new nameserver.ShardMigration(1, 2, 3, 4))
+        one(copyManager).newMigrateJob(migration.fromThrift) willReturn migrateJob
+        one(copyManager).scheduler willReturn scheduler
+        one(migrateJob).start(nameServer, scheduler)
       }
-      manager.migrate_shard(new thrift.ShardMigration(1, 2, 3, 4))
+
+      manager.migrate_shard(migration)
     }
 
     "finish_migration" in {
+      val sourceShardId = 1
+      val destinationShardId = 2
+      val writeOnlyShardId = 3
+      val replicatingShardId = 4
+
       expect {
-        one(nameServer).finishMigration(new nameserver.ShardMigration(1, 2, 3, 4))
+        one(nameServer).removeChildShard(writeOnlyShardId, destinationShardId)
+        one(nameServer).replaceChildShard(replicatingShardId, destinationShardId)
+        one(nameServer).replaceForwarding(replicatingShardId, destinationShardId)
+        one(nameServer).deleteShard(replicatingShardId)
+        one(nameServer).deleteShard(writeOnlyShardId)
+        one(nameServer).deleteShard(sourceShardId)
       }
-      manager.finish_migration(new thrift.ShardMigration(1, 2, 3, 4))
+
+      val migration = new thrift.ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
+      manager.finish_migration(migration)
     }
 
     "set_forwarding" in {
