@@ -63,7 +63,7 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
       getNext(random.nextFloat, replicas)
     } catch {
       case e: NoSuchElementException =>
-        throw new ShardException("All shard replicas are down")
+        throw new ShardOfflineException
     }
 
     try {
@@ -81,7 +81,7 @@ abstract class ReplicatingShard[ConcreteShard <: Shard]
         }
         failover(f, remainder)
       case e: NoSuchElementException =>
-        throw new ShardException("All shard replicas are down")
+        throw new ShardOfflineException
     }
   }
 }
