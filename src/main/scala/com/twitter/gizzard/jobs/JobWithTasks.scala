@@ -14,9 +14,7 @@ class JobWithTasksParser(jobParser: JobParser) extends JobParser {
   }
 }
 
-case class JobWithTasks(tasks: Iterable[Job]) extends Job {
+case class JobWithTasks(tasks: Iterable[Job]) extends SchedulableWithTasks(tasks) with Job {
   def apply() = for (task <- tasks) task()
-  def toMap = Map("tasks" -> tasks.map { task => (Map(task.className -> task.toMap)) })
-  override def className = classOf[JobWithTasks].getName
-  override def loggingName = tasks.map(_.loggingName).mkString(",")
 }
+

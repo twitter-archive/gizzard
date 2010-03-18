@@ -24,33 +24,4 @@ object JobWithTasksSpec extends Specification with JMocker with ClassMocker {
       result mustEqual new JobWithTasks(List(job))
     }
   }
-
-  "JobWithTasks" should {
-    "to and from json" >> {
-      val jobs = List(mock[Job], mock[Job])
-      for (job <- jobs) {
-        expect {
-          allowing(job).className willReturn "Task"
-          allowing(job).toMap willReturn Map("a" -> 1)
-        }
-      }
-      val jobWithTasks = new JobWithTasks(jobs)
-      val json = jobWithTasks.toJson
-      json mustMatch "JobWithTasks"
-      json mustMatch "\"tasks\":"
-      json mustMatch "\\{\"Task\":\\{\"a\":1\\}\\}"
-    }
-
-    "loggingName" >> {
-      val job1 = mock[Job]
-      val job2 = mock[Job]
-      val jobWithTasks = new JobWithTasks(List(job1, job2))
-      expect {
-        allowing(job1).loggingName willReturn "Job1"
-        allowing(job2).className willReturn "Job2"
-        allowing(job2).loggingName willReturn "Job2"
-      }
-      jobWithTasks.loggingName mustEqual "Job1,Job2"
-    }
-  }
 }

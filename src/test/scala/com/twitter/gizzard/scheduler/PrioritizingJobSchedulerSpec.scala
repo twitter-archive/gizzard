@@ -4,7 +4,7 @@ import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.Config
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import jobs.Job
+import jobs.Schedulable
 
 
 object PrioritizingJobSchedulerSpec extends Specification with JMocker with ClassMocker {
@@ -15,14 +15,14 @@ object PrioritizingJobSchedulerSpec extends Specification with JMocker with Clas
     val prioritizingScheduler = new PrioritizingJobScheduler(Map(3 -> low, 2 -> medium, 1 -> high))
 
     "apply" in {
-      val job = mock[Job]
+      val schedulable = mock[Schedulable]
 
-      expect { one(low).apply(job) }
-      prioritizingScheduler(3, job)
-      expect { one(medium).apply(job) }
-      prioritizingScheduler(2, job)
-      expect { one(high).apply(job) }
-      prioritizingScheduler(1, job)
+      expect { one(low).apply(schedulable) }
+      prioritizingScheduler(3, schedulable)
+      expect { one(medium).apply(schedulable) }
+      prioritizingScheduler(2, schedulable)
+      expect { one(high).apply(schedulable) }
+      prioritizingScheduler(1, schedulable)
     }
 
     "retryErrors" in {
