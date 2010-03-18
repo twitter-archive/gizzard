@@ -7,7 +7,7 @@ trait ReadWriteNameServer extends ManagingNameServer with ReadWriteShard[Managin
   def findShard(shardInfo: ShardInfo)                                           = readOperation(_.findShard(shardInfo))
   def getBusyShards()                                                           = readOperation(_.getBusyShards())
   def getChildShardsOfClass(parentShardId: Int, className: String)              = readOperation(_.getChildShardsOfClass(parentShardId, className))
-  def getForwarding(tableId: Int, baseId: Long)                                 = readOperation(_.getForwarding(tableId, baseId))
+  def getForwarding(serviceId: Int, tableId: Int, baseId: Long)                 = readOperation(_.getForwarding(serviceId, tableId, baseId))
   def getForwardingForShard(shardId: Int)                                       = readOperation(_.getForwardingForShard(shardId))
   def getForwardings()                                                          = readOperation(_.getForwardings())
   def getParentShard(shardId: Int)                                              = readOperation(_.getParentShard(shardId))

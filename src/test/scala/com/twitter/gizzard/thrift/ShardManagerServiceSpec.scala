@@ -198,9 +198,9 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "get_forwarding" in {
       expect {
-        one(nameServer).getForwarding(tableId, 0) willReturn shardInfo1
+        one(nameServer).getForwarding(1, tableId, 0) willReturn shardInfo1
       }
-      manager.get_forwarding(tableId, 0) mustEqual thriftShardInfo1
+      manager.get_forwarding(1, tableId, 0) mustEqual thriftShardInfo1
     }
 
     "get_forwarding_for_shard" in {

@@ -54,7 +54,7 @@ service ShardManager {
 
   void set_forwarding(1: Forwarding forwarding) throws(ShardException ex)
   void replace_forwarding(1: i32 old_shard_id, 2: i32 new_shard_id) throws(ShardException ex)
-  ShardInfo get_forwarding(1: i32 table_id, 2: i64 base_id) throws(ShardException ex)
+  ShardInfo get_forwarding(1: i32 service_id, 2: i32 table_id, 3: i64 base_id) throws(ShardException ex)
   Forwarding get_forwarding_for_shard(1: i32 shard_id) throws(ShardException ex)
   list<Forwarding> get_forwardings() throws(ShardException ex)
   void reload_forwardings() throws(ShardException ex)

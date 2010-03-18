@@ -196,7 +196,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
 
       "getForwarding" in {
         nameServer.setForwarding(forwarding)
-        nameServer.getForwarding(4, 0L).shardId mustEqual shardId
+        nameServer.getForwarding(1, 4, 0L).shardId mustEqual shardId
       }
 
       "getForwardingForShard" in {

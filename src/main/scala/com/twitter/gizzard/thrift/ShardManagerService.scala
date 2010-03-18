@@ -78,8 +78,8 @@ class ShardManagerService(nameServer: CachingNameServer/*, copyManager: CopyMana
     nameServer.replaceForwarding(oldShardId, newShardId)
   }
 
-  def get_forwarding(tableId: Int, baseId: Long) = {
-    nameServer.getForwarding(tableId, baseId).toThrift
+  def get_forwarding(serviceId: Int, tableId: Int, baseId: Long) = {
+    nameServer.getForwarding(serviceId, tableId, baseId).toThrift
   }
 
   def get_forwarding_for_shard(shardId: Int) = {
