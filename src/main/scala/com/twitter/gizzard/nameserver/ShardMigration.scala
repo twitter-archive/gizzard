@@ -4,7 +4,7 @@ import shards._
 
 
 object ShardMigration {
-  def setupMigration[S <: Shard](sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo, nameServer: NameServer[S]): ShardMigration = {
+  def setupMigration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo, nameServer: ManagingNameServer): ShardMigration = {
     val lastDot = sourceShardInfo.className.lastIndexOf('.')
     val packageName = if (lastDot >= 0) sourceShardInfo.className.substring(0, lastDot + 1) else ""
     val sourceShardId = nameServer.findShard(sourceShardInfo)
@@ -26,7 +26,7 @@ object ShardMigration {
     new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
   }
 
-  def finishMigration[S <: Shard](migration: ShardMigration, nameServer: NameServer[S]) {
+  def finishMigration(migration: ShardMigration, nameServer: ManagingNameServer) {
     nameServer.removeChildShard(migration.writeOnlyShardId, migration.destinationShardId)
     nameServer.replaceChildShard(migration.replicatingShardId, migration.destinationShardId)
     nameServer.replaceForwarding(migration.replicatingShardId, migration.destinationShardId)

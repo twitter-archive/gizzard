@@ -7,7 +7,7 @@ import shards.{Busy, Shard, ShardTimeoutException}
 import nameserver.{NameServer, NonExistentShard}
 
 
-object CopyMachine {
+/*object CopyMachine {
   val MIN_COPY = 500
 
   def pack(sourceShardId: Int, destinationShardId: Int, count: Int): Map[String, AnyVal] = {
@@ -66,4 +66,4 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
 
   protected def copyPage(sourceShard: S, destinationShard: S, count: Int): Map[String, AnyVal]
   protected def finished: Boolean
-}
+} */

@@ -6,7 +6,7 @@ import com.twitter.gizzard.shards.{ShardInfo, Shard, Busy, ChildInfo}
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import jobs.{CopyMachine, JobScheduler}
+import jobs.{JobScheduler}
 import shards.ShardException
 
 
@@ -18,8 +18,8 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
     val otherShardInfo = new ShardInfo(SQL_SHARD, "other_table", "localhost")
 
     var shardRepository: ShardRepository[Shard] = null
-    var copyManager: CopyManager[Shard] = null
-    var nameServer: NameServer[Shard] = null
+//    var copyManager: CopyManager[Shard] = null
+    var nameServer: ManagingNameServer = null
     var forwardShard: Shard = null
     var backwardShard: Shard = null
 
@@ -36,9 +36,9 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       shardRepository = mock[ShardRepository[Shard]]
-      nameServer = new SqlNameServer(queryEvaluator, shardRepository, "test", (id: Long) => id)
+      nameServer = new SqlNameServer(queryEvaluator, "test")
 
-      nameServer.reload()
+//      nameServer.reload()
 
       forwardShard = mock[Shard]
       backwardShard = mock[Shard]
@@ -208,15 +208,14 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
         nameServer.getForwardings() mustEqual List(forwarding)
       }
 
-      "findCurrentForwarding" in {
+/*      "findCurrentForwarding" in {
         forwardShardInfo.shardId = shardId
         expect {
           one(shardRepository).find(forwardShardInfo, 1, List()) willReturn forwardShard
         }
         nameServer.setForwarding(forwarding)
-        nameServer.reload()
         nameServer.findCurrentForwarding(List(1, 2), 0L) mustEqual forwardShard
-      }
+      } */
     }
 
     "advanced shard navigation" in {

@@ -11,7 +11,7 @@ import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
-class ShardManagerService[S <: Shard](nameServer: NameServer[S], copyManager: CopyManager[S]) extends ShardManager.Iface {
+class ShardManagerService(nameServer: CachingNameServer/*, copyManager: CopyManager[S]*/) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def create_shard(shard: ShardInfo) = {
@@ -55,7 +55,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S], copyManager: Co
   }
 
   def copy_shard(sourceShardId: Int, destinationShardId: Int) {
-    copyManager.newCopyJob(sourceShardId, destinationShardId).start(nameServer, copyManager.scheduler)
+//    copyManager.newCopyJob(sourceShardId, destinationShardId).start(nameServer, copyManager.scheduler)
   }
 
   def setup_migration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
@@ -63,7 +63,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S], copyManager: Co
   }
 
   def migrate_shard(migration: ShardMigration) {
-    copyManager.newMigrateJob(migration.fromThrift).start(nameServer, copyManager.scheduler)
+//    copyManager.newMigrateJob(migration.fromThrift).start(nameServer, copyManager.scheduler)
   }
 
   def finish_migration(migration: ShardMigration) {
@@ -96,7 +96,7 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S], copyManager: Co
   }
 
   def find_current_forwarding(tableId: java.util.List[java.lang.Integer], id: Long) = {
-    nameServer.findCurrentForwarding(tableId.toList, id).shardInfo.toThrift
+    nameServer.findCurrentForwarding(tableId.toList, id).toThrift
   }
 
   def shard_ids_for_hostname(hostname: String, className: String): java.util.List[java.lang.Integer] = {

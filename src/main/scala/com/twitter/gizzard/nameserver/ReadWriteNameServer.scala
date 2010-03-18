@@ -3,8 +3,7 @@ package com.twitter.gizzard.nameserver
 import shards._
 
 
-trait ReadWriteNameServer[S <: Shard] extends NameServer[S] with ReadWriteShard[NameServer[S]] {
-  def findCurrentForwarding(tableId: List[Int], id: Long)                       = readOperation(_.findCurrentForwarding(tableId, id))
+trait ReadWriteNameServer extends ManagingNameServer with ReadWriteShard[ManagingNameServer] {
   def findShard(shardInfo: ShardInfo)                                           = readOperation(_.findShard(shardInfo))
   def getBusyShards()                                                           = readOperation(_.getBusyShards())
   def getChildShardsOfClass(parentShardId: Int, className: String)              = readOperation(_.getChildShardsOfClass(parentShardId, className))
@@ -14,7 +13,9 @@ trait ReadWriteNameServer[S <: Shard] extends NameServer[S] with ReadWriteShard[
   def getParentShard(shardId: Int)                                              = readOperation(_.getParentShard(shardId))
   def getRootShard(shardId: Int)                                                = readOperation(_.getRootShard(shardId))
   def getShard(shardId: Int)                                                    = readOperation(_.getShard(shardId))
-  def listShardChildren(shardId: Int)                                           = readOperation(_.listShardChildren(shardId))
+  def listShardChildren(parentId: Int)                                          = readOperation(_.listShardChildren(parentId))
+  def listShardChildren()                                                       = readOperation(_.listShardChildren())
+  def listShards()                                                              = readOperation(_.listShards())
   def shardIdsForHostname(hostname: String, className: String): List[Int]       = readOperation(_.shardIdsForHostname(hostname, className))
   def shardsForHostname(hostname: String, className: String): List[ShardInfo]   = readOperation(_.shardsForHostname(hostname, className))
 
@@ -29,7 +30,4 @@ trait ReadWriteNameServer[S <: Shard] extends NameServer[S] with ReadWriteShard[
   def updateShard(shardInfo: ShardInfo)                                         = writeOperation(_.updateShard(shardInfo))
 
   def rebuildSchema() = readOperation(_.rebuildSchema())
-  def findShardById(shardId: Int, weight: Int) = readOperation(_.findShardById(shardId, weight))
-  def reload() = readOperation(_.reload())
-  def reloadForwardings() = readOperation(_.reloadForwardings())
 }
