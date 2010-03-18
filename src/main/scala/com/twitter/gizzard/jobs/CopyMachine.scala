@@ -3,7 +3,7 @@ package com.twitter.gizzard.jobs
 import java.lang.reflect.Constructor
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
-import shards.{Busy, Shard, ShardTimeoutException}
+import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
 import nameserver.NameServer
 
 
@@ -50,6 +50,10 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
       case e: ShardTimeoutException if (count > CopyMachine.MIN_COPY) =>
         log.warning("Shard block copy timed out; trying a smaller block size.")
         asMap = asMap ++ Map("count" -> count / 2)
+        scheduler(constructor.newInstance(asMap))
+        return
+      case e: ShardDatabaseTimeoutException =>
+        log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler(constructor.newInstance(asMap))
         return
       case e: Exception =>
