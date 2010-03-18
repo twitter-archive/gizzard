@@ -1,6 +1,7 @@
 package com.twitter.gizzard.nameserver
 
-import jobs.{CopyMachine, JobScheduler}
+import jobs.CopyMachine
+import scheduler.JobScheduler
 import shards.Shard
 
 
