@@ -11,7 +11,7 @@ import nameserver.{ManagingNameServer, SqlNameServer, ShardRepository}
 
 object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with Database {
 
-  SqlNameServer.rebuildSchema(queryEvaluator)
+//  SqlNameServer.rebuildSchema(queryEvaluator)
 
   val shardInfo1 = new ShardInfo("com.example.UserShard", "table1", "localhost")
   val shardInfo2 = new ShardInfo("com.example.UserShard", "table2", "localhost")
@@ -44,7 +44,7 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
-      nameServer = new SqlNameServer(queryEvaluator, "test")
+      nameServer = new SqlNameServer(queryEvaluator, (a: ShardInfo) => ())
 
       nameServer.createShard(shardInfo1)
       nameServer.createShard(shardInfo2)

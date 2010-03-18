@@ -27,9 +27,12 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
   val parentShardId = 900
   val childShardId1 = 200
   val childShardId2 = 201
-  val tableId = List(1, 2, 3)
-  val forwarding = new nameserver.Forwarding(List(1, 2, 3), 0, shardId)
-  val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
+//  val tableId = List(1, 2, 3)
+  val tableId =  4
+//  val forwarding = new nameserver.Forwarding(List(1, 2, 3), 0, shardId)
+  val forwarding = new nameserver.Forwarding(0, 4, 0, shardId)
+//  val thriftForwarding = new thrift.Forwarding(List(1, 2, 3).toJavaList, 0, shardId)
+  val thriftForwarding = new thrift.Forwarding(0, 4, 0, shardId)
   val shard = new shards.Shard {
     def shardInfo = shardInfo1
     def weight = 3
@@ -197,7 +200,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
       expect {
         one(nameServer).getForwarding(tableId, 0) willReturn shardInfo1
       }
-      manager.get_forwarding(tableId.toJavaList, 0) mustEqual thriftShardInfo1
+      manager.get_forwarding(tableId, 0) mustEqual thriftShardInfo1
     }
 
     "get_forwarding_for_shard" in {
@@ -225,7 +228,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
       expect {
         one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shard
       }
-      manager.find_current_forwarding(tableId.toJavaList, 23L) mustEqual thriftShardInfo1
+      manager.find_current_forwarding(tableId, 23L) mustEqual thriftShardInfo1
     }
 
     "shard_ids_for_hostname" in {

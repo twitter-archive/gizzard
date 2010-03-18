@@ -36,7 +36,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
       }
 
       shardRepository = mock[ShardRepository[Shard]]
-      nameServer = new SqlNameServer(queryEvaluator, "test")
+      nameServer = new SqlNameServer(queryEvaluator, (a: ShardInfo) => ())
 
 //      nameServer.reload()
 
@@ -178,7 +178,8 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
         }
 
         shardId = nameServer.createShard(forwardShardInfo)
-        forwarding = new Forwarding(List(1, 2), 0L, shardId)
+//        forwarding = new Forwarding(0, List(1, 2), 0L, shardId)
+        forwarding = new Forwarding(0, 1, 0L, shardId)
       }
 
       "setForwarding" in {
@@ -195,7 +196,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker with D
 
       "getForwarding" in {
         nameServer.setForwarding(forwarding)
-        nameServer.getForwarding(List(1, 2), 0L).shardId mustEqual shardId
+        nameServer.getForwarding(4, 0L).shardId mustEqual shardId
       }
 
       "getForwardingForShard" in {

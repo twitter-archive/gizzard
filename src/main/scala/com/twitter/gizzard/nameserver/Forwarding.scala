@@ -1,4 +1,4 @@
 package com.twitter.gizzard.nameserver
 
 
-case class Forwarding(tableId: List[Int], baseId: Long, shardId: Int)
+case class Forwarding(serviceId: Int, tableId: Int, baseId: Long, shardId: Int)

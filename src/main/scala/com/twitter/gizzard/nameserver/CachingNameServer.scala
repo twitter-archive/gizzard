@@ -13,7 +13,7 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
 
   @volatile protected var shardInfos = mutable.Map.empty[Int, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[Int, Seq[ChildInfo]] = null
-  @volatile private var forwardings: scala.collection.Map[List[Int], TreeMap[Long, ShardInfo]] = null
+  @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
 
   reload()
 
@@ -27,7 +27,7 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
 
     val newFamilyTree = nameServer.listShardChildren()
 
-    val newForwardings = new mutable.HashMap[List[Int], TreeMap[Long, ShardInfo]]
+    val newForwardings = new mutable.HashMap[Int, TreeMap[Long, ShardInfo]]
     nameServer.getForwardings().foreach { forwarding =>
       val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
       treeMap.put(forwarding.baseId, newShardInfos(forwarding.shardId))
@@ -38,7 +38,7 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
     forwardings = newForwardings
   }
 
-  def findCurrentForwarding(tableId: List[Int], id: Long) = {
+  def findCurrentForwarding(tableId: Int, id: Long) = {
     forwardings.get(tableId).flatMap { bySourceIds =>
       val item = bySourceIds.floorEntry(mappingFunction(id))
       if (item != null) {
@@ -64,7 +64,7 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
   def markShardBusy(shardId: Int, busy: Busy.Value) = nameServer.markShardBusy(shardId, busy)
   def setForwarding(forwarding: Forwarding) = nameServer.setForwarding(forwarding)
   def replaceForwarding(oldShardId: Int, newShardId: Int) = nameServer.replaceForwarding(oldShardId, newShardId)
-  def getForwarding(tableId: List[Int], baseId: Long) = nameServer.getForwarding(tableId, baseId)
+  def getForwarding(tableId: Int, baseId: Long) = nameServer.getForwarding(tableId, baseId)
   def getForwardingForShard(shardId: Int) = nameServer.getForwardingForShard(shardId)
   def getForwardings() = nameServer.getForwardings()
   def shardIdsForHostname(hostname: String, className: String) = nameServer.shardIdsForHostname(hostname, className)
