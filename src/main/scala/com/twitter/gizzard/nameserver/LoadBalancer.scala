@@ -4,13 +4,13 @@ import shards.Shard
 import scala.util.Random
 
 
-class LoadBalancer(random: Random, replicas: Seq[Shard]) {
-  def this(replicas: Seq[Shard]) = this(new Random, replicas)
+class LoadBalancer[ConcreteShard <: Shard](random: Random, replicas: Seq[ConcreteShard]) extends (() => Seq[ConcreteShard]) {
+  def this(replicas: Seq[ConcreteShard]) = this(new Random, replicas)
   val totalWeight = replicas.foldLeft(0) { _ + _.weight }
 
   def apply() = sort(totalWeight, replicas)
 
-  private def sort(totalWeight: Int, replicas: Seq[Shard]): List[Shard] = replicas match {
+  private def sort(totalWeight: Int, replicas: Seq[ConcreteShard]): List[ConcreteShard] = replicas match {
     case Seq() => Nil
     case Seq(first, rest @ _*) =>
       val remainingWeight = totalWeight - first.weight

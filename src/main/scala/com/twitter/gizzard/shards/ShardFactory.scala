@@ -1,7 +1,7 @@
 package com.twitter.gizzard.shards
 
 
-trait ShardFactory[S <: Shard] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[Shard]): S
+trait ShardFactory[ConcreteShard <: Shard] {
+  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[ConcreteShard]): ConcreteShard
   def materialize(shardInfo: ShardInfo)
 }
