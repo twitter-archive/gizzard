@@ -1,13 +1,13 @@
 package com.twitter.gizzard.scheduler
 
 import scala.collection.Map
-import jobs.Job
+import jobs.Schedulable
 
 
 class PrioritizingJobScheduler(schedulers: Map[Int, JobScheduler]) extends Process {
-  def apply(priority: Int, job: Job) {
+  def apply(priority: Int, schedulable: Schedulable) {
     schedulers.get(priority) match {
-      case Some(scheduler) => scheduler(job)
+      case Some(scheduler) => scheduler(schedulable)
       case None => throw new Exception("No scheduler for priority " + priority)
     }
   }
