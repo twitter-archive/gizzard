@@ -35,13 +35,6 @@ CREATE TABLE shard_children (
 ) ENGINE=INNODB
 /* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
 """
-}
-
-class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: ShardInfo => Unit)
-                           extends ManagingNameServer {
-  val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlNameServer", "", "")
-  val weight = 1 // hardcode for now
 
   val FORWARDINGS_DDL = """
 CREATE TABLE forwardings (
@@ -55,6 +48,7 @@ CREATE TABLE forwardings (
     UNIQUE unique_shard_id (shard_id)
 ) ENGINE=INNODB;
 """
+
   val SEQUENCE_DDL = """
 CREATE TABLE IF NOT EXISTS sequences (
     service_id              INT                     NOT NULL,
@@ -63,6 +57,13 @@ CREATE TABLE IF NOT EXISTS sequences (
     PRIMARY KEY (service_id)
 ) ENGINE=INNODB;
 """
+}
+
+class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: ShardInfo => Unit)
+                           extends ManagingNameServer {
+  val children = List()
+  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlNameServer", "", "")
+  val weight = 1 // hardcode for now
 
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
@@ -268,8 +269,8 @@ CREATE TABLE IF NOT EXISTS sequences (
     queryEvaluator.execute(SqlNameServer.SHARD_CHILDREN_DDL)
     queryEvaluator.execute("DROP TABLE IF EXISTS forwardings")
     queryEvaluator.execute("DROP TABLE IF EXISTS sequences")
-    queryEvaluator.execute(FORWARDINGS_DDL)
-    queryEvaluator.execute(SEQUENCE_DDL)
+    queryEvaluator.execute(SqlNameServer.FORWARDINGS_DDL)
+    queryEvaluator.execute(SqlNameServer.SEQUENCE_DDL)
 //    queryEvaluator.execute("INSERT INTO_sequences VALUES (0)")
   }
 }

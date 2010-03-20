@@ -14,3 +14,8 @@ import shards.Shard
   /** Create a new CopyMachine job for migrating one shard to another. */
   //def newMigrateJob(migration: ShardMigration): CopyMachine[S]
 //} */
+
+trait CopyManager {
+  def copy(sourceShardId: Int, destinationShardId: Int)
+  def migrate(migration: ShardMigration)
+}
