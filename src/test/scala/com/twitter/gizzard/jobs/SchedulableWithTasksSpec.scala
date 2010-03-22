@@ -36,5 +36,7 @@ object SchedulableWithTasksSpec extends Specification with JMocker with ClassMoc
       }
       schedulableWithTasks.loggingName mustEqual "Schedulable1,Schedulable2"
     }
+
+    "equals" >> {}
   }
 }

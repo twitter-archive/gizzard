@@ -18,7 +18,7 @@ object JobWithTasksSpec extends Specification with JMocker with ClassMocker {
       expect {
         one(jobParser).apply(taskJson) willReturn job
       }
-      val result = jobWithTasksParser(Map("com.twitter.gizzard.jobs.JobWithTasks" -> Map("tasks" ->
+      val result = jobWithTasksParser(Map("theClassNameIsIgnored" -> Map("tasks" ->
         List(taskJson)
       )))
       result mustEqual new JobWithTasks(List(job))

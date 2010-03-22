@@ -83,4 +83,5 @@ class ErrorHandlingJobQueue(name: String, normalQueue: MessageQueue[String, Stri
 
     def next = element
   }
+  override def toString() = "<ErrorHandlingJobQueue '%s'>".format(name)
 }

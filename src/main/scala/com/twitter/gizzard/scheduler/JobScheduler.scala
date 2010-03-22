@@ -15,8 +15,8 @@ object JobScheduler {
    * a new ErrorHandlingJobParser and linking the job & error queues together through it.
    */
   def apply(name: String, queueConfig: ConfigMap, jobParser: jobs.JobParser, stats: StatsProvider) = {
+    val path = queueConfig("path")
     val schedulerConfig = queueConfig.configMap(name)
-    val path = schedulerConfig("path")
 
     val jobQueueName = schedulerConfig("job_queue")
     val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
