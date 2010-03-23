@@ -3,8 +3,7 @@ package com.twitter.gizzard.nameserver
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
-import net.lag.logging.Logger
-import jobs.JobScheduler
+import scheduler.JobScheduler
 import shards._
 
 
@@ -37,7 +36,6 @@ CREATE TABLE shard_children (
 /* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
 """
 
-  private val log = Logger.get(getClass.getName)
 
   class NonExistentShard extends Exception("Shard does not exist")
   class InvalidShard extends Exception("Shard has invalid attributes (such as hostname)")
@@ -278,7 +276,6 @@ class NameServer[S <: Shard](queryEvaluator: QueryEvaluator, shardRepository: Sh
 
   def reload() {
     NameServer.reload(queryEvaluator)
-    // force creation of db connections:
     forwardingManager.reloadForwardings(this)
   }
 
