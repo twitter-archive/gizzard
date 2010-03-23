@@ -39,7 +39,8 @@ class KestrelMessageQueue(queueName: String, queue: PersistentQueue, stats: Stat
   private def get(): Option[QItem] = {
     var item: Option[QItem] = None
     while (item == None && !queue.isClosed) {
-      item = queue.removeReceive(Time.now.inMillis + TIMEOUT, true)
+      // do not use Time.now or it will interact strangely with tests.
+      item = queue.removeReceive(System.currentTimeMillis + TIMEOUT, true)
     }
     item
   }

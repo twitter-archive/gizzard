@@ -16,7 +16,7 @@ object KestrelMessageQueueSpec extends Specification with JMocker with ClassMock
     val message1 = "message1"
     val message2 = "message2"
     val queue = mock[PersistentQueue]
-    val items = List(message1, message2).map { x: String => Some(QItem(0, 0, x.getBytes, 0)) }.toList
+    val items = List(message1, message2).map { x => Some(QItem(0, 0, x.getBytes, x.hashCode)) }.toList
 
     expect { allowing(queue).setup() }
     val kestrelMessageQueue = new KestrelMessageQueue("queue", queue, DevNullStats)
@@ -32,14 +32,13 @@ object KestrelMessageQueueSpec extends Specification with JMocker with ClassMock
     }
 
     "iteration" >> {
-      val till = Time.now.inMillis + kestrelMessageQueue.TIMEOUT
       expect {
         one(queue).isClosed.willReturn(false) then
-        one(queue).removeReceive(till, true).willReturn(items(0)) then
-        one(queue).confirmRemove(0) then
+        one(queue).removeReceive(an[Int], a[Boolean]).willReturn(items(0)) then
+        one(queue).confirmRemove(items(0).get.xid) then
         one(queue).isClosed.willReturn(false) then
-        one(queue).removeReceive(till, true).willReturn(items(1)) then
-        one(queue).confirmRemove(0) then
+        one(queue).removeReceive(an[Int], a[Boolean]).willReturn(items(1)) then
+        one(queue).confirmRemove(items(1).get.xid) then
         one(queue).isClosed.willReturn(true)
       }
       kestrelMessageQueue.toList mustEqual List(message1, message2)
@@ -53,7 +52,8 @@ object KestrelMessageQueueSpec extends Specification with JMocker with ClassMock
         one(queue).length willReturn 2
         one(queue).removeReceive(0, true).willReturn(items(0)) then
           one(queue).removeReceive(0, true).willReturn(items(1))
-        exactly(2).of(queue).confirmRemove(0)
+        one(queue).confirmRemove(items(0).get.xid)
+        one(queue).confirmRemove(items(1).get.xid)
         one(destinationMessageQueue).put(message1)
         one(destinationMessageQueue).put(message2)
       }
