@@ -4,10 +4,10 @@ import java.lang.reflect.Constructor
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
 import shards.{Busy, Shard, ShardTimeoutException}
-import nameserver.{NameServer, NonExistentShard}
+import nameserver.{ManagingNameServer, ShardNameServer, NonExistentShard}
 
 
-/*object CopyMachine {
+object CopyMachine {
   val MIN_COPY = 500
 
   def pack(sourceShardId: Int, destinationShardId: Int, count: Int): Map[String, AnyVal] = {
@@ -15,7 +15,7 @@ import nameserver.{NameServer, NonExistentShard}
   }
 }
 
-abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends UnboundJob[(ManagingNameServer, JobScheduler)] {
+abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends UnboundJob[(ManagingNameServer, ShardNameServer[S], JobScheduler)] {
   val log = Logger.get(getClass.getName)
   val constructor = getClass.asInstanceOf[Class[CopyMachine[S]]].getConstructor(classOf[Map[String, AnyVal]])
   val (sourceShardId, destinationShardId, count) = (attributes("source_shard_id").toInt, attributes("destination_shard_id").toInt, attributes("count").toInt)
@@ -23,25 +23,25 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
   var asMap: Map[String, AnyVal] = attributes
   def toMap = asMap
 
-  def start(nameServer: NameServer[S], scheduler: JobScheduler) {
+  def start(scheduler: JobScheduler) {
     scheduler(this)
   }
 
-  def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
+  def finish(nameServer: ManagingNameServer, scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationShardId, Busy.Normal)
     log.info("Copying finished for (type %s) from %d to %d",
              getClass.getName.split("\\.").last, sourceShardId, destinationShardId)
   }
 
-  def apply(environment: (ManagingNameServer, JobScheduler)) {
-    val (nameServer, scheduler) = environment
+  def apply(environment: (ManagingNameServer, ShardNameServer[S], JobScheduler)) {
+    val (managingNameServer, shardNameServer, scheduler) = environment
     val newMap = try {
       log.info("Copying shard block (type %s) from %d to %d: state=%s",
                getClass.getName.split("\\.").last, sourceShardId, destinationShardId, attributes)
-      val sourceShard = nameServer.findShardById(sourceShardId)
-      val destinationShard = nameServer.findShardById(destinationShardId)
+      val sourceShard = shardNameServer.findShardById(sourceShardId)
+      val destinationShard = shardNameServer.findShardById(destinationShardId)
       // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-      nameServer.markShardBusy(destinationShardId, Busy.Busy)
+      managingNameServer.markShardBusy(destinationShardId, Busy.Busy)
       copyPage(sourceShard, destinationShard, count)
     } catch {
       case e: NonExistentShard =>
@@ -58,7 +58,7 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
     }
     asMap = newMap
     if (finished) {
-      finish(nameServer, scheduler)
+      finish(managingNameServer, scheduler)
     } else {
       scheduler(constructor.newInstance(newMap))
     }
@@ -66,4 +66,4 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
 
   protected def copyPage(sourceShard: S, destinationShard: S, count: Int): Map[String, AnyVal]
   protected def finished: Boolean
-} */
+}

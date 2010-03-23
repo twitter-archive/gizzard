@@ -3,7 +3,6 @@ package com.twitter.gizzard.nameserver
 import scala.collection.mutable
 import shards.{Shard, ShardInfo, ShardFactory}
 
-
 class ShardRepository[S <: Shard] {
   private val shardFactories = mutable.Map.empty[String, ShardFactory[S]]
 
@@ -13,10 +12,6 @@ class ShardRepository[S <: Shard] {
 
   def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
     shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
-  }
-
-  def create(shardInfo: ShardInfo) {
-    shardFactories(shardInfo.className).materialize(shardInfo)
   }
 
   override def toString() = {

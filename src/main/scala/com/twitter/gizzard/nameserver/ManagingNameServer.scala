@@ -30,6 +30,3 @@ trait ManagingNameServer extends Shard {
   def rebuildSchema()
   def listShardChildren(parentId: Int): Seq[ChildInfo]
 }
-
-//  def reloadForwardings() 
-//  def reload()

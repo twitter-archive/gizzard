@@ -19,6 +19,10 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
 
   def getShardInfo(id: Int) = shardInfos(id)
 
+  def getChildren(id: Int) = {
+    familyTree.getOrElse(id, new mutable.ArrayBuffer[ChildInfo])
+  }
+
   def reload() {
     val newShardInfos = mutable.Map.empty[Int, ShardInfo]
     nameServer.listShards().foreach { shardInfo =>
@@ -30,7 +34,7 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
     val newForwardings = new mutable.HashMap[Int, TreeMap[Long, ShardInfo]]
     nameServer.getForwardings().foreach { forwarding =>
       val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
-      treeMap.put(forwarding.baseId, newShardInfos(forwarding.shardId))
+      treeMap.put(forwarding.baseId, newShardInfos.getOrElse(forwarding.shardId, throw new NonExistentShard))
     }
 
     shardInfos = newShardInfos
@@ -51,7 +55,6 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
     }
   }
 
-  // delegation
   def listShardChildren(parentId: Int) = nameServer.listShardChildren(parentId)
   def createShard(shardInfo: ShardInfo) = nameServer.createShard(shardInfo)
   def findShard(shardInfo: ShardInfo) = nameServer.findShard(shardInfo)

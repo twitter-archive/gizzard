@@ -3,9 +3,9 @@ package com.twitter.gizzard.nameserver
 import com.twitter.xrayspecs.TimeConversions._
 import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
-import org.specs.mock.{ClassMocker, JMocker}
+import org.specs.mock.JMocker
 
-object SqlNameServerSpec extends Specification with JMocker with ClassMocker with Database {
+object SqlNameServerSpec extends Specification with JMocker with Database {
   "SqlNameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
