@@ -12,7 +12,6 @@ import jobs.JobScheduler
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
   val nameServer = mock[nameserver.CachingNameServer]
   val copyMachine = mock[nameserver.CopyManager]
-//  val copyManager = mock[nameserver.CopyManager[shards.Shard]]
   val manager = new thrift.ShardManagerService(nameServer, copyMachine)
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
@@ -28,9 +27,10 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
   val parentShardId = 900
   val childShardId1 = 200
   val childShardId2 = 201
-  val tableId =  4
-  val forwarding = new nameserver.Forwarding(0, 4, 0, shardId)
-  val thriftForwarding = new thrift.Forwarding(0, 4, 0, shardId)
+  val serviceId = 1
+  val tableId = 4
+  val forwarding = new nameserver.Forwarding(serviceId, tableId, 0, shardId)
+  val thriftForwarding = new thrift.Forwarding(serviceId, tableId, 0, shardId)
 
   "ShardManagerService" should {
     "create_shard" in {
@@ -218,9 +218,9 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "find_current_forwarding" in {
       expect {
-        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shardInfo1
+        one(nameServer).findCurrentForwarding(serviceId, tableId, 23L) willReturn shardInfo1
       }
-      manager.find_current_forwarding(tableId, 23L) mustEqual thriftShardInfo1
+      manager.find_current_forwarding(serviceId, tableId, 23L) mustEqual thriftShardInfo1
     }
 
     "shard_ids_for_hostname" in {

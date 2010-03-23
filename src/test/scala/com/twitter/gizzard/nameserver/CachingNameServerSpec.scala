@@ -38,7 +38,7 @@ object CachingNameServerSpec extends Specification with JMocker {
     }
 
     "find current forwarding" in {
-      nameServer.findCurrentForwarding(1, 2) mustEqual shards(1)
+      nameServer.findCurrentForwarding(1, 1, 2) mustEqual shards(1)
     }
   }
 }

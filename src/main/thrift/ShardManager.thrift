@@ -58,7 +58,7 @@ service ShardManager {
   Forwarding get_forwarding_for_shard(1: i32 shard_id) throws(ShardException ex)
   list<Forwarding> get_forwardings() throws(ShardException ex)
   void reload_forwardings() throws(ShardException ex)
-  ShardInfo find_current_forwarding(1: i32 table_id, 2: i64 id) throws(ShardException ex)
+  ShardInfo find_current_forwarding(1: i32 service_id, 2: i32 table_id, 3: i64 id) throws(ShardException ex)
 
   list<i32> shard_ids_for_hostname(1: string hostname, 2: string class_name) throws(ShardException ex)
   list<ShardInfo> shards_for_hostname(1: string hostname, 2: string class_name) throws(ShardException ex)

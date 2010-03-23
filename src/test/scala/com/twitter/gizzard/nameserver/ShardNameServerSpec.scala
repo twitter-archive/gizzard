@@ -5,6 +5,7 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import shards._
 
+
 object ShardNameServerSpec extends Specification with JMocker with ClassMocker {
   "ShardNameServer" should {
     var nameServer = mock[CachingNameServer]

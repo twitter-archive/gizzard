@@ -18,7 +18,7 @@ trait ManagingNameServer extends Shard {
   def replaceForwarding(oldShardId: Int, newShardId: Int)
   def getForwarding(serviceId: Int, tableId: Int, baseId: Long): ShardInfo
   def getForwardingForShard(shardId: Int): Forwarding
-  def getForwardings(): List[Forwarding]
+  def getForwardings(): Seq[Forwarding]
   def shardIdsForHostname(hostname: String, className: String): List[Int]
   def listShards(): Seq[ShardInfo]
   def listShardChildren(): Map[Int, Seq[ChildInfo]]

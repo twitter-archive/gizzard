@@ -95,8 +95,8 @@ class ShardManagerService(nameServer: CachingNameServer, copyManager: CopyManage
     nameServer.reload()
   }
 
-  def find_current_forwarding(tableId: Int, id: Long) = {
-    nameServer.findCurrentForwarding(tableId, id).toThrift
+  def find_current_forwarding(serviceId: Int, tableId: Int, id: Long) = {
+    nameServer.findCurrentForwarding(serviceId, tableId, id).toThrift
   }
 
   def shard_ids_for_hostname(hostname: String, className: String): java.util.List[java.lang.Integer] = {
