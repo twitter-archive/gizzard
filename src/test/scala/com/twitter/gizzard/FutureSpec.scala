@@ -31,12 +31,14 @@ object FutureSpec extends Specification with JMocker with ClassMocker {
 
     "timeout a stuffed-up queue" in {
       val startFlag = new CountDownLatch(1)
+      val continueFlag = new CountDownLatch(1)
       new Thread() {
         override def run() {
-          future { startFlag.countDown(); Thread.sleep(20) }
+          future { startFlag.await(); continueFlag.countDown(); Thread.sleep(200) }
         }
       }.start()
-      startFlag.await()
+      startFlag.countDown()
+      continueFlag.await()
       future { 3 * 4 }.get must throwA[ExecutionException]
     }
   }

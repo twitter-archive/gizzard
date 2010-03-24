@@ -3,11 +3,12 @@ package com.twitter.gizzard.thrift
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
+import scheduler.{PrioritizingJobScheduler, JobScheduler}
 
 
 object JobManagerServiceSpec extends Specification with JMocker with ClassMocker {
-  val scheduler = mock[jobs.PrioritizingScheduler]
-  val subScheduler = mock[jobs.JobScheduler]
+  val scheduler = mock[PrioritizingJobScheduler]
+  val subScheduler = mock[JobScheduler]
   val service = new JobManagerService(scheduler)
 
   "JobManagerService" should {
@@ -21,7 +22,7 @@ object JobManagerServiceSpec extends Specification with JMocker with ClassMocker
 
     "stop_writes" in {
       expect {
-        one(scheduler).pauseWork()
+        one(scheduler).pause()
       }
 
       service.stop_writes()
@@ -29,7 +30,7 @@ object JobManagerServiceSpec extends Specification with JMocker with ClassMocker
 
     "resume_writes" in {
       expect {
-        one(scheduler).resumeWork()
+        one(scheduler).resume()
       }
 
       service.resume_writes()
@@ -47,7 +48,7 @@ object JobManagerServiceSpec extends Specification with JMocker with ClassMocker
     "stop_writes_for" in {
       expect {
         one(scheduler).apply(3) willReturn subScheduler
-        one(subScheduler).pauseWork()
+        one(subScheduler).pause()
       }
 
       service.stop_writes_for(3)
@@ -56,7 +57,7 @@ object JobManagerServiceSpec extends Specification with JMocker with ClassMocker
     "resume_writes_for" in {
       expect {
         one(scheduler).apply(3) willReturn subScheduler
-        one(subScheduler).resumeWork()
+        one(subScheduler).resume()
       }
 
       service.resume_writes_for(3)
@@ -72,7 +73,7 @@ object JobManagerServiceSpec extends Specification with JMocker with ClassMocker
     }
 
     "inject_job" in {
-      val job = capturingParam[jobs.Schedulable]
+      val job = capturingParam[jobs.Job]
 
       expect {
         one(scheduler).apply(3) willReturn subScheduler

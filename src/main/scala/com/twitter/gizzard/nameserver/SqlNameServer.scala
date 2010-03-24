@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import com.twitter.querulous.evaluator.QueryEvaluator
-import jobs.JobScheduler
+import scheduler.JobScheduler
 import scala.collection.mutable
 import shards._
 

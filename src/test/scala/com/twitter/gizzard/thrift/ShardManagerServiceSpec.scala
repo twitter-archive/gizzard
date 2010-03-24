@@ -6,7 +6,7 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
 import shards.Busy
-import jobs.JobScheduler
+import scheduler.JobScheduler
 
 
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {

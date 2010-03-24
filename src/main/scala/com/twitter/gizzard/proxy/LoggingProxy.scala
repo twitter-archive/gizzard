@@ -1,7 +1,7 @@
 package com.twitter.gizzard.proxy
 
 import scala.reflect.Manifest
-import com.twitter.ostrich.{StatsProvider, W3CStats}
+import com.twitter.ostrich.{Stats, StatsProvider, W3CStats}
 
 
 /**
@@ -11,21 +11,18 @@ import com.twitter.ostrich.{StatsProvider, W3CStats}
 object LoggingProxy {
   var counter = 0
 
-  def apply[T <: AnyRef](stats: Option[StatsProvider], logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
+  def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
-      val shortName = name.lastIndexOf('.') match {
-        case -1 => name
-        case n => name.substring(n + 1)
-      }
-
-      stats.map { _.incr("x-operation-" + shortName + ":" + method.name) }
+      val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
+      stats.incr("x-operation-" + shortName + ":" + method.name)
       logger.transaction {
-        logger.log("operation", shortName + ":" + method.name)
+        logger.log("operation", name + ":" + method.name)
         val arguments = (if (method.args != null) method.args.mkString(",") else "").replace(' ', '_')
         logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
-        logger.time("action-timing") {
-          method()
-        }
+        val (rv, msec) = Stats.duration { method() }
+        logger.addTiming("action-timing", msec.toInt)
+        stats.addTiming("x-operation-" + shortName + ":" + method.name, msec.toInt)
+        rv
       }
     }
   }

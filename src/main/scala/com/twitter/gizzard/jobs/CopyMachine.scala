@@ -4,7 +4,8 @@ import java.lang.reflect.Constructor
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
 import shards.{Busy, Shard, ShardTimeoutException}
-import nameserver.{ManagingNameServer, ShardNameServer, NonExistentShard}
+import scheduler.JobScheduler
+import nameserver._
 
 
 object CopyMachine {
@@ -20,12 +21,10 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
   val constructor = getClass.asInstanceOf[Class[CopyMachine[S]]].getConstructor(classOf[Map[String, AnyVal]])
   val (sourceShardId, destinationShardId, count) = (attributes("source_shard_id").toInt, attributes("destination_shard_id").toInt, attributes("count").toInt)
 
-  var asMap: Map[String, AnyVal] = attributes
+  private var asMap: Map[String, AnyVal] = attributes
   def toMap = asMap
 
-  def start(scheduler: JobScheduler) {
-    scheduler(this)
-  }
+  def start(scheduler: JobScheduler) = scheduler(this)
 
   def finish(nameServer: ManagingNameServer, scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationShardId, Busy.Normal)
