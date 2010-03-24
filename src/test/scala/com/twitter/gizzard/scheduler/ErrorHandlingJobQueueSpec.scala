@@ -46,6 +46,14 @@ object ErrorHandlingJobQueueSpec extends Specification with JMocker with ClassMo
       errorHandlingJobQueue.pause()
     }
 
+    "start" >> {
+      expect {
+        one(normalQueue).start()
+        one(errorQueue).start()
+      }
+      errorHandlingJobQueue.start()
+    }
+
     "resume" >> {
       expect {
         one(normalQueue).resume()

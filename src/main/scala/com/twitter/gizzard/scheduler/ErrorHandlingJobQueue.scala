@@ -43,7 +43,11 @@ class ErrorHandlingJobQueue(name: String, normalQueue: MessageQueue[String, Stri
 
   def put(schedulable: Schedulable) = normalJobQueue.put(schedulable)
 
-  def start() = retryTask.start()
+  def start() {
+    normalQueue.start()
+    errorQueue.start()
+    retryTask.start()
+  }
 
   def pause() {
     normalQueue.pause()
