@@ -14,6 +14,10 @@ class ShardRepository[S <: Shard] {
     shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
+  def materialize(shardInfo: ShardInfo) {
+    shardFactories(shardInfo.className).materialize(shardInfo)
+  }
+
   override def toString() = {
     "ShardRepository(" + shardFactories.toString + ")"
   }

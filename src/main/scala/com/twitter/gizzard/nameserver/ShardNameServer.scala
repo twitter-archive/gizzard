@@ -13,6 +13,4 @@ class ShardNameServer[S <: Shard](nameServer: CachingNameServer, shardRepository
   }
 
   def findShardById(shardId: Int): S = findShardById(shardId, 1)
-
-  def findCurrentForwarding(tableId: Int, sourceId: Long) = nameServer.findCurrentForwarding(serviceId, tableId, sourceId)
 }
