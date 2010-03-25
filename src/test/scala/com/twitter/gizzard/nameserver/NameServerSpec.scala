@@ -8,10 +8,10 @@ object CachingNameServerSpec extends Specification with JMocker with ClassMocker
   "CachingNameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val managingNameServer = mock[ManagingNameServer]
+    val nameServerStore = mock[NameServerStore]
     var shardRepository = mock[ShardRepository[Shard]]
     val mappingFunction = (n: Long) => n
-    var nameServer: CachingNameServer[Shard] = null
+    var nameServer: NameServer[Shard] = null
 
     val shards = (1 until 5).force.map { id => new ShardInfo(SQL_SHARD, "test", "localhost", "a", "b", Busy.Normal, id) }.toList
     val childrenList = List(new ChildInfo(4, 1))
@@ -20,12 +20,12 @@ object CachingNameServerSpec extends Specification with JMocker with ClassMocker
     var shard = mock[Shard]
     doBefore {
       expect {
-        one(managingNameServer).listShards() willReturn shards
-        one(managingNameServer).listShardChildren() willReturn shardChildren
-        one(managingNameServer).getForwardings() willReturn shardForwardings
+        one(nameServerStore).listShards() willReturn shards
+        one(nameServerStore).listShardChildren() willReturn shardChildren
+        one(nameServerStore).getForwardings() willReturn shardForwardings
       }
 
-      nameServer = new CachingNameServer[Shard](managingNameServer, shardRepository, mappingFunction)
+      nameServer = new NameServer[Shard](nameServerStore, shardRepository, mappingFunction)
     }
 
     "reload and get shard info" in {

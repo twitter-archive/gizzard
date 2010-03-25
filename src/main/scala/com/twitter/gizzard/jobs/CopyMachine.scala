@@ -16,7 +16,7 @@ object CopyMachine {
   }
 }
 
-abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends UnboundJob[(CachingNameServer[S], JobScheduler)] {
+abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends UnboundJob[(NameServer[S], JobScheduler)] {
   val log = Logger.get(getClass.getName)
   val constructor = getClass.asInstanceOf[Class[CopyMachine[S]]].getConstructor(classOf[Map[String, AnyVal]])
   val (sourceShardId, destinationShardId, count) = (attributes("source_shard_id").toInt, attributes("destination_shard_id").toInt, attributes("count").toInt)
@@ -26,13 +26,13 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
 
   def start(scheduler: JobScheduler) = scheduler(this)
 
-  def finish(nameServer: CachingNameServer[S], scheduler: JobScheduler) {
+  def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationShardId, Busy.Normal)
     log.info("Copying finished for (type %s) from %d to %d",
              getClass.getName.split("\\.").last, sourceShardId, destinationShardId)
   }
 
-  def apply(environment: (CachingNameServer[S], JobScheduler)) {
+  def apply(environment: (NameServer[S], JobScheduler)) {
     val (nameServer, scheduler) = environment
     val newMap = try {
       log.info("Copying shard block (type %s) from %d to %d: state=%s",

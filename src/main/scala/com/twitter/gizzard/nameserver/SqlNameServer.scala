@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS sequences (
 }
 
 class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: ShardInfo => Unit)
-                           extends ManagingNameServer {
+                           extends NameServerStore {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlNameServer", "", "")
   val weight = 1 // hardcode for now
