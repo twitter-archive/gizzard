@@ -3,7 +3,7 @@ package com.twitter.gizzard.shards
 import scala.collection.mutable
 
 
-abstract class ReadOnlyShard[ConcreteShard <: Shard]
+class ReadOnlyShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[ConcreteShard])
   extends ReadWriteShard[ConcreteShard] {
 
