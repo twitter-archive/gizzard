@@ -11,7 +11,7 @@ import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
-class ShardManagerService[ConcreteShard <: Shard](nameServer: NameServer[ConcreteShard], copyManager: CopyManager) extends ShardManager.Iface {
+class ShardManagerService[ConcreteShard <: Shard](nameServer: NameServer[ConcreteShard], copyManager: CopyManager[ConcreteShard]) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def create_shard(shard: ShardInfo) = {
@@ -55,7 +55,7 @@ class ShardManagerService[ConcreteShard <: Shard](nameServer: NameServer[Concret
   }
 
   def copy_shard(sourceShardId: Int, destinationShardId: Int) {
-    copyManager.copy(sourceShardId, destinationShardId)
+    copyManager.newCopyJob(sourceShardId, destinationShardId).start(copyManager.scheduler)
   }
 
   def setup_migration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
@@ -63,7 +63,7 @@ class ShardManagerService[ConcreteShard <: Shard](nameServer: NameServer[Concret
   }
 
   def migrate_shard(migration: ShardMigration) {
-    copyManager.migrate(migration.fromThrift)
+    copyManager.newMigrateJob(migration.fromThrift).start(copyManager.scheduler)
   }
 
   def finish_migration(migration: ShardMigration) {
