@@ -143,7 +143,7 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
 
       doBefore {
         shardId = nameServer.createShard(forwardShardInfo)
-        forwarding = new Forwarding(0, 1, 0L, shardId)
+        forwarding = new Forwarding(1, 0L, shardId)
       }
 
       "set and get for shard" in {
@@ -160,7 +160,7 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
 
       "set and get" in {
         nameServer.setForwarding(forwarding)
-        nameServer.getForwarding(0, 1, 0L).shardId mustEqual shardId
+        nameServer.getForwarding(1, 0L).shardId mustEqual shardId
       }
 
       "get all" in {

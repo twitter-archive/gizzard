@@ -15,7 +15,7 @@ object CachingNameServerSpec extends Specification with JMocker {
     val shards = (1 until 5).force.map { id => new ShardInfo(SQL_SHARD, "test", "localhost", "a", "b", Busy.Normal, id) }.toList
     val childrenList = List(new ChildInfo(4, 1))
     val shardChildren = Map(3 -> childrenList)
-    val shardForwardings = List(new Forwarding(1, 1, 1, 1), new Forwarding(1, 1, 2, 2), new Forwarding(1, 1, 3, 3), new Forwarding(1, 2, 1, 4))
+    val shardForwardings = List(new Forwarding(1, 1, 1), new Forwarding(1, 2, 2), new Forwarding(1, 3, 3), new Forwarding(2, 1, 4))
     doBefore {
       expect {
         one(managingNameServer).listShards() willReturn shards
@@ -38,7 +38,7 @@ object CachingNameServerSpec extends Specification with JMocker {
     }
 
     "find current forwarding" in {
-      nameServer.findCurrentForwarding(1, 1, 2) mustEqual shards(1)
+      nameServer.findCurrentForwarding(1, 2) mustEqual shards(1)
     }
   }
 }

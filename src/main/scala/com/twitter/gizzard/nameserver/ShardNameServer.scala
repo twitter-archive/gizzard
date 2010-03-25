@@ -3,7 +3,7 @@ package com.twitter.gizzard.nameserver
 import shards._
 
 
-class ShardNameServer[S <: Shard](nameServer: CachingNameServer, shardRepository: ShardRepository[S], serviceId: Int) {
+class ShardNameServer[S <: Shard](nameServer: CachingNameServer, shardRepository: ShardRepository[S]) {
   def findShardById(shardId: Int, weight: Int): S = {
     val shardInfo = nameServer.getShardInfo(shardId)
     val children = nameServer.getChildren(shardId).map { childInfo =>

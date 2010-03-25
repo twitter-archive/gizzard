@@ -19,7 +19,7 @@ object ShardNameServerSpec extends Specification with JMocker with ClassMocker {
     var shard = mock[Shard]
 
     doBefore {
-      shardNameServer = new ShardNameServer[shards.Shard](nameServer, shardRepository, 1)
+      shardNameServer = new ShardNameServer[shards.Shard](nameServer, shardRepository)
     }
 
     "find shard by id" in  {

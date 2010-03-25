@@ -38,12 +38,11 @@ CREATE TABLE shard_children (
 
   val FORWARDINGS_DDL = """
 CREATE TABLE forwardings (
-    service_id              INT                     NOT NULL,
     base_source_id          BIGINT                  NOT NULL,
     table_id                INT                     NOT NULL,
     shard_id                INT                     NOT NULL,
 
-    PRIMARY KEY (service_id, base_source_id, table_id),
+    PRIMARY KEY (base_source_id, table_id),
 
     UNIQUE unique_shard_id (shard_id)
 ) ENGINE=INNODB;
@@ -51,10 +50,7 @@ CREATE TABLE forwardings (
 
   val SEQUENCE_DDL = """
 CREATE TABLE IF NOT EXISTS sequences (
-    service_id              INT                     NOT NULL,
-    id                      INT UNSIGNED            NOT NULL,
-
-    PRIMARY KEY (service_id)
+    id                      INT UNSIGNED            NOT NULL
 ) ENGINE=INNODB;
 """
 }
@@ -72,7 +68,7 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
   }
 
   private def rowToForwarding(row: ResultSet) = {
-    new Forwarding(row.getInt("service_id"), row.getInt("table_id"), row.getLong("base_source_id"), row.getInt("shard_id"))
+    new Forwarding(row.getInt("table_id"), row.getLong("base_source_id"), row.getInt("shard_id"))
   }
 
   private def rowToChildInfo(row: ResultSet) = {
@@ -176,10 +172,10 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
   }
 
   def setForwarding(forwarding: Forwarding) {
-    if (queryEvaluator.execute("UPDATE forwardings SET shard_id = ? WHERE base_source_id = ? AND table_id = ? AND service_id = ?",
-                               forwarding.shardId, forwarding.baseId, forwarding.tableId, forwarding.serviceId) == 0) {
-      queryEvaluator.execute("INSERT INTO forwardings (service_id, base_source_id, table_id, shard_id) VALUES (?, ?, ?, ?)",
-                             forwarding.serviceId, forwarding.baseId, forwarding.tableId, forwarding.shardId)
+    if (queryEvaluator.execute("UPDATE forwardings SET shard_id = ? WHERE base_source_id = ? AND table_id = ?",
+                               forwarding.shardId, forwarding.baseId, forwarding.tableId) == 0) {
+      queryEvaluator.execute("INSERT INTO forwardings (base_source_id, table_id, shard_id) VALUES (?, ?, ?)",
+                             forwarding.baseId, forwarding.tableId, forwarding.shardId)
     }
   }
 
@@ -187,8 +183,8 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
     queryEvaluator.execute("UPDATE forwardings SET shard_id = ? WHERE shard_id = ?", newShardId, oldShardId)
   }
 
-  def getForwarding(serviceId: Int, tableId: Int, baseId: Long): ShardInfo = {
-    getShard(queryEvaluator.select("SELECT shard_id FROM forwardings WHERE service_id = ? AND base_source_id = ? AND table_id = ?", serviceId, baseId, tableId) { row =>
+  def getForwarding(tableId: Int, baseId: Long): ShardInfo = {
+    getShard(queryEvaluator.select("SELECT shard_id FROM forwardings WHERE base_source_id = ? AND table_id = ?", baseId, tableId) { row =>
       row.getInt("shard_id")
     }.firstOption.getOrElse { throw new ShardException("No such forwarding") })
   }
@@ -201,7 +197,7 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
 
   def getForwardings(): List[Forwarding] = {
     // XXX: REVISIT ORDERING
-    queryEvaluator.select("SELECT * FROM forwardings ORDER BY service_id, table_id, base_source_id DESC") { row =>
+    queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id DESC") { row =>
       rowToForwarding(row)
     }.toList
   }
