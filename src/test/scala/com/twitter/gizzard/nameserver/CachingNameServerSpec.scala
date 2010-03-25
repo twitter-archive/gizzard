@@ -1,21 +1,23 @@
 package com.twitter.gizzard.nameserver
 
-import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
+import com.twitter.gizzard.shards.{Shard, ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
-import org.specs.mock.JMocker
+import org.specs.mock.{ClassMocker, JMocker}
 
-object CachingNameServerSpec extends Specification with JMocker {
+object CachingNameServerSpec extends Specification with JMocker with ClassMocker {
   "CachingNameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
     val managingNameServer = mock[ManagingNameServer]
+    var shardRepository = mock[ShardRepository[Shard]]
     val mappingFunction = (n: Long) => n
-    var nameServer: CachingNameServer = null
+    var nameServer: CachingNameServer[Shard] = null
 
     val shards = (1 until 5).force.map { id => new ShardInfo(SQL_SHARD, "test", "localhost", "a", "b", Busy.Normal, id) }.toList
     val childrenList = List(new ChildInfo(4, 1))
     val shardChildren = Map(3 -> childrenList)
     val shardForwardings = List(new Forwarding(1, 1, 1), new Forwarding(1, 2, 2), new Forwarding(1, 3, 3), new Forwarding(2, 1, 4))
+    var shard = mock[Shard]
     doBefore {
       expect {
         one(managingNameServer).listShards() willReturn shards
@@ -23,7 +25,7 @@ object CachingNameServerSpec extends Specification with JMocker {
         one(managingNameServer).getForwardings() willReturn shardForwardings
       }
 
-      nameServer = new CachingNameServer(managingNameServer, mappingFunction)
+      nameServer = new CachingNameServer[Shard](managingNameServer, shardRepository, mappingFunction)
     }
 
     "reload and get shard info" in {
@@ -39,6 +41,15 @@ object CachingNameServerSpec extends Specification with JMocker {
 
     "find current forwarding" in {
       nameServer.findCurrentForwarding(1, 2) mustEqual shards(1)
+    }
+
+    "find shard by id" in  {
+      expect {
+        one(shardRepository).find(shards(3), 1, List()) willReturn shard
+        one(shardRepository).find(shards(2), 1, List(shard)) willReturn shard
+      }
+
+      nameServer.findShardById(3) mustEqual shard
     }
   }
 }

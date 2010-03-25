@@ -5,12 +5,12 @@ import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
-import shards.Busy
+import shards.{Busy, Shard}
 import scheduler.JobScheduler
 
 
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
-  val nameServer = mock[nameserver.CachingNameServer]
+  val nameServer = mock[nameserver.CachingNameServer[Shard]]
   val copyMachine = mock[nameserver.CopyManager]
   val manager = new thrift.ShardManagerService(nameServer, copyMachine)
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",

@@ -11,7 +11,7 @@ import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
-class ShardManagerService(nameServer: CachingNameServer, copyManager: CopyManager) extends ShardManager.Iface {
+class ShardManagerService[ConcreteShard <: Shard](nameServer: CachingNameServer[ConcreteShard], copyManager: CopyManager) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def create_shard(shard: ShardInfo) = {

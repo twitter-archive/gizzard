@@ -14,7 +14,7 @@ object FutureSpec extends Specification with JMocker with ClassMocker {
     var future: Future = null
 
     doBefore {
-      future = new Future("test", 1, 1, 1.hour, 10.milliseconds)
+      future = new Future("test", 1, 1, 1.hour, 50.milliseconds)
     }
 
     doAfter {

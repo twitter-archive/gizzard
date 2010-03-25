@@ -5,7 +5,7 @@ import scala.collection.mutable
 import shards._
 
 
-class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long => Long)
+class CachingNameServer[S <: Shard](nameServer: ManagingNameServer, shardRepository: ShardRepository[S], mappingFunction: Long => Long)
   extends ForwardingNameServer with ManagingNameServer {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.CachingNameServer", "", "")
@@ -41,6 +41,16 @@ class CachingNameServer(nameServer: ManagingNameServer, mappingFunction: Long =>
     familyTree = newFamilyTree
     forwardings = newForwardings
   }
+
+  def findShardById(shardId: Int, weight: Int): S = {
+    val shardInfo = getShardInfo(shardId)
+    val children = getChildren(shardId).map { childInfo =>
+      findShardById(childInfo.shardId, childInfo.weight)
+    }.toList
+    shardRepository.find(shardInfo, weight, children)
+  }
+
+  def findShardById(shardId: Int): S = findShardById(shardId, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
     forwardings.get(tableId).flatMap { bySourceIds =>

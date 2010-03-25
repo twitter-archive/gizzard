@@ -267,6 +267,6 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
     queryEvaluator.execute("DROP TABLE IF EXISTS sequences")
     queryEvaluator.execute(SqlNameServer.FORWARDINGS_DDL)
     queryEvaluator.execute(SqlNameServer.SEQUENCE_DDL)
-//    queryEvaluator.execute("INSERT INTO_sequences VALUES (0)")
+    queryEvaluator.execute("INSERT INTO sequences VALUES (0)")
   }
 }
