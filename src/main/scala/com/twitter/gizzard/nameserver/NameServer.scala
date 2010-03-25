@@ -10,7 +10,7 @@ class InvalidShard extends ShardException("Shard has invalid attributes (such as
 class NameServer[S <: Shard](nameServer: NameServerStore, shardRepository: ShardRepository[S], mappingFunction: Long => Long)
   extends NameServerStore {
   val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.CachingNameServer", "", "")
+  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
 
   @volatile protected var shardInfos = mutable.Map.empty[Int, ShardInfo]
