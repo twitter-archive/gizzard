@@ -5,11 +5,11 @@ import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
 import org.specs.mock.JMocker
 
-object SqlNameServerSpec extends Specification with JMocker with Database {
+object SqlNameServerStoreSpec extends Specification with JMocker with Database {
   "SqlNameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    var nameServer: SqlNameServer = null
+    var nameServer: SqlNameServerStore = null
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
@@ -20,7 +20,7 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
 
     doBefore {
       sentinel = 0
-      nameServer = new SqlNameServer(queryEvaluator)
+      nameServer = new SqlNameServerStore(queryEvaluator)
       nameServer.rebuildSchema()
     }
 
