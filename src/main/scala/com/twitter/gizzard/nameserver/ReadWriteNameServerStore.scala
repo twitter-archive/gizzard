@@ -28,6 +28,7 @@ trait ReadWriteNameServerStore extends NameServerStore with ReadWriteShard[NameS
   def replaceForwarding(oldShardId: Int, newShardId: Int)                       = writeOperation(_.replaceForwarding(oldShardId, newShardId))
   def setForwarding(forwarding: Forwarding)                                     = writeOperation(_.setForwarding(forwarding))
   def updateShard(shardInfo: ShardInfo)                                         = writeOperation(_.updateShard(shardInfo))
+  def nextId()                                                                  = writeOperation(_.nextId())
 
   def rebuildSchema() = readOperation(_.rebuildSchema())
 }
