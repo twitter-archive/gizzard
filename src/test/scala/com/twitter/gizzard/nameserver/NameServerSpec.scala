@@ -4,8 +4,8 @@ import com.twitter.gizzard.shards.{Shard, ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
-object CachingNameServerSpec extends Specification with JMocker with ClassMocker {
-  "CachingNameServer" should {
+object NameServerSpec extends Specification with JMocker with ClassMocker {
+  "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
     val nameServerStore = mock[NameServerStore]
@@ -40,10 +40,14 @@ object CachingNameServerSpec extends Specification with JMocker with ClassMocker
     }
 
     "find current forwarding" in {
-      nameServer.findCurrentForwarding(1, 2) mustEqual shards(1)
+      expect {
+        one(shardRepository).find(shards(1), 1, List()) willReturn shard
+      }
+
+      nameServer.findCurrentForwarding(1, 2) mustEqual shard
     }
 
-    "find shard by id" in  {
+    "find shard by id" in {
       expect {
         one(shardRepository).find(shards(3), 1, List()) willReturn shard
         one(shardRepository).find(shards(2), 1, List(shard)) willReturn shard

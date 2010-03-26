@@ -59,7 +59,7 @@ class NameServer[S <: Shard](nameServer: NameServerStore, shardRepository: Shard
   def findShardById(shardId: Int): S = findShardById(shardId, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
-    forwardings.get(tableId).flatMap { bySourceIds =>
+    val shardInfo = forwardings.get(tableId).flatMap { bySourceIds =>
       val item = bySourceIds.floorEntry(mappingFunction(id))
       if (item != null) {
         Some(item.getValue)
@@ -69,6 +69,8 @@ class NameServer[S <: Shard](nameServer: NameServerStore, shardRepository: Shard
     } getOrElse {
       throw new NonExistentShard
     }
+
+    findShardById(shardInfo.shardId)
   }
 
   def createShard(shardInfo: ShardInfo, materialize: => Unit) = nameServer.createShard(shardInfo, materialize)

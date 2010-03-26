@@ -13,6 +13,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
   val nameServer = mock[nameserver.NameServer[Shard]]
   val copyMachine = mock[nameserver.CopyManager[Shard]]
   val manager = new thrift.ShardManagerService(nameServer, copyMachine)
+  val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
   val shardInfo1 = new shards.ShardInfo("com.example.SqlShard",
@@ -217,7 +218,8 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
     "find_current_forwarding" in {
       expect {
-        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shardInfo1
+        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shard
+        one(shard).shardInfo willReturn shardInfo1
       }
       manager.find_current_forwarding(tableId, 23L) mustEqual thriftShardInfo1
     }

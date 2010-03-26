@@ -96,7 +96,7 @@ class ShardManagerService[ConcreteShard <: Shard](nameServer: NameServer[Concret
   }
 
   def find_current_forwarding(tableId: Int, id: Long) = {
-    nameServer.findCurrentForwarding(tableId, id).toThrift
+    nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift
   }
 
   def shard_ids_for_hostname(hostname: String, className: String): java.util.List[java.lang.Integer] = {
