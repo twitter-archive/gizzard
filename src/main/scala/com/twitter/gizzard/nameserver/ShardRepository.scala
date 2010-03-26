@@ -3,6 +3,7 @@ package com.twitter.gizzard.nameserver
 import scala.collection.mutable
 import shards.{Shard, ShardInfo, ShardFactory}
 
+
 class ShardRepository[S <: Shard] {
   private val shardFactories = mutable.Map.empty[String, ShardFactory[S]]
 
