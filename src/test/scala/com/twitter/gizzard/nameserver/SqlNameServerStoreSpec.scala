@@ -213,6 +213,11 @@ object SqlNameServerStoreSpec extends Specification with JMocker with Database {
       }
     }
 
+    "nextId" in {
+      nameServer.nextId() mustEqual 1
+      nameServer.nextId() mustEqual 2
+    }
+
   }
 }
 

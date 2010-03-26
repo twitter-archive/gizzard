@@ -49,7 +49,7 @@ CREATE TABLE forwardings (
 """
 
   val SEQUENCE_DDL = """
-CREATE TABLE IF NOT EXISTS sequences (
+CREATE TABLE IF NOT EXISTS sequence (
     id                      INT UNSIGNED            NOT NULL
 ) ENGINE=INNODB;
 """
@@ -243,6 +243,8 @@ class SqlNameServerStore(queryEvaluator: QueryEvaluator)
       childIds.flatMap { child => getChildShardsOfClass(child.shardId, className) }
   }
 
+  def nextId() = queryEvaluator.nextId("sequence")
+
 /*  def reload() {
     try {
       List("shards", "shard_children", forwardingTable, tablePrefix + "_sequence").foreach { table =>
@@ -264,9 +266,9 @@ class SqlNameServerStore(queryEvaluator: QueryEvaluator)
     queryEvaluator.execute(SqlNameServerStore.SHARDS_DDL)
     queryEvaluator.execute(SqlNameServerStore.SHARD_CHILDREN_DDL)
     queryEvaluator.execute("DROP TABLE IF EXISTS forwardings")
-    queryEvaluator.execute("DROP TABLE IF EXISTS sequences")
+    queryEvaluator.execute("DROP TABLE IF EXISTS sequence")
     queryEvaluator.execute(SqlNameServerStore.FORWARDINGS_DDL)
     queryEvaluator.execute(SqlNameServerStore.SEQUENCE_DDL)
-    queryEvaluator.execute("INSERT INTO sequences VALUES (0)")
+    queryEvaluator.execute("INSERT INTO sequence VALUES (0)")
   }
 }
