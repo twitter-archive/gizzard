@@ -30,5 +30,6 @@ trait ReadWriteNameServerStore extends NameServerStore with ReadWriteShard[NameS
   def updateShard(shardInfo: ShardInfo)                                         = writeOperation(_.updateShard(shardInfo))
   def nextId()                                                                  = writeOperation(_.nextId())
 
-  def rebuildSchema() = readOperation(_.rebuildSchema())
+  def reload() = writeOperation(_.reload())
+  def rebuildSchema() = writeOperation(_.rebuildSchema())
 }

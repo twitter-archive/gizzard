@@ -20,6 +20,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     var shard = mock[Shard]
     doBefore {
       expect {
+        one(nameServerStore).reload()
         one(nameServerStore).listShards() willReturn shards
         one(nameServerStore).listShardChildren() willReturn shardChildren
         one(nameServerStore).getForwardings() willReturn shardForwardings

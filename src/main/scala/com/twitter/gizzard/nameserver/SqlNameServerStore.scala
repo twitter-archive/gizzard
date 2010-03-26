@@ -245,9 +245,9 @@ class SqlNameServerStore(queryEvaluator: QueryEvaluator)
 
   def nextId() = queryEvaluator.nextId("sequence")
 
-/*  def reload() {
+  def reload() {
     try {
-      List("shards", "shard_children", forwardingTable, tablePrefix + "_sequence").foreach { table =>
+      List("shards", "shard_children", "forwardings", "sequence").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {
@@ -255,10 +255,7 @@ class SqlNameServerStore(queryEvaluator: QueryEvaluator)
         // try creating the schema
         rebuildSchema()
     }
-
-    SqlNameServer.reload(queryEvaluator)
-    reloadForwardings()
-  } */
+  }
 
   def rebuildSchema() {
     queryEvaluator.execute("DROP TABLE IF EXISTS shards")

@@ -29,5 +29,6 @@ trait NameServerStore extends Shard {
   def getRootShard(shardId: Int): ShardInfo
   def getChildShardsOfClass(parentShardId: Int, className: String): List[ShardInfo]
   def rebuildSchema()
+  def reload()
   def listShardChildren(parentId: Int): Seq[ChildInfo]
 }

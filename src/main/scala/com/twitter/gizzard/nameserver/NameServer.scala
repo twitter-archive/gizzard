@@ -30,6 +30,8 @@ class NameServer[S <: Shard](nameServer: NameServerStore, shardRepository: Shard
   }
 
   def reload() {
+    nameServer.reload()
+
     val newShardInfos = mutable.Map.empty[Int, ShardInfo]
     nameServer.listShards().foreach { shardInfo =>
       newShardInfos += (shardInfo.shardId -> shardInfo)
