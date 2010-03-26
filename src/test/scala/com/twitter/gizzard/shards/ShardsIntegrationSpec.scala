@@ -6,7 +6,7 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.querulous.evaluator.QueryEvaluator
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{NameServerStore, SqlNameServer, ShardRepository}
+import nameserver.{NameServer, SqlNameServer, NameServerStore, ShardRepository}
 
 
 object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with Database {
@@ -38,13 +38,17 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
 
   "Shards" should {
     var shardRepository: ShardRepository[UserShard] = null
-    var nameServer: NameServerStore = null
+    var nameServerStore: NameServerStore = null
+    var nameServer: NameServer[UserShard] = null
+
+    var mapping = (a: Long) => a
 
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
-      nameServer = new SqlNameServer(queryEvaluator, (a: ShardInfo) => ())
+      nameServerStore = new SqlNameServer(queryEvaluator)
+      nameServer = new NameServer(nameServerStore, shardRepository, mapping)
 
       nameServer.createShard(shardInfo1)
       nameServer.createShard(shardInfo2)

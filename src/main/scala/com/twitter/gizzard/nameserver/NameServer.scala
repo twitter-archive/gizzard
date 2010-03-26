@@ -19,6 +19,10 @@ class NameServer[S <: Shard](nameServer: NameServerStore, shardRepository: Shard
 
   reload()
 
+  def createShard(shardInfo: ShardInfo) = {
+    nameServer.createShard(shardInfo, shardRepository.create(shardInfo))
+  }
+
   def getShardInfo(id: Int) = shardInfos(id)
 
   def getChildren(id: Int) = {
@@ -67,8 +71,8 @@ class NameServer[S <: Shard](nameServer: NameServerStore, shardRepository: Shard
     }
   }
 
+  def createShard(shardInfo: ShardInfo, materialize: => Unit) = nameServer.createShard(shardInfo, materialize)
   def listShardChildren(parentId: Int) = nameServer.listShardChildren(parentId)
-  def createShard(shardInfo: ShardInfo) = nameServer.createShard(shardInfo)
   def findShard(shardInfo: ShardInfo) = nameServer.findShard(shardInfo)
   def getShard(shardId: Int) = nameServer.getShard(shardId)
   def updateShard(shardInfo: ShardInfo) = nameServer.updateShard(shardInfo)

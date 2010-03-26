@@ -20,7 +20,7 @@ trait ReadWriteNameServer extends NameServerStore with ReadWriteShard[NameServer
   def shardsForHostname(hostname: String, className: String): List[ShardInfo]   = readOperation(_.shardsForHostname(hostname, className))
 
   def addChildShard(parentShardId: Int, childShardId: Int, weight: Int)         = writeOperation(_.addChildShard(parentShardId, childShardId, weight))
-  def createShard(shardInfo: ShardInfo)                                         = writeOperation(_.createShard(shardInfo))
+  def createShard(shardInfo: ShardInfo, materialize: => Unit)                   = writeOperation(_.createShard(shardInfo, materialize))
   def deleteShard(shardId: Int)                                                 = writeOperation(_.deleteShard(shardId))
   def markShardBusy(shardId: Int, busy: Busy.Value)                             = writeOperation(_.markShardBusy(shardId, busy))
   def removeChildShard(parentShardId: Int, childShardId: Int)                   = writeOperation(_.removeChildShard(parentShardId, childShardId))

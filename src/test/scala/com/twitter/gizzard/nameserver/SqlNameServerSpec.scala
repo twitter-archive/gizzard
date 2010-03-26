@@ -13,55 +13,52 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
-    def shardMaterializer(shardInfo: ShardInfo) {
-      ()
-    }
+
+    var sentinel = 0
+
+    def materialize: Unit = { sentinel += 1 }
 
     doBefore {
-      nameServer = new SqlNameServer(queryEvaluator, shardMaterializer)
+      sentinel = 0
+      nameServer = new SqlNameServer(queryEvaluator)
       nameServer.rebuildSchema()
     }
 
     "create" in {
       "a new shard" >> {
-        expect {
-        }
-
-        val shardId = nameServer.createShard(forwardShardInfo)
+        val shardId = nameServer.createShard(forwardShardInfo, materialize)
         nameServer.findShard(forwardShardInfo) mustEqual shardId
+        sentinel mustEqual 1
       }
 
       "when the shard already exists" >> {
         "when the shard matches existing data" >> {
-          expect {
-          }
-
-          val shardId = nameServer.createShard(forwardShardInfo)
+          val shardId = nameServer.createShard(forwardShardInfo, materialize)
           nameServer.findShard(forwardShardInfo) mustEqual shardId
-          nameServer.createShard(forwardShardInfo)
+          nameServer.createShard(forwardShardInfo, materialize)
           nameServer.findShard(forwardShardInfo) mustEqual shardId
+          sentinel mustEqual 2
         }
 
         "when the shard contradicts existing data" >> {
           expect {
           }
 
-          nameServer.createShard(forwardShardInfo)
+          nameServer.createShard(forwardShardInfo, materialize)
           val otherShard = forwardShardInfo.clone()
           otherShard.className = "garbage"
-          nameServer.createShard(otherShard) must throwA[InvalidShard]
+          nameServer.createShard(otherShard, materialize) must throwA[InvalidShard]
+          sentinel mustEqual 1
         }
       }
     }
 
     "find" in {
       "a created shard" >> {
-        expect {
-        }
-
-        val shardId = nameServer.createShard(forwardShardInfo)
+        val shardId = nameServer.createShard(forwardShardInfo, materialize)
         nameServer.findShard(forwardShardInfo) mustEqual shardId
         nameServer.getShard(shardId).tablePrefix mustEqual forwardShardInfo.tablePrefix
+        sentinel mustEqual 1
       }
 
       "when the shard doesn't exist" >> {
@@ -73,12 +70,13 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
 
     "update" in {
       "existing shard" >> {
-        val shardId = nameServer.createShard(forwardShardInfo)
+        val shardId = nameServer.createShard(forwardShardInfo, materialize)
         val otherShardInfo = forwardShardInfo.clone
         otherShardInfo.tablePrefix = "other_table"
         otherShardInfo.shardId = shardId
         nameServer.updateShard(otherShardInfo)
         nameServer.getShard(shardId) mustEqual otherShardInfo
+        sentinel mustEqual 1
       }
 
       "nonexistent shard" >> {
@@ -87,13 +85,11 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
     }
 
     "delete" in {
-      expect {
-      }
-
-      val shardId = nameServer.createShard(forwardShardInfo)
+      val shardId = nameServer.createShard(forwardShardInfo, materialize)
       nameServer.findShard(forwardShardInfo) mustEqual shardId
       nameServer.deleteShard(shardId)
       nameServer.findShard(forwardShardInfo) must throwA[NonExistentShard]
+      sentinel mustEqual 1
     }
 
     "children" in {
@@ -132,9 +128,10 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
     }
 
     "set shard busy" in {
-      val shardId = nameServer.createShard(forwardShardInfo)
+      val shardId = nameServer.createShard(forwardShardInfo, materialize)
       nameServer.markShardBusy(shardId, Busy.Busy)
       nameServer.getShard(shardId).busy mustEqual Busy.Busy
+      sentinel mustEqual 1
     }
 
     "forwarding changes" in {
@@ -142,8 +139,9 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
       var forwarding: Forwarding = null
 
       doBefore {
-        shardId = nameServer.createShard(forwardShardInfo)
+        shardId = nameServer.createShard(forwardShardInfo, materialize)
         forwarding = new Forwarding(1, 0L, shardId)
+        sentinel mustEqual 1
       }
 
       "set and get for shard" in {
@@ -178,9 +176,10 @@ object SqlNameServerSpec extends Specification with JMocker with Database {
       var id3 = 0
 
       doBefore {
-        id1 = nameServer.createShard(shard1)
-        id2 = nameServer.createShard(shard2)
-        id3 = nameServer.createShard(shard3)
+        id1 = nameServer.createShard(shard1, materialize)
+        id2 = nameServer.createShard(shard2, materialize)
+        id3 = nameServer.createShard(shard3, materialize)
+        sentinel mustEqual 3
         nameServer.addChildShard(id1, id2, 10)
         nameServer.addChildShard(id2, id3, 10)
       }

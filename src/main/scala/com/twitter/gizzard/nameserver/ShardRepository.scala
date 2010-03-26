@@ -14,7 +14,7 @@ class ShardRepository[S <: Shard] {
     shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
-  def materialize(shardInfo: ShardInfo) {
+  def create(shardInfo: ShardInfo) {
     shardFactories(shardInfo.className).materialize(shardInfo)
   }
 

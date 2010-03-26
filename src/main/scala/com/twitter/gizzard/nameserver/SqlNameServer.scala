@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS sequences (
 """
 }
 
-class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: ShardInfo => Unit)
+class SqlNameServer(queryEvaluator: QueryEvaluator)
                            extends NameServerStore {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlNameServer", "", "")
@@ -75,7 +75,7 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
     new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
   }
 
-  def createShard(shardInfo: ShardInfo) = {
+  def createShard(shardInfo: ShardInfo, materialize: => Unit) = {
     queryEvaluator.transaction { transaction =>
       try {
         val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.tablePrefix, shardInfo.hostname) { row =>
@@ -86,7 +86,7 @@ class SqlNameServer(queryEvaluator: QueryEvaluator, shardMaterializerFactory: Sh
         } getOrElse {
           transaction.insert("INSERT INTO shards (class_name, table_prefix, hostname, source_type, destination_type) VALUES (?, ?, ?, ?, ?)", shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
         }
-        shardMaterializerFactory(shardInfo)
+        materialize
         shardId
       } catch {
         case e: SQLIntegrityConstraintViolationException =>

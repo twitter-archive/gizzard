@@ -5,7 +5,7 @@ import scala.collection.Map
 
 
 trait NameServerStore extends Shard {
-  def createShard(shardInfo: ShardInfo): Int
+  def createShard(shardInfo: ShardInfo, materialize: => Unit): Int
   def findShard(shardInfo: ShardInfo): Int
   def getShard(shardId: Int): ShardInfo
   def updateShard(shardInfo: ShardInfo)
