@@ -1,40 +1,26 @@
 package com.twitter.gizzard.thrift
 
-import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.gizzard.shards._
+import conversions.Sequences._
+import shards._
+import scheduler.PrioritizingJobScheduler
+import jobs.Job
 
 
-class JobManagerService(scheduler: jobs.PrioritizingScheduler) extends JobManager.Iface {
-  def retry_errors() {
-    scheduler.retryErrors()
-  }
+class JobManagerService(scheduler: PrioritizingJobScheduler) extends JobManager.Iface {
+  def retry_errors() = scheduler.retryErrors()
+  def stop_writes() = scheduler.pause()
+  def resume_writes() = scheduler.resume()
 
-  def stop_writes() {
-    scheduler.pauseWork()
-  }
-
-  def resume_writes() {
-    scheduler.resumeWork()
-  }
-
-  def retry_errors_for(priority: Int) {
-    scheduler(priority).retryErrors()
-  }
-
-  def stop_writes_for(priority: Int) {
-    scheduler(priority).pauseWork()
-  }
-
-  def resume_writes_for(priority: Int) {
-    scheduler(priority).resumeWork()
-  }
-
+  def retry_errors_for(priority: Int) = scheduler(priority).retryErrors()
+  def stop_writes_for(priority: Int) = scheduler(priority).pause()
+  def resume_writes_for(priority: Int) = scheduler(priority).resume()
   def is_writing(priority: Int) = !scheduler(priority).isShutdown
 
   def inject_job(priority: Int, job: String) {
-    scheduler(priority)(new jobs.Schedulable {
+    scheduler(priority)(new Job {
       override def toJson = job
       def toMap = null
+      def apply() = ()
     })
   }
 }

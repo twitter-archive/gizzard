@@ -6,7 +6,8 @@ import com.twitter.gizzard.shards.{ShardInfo, Shard, Busy, ChildInfo}
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import jobs.{CopyMachine, JobScheduler}
+import jobs.CopyMachine
+import scheduler.JobScheduler
 
 
 object NameServerSpec extends Specification with JMocker with ClassMocker with Database {

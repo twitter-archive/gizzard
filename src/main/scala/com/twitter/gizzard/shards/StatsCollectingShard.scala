@@ -3,7 +3,7 @@ package com.twitter.gizzard.shards
 import com.twitter.ostrich.StatsProvider
 
 
-abstract class StatsCollectingShard[ConcreteShard <: Shard]
+class StatsCollectingShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard], stats: StatsProvider)
   extends ReadWriteShard[ConcreteShard] {
 

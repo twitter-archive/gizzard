@@ -1,7 +1,7 @@
 package com.twitter.gizzard.shards
 
 
-abstract class BlockedShard[ConcreteShard <: Shard]
+class BlockedShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard])
   extends ReadWriteShard[ConcreteShard] {
 
