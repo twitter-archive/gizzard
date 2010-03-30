@@ -5,6 +5,7 @@ import net.lag.logging.{ThrottledLogger, Logger}
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
+import com.twitter.ostrich.W3CReporter
 
 
 object ReplicatingShardSpec extends Specification with JMocker {
@@ -16,7 +17,7 @@ object ReplicatingShardSpec extends Specification with JMocker {
     val log = new ThrottledLogger[String](Logger(), 1, 1)
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
-    val replicatingShard = new ReplicatingShard(null, 1, shards, loadBalancer, log, future, None) {
+    val replicatingShard = new ReplicatingShard(null, 1, shards, loadBalancer, log, future, new W3CReporter(Logger())) {
       def getName = readOperation(_.getName)
       def setName(name: String) = writeOperation(_.setName(name))
     }
