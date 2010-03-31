@@ -2,16 +2,15 @@ package com.twitter.gizzard.nameserver
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import shards.Shard
 import util.Random
 
 
 object LoadBalancerSpec extends Specification with JMocker with ClassMocker {
   "LoadBalancer" should {
     val random = new Random(0)
-    val shard1 = mock[Shard]
-    val shard2 = mock[Shard]
-    val shard3 = mock[Shard]
+    val shard1 = mock[shards.Shard]
+    val shard2 = mock[shards.Shard]
+    val shard3 = mock[shards.Shard]
 
     "with a zero weight" in {
       expect {

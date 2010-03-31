@@ -1,6 +1,6 @@
 package com.twitter.gizzard.nameserver
 
-import com.twitter.gizzard.shards.{Shard, ShardInfo, Busy, ChildInfo}
+import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
@@ -8,25 +8,25 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val nameServerStore = mock[NameServerStore]
-    var shardRepository = mock[ShardRepository[Shard]]
+    val nameServerShard = mock[Shard]
+    var shardRepository = mock[ShardRepository[gizzard.shards.Shard]]
     val mappingFunction = (n: Long) => n
-    var nameServer: NameServer[Shard] = null
+    var nameServer: NameServer[gizzard.shards.Shard] = null
 
     val shards = (1 until 5).force.map { id => new ShardInfo(SQL_SHARD, "test", "localhost", "a", "b", Busy.Normal, id) }.toList
     val childrenList = List(new ChildInfo(4, 1))
     val shardChildren = Map(3 -> childrenList)
     val shardForwardings = List(new Forwarding(1, 1, 1), new Forwarding(1, 2, 2), new Forwarding(1, 3, 3), new Forwarding(2, 1, 4))
-    var shard = mock[Shard]
+    var shard = mock[gizzard.shards.Shard]
     doBefore {
       expect {
-        one(nameServerStore).reload()
-        one(nameServerStore).listShards() willReturn shards
-        one(nameServerStore).listShardChildren() willReturn shardChildren
-        one(nameServerStore).getForwardings() willReturn shardForwardings
+        one(nameServerShard).reload()
+        one(nameServerShard).listShards() willReturn shards
+        one(nameServerShard).listShardChildren() willReturn shardChildren
+        one(nameServerShard).getForwardings() willReturn shardForwardings
       }
 
-      nameServer = new NameServer[Shard](nameServerStore, shardRepository, mappingFunction)
+      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository, mappingFunction)
     }
 
     "reload and get shard info" in {

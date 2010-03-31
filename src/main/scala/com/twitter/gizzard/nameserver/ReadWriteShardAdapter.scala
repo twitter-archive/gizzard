@@ -3,7 +3,7 @@ package com.twitter.gizzard.nameserver
 import shards._
 
 
-trait ReadWriteNameServerStore extends NameServerStore with ReadWriteShard[NameServerStore] {
+trait ReadWriteShardAdapter extends Shard with ReadWriteShard[Shard] {
   def findShard(shardInfo: ShardInfo)                                           = readOperation(_.findShard(shardInfo))
   def getBusyShards()                                                           = readOperation(_.getBusyShards())
   def getChildShardsOfClass(parentShardId: Int, className: String)              = readOperation(_.getChildShardsOfClass(parentShardId, className))

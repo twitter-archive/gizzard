@@ -7,7 +7,7 @@ import scala.collection.mutable
 import shards._
 
 
-object SqlNameServerStore {
+object SqlShard {
   val SHARDS_DDL = """
 CREATE TABLE shards (
     id                      INT          NOT NULL AUTO_INCREMENT,
@@ -55,10 +55,10 @@ CREATE TABLE IF NOT EXISTS sequence (
 """
 }
 
-class SqlNameServerStore(queryEvaluator: QueryEvaluator)
-                           extends NameServerStore {
+class SqlShard(queryEvaluator: QueryEvaluator)
+                           extends Shard {
   val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlNameServerStore", "", "")
+  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
   val weight = 1 // hardcode for now
 
   private def rowToShardInfo(row: ResultSet) = {
@@ -260,12 +260,12 @@ class SqlNameServerStore(queryEvaluator: QueryEvaluator)
   def rebuildSchema() {
     queryEvaluator.execute("DROP TABLE IF EXISTS shards")
     queryEvaluator.execute("DROP TABLE IF EXISTS shard_children")
-    queryEvaluator.execute(SqlNameServerStore.SHARDS_DDL)
-    queryEvaluator.execute(SqlNameServerStore.SHARD_CHILDREN_DDL)
+    queryEvaluator.execute(SqlShard.SHARDS_DDL)
+    queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
     queryEvaluator.execute("DROP TABLE IF EXISTS forwardings")
     queryEvaluator.execute("DROP TABLE IF EXISTS sequence")
-    queryEvaluator.execute(SqlNameServerStore.FORWARDINGS_DDL)
-    queryEvaluator.execute(SqlNameServerStore.SEQUENCE_DDL)
+    queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
+    queryEvaluator.execute(SqlShard.SEQUENCE_DDL)
     queryEvaluator.execute("INSERT INTO sequence VALUES (0)")
   }
 }

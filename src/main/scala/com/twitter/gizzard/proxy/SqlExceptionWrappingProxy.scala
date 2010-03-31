@@ -6,19 +6,13 @@ import com.twitter.querulous.database.SqlDatabaseTimeoutException
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 
-object SqlExceptionWrappingProxy {
-  def apply[T <: AnyRef](obj: T)(implicit manifest: Manifest[T]): T = {
-    Proxy(obj) { method =>
-      try {
-        method()
-      } catch {
-        case e: SQLException =>
-          throw new shards.ShardException(e.toString)
-        case e: SqlQueryTimeoutException =>
-          throw new shards.ShardTimeoutException
-        case e: SqlDatabaseTimeoutException =>
-          throw new shards.ShardDatabaseTimeoutException
-      }
-    }
+object SqlExceptionWrappingProxy extends ExceptionHandlingProxy({e =>
+  e match {
+    case e: SqlQueryTimeoutException =>
+      throw new shards.ShardTimeoutException
+    case e: SqlDatabaseTimeoutException =>
+      throw new shards.ShardDatabaseTimeoutException
+    case e: SQLException =>
+      throw new shards.ShardException(e.toString)
   }
-}
+})
