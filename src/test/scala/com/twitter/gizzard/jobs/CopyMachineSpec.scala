@@ -3,6 +3,7 @@ package com.twitter.gizzard.jobs
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.NameServer
+import scheduler.JobScheduler
 import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 
