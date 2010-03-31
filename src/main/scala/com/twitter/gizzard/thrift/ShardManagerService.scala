@@ -11,7 +11,7 @@ import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
-class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardManager.Iface {
+class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[ConcreteShard], copyManager: CopyManager[ConcreteShard]) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def create_shard(shard: ShardInfo) = {
@@ -55,19 +55,19 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
   }
 
   def copy_shard(sourceShardId: Int, destinationShardId: Int) {
-    nameServer.copyShard(sourceShardId, destinationShardId)
+    copyManager.newCopyJob(sourceShardId, destinationShardId).start(copyManager.scheduler)
   }
 
   def setup_migration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
-    nameServer.setupMigration(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift).toThrift
+    nameserver.ShardMigration.setupMigration(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift, nameServer).toThrift
   }
 
   def migrate_shard(migration: ShardMigration) {
-    nameServer.migrateShard(migration.fromThrift)
+    copyManager.newMigrateJob(migration.fromThrift).start(copyManager.scheduler)
   }
 
   def finish_migration(migration: ShardMigration) {
-    nameServer.finishMigration(migration.fromThrift)
+    nameserver.ShardMigration.finishMigration(migration.fromThrift, nameServer)
   }
 
   def set_forwarding(forwarding: Forwarding) {
@@ -78,8 +78,8 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.replaceForwarding(oldShardId, newShardId)
   }
 
-  def get_forwarding(tableId: java.util.List[java.lang.Integer], baseId: Long) = {
-    nameServer.getForwarding(tableId.toList, baseId).toThrift
+  def get_forwarding(tableId: Int, baseId: Long) = {
+    nameServer.getForwarding(tableId, baseId).toThrift
   }
 
   def get_forwarding_for_shard(shardId: Int) = {
@@ -95,8 +95,8 @@ class ShardManagerService[S <: Shard](nameServer: NameServer[S]) extends ShardMa
     nameServer.reload()
   }
 
-  def find_current_forwarding(tableId: java.util.List[java.lang.Integer], id: Long) = {
-    nameServer.findCurrentForwarding(tableId.toList, id).shardInfo.toThrift
+  def find_current_forwarding(tableId: Int, id: Long) = {
+    nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift
   }
 
   def shard_ids_for_hostname(hostname: String, className: String): java.util.List[java.lang.Integer] = {

@@ -28,7 +28,7 @@ struct ShardMigration {
 }
 
 struct Forwarding {
-  1: list<i32> table_id
+  1: i32 table_id
   2: i64 base_id
   3: i32 shard_id
 }
@@ -53,11 +53,11 @@ service ShardManager {
 
   void set_forwarding(1: Forwarding forwarding) throws(ShardException ex)
   void replace_forwarding(1: i32 old_shard_id, 2: i32 new_shard_id) throws(ShardException ex)
-  ShardInfo get_forwarding(1: list<i32> table_id, 2: i64 base_id) throws(ShardException ex)
+  ShardInfo get_forwarding(1: i32 table_id, 2: i64 base_id) throws(ShardException ex)
   Forwarding get_forwarding_for_shard(1: i32 shard_id) throws(ShardException ex)
   list<Forwarding> get_forwardings() throws(ShardException ex)
   void reload_forwardings() throws(ShardException ex)
-  ShardInfo find_current_forwarding(1: list<i32> table_id, 2: i64 id) throws(ShardException ex)
+  ShardInfo find_current_forwarding(1: i32 table_id, 2: i64 id) throws(ShardException ex)
 
   list<i32> shard_ids_for_hostname(1: string hostname, 2: string class_name) throws(ShardException ex)
   list<ShardInfo> shards_for_hostname(1: string hostname, 2: string class_name) throws(ShardException ex)

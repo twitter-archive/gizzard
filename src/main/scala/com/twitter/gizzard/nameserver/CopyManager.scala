@@ -2,10 +2,9 @@ package com.twitter.gizzard.nameserver
 
 import jobs.CopyMachine
 import scheduler.JobScheduler
-import shards.Shard
 
 
-trait CopyManager[S <: Shard] {
+trait CopyManager[S <: shards.Shard] {
   /** Return a scheduler to be used for running copy/migrate jobs. */
   def scheduler: JobScheduler
 

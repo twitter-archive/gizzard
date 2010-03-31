@@ -6,6 +6,7 @@ import net.lag.logging.Logger
 import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
 import nameserver.NameServer
 import scheduler.JobScheduler
+import nameserver._
 
 
 object CopyMachine {
@@ -24,7 +25,7 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
   private var asMap: Map[String, AnyVal] = attributes
   def toMap = asMap
 
-  def start(nameServer: NameServer[S], scheduler: JobScheduler) = scheduler(this)
+  def start(scheduler: JobScheduler) = scheduler(this)
 
   def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationShardId, Busy.Normal)
@@ -43,7 +44,7 @@ abstract class CopyMachine[S <: Shard](attributes: Map[String, AnyVal]) extends 
       nameServer.markShardBusy(destinationShardId, Busy.Busy)
       copyPage(sourceShard, destinationShard, count)
     } catch {
-      case e: NameServer.NonExistentShard =>
+      case e: NonExistentShard =>
         log.error("Shard block copy failed because one of the shards doesn't exist. Terminating the copy.")
         return
       case e: ShardTimeoutException if (count > CopyMachine.MIN_COPY) =>

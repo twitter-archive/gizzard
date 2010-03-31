@@ -1,10 +1,10 @@
 package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
-import shards.{Shard, ShardInfo, ShardFactory}
+import shards.{ShardInfo, ShardFactory}
 
 
-class ShardRepository[S <: Shard] {
+class ShardRepository[S <: shards.Shard] {
   private val shardFactories = mutable.Map.empty[String, ShardFactory[S]]
 
   def +=(item: (String, ShardFactory[S])) {

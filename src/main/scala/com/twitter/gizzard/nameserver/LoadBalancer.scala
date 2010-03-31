@@ -1,10 +1,9 @@
 package com.twitter.gizzard.nameserver
 
-import shards.Shard
 import scala.util.Random
 
 
-class LoadBalancer[ConcreteShard <: Shard](random: Random, replicas: Seq[ConcreteShard]) extends (() => Seq[ConcreteShard]) {
+class LoadBalancer[ConcreteShard <: shards.Shard](random: Random, replicas: Seq[ConcreteShard]) extends (() => Seq[ConcreteShard]) {
   def this(replicas: Seq[ConcreteShard]) = this(new Random, replicas)
   val totalWeight = replicas.foldLeft(0) { _ + _.weight }
 
