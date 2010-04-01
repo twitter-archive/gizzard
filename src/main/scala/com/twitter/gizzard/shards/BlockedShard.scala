@@ -1,9 +1,9 @@
 package com.twitter.gizzard.shards
 
 
-class BlockedShardFactory extends shards.ShardFactory[Shard] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[Shard]) =
-    new BlockedShard(shardInfo, weight, children)
+class BlockedShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
+    readWriteShardAdapter(new BlockedShard(shardInfo, weight, children))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 

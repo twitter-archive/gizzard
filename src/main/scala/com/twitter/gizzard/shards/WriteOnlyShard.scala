@@ -3,9 +3,9 @@ package com.twitter.gizzard.shards
 import scala.collection.mutable
 
 
-class WriteOnlyShardFactory extends shards.ShardFactory[Shard] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[Shard]) =
-    new WriteOnlyShard(shardInfo, weight, children)
+class WriteOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
+    readWriteShardAdapter(new WriteOnlyShard(shardInfo, weight, children))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 

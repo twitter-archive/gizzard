@@ -11,9 +11,9 @@ import com.twitter.ostrich.W3CReporter
 import com.twitter.gizzard.nameserver.LoadBalancer
 
 
-class ReplicatingShardFactory(log: ThrottledLogger[String], eventLogger: (String, String) => Unit, future: Future) extends shards.ShardFactory[Shard] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[Shard]) =
-    new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future, eventLogger)
+class ReplicatingShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard, log: ThrottledLogger[String], eventLogger: (String, String) => Unit, future: Future) extends shards.ShardFactory[ConcreteShard] {
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
+    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future, eventLogger))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
