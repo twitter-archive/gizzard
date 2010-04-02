@@ -16,7 +16,7 @@ object Copy {
   }
 }
 
-abstract class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
+abstract class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, val count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
   private val log = Logger.get(getClass.getName)
   private var nextCount = count
 
