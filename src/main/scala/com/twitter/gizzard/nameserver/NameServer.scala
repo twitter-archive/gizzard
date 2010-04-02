@@ -58,6 +58,7 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
     shardRepository.find(shardInfo, weight, children)
   }
 
+  @throws(classOf[NonExistentShard])
   def findShardById(shardId: Int): S = findShardById(shardId, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
