@@ -7,9 +7,13 @@ import scheduler.JobScheduler
 import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 
-case class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob: => Option[FakeCopy]) extends Copy[Shard](sourceShardId, destinationShardId, count) {
+class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob: => Option[FakeCopy]) extends Copy[Shard](sourceShardId, destinationShardId, count) {
   @throws(classOf[Exception])
   def copyPage(sourceShard: Shard, destinationShard: Shard, count: Int) = nextJob
+  override def equals(that: Any) = that match {
+    case that: FakeCopy => this.sourceShardId == that.sourceShardId && this.destinationShardId == that.destinationShardId
+    case _ => false
+  }
 }
 
 object CopySpec extends Specification with JMocker with ClassMocker {

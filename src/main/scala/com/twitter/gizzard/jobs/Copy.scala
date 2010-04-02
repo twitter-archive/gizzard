@@ -10,13 +10,9 @@ import nameserver._
 
 object Copy {
   val MIN_COPY = 500
-
-  def pack(sourceShardId: Int, destinationShardId: Int, count: Int): Map[String, AnyVal] = {
-    Map("source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> count)
-  }
 }
 
-abstract class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, val count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
+abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
   private val log = Logger.get(getClass.getName)
   private var nextCount = count
 
