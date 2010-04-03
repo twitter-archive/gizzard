@@ -12,11 +12,13 @@ object Copy {
   val MIN_COPY = 500
 }
 
+trait CopyFactory[S <: shards.Shard] extends ((Int, Int) => Copy[S])
+
 abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
   private val log = Logger.get(getClass.getName)
   private var nextCount = count
 
-  def toMap = Map("source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> nextCount)
+  def toMap = Map("source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> nextCount, "and" -> serialize)
 
   def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationShardId, Busy.Normal)
@@ -58,4 +60,5 @@ abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int
   }
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[Copy[S]]
+  def serialize: Map[String, AnyVal]
 }

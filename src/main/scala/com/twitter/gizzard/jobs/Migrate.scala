@@ -8,6 +8,8 @@ import scheduler.JobScheduler
 class Migrate[S <: Shard](copy: Copy[S], migration: ShardMigration)
   extends Copy[S](migration.sourceShardId, migration.destinationShardId, copy.count) {
 
+  def serialize = copy.serialize
+
   def copyPage(sourceShard: S, destinationShard: S, count: Int) = {
     copy.copyPage(sourceShard, destinationShard, count)
   }

@@ -11,7 +11,7 @@ import scheduler.JobScheduler
 
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
   val nameServer = mock[nameserver.NameServer[Shard]]
-  val copier = mock[nameserver.Copier[Shard]]
+  val copier = mock[jobs.CopyFactory[Shard]]
   val scheduler = mock[JobScheduler]
   val manager = new thrift.ShardManagerService(nameServer, copier, scheduler)
   val shard = mock[Shard]

@@ -8,6 +8,7 @@ import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException
 
 
 class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob: => Option[FakeCopy]) extends Copy[Shard](sourceShardId, destinationShardId, count) {
+  def serialize = Map("cursor" -> 1)
   @throws(classOf[Exception])
   def copyPage(sourceShard: Shard, destinationShard: Shard, count: Int) = nextJob
   override def equals(that: Any) = that match {
@@ -27,6 +28,13 @@ object CopySpec extends Specification with JMocker with ClassMocker {
     val jobScheduler = mock[JobScheduler]
     val shard1 = mock[Shard]
     val shard2 = mock[Shard]
+
+    "toMap" in {
+      val copy = makeCopy(Some(nextCopy))
+      copy.toMap mustEqual Map(
+        "source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> count, "and" -> copy.serialize
+      )
+    }
 
     "apply" in {
       "normally" in {
