@@ -14,11 +14,12 @@ case class ErrorHandlingConfig(retryInterval: Duration, errorLimit: Int,
                                jobParser: JobParser, stats: StatsProvider)
 
 
-class ErrorHandlingJobQueue(name: String, normalQueue: MessageQueue[String, String],
-                           config: ErrorHandlingConfig)
+class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, String],
+                            config: ErrorHandlingConfig)
   extends Collection[Job] with Scheduler[Schedulable] with Process {
 
-  val (retryInterval, errorQueue, unparsableMessageQueue, jobParser) = (config.retryInterval, config.errorQueue, config.unparsableMessageQueue, config.jobParser)
+  val (retryInterval, errorQueue, unparsableMessageQueue, jobParser) =
+    (config.retryInterval, config.errorQueue, config.unparsableMessageQueue, config.jobParser)
   val normalJobQueue = new JobQueue(normalQueue, jobParser)
   val errorJobQueue = new JobQueue(errorQueue, jobParser)
   val errorHandlingJobParser = new ErrorHandlingJobParser(config, errorJobQueue)
