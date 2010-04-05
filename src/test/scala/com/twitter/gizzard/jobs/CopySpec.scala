@@ -32,8 +32,8 @@ object CopySpec extends Specification with JMocker with ClassMocker {
     "toMap" in {
       val copy = makeCopy(Some(nextCopy))
       copy.toMap mustEqual Map(
-        "source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> count, "and" -> copy.serialize
-      )
+        "source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> count
+      ) ++ copy.serialize
     }
 
     "apply" in {

@@ -18,7 +18,7 @@ abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int
   private val log = Logger.get(getClass.getName)
   private var nextCount = count
 
-  def toMap = Map("source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> nextCount, "and" -> serialize)
+  def toMap = Map("source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> nextCount) ++ serialize
 
   def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationShardId, Busy.Normal)
