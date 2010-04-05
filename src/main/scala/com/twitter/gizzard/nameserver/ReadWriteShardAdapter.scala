@@ -30,6 +30,6 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def updateShard(shardInfo: ShardInfo)                                         = shard.writeOperation(_.updateShard(shardInfo))
   def nextId()                                                                  = shard.writeOperation(_.nextId())
 
-  def reload()                                                                  = shard.writeOperation(_.reload())
+  def reload()                                                                  = shard.readOperation(_.reload())
   def rebuildSchema()                                                           = shard.writeOperation(_.rebuildSchema())
 }
