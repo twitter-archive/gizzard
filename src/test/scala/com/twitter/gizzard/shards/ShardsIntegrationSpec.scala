@@ -6,12 +6,12 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.querulous.evaluator.QueryEvaluator
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{CopyManager, ForwardingManager, NameServer, ShardRepository}
+import nameserver.{NameServer, SqlShard, ShardRepository}
 
 
 object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with Database {
 
-  NameServer.rebuildSchema(queryEvaluator)
+//  SqlShard.rebuildSchema(queryEvaluator)
 
   val shardInfo1 = new ShardInfo("com.example.UserShard", "table1", "localhost")
   val shardInfo2 = new ShardInfo("com.example.UserShard", "table2", "localhost")
@@ -38,25 +38,21 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
 
   "Shards" should {
     var shardRepository: ShardRepository[UserShard] = null
+    var nameServerShard: nameserver.Shard = null
     var nameServer: NameServer[UserShard] = null
-    var forwardingManager: ForwardingManager[UserShard] = null
-    var copyManager: CopyManager[UserShard] = null
+
+    var mapping = (a: Long) => a
 
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
-      forwardingManager = mock[ForwardingManager[UserShard]]
-      copyManager = mock[CopyManager[UserShard]]
-      nameServer = new NameServer[UserShard](queryEvaluator, shardRepository, forwardingManager, copyManager)
-
-      expect {
-        one(forwardingManager).reloadForwardings(nameServer)
-      }
+      nameServerShard = new SqlShard(queryEvaluator)
+      nameServer = new NameServer(nameServerShard, shardRepository, mapping)
 
       nameServer.createShard(shardInfo1)
       nameServer.createShard(shardInfo2)
-      nameServer.reload()
+//      nameServer.reload()
     }
 
     "WriteOnlyShard" in {

@@ -5,6 +5,7 @@ import net.lag.logging.{ThrottledLogger, Logger}
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
+import com.twitter.ostrich.W3CReporter
 
 
 object ReplicatingShardSpec extends Specification with JMocker {

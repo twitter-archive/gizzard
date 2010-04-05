@@ -7,7 +7,15 @@ import scala.collection.mutable
 import scala.util.Sorting
 import net.lag.logging.{Logger, ThrottledLogger}
 import com.twitter.gizzard.thrift.conversions.Sequences._
+import com.twitter.ostrich.W3CReporter
+import com.twitter.gizzard.nameserver.LoadBalancer
 
+
+class ReplicatingShardFactory(log: ThrottledLogger[String], eventLogger: (String, String) => Unit, future: Future) extends shards.ShardFactory[Shard] {
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[Shard]) =
+    new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future, eventLogger)
+  def materialize(shardInfo: shards.ShardInfo) = ()
+}
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
   val children: Seq[ConcreteShard], loadBalancer: (() => Seq[ConcreteShard]),

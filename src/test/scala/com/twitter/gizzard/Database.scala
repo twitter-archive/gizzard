@@ -14,7 +14,7 @@ trait Database {
   val databaseUsername = config("db.username")
   val databasePassword = config("db.password")
 
-  val queryEvaluatorFactory = {
+  val queryEvaluatorFactory = try {
     val connectionPoolFactory = new ApachePoolingDatabaseFactory(
       config("db.connection_pool.size_min").toInt,
       config("db.connection_pool.size_max").toInt,
@@ -24,12 +24,20 @@ trait Database {
       config("db.connection_pool.min_evictable_idle_msec").toLong.millis)
     val sqlQueryFactory = new SqlQueryFactory
     new StandardQueryEvaluatorFactory(connectionPoolFactory, sqlQueryFactory)
+  } catch {
+    case e =>
+      println(e.toString())
+      throw e
   }
 
-  val queryEvaluator = {
+  val queryEvaluator = try {
     val topLevelEvaluator = queryEvaluatorFactory(databaseHostname, null, databaseUsername, databasePassword)
     topLevelEvaluator.execute("DROP DATABASE IF EXISTS " + databaseName)
     topLevelEvaluator.execute("CREATE DATABASE " + databaseName)
     queryEvaluatorFactory(databaseHostname, databaseName, databaseUsername, databasePassword)
+  } catch {
+    case e =>
+      println(e.toString())
+      throw e
   }
 }

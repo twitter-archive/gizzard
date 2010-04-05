@@ -2,7 +2,7 @@ package com.twitter.gizzard.jobs
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.NameServer
+import nameserver.{NameServer, NonExistentShard}
 import scheduler.JobScheduler
 import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
 
@@ -42,7 +42,7 @@ object CopyMachineSpec extends Specification with JMocker with ClassMocker {
         one(jobScheduler).apply(copier)
       }
 
-      copier.start(nameServer, jobScheduler)
+      copier.start(jobScheduler)
     }
 
     "apply" in {
@@ -65,7 +65,7 @@ object CopyMachineSpec extends Specification with JMocker with ClassMocker {
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
-          one(copier.copyShard).apply(shard1, shard2, count) willThrow new NameServer.NonExistentShard
+          one(copier.copyShard).apply(shard1, shard2, count) willThrow new NonExistentShard
         }
 
         copier.apply(nameServer, jobScheduler)
