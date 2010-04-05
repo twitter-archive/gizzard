@@ -79,7 +79,6 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
   def listShardChildren(parentId: Int) = nameServer.listShardChildren(parentId)
   def findShard(shardInfo: ShardInfo) = nameServer.findShard(shardInfo)
   def getShard(shardId: Int) = nameServer.getShard(shardId)
-  def nextId() = nameServer.nextId()
   def updateShard(shardInfo: ShardInfo) = nameServer.updateShard(shardInfo)
   def deleteShard(shardId: Int) = nameServer.deleteShard(shardId)
   def addChildShard(parentShardId: Int, childShardId: Int, weight: Int) = nameServer.addChildShard(parentShardId, childShardId, weight)

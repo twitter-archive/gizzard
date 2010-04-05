@@ -212,12 +212,6 @@ object SqlShardSpec extends Specification with JMocker with Database {
         nameServer.getChildShardsOfClass(id1, SQL_SHARD).map { _.shardId } mustEqual List(id2, id3)
       }
     }
-
-    "nextId" in {
-      nameServer.nextId() mustEqual 1
-      nameServer.nextId() mustEqual 2
-    }
-
   }
 }
 

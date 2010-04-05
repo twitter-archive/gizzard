@@ -10,7 +10,6 @@ trait Shard extends shards.Shard {
   def getShard(shardId: Int): ShardInfo
   def updateShard(shardInfo: ShardInfo)
   def deleteShard(shardId: Int)
-  def nextId(): Long
   def addChildShard(parentShardId: Int, childShardId: Int, weight: Int)
   def removeChildShard(parentShardId: Int, childShardId: Int)
   def replaceChildShard(oldChildShardId: Int, newChildShardId: Int)
