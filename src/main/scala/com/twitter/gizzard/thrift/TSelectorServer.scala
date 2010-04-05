@@ -64,14 +64,14 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
 
   def isRunning = running
 
-  def execute(f: => Unit) {
+  def execute(f: => Unit)(onTimeout: => Unit) {
     executor.execute(new Runnable() {
       val startTime = Time.now
 
       def run() {
         if (Time.now - startTime > timeout) {
           Stats.incr("thrift-" + name + "-timeout")
-          throw new TimeoutException("thrift connection spent too long in queue")
+          onTimeout
         }
         f
       }
@@ -178,6 +178,16 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
             }
             if (duration > 50) {
               Stats.incr("thrift-" + name + "-work-50")
+            }
+          } {
+            // if the job spent too long waiting for a thread:
+            val client = clientMap.synchronized { clientMap(key.channel) }
+            log.debug("Killing session (enqueued too long): %s", client.socketChannel)
+            try {
+              client.socketChannel.configureBlocking(true)
+              new TApplicationException("server is too busy").write(client.outputProtocol)
+            } finally {
+              closeSocket(client.socketChannel)
             }
           }
         }
