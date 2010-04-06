@@ -2,7 +2,7 @@
 
 ## An introduction to sharding
 
-Many modern web sites needs fast access to amounts of information so large that it cannot be efficiently stored on a single computer. A good way to deal with this problem is to "shard" the information; that is store it across multiple computers instead of on just one.
+Many modern web sites need fast access to amounts of information so large that it cannot be efficiently stored on a single computer. A good way to deal with this problem is to "shard" the information; that is store it across multiple computers instead of on just one.
 
 Sharding strategies often involve two techniques: partitioning and replication. With *partitioning*, the data is divided into small chunks and stored across many computers. Each of these chunks is small enough that the computer that stores it can efficiently manipulate and query the data. With the other technique of *replication*, multiple copies of the data are stored across several machines. Since each copy runs on its own machine and can respond to queries, the system can efficiently respond to huge amounts of queries for the same data by simply adding more and more copies. Replication also makes the system resilient to failure because if any one copy is broken or corrupt, the system can use another copy for the same task.
 
