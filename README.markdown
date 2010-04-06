@@ -16,7 +16,7 @@ Gizzard a *framework* in that it offers a basic template for solving a certain c
 
 ### Gizzard is middleware
 
-![Alt text](doc/middleware.png)
+![Alt text](blob/master/doc//middleware.png?raw=true)
 
 Gizzard operates as a *middleware* networking service. It sits "in the middle" between clients (typically, web front-ends like PHP and Ruby on Rails applications) and the many partitions/replicas of data. Sitting in the middle, all data querying and manipulation flow through Gizzard.
 
