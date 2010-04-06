@@ -2,7 +2,7 @@
 
 ## An introduction to sharding
 
-Many modern web sites need fast access to amounts of information so large that it cannot be efficiently stored on a single computer. A good way to deal with this problem is to "shard" the information; that is store it across multiple computers instead of on just one.
+Many modern web sites need fast access to amounts of information so large that it cannot be efficiently stored on a single computer. A good way to deal with this problem is to "shard" the information; that is, store it across multiple computers instead of on just one.
 
 Sharding strategies often involve two techniques: partitioning and replication. With *partitioning*, the data is divided into small chunks and stored across many computers. Each of these chunks is small enough that the computer that stores it can efficiently manipulate and query the data. With the other technique of *replication*, multiple copies of the data are stored across several machines. Since each copy runs on its own machine and can respond to queries, the system can efficiently respond to huge amounts of queries for the same data by simply adding more and more copies. Replication also makes the system resilient to failure because if any one copy is broken or corrupt, the system can use another copy for the same task.
 
@@ -10,7 +10,7 @@ The problem is: sharding is difficult. Developing with smart partitioning scheme
 
 ## What is a sharding framework?
 
-Twitter has built several custom distributed data-stores. Many of these solutions have a lot in common, prompting us to extract the commonalities so that they were more easily maintainable and reusable in the future. Thus, we have extracted Gizzard, a Scala framework that makes it easy to create custom fault-tolerant, distributed databases. 
+Twitter has built several custom distributed data-stores. Many of these solutions have a lot in common, prompting us to extract the commonalities so that they would be more easily maintainable and reusable. Thus, we have extracted Gizzard, a Scala framework that makes it easy to create custom fault-tolerant, distributed databases.
 
 Gizzard is a *framework* in that it offers a basic template for solving a certain class of problem. This template is not perfect for everyone's needs but is useful for a wide variety of data storage problems. At a high level, Gizzard is a middleware networking service that manages partitioning data across arbitrary backend datastores (e.g., SQL databases, Lucene, etc.). The partitioning rules are stored in a forwarding table that maps key ranges to partitions. Each partition manages its own replication through a declarative replication tree. Gizzard supports "migrations" (for example, elastically adding machines to the cluster) and gracefully handles failures. The system is made *eventually consistent* by requiring that all write-operations are idempotent and as operations fail (because of, e.g., a network partition) they are retried at a later time.
 
@@ -24,7 +24,7 @@ But first, let's examine how Gizzard works in more detail.
 
 ![Alt text](http://github.com/twitter/gizzard/raw/master/doc//middleware.png?raw=true)
 
-Gizzard operates as a *middleware* networking service. It sits "in the middle" between clients (typically, web front-ends like PHP and Ruby on Rails applications) and the many partitions and replicas of data. Sitting in the middle, all data querying and manipulation flow through Gizzard. Gizzard instances are stateless so run as many gizzards as are necessary to sustain throughput or manage TCP connection limits. Gizzard, because it is runs on the JVM is quite efficient. One of Twitter's Gizzard applications (FlockDB, our distributed graph database) can serve 10,000 queries per second per commodity machine. But your mileage may vary.
+Gizzard operates as a *middleware* networking service. It sits "in the middle" between clients (typically, web front-ends like PHP and Ruby on Rails applications) and the many partitions and replicas of data. Sitting in the middle, all data querying and manipulation flow through Gizzard. Gizzard instances are stateless so run as many gizzards as are necessary to sustain throughput or manage TCP connection limits. Gizzard, because it is runs on the JVM, is quite efficient. One of Twitter's Gizzard applications (FlockDB, our distributed graph database) can serve 10,000 queries per second per commodity machine. But your mileage may vary.
 
 ### Gizzard supports any datastorage backend
 
