@@ -10,9 +10,6 @@ import nameserver.{NameServer, SqlShard, ShardRepository}
 
 
 object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with Database {
-
-//  SqlShard.rebuildSchema(queryEvaluator)
-
   val shardInfo1 = new ShardInfo("com.example.UserShard", "table1", "localhost")
   val shardInfo2 = new ShardInfo("com.example.UserShard", "table2", "localhost")
 
@@ -36,6 +33,12 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
     }
   }
 
+  def reset() = {
+    queryEvaluator.execute("DROP TABLE shard_children")
+    queryEvaluator.execute("DROP TABLE shards")
+    queryEvaluator.execute("DROP TABLE forwardings")
+  }
+
   "Shards" should {
     var shardRepository: ShardRepository[UserShard] = null
     var nameServerShard: nameserver.Shard = null
@@ -47,12 +50,12 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
+      reset()
       nameServerShard = new SqlShard(queryEvaluator)
       nameServer = new NameServer(nameServerShard, shardRepository, mapping)
 
       nameServer.createShard(shardInfo1)
       nameServer.createShard(shardInfo2)
-//      nameServer.reload()
     }
 
     "WriteOnlyShard" in {

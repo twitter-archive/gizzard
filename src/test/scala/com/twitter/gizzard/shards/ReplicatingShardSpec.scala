@@ -17,7 +17,7 @@ object ReplicatingShardSpec extends Specification with JMocker {
     val log = new ThrottledLogger[String](Logger(), 1, 1)
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(null, 1, shards, loadBalancer, log, future, { (x, y) => }))
+    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(null, 1, shards, loadBalancer, log, future))
 
     "failover" in {
       "when shard1 throws an exception" in {

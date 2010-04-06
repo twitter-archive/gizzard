@@ -9,7 +9,7 @@ import shards._
 
 object SqlShard {
   val SHARDS_DDL = """
-CREATE TABLE shards (
+CREATE TABLE IF NOT EXISTS shards (
     id                      INT          NOT NULL AUTO_INCREMENT,
     class_name              VARCHAR(125) NOT NULL,
     table_prefix            VARCHAR(125) NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE shards (
 """
 
   val SHARD_CHILDREN_DDL = """
-CREATE TABLE shard_children (
+CREATE TABLE IF NOT EXISTS shard_children (
     parent_id               INT NOT NULL,
     child_id                INT NOT NULL,
     weight                  INT NOT NULL DEFAULT 1,
@@ -37,7 +37,7 @@ CREATE TABLE shard_children (
 """
 
   val FORWARDINGS_DDL = """
-CREATE TABLE forwardings (
+CREATE TABLE IF NOT EXISTS forwardings (
     base_source_id          BIGINT                  NOT NULL,
     table_id                INT                     NOT NULL,
     shard_id                INT                     NOT NULL,
@@ -45,12 +45,6 @@ CREATE TABLE forwardings (
     PRIMARY KEY (base_source_id, table_id),
 
     UNIQUE unique_shard_id (shard_id)
-) ENGINE=INNODB;
-"""
-
-  val SEQUENCE_DDL = """
-CREATE TABLE IF NOT EXISTS sequence (
-    id                      INT UNSIGNED            NOT NULL
 ) ENGINE=INNODB;
 """
 }
@@ -243,8 +237,6 @@ class SqlShard(queryEvaluator: QueryEvaluator)
       childIds.flatMap { child => getChildShardsOfClass(child.shardId, className) }
   }
 
-  def nextId() = queryEvaluator.nextId("sequence")
-
   def reload() {
     try {
       List("shards", "shard_children", "forwardings", "sequence").foreach { table =>
@@ -258,14 +250,8 @@ class SqlShard(queryEvaluator: QueryEvaluator)
   }
 
   def rebuildSchema() {
-    queryEvaluator.execute("DROP TABLE IF EXISTS shards")
-    queryEvaluator.execute("DROP TABLE IF EXISTS shard_children")
     queryEvaluator.execute(SqlShard.SHARDS_DDL)
     queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
-    queryEvaluator.execute("DROP TABLE IF EXISTS forwardings")
-    queryEvaluator.execute("DROP TABLE IF EXISTS sequence")
     queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
-    queryEvaluator.execute(SqlShard.SEQUENCE_DDL)
-    queryEvaluator.execute("INSERT INTO sequence VALUES (0)")
   }
 }

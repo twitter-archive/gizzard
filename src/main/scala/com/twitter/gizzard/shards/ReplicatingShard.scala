@@ -11,15 +11,15 @@ import com.twitter.ostrich.W3CReporter
 import com.twitter.gizzard.nameserver.LoadBalancer
 
 
-class ReplicatingShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard, log: ThrottledLogger[String], eventLogger: (String, String) => Unit, future: Future) extends shards.ShardFactory[ConcreteShard] {
+class ReplicatingShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard, log: ThrottledLogger[String], future: Future) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future, eventLogger))
+    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
   val children: Seq[ConcreteShard], loadBalancer: (() => Seq[ConcreteShard]),
-  log: ThrottledLogger[String], future: Future, eventLogger: (String, String) => Unit)
+  log: ThrottledLogger[String], future: Future)
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
@@ -55,7 +55,6 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
               case _: ShardRejectedOperationException =>
               case _ =>
                 log.error(shardId, e, "Error on %s: %s", shardId, e)
-                eventLogger("db_error-" + shardId, e.getClass.getName)
             }
             failover(f, remainder)
         }
