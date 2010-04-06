@@ -17,8 +17,6 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
   @volatile private var familyTree: scala.collection.Map[Int, Seq[ChildInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
 
-  reload()
-
   def createShard(shardInfo: ShardInfo) = {
     nameServer.createShard(shardInfo, shardRepository.create(shardInfo))
   }
@@ -58,6 +56,7 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
     shardRepository.find(shardInfo, weight, children)
   }
 
+  @throws(classOf[NonExistentShard])
   def findShardById(shardId: Int): S = findShardById(shardId, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
