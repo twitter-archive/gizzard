@@ -28,7 +28,7 @@ Gizzard is designed to replicate data across any network-available data storage 
 
 Gizzard handles partitioning (i.e., dividing the data across many hosts) by mappings ranges of data to particular shards. These mappings are stored in a table that specifies lower-bound of a numerical range and what partition that data in that range belongs to.
 
-![Alt text](doc/forwarding_table.png)
+![Alt text](blob/master/doc/forwarding_table.png)
 
 To be precise, you provide Gizzard a custom "hashing" function that, given a key for your data (and this key can be application specific), produces a number that belongs to one of the ranges in the forwarding table. These functions are programmable so you can optimize for locality or balance depending on your needs.
 
@@ -38,7 +38,7 @@ This tabular approach differs from the "consistent hashing" technique used in ma
 
 Each "shard" referenced in the forwarding table can be either a physical shard or a logical shard. A logical shard is just a tree of other shards, where each *branch* in the tree represents some logical transformation on the data, and each *node* is a "physical" datastorage device. These logical transformations at the branches in the tree are usually rules about how to propagate read and write operations to the children of that branch. For example, here is a two-level replication tree. Note that this represents just ONE partition (as referenced in the forwarding table):
 
-![Alt text](doc/replication_tree.png)
+![Alt text](blob/master/doc/replication_tree.png)
 
 The "Replicate" branches in the picture above are simple strategies to repeat write operations to all children and to balance reads across the children according to health and a weighting function. You can create custom branching/logical shards for your particular datastorage needs, such as to add additional transaction/coordination primitives or quorum strategies. But Gizzard ships with a few standard strategies of broad utility such as Replicating, Write-Only, Read-Only, and Blocked (allowing neither reads nor writes). The utility of some of the more obscure shard types is discussed in the section on `Migrations`.
 
@@ -54,7 +54,7 @@ In order to achieve "eventual consistency", this "retry later" strategy requires
 
 It's sometimes convenient to copy or move data from shards from one computer to another. You might do this to better balance load or to deal with hardware failures. The way this works is that first a replicating shard is created "in front of" the original shard. The new shard is inserted behind the Replicating shard, with a WriteOnly shard in-between. The new shard receives all new writes but does not yet respond to reads since because of the WriteOnly shard. Data from the old shard is then slowly copied to the new shard. When the data is fully copied, the WriteOnly shard is removed and reads can now happen from both the old and new shard. In the case of a "migration", the old shard is removed from the replication tree.
 
-![Alt text](doc/migration.png)
+![Alt text](blob/master/doc/migration.png)
 
 Because writes will happen out of order (new writes occur before older ones and some writes may happen twice), all writes must be idempotent.
 
