@@ -13,6 +13,7 @@ import com.facebook.thrift.transport._
 import com.facebook.thrift.server._
 import com.twitter.ostrich.Stats
 import com.twitter.xrayspecs.{Duration, Time}
+import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
 
@@ -29,17 +30,18 @@ object TSelectorServer {
   }
 
   def apply(name: String, port: Int, processor: TProcessor, executor: ThreadPoolExecutor,
-            timeout: Duration) = {
+            timeout: Duration, idleTimeout: Duration) = {
     val socket = ServerSocketChannel.open()
     socket.socket().setReuseAddress(true)
     socket.socket().bind(new InetSocketAddress(port), 8192)
     log.info("Starting %s (%s) on port %d", name, processor.getClass.getName, port)
-    new TSelectorServer(name, processor, socket, executor, timeout)
+    new TSelectorServer(name, processor, socket, executor, timeout, idleTimeout)
   }
 }
 
 class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerSocketChannel,
-                      executor: ThreadPoolExecutor, timeout: Duration) extends TServer(null, null) {
+                      executor: ThreadPoolExecutor, timeout: Duration, idleTimeout: Duration)
+      extends TServer(null, null) {
   val log = Logger.get(getClass.getName)
 
   val processorFactory = new TProcessorFactory(processor)
@@ -53,7 +55,8 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   @volatile private var running = false
   var selectorThread: Thread = null
 
-  case class Client(socketChannel: SocketChannel, processor: TProcessor, inputProtocol: TProtocol, outputProtocol: TProtocol)
+  case class Client(socketChannel: SocketChannel, processor: TProcessor, inputProtocol: TProtocol,
+                    outputProtocol: TProtocol, var activity: Time)
   val clientMap = new mutable.HashMap[SelectableChannel, Client]
   val registerQueue = new ConcurrentLinkedQueue[SocketChannel]
 
@@ -115,6 +118,8 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
     serverSocket.configureBlocking(false)
     serverSocket.register(selector, SelectionKey.OP_ACCEPT)
 
+    var lastScan = Time.now
+
     override def run() {
       running = true
       var errorCount = 0
@@ -146,6 +151,23 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
         channel = registerQueue.poll()
       }
 
+      // kill off any idle sockets
+      if (Time.now - lastScan >= 1.second) {
+        lastScan = Time.now
+        val toRemove = new mutable.ListBuffer[SelectableChannel]
+        clientMap.synchronized {
+          for ((socket, client) <- clientMap) {
+            if (lastScan - client.activity > idleTimeout) {
+              toRemove += socket
+            }
+          }
+          toRemove.foreach { socket =>
+            socket.keyFor(selector).cancel()
+            closeSocket(socket)
+          }
+        }
+      }
+
       selector.select(100)
 
       for (key <- jcl.Set(selector.selectedKeys)) {
@@ -161,6 +183,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
           execute {
             val (_, duration) = Stats.duration {
               val client = clientMap.synchronized { clientMap(key.channel) }
+              client.activity = Time.now
               try {
                 client.socketChannel.configureBlocking(true)
                 client.processor.process(client.inputProtocol, client.outputProtocol)
@@ -207,11 +230,12 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
       val outputProtocol = outputProtocolFactory.getProtocol(inputTransportFactory.getTransport(transport))
 
       clientMap.synchronized {
-        clientMap(clientSocket) = Client(clientSocket, processor, inputProtocol, outputProtocol)
+        clientMap(clientSocket) = Client(clientSocket, processor, inputProtocol, outputProtocol,
+                                         Time.now)
       }
     }
 
-    def closeSocket(socket: SocketChannel) {
+    def closeSocket(socket: SelectableChannel) {
       log.debug("End of session: %s", socket)
       try {
         socket.close()
