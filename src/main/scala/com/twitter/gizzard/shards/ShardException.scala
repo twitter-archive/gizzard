@@ -4,7 +4,9 @@ package com.twitter.gizzard.shards
 /**
  * Base class for all exceptions thrown by a shard operation.
  */
-class ShardException(description: String) extends Exception(description)
+class ShardException(description: String, cause: Throwable) extends Exception(description, cause) {
+  def this(description: String) = this(description, null)
+}
 
 /**
  * Shard timed out while waiting for a query response. This may or may not be a retryable error,
