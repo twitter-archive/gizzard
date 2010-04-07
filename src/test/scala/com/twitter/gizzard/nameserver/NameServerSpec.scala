@@ -27,6 +27,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       }
 
       nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository, mappingFunction)
+      nameServer.reload()
     }
 
     "reload and get shard info" in {

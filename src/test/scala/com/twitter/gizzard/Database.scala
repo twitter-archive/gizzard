@@ -27,7 +27,7 @@ trait Database {
   } catch {
     case e =>
       println(e.toString())
-      throw e
+      throw e 
   }
 
   val queryEvaluator = try {

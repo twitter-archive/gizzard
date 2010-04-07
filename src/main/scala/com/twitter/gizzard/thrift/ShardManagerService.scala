@@ -7,11 +7,13 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.jobs.{Migrate, CopyFactory}
 import com.twitter.gizzard.nameserver._
+import com.twitter.gizzard.scheduler.JobScheduler
 import net.lag.logging.Logger
 
 
-class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[ConcreteShard], copyManager: CopyManager[ConcreteShard]) extends ShardManager.Iface {
+class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[ConcreteShard], copier: CopyFactory[ConcreteShard], scheduler: JobScheduler) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def create_shard(shard: ShardInfo) = {
@@ -55,19 +57,19 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
   }
 
   def copy_shard(sourceShardId: Int, destinationShardId: Int) {
-    copyManager.newCopyJob(sourceShardId, destinationShardId).start(copyManager.scheduler)
+    scheduler(copier(sourceShardId, destinationShardId))
   }
 
   def setup_migration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
-    nameserver.ShardMigration.setupMigration(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift, nameServer).toThrift
+    nameserver.ShardMigration.setup(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift, nameServer).toThrift
   }
 
   def migrate_shard(migration: ShardMigration) {
-    copyManager.newMigrateJob(migration.fromThrift).start(copyManager.scheduler)
+    scheduler(new Migrate(copier(migration.source_shard_id, migration.destination_shard_id), migration.fromThrift))
   }
 
   def finish_migration(migration: ShardMigration) {
-    nameserver.ShardMigration.finishMigration(migration.fromThrift, nameServer)
+    nameserver.ShardMigration.finish(migration.fromThrift, nameServer)
   }
 
   def set_forwarding(forwarding: Forwarding) {

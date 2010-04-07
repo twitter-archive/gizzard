@@ -11,8 +11,9 @@ import scheduler.JobScheduler
 
 object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
   val nameServer = mock[nameserver.NameServer[Shard]]
-  val copyMachine = mock[nameserver.CopyManager[Shard]]
-  val manager = new thrift.ShardManagerService(nameServer, copyMachine)
+  val copier = mock[jobs.CopyFactory[Shard]]
+  val scheduler = mock[JobScheduler]
+  val manager = new thrift.ShardManagerService(nameServer, copier, scheduler)
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo("com.example.SqlShard",
     "table_prefix", "hostname", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, 1)
@@ -105,7 +106,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
     }
 
 /*    "copy_shard" in {
-      val copyJob = mock[CopyMachine[shards.Shard]]
+      val copyJob = mock[Copy[shards.Shard]]
       val scheduler = mock[JobScheduler]
 
       expect {
@@ -143,7 +144,7 @@ object ShardManagerServiceSpec extends Specification with JMocker with ClassMock
 
 /*    "migrate shard" in {
       val migration = new ShardMigration(1, 2, 3, 4)
-      val migrateJob = mock[CopyMachine[shards.Shard]]
+      val migrateJob = mock[Copy[shards.Shard]]
       val scheduler = mock[JobScheduler]
 
       expect {
