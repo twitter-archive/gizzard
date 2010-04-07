@@ -13,6 +13,8 @@ object SqlExceptionWrappingProxy extends ExceptionHandlingProxy({e =>
     case e: SqlDatabaseTimeoutException =>
       throw new shards.ShardDatabaseTimeoutException
     case e: SQLException =>
-      throw new shards.ShardException(e.toString)
+      throw new shards.ShardException(e.toString, e)
+    case e: shards.ShardException =>
+      throw e
   }
 })
