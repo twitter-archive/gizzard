@@ -1,10 +1,11 @@
 package com.twitter.gizzard.proxy
 
+import java.lang.reflect.UndeclaredThrowableException
 import java.sql.SQLException
+import java.util.concurrent.ExecutionException
 import scala.reflect.Manifest
 import com.twitter.querulous.database.SqlDatabaseTimeoutException
 import com.twitter.querulous.query.SqlQueryTimeoutException
-import java.lang.reflect.UndeclaredThrowableException
 
 
 class ExceptionHandlingProxy(f: Throwable => Unit) {
@@ -14,6 +15,7 @@ class ExceptionHandlingProxy(f: Throwable => Unit) {
         method()
       } catch {
         case ex: UndeclaredThrowableException => f(ex.getCause())
+        case ex: ExecutionException => f(ex.getCause())
         case ex => f(ex)
       }
     }
