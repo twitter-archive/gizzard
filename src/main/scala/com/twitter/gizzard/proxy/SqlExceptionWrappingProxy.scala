@@ -26,7 +26,7 @@ object SqlExceptionWrappingProxy {
               throw new shards.ShardDatabaseTimeoutException
             case e: SQLException =>
               throw new shards.ShardException(e.toString, e)
-            case e: ShardException =>
+            case e: shards.ShardException =>
               throw e
           }
       }
