@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS forwardings (
 """
 }
 
-class SqlShard(queryEvaluator: QueryEvaluator)
-                           extends Shard {
+class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
   val weight = 1 // hardcode for now

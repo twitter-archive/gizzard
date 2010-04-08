@@ -15,6 +15,7 @@ object SqlShardSpec extends Specification with JMocker with Database {
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
 
     var sentinel = 0
+    val queryEvaluator = getQueryEvaluator()
 
     def materialize: Unit = { sentinel += 1 }
 

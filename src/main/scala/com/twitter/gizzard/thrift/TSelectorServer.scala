@@ -7,10 +7,10 @@ import java.util.concurrent.{ConcurrentLinkedQueue, LinkedBlockingQueue, ThreadP
   TimeoutException, TimeUnit}
 import scala.collection.jcl
 import scala.collection.mutable
-import com.facebook.thrift._
-import com.facebook.thrift.protocol._
-import com.facebook.thrift.transport._
-import com.facebook.thrift.server._
+import org.apache.thrift._
+import org.apache.thrift.protocol._
+import org.apache.thrift.transport._
+import org.apache.thrift.server._
 import com.twitter.ostrich.Stats
 import com.twitter.xrayspecs.{Duration, Time}
 import com.twitter.xrayspecs.TimeConversions._
