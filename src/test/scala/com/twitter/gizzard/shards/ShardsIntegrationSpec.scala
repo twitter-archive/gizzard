@@ -53,6 +53,7 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
       reset()
       nameServerShard = new SqlShard(queryEvaluator)
       nameServer = new NameServer(nameServerShard, shardRepository, mapping)
+      nameServer.reload()
 
       nameServer.createShard(shardInfo1)
       nameServer.createShard(shardInfo2)
