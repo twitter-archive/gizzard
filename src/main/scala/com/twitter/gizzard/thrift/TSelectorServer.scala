@@ -139,7 +139,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
             }
           case e: Exception =>
             log.error(e, "Unexpected exception! Dying...")
-            throw e
+            System.exit(1)
         }
       }
     }
@@ -163,8 +163,11 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
             }
           }
           toRemove.foreach { socket =>
-            socket.keyFor(selector).cancel()
-            closeSocket(socket)
+            val key = socket.keyFor(selector)
+            if (key ne null) {
+              key.cancel()
+              closeSocket(socket)
+            }
           }
         }
       }
