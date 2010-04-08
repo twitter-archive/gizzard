@@ -75,8 +75,9 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
         if (Time.now - startTime > timeout) {
           Stats.incr("thrift-" + name + "-timeout")
           onTimeout
+        } else {
+          f
         }
-        f
       }
     })
   }
