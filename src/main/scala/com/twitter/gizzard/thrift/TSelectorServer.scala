@@ -7,10 +7,10 @@ import java.util.concurrent.{ConcurrentLinkedQueue, LinkedBlockingQueue, ThreadP
   TimeoutException, TimeUnit}
 import scala.collection.jcl
 import scala.collection.mutable
-import com.facebook.thrift._
-import com.facebook.thrift.protocol._
-import com.facebook.thrift.transport._
-import com.facebook.thrift.server._
+import org.apache.thrift._
+import org.apache.thrift.protocol._
+import org.apache.thrift.transport._
+import org.apache.thrift.server._
 import com.twitter.ostrich.Stats
 import com.twitter.xrayspecs.{Duration, Time}
 import com.twitter.xrayspecs.TimeConversions._
@@ -139,7 +139,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
             }
           case e: Exception =>
             log.error(e, "Unexpected exception! Dying...")
-            throw e
+            System.exit(1)
         }
       }
     }
@@ -163,8 +163,11 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
             }
           }
           toRemove.foreach { socket =>
-            socket.keyFor(selector).cancel()
-            closeSocket(socket)
+            val key = socket.keyFor(selector)
+            if (key ne null) {
+              key.cancel()
+              closeSocket(socket)
+            }
           }
         }
       }

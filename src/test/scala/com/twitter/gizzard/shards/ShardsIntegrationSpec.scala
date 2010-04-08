@@ -33,10 +33,10 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
     }
   }
 
-  def reset() = {
-    queryEvaluator.execute("DROP TABLE shard_children")
-    queryEvaluator.execute("DROP TABLE shards")
-    queryEvaluator.execute("DROP TABLE forwardings")
+  def reset(queryEvaluator: QueryEvaluator) = {
+    queryEvaluator.execute("DROP TABLE IF EXISTS shard_children")
+    queryEvaluator.execute("DROP TABLE IF EXISTS shards")
+    queryEvaluator.execute("DROP TABLE IF EXISTS forwardings")
   }
 
   "Shards" should {
@@ -45,12 +45,13 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
     var nameServer: NameServer[UserShard] = null
 
     var mapping = (a: Long) => a
+    val queryEvaluator = getQueryEvaluator()
 
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
-      reset()
+      reset(queryEvaluator)
       nameServerShard = new SqlShard(queryEvaluator)
       nameServer = new NameServer(nameServerShard, shardRepository, mapping)
       nameServer.reload()

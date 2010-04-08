@@ -27,10 +27,10 @@ trait Database {
   } catch {
     case e =>
       println(e.toString())
-      throw e 
+      throw e
   }
 
-  val queryEvaluator = try {
+  def getQueryEvaluator() = try {
     val topLevelEvaluator = queryEvaluatorFactory(databaseHostname, null, databaseUsername, databasePassword)
     topLevelEvaluator.execute("DROP DATABASE IF EXISTS " + databaseName)
     topLevelEvaluator.execute("CREATE DATABASE " + databaseName)
