@@ -215,4 +215,3 @@ object SqlShardSpec extends Specification with JMocker with Database {
     }
   }
 }
-
