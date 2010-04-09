@@ -14,6 +14,10 @@ object Copy {
 
 trait CopyFactory[S <: shards.Shard] extends ((Int, Int) => Copy[S])
 
+trait CopyParser[S <: shards.Shard] extends jobs.UnboundJobParser[(NameServer[S], JobScheduler)] {
+  def apply(attributes: Map[String, Any]): Copy[S]
+}
+
 abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, var count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
   private val log = Logger.get(getClass.getName)
 
@@ -56,5 +60,5 @@ abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int
   }
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[Copy[S]]
-  def serialize: Map[String, AnyVal]
+  def serialize: Map[String, Any]
 }
