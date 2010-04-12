@@ -61,7 +61,7 @@ Because writes will happen out of order (new writes occur before older ones and 
 
 ### How does Gizzard handle write conflicts?
 
-Write conflicts are when two manipulations to the same record try to change the record in differing ways. Because Gizzard does not guarantee that operations will apply in order, it is important to think about write conflicts when modeling your data. As described elsewhere, write operations must be both idempotent and commutative in order to avoid conflicts. This is actually an *easy* requirement in many cases, way easier than trying to guarantee ordered delivery of messages without bounded latency and high availability. As mentioned above, Rowz illustrates a technique of using time-stamps to only apply operations that are "newer". More documentation on this will be forthcoming.
+Write conflicts are when two manipulations to the same record try to change the record in differing ways. Because Gizzard does not guarantee that operations will apply in order, it is important to think about write conflicts when modeling your data. As described elsewhere, write operations must be both idempotent and commutative in order to avoid conflicts. This is actually an *easy* requirement in many cases, way easier than trying to guarantee ordered delivery of messages with bounded latency and high availability. As mentioned above, Rowz illustrates a technique of using time-stamps to only apply operations that are "newer". More documentation on this will be forthcoming.
 
 ## How to use Gizzard?
 
