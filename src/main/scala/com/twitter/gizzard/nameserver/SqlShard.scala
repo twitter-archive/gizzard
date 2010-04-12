@@ -1,16 +1,18 @@
 package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
-import com.twitter.querulous.evaluator.QueryEvaluator
-import scheduler.JobScheduler
+import java.util.Random
 import scala.collection.mutable
+import com.twitter.querulous.evaluator.QueryEvaluator
+import com.twitter.xrayspecs.Time
+import scheduler.JobScheduler
 import shards._
 
 
 object SqlShard {
   val SHARDS_DDL = """
 CREATE TABLE IF NOT EXISTS shards (
-    id                      INT          NOT NULL AUTO_INCREMENT,
+    id                      INT          NOT NULL,
     class_name              VARCHAR(125) NOT NULL,
     table_prefix            VARCHAR(125) NOT NULL,
     hostname                VARCHAR(25)  NOT NULL,
@@ -33,7 +35,6 @@ CREATE TABLE IF NOT EXISTS shard_children (
     UNIQUE unique_family (parent_id, child_id),
     UNIQUE unique_child (child_id)
 ) ENGINE=INNODB
-/* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
 """
 
   val FORWARDINGS_DDL = """
@@ -49,10 +50,13 @@ CREATE TABLE IF NOT EXISTS forwardings (
 """
 }
 
+
 class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
   val weight = 1 // hardcode for now
+  val RETRIES = 5
+  val random = new Random()
 
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
@@ -68,16 +72,41 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
   }
 
-  def createShard(shardInfo: ShardInfo, materialize: => Unit) = {
+  def createShard(shardInfo: ShardInfo, materialize: => Unit): Int = createShard(shardInfo, materialize, RETRIES)
+
+  def createShard(shardInfo: ShardInfo, materialize: => Unit, retries: Int): Int = {
+    try {
+      createShardInner(shardInfo, materialize)
+    } catch {
+      case e: SQLIntegrityConstraintViolationException if (retries > 0) =>
+        // allow conflicts on the id generator
+        createShard(shardInfo, materialize, retries - 1)
+    }
+  }
+
+  private def nextId = {
+    ((Time.now.inMillis & ((1 << 20) - 1)) | (random.nextInt() & 0xfffff)).toInt
+  }
+
+  private def createShardInner(shardInfo: ShardInfo, materialize: => Unit) = {
     queryEvaluator.transaction { transaction =>
       try {
-        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.tablePrefix, shardInfo.hostname) { row =>
-          if (row.getString("class_name") != shardInfo.className || row.getString("source_type") != shardInfo.sourceType || row.getString("destination_type") != shardInfo.destinationType) {
+        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type " +
+                                            "FROM shards WHERE table_prefix = ? AND hostname = ?",
+                                            shardInfo.tablePrefix, shardInfo.hostname) { row =>
+          if (row.getString("class_name") != shardInfo.className ||
+              row.getString("source_type") != shardInfo.sourceType ||
+              row.getString("destination_type") != shardInfo.destinationType) {
             throw new InvalidShard
           }
           row.getInt("id")
         } getOrElse {
-          transaction.insert("INSERT INTO shards (class_name, table_prefix, hostname, source_type, destination_type) VALUES (?, ?, ?, ?, ?)", shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
+          val id = nextId
+          transaction.insert("INSERT INTO shards (id, class_name, table_prefix, hostname, " +
+                             "source_type, destination_type) VALUES (?, ?, ?, ?, ?, ?)",
+                             id, shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname,
+                             shardInfo.sourceType, shardInfo.destinationType)
+          id
         }
         materialize
         shardId
@@ -189,12 +218,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   }
 
   def getForwardings(): List[Forwarding] = {
-    // XXX: REVISIT ORDERING
-    queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id DESC") { row =>
+    queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id ASC") { row =>
       rowToForwarding(row)
     }.toList
   }
-
 
   def shardIdsForHostname(hostname: String, className: String): List[Int] = {
     queryEvaluator.select("SELECT id FROM shards WHERE hostname = ? AND class_name = ?", hostname, className) { row =>

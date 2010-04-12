@@ -186,11 +186,11 @@ object SqlShardSpec extends Specification with JMocker with Database {
       }
 
       "shardIdsForHostname" in {
-        nameServer.shardIdsForHostname("localhost", SQL_SHARD) mustEqual List(id1, id2, id3)
+        nameServer.shardIdsForHostname("localhost", SQL_SHARD).sort(_ < _) mustEqual List(id1, id2, id3).sort(_ < _)
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId } mustEqual List(id1, id2, id3)
+        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId }.sort(_ < _) mustEqual List(id1, id2, id3).sort(_ < _)
       }
 
       "getBusyShards" in {
