@@ -14,7 +14,7 @@ object LoggingProxy {
   def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
-      stats.incr("x-operation-" + shortName + ":" + method.name)
+      stats.incr("operation-" + shortName + ":" + method.name)
       logger.transaction {
         logger.log("operation", name + ":" + method.name)
         val arguments = (if (method.args != null) method.args.mkString(",") else "").replace(' ', '_')
