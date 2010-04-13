@@ -1,4 +1,4 @@
-package com.twitter.gizzard
+package com.twitter.gizzard.test
 
 import com.twitter.querulous.database.ApachePoolingDatabaseFactory
 import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
@@ -14,16 +14,17 @@ trait Database {
   val databaseUsername = config("db.username")
   val databasePassword = config("db.password")
 
+  val databaseFactory = new ApachePoolingDatabaseFactory(
+    config("db.connection_pool.size_min").toInt,
+    config("db.connection_pool.size_max").toInt,
+    config("db.connection_pool.test_idle_msec").toLong.millis,
+    config("db.connection_pool.max_wait").toLong.millis,
+    config("db.connection_pool.test_on_borrow").toBoolean,
+    config("db.connection_pool.min_evictable_idle_msec").toLong.millis)
+
   val queryEvaluatorFactory = try {
-    val connectionPoolFactory = new ApachePoolingDatabaseFactory(
-      config("db.connection_pool.size_min").toInt,
-      config("db.connection_pool.size_max").toInt,
-      config("db.connection_pool.test_idle_msec").toLong.millis,
-      config("db.connection_pool.max_wait").toLong.millis,
-      config("db.connection_pool.test_on_borrow").toBoolean,
-      config("db.connection_pool.min_evictable_idle_msec").toLong.millis)
     val sqlQueryFactory = new SqlQueryFactory
-    new StandardQueryEvaluatorFactory(connectionPoolFactory, sqlQueryFactory)
+    new StandardQueryEvaluatorFactory(databaseFactory, sqlQueryFactory)
   } catch {
     case e =>
       println(e.toString())
