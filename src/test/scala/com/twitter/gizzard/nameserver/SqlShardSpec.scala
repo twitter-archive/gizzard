@@ -172,45 +172,45 @@ object SqlShardSpec extends Specification with JMocker with Database {
       val shard1 = new ShardInfo(SQL_SHARD, "forward_1", "localhost")
       val shard2 = new ShardInfo(SQL_SHARD, "forward_1_also", "localhost")
       val shard3 = new ShardInfo(SQL_SHARD, "forward_1_too", "localhost")
-      var id1 = 0
-      var id2 = 0
-      var id3 = 0
+      shard1.shardId = 101
+      shard2.shardId = 102
+      shard3.shardId = 103
 
       doBefore {
-        id1 = nameServer.createShard(shard1, materialize)
-        id2 = nameServer.createShard(shard2, materialize)
-        id3 = nameServer.createShard(shard3, materialize)
+        nameServer.createShard(shard1, materialize)
+        nameServer.createShard(shard2, materialize)
+        nameServer.createShard(shard3, materialize)
         sentinel mustEqual 3
-        nameServer.addChildShard(id1, id2, 10)
-        nameServer.addChildShard(id2, id3, 10)
+        nameServer.addChildShard(shard1.shardId, shard2.shardId, 10)
+        nameServer.addChildShard(shard2.shardId, shard3.shardId, 10)
       }
 
       "shardIdsForHostname" in {
-        nameServer.shardIdsForHostname("localhost", SQL_SHARD).sort(_ < _) mustEqual List(id1, id2, id3).sort(_ < _)
+        nameServer.shardIdsForHostname("localhost", SQL_SHARD).sort(_ < _) mustEqual List(shard1.shardId, shard2.shardId, shard3.shardId).sort(_ < _)
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId }.sort(_ < _) mustEqual List(id1, id2, id3).sort(_ < _)
+        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId }.sort(_ < _) mustEqual List(shard1.shardId, shard2.shardId, shard3.shardId).sort(_ < _)
       }
 
       "getBusyShards" in {
         nameServer.getBusyShards() mustEqual List()
-        nameServer.markShardBusy(id1, Busy.Busy)
-        nameServer.getBusyShards().map { _.shardId } mustEqual List(id1)
+        nameServer.markShardBusy(shard1.shardId, Busy.Busy)
+        nameServer.getBusyShards().map { _.shardId } mustEqual List(shard1.shardId)
       }
 
       "getParentShard" in {
-        nameServer.getParentShard(id3).shardId mustEqual id2
-        nameServer.getParentShard(id2).shardId mustEqual id1
-        nameServer.getParentShard(id1).shardId mustEqual id1
+        nameServer.getParentShard(shard3.shardId).shardId mustEqual shard2.shardId
+        nameServer.getParentShard(shard2.shardId).shardId mustEqual shard1.shardId
+        nameServer.getParentShard(shard1.shardId).shardId mustEqual shard1.shardId
       }
 
       "getRootShard" in {
-        nameServer.getRootShard(id3).shardId mustEqual id1
+        nameServer.getRootShard(shard3.shardId).shardId mustEqual shard1.shardId
       }
 
       "getChildShardsOfClass" in {
-        nameServer.getChildShardsOfClass(id1, SQL_SHARD).map { _.shardId } mustEqual List(id2, id3)
+        nameServer.getChildShardsOfClass(shard1.shardId, SQL_SHARD).map { _.shardId } mustEqual List(shard2.shardId, shard3.shardId)
       }
     }
   }

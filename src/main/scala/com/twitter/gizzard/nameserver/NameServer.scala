@@ -1,7 +1,8 @@
 package com.twitter.gizzard.nameserver
 
-import java.util.TreeMap
+import java.util.{Random, TreeMap}
 import scala.collection.mutable
+import com.twitter.xrayspecs.Time
 import shards._
 
 
@@ -13,13 +14,28 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
+  val RETRIES = 5
+  val random = new Random()
 
   @volatile protected var shardInfos = mutable.Map.empty[Int, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[Int, Seq[ChildInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
 
-  def createShard(shardInfo: ShardInfo) = {
-    nameServer.createShard(shardInfo, shardRepository.create(shardInfo))
+  private def nextId = {
+    ((Time.now.inMillis & ((1 << 20) - 1)) | (random.nextInt() & 0xfffff)).toInt
+  }
+
+  def createShard(shardInfo: ShardInfo): Int = createShard(shardInfo, RETRIES)
+
+  def createShard(shardInfo: ShardInfo, retries: Int): Int = {
+    shardInfo.shardId = nextId
+    try {
+      nameServer.createShard(shardInfo, shardRepository.create(shardInfo))
+    } catch {
+      case e: InvalidShard if (retries > 0) =>
+        // allow conflicts on the id generator
+        createShard(shardInfo, retries - 1)
+    }
   }
 
   def getShardInfo(id: Int) = shardInfos(id)

@@ -1,10 +1,8 @@
 package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
-import java.util.Random
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
-import com.twitter.xrayspecs.Time
 import scheduler.JobScheduler
 import shards._
 
@@ -55,8 +53,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
   val weight = 1 // hardcode for now
-  val RETRIES = 5
-  val random = new Random()
 
   private def rowToShardInfo(row: ResultSet) = {
     new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
@@ -72,23 +68,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
   }
 
-  def createShard(shardInfo: ShardInfo, materialize: => Unit): Int = createShard(shardInfo, materialize, RETRIES)
-
-  def createShard(shardInfo: ShardInfo, materialize: => Unit, retries: Int): Int = {
-    try {
-      createShardInner(shardInfo, materialize)
-    } catch {
-      case e: SQLIntegrityConstraintViolationException if (retries > 0) =>
-        // allow conflicts on the id generator
-        createShard(shardInfo, materialize, retries - 1)
-    }
-  }
-
-  private def nextId = {
-    ((Time.now.inMillis & ((1 << 20) - 1)) | (random.nextInt() & 0xfffff)).toInt
-  }
-
-  private def createShardInner(shardInfo: ShardInfo, materialize: => Unit) = {
+  def createShard(shardInfo: ShardInfo, materialize: => Unit) = {
     queryEvaluator.transaction { transaction =>
       try {
         val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type " +
@@ -101,12 +81,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
           }
           row.getInt("id")
         } getOrElse {
-          val id = nextId
           transaction.insert("INSERT INTO shards (id, class_name, table_prefix, hostname, " +
                              "source_type, destination_type) VALUES (?, ?, ?, ?, ?, ?)",
-                             id, shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname,
-                             shardInfo.sourceType, shardInfo.destinationType)
-          id
+                             shardInfo.shardId, shardInfo.className, shardInfo.tablePrefix,
+                             shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
+          shardInfo.shardId
         }
         materialize
         shardId
