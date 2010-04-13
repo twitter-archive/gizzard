@@ -47,13 +47,19 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
     var mapping = (a: Long) => a
     val queryEvaluator = getQueryEvaluator()
 
+    var nextId = 10
+    def idGenerator() = {
+      nextId += 1
+      nextId
+    }
+
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
       reset(queryEvaluator)
       nameServerShard = new SqlShard(queryEvaluator)
-      nameServer = new NameServer(nameServerShard, shardRepository, mapping)
+      nameServer = new NameServer(nameServerShard, shardRepository, mapping, idGenerator)
       nameServer.reload()
 
       nameServer.createShard(shardInfo1)

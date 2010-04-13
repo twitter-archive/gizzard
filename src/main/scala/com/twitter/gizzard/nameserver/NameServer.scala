@@ -1,6 +1,6 @@
 package com.twitter.gizzard.nameserver
 
-import java.util.{Random, TreeMap}
+import java.util.TreeMap
 import scala.collection.mutable
 import com.twitter.xrayspecs.Time
 import shards._
@@ -9,26 +9,22 @@ import shards._
 class NonExistentShard extends ShardException("Shard does not exist")
 class InvalidShard extends ShardException("Shard has invalid attributes (such as hostname)")
 
-class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRepository[S], mappingFunction: Long => Long)
+class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRepository[S],
+                                    mappingFunction: Long => Long, idGenerator: () => Int)
   extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
   val RETRIES = 5
-  val random = new Random()
 
   @volatile protected var shardInfos = mutable.Map.empty[Int, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[Int, Seq[ChildInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
 
-  private def nextId = {
-    ((Time.now.inMillis & ((1 << 20) - 1)) | (random.nextInt() & 0xfffff)).toInt
-  }
-
   def createShard(shardInfo: ShardInfo): Int = createShard(shardInfo, RETRIES)
 
   def createShard(shardInfo: ShardInfo, retries: Int): Int = {
-    shardInfo.shardId = nextId
+    shardInfo.shardId = idGenerator()
     try {
       nameServer.createShard(shardInfo, shardRepository)
     } catch {
