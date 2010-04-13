@@ -30,7 +30,7 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
   def createShard(shardInfo: ShardInfo, retries: Int): Int = {
     shardInfo.shardId = nextId
     try {
-      nameServer.createShard(shardInfo, shardRepository.create(shardInfo))
+      nameServer.createShard(shardInfo, shardRepository)
     } catch {
       case e: InvalidShard if (retries > 0) =>
         // allow conflicts on the id generator
@@ -91,7 +91,7 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
     findShardById(shardInfo.shardId)
   }
 
-  def createShard(shardInfo: ShardInfo, materialize: => Unit) = nameServer.createShard(shardInfo, materialize)
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServer.createShard(shardInfo, repository)
   def listShardChildren(parentId: Int) = nameServer.listShardChildren(parentId)
   def findShard(shardInfo: ShardInfo) = nameServer.findShard(shardInfo)
   def getShard(shardId: Int) = nameServer.getShard(shardId)

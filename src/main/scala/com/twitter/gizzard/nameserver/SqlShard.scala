@@ -68,7 +68,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
   }
 
-  def createShard(shardInfo: ShardInfo, materialize: => Unit) = {
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = {
     queryEvaluator.transaction { transaction =>
       try {
         val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type " +
@@ -87,7 +87,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
                              shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
           shardInfo.shardId
         }
-        materialize
+        repository.create(shardInfo)
         shardId
       } catch {
         case e: SQLIntegrityConstraintViolationException =>

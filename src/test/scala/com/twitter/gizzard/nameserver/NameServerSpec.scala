@@ -4,6 +4,7 @@ import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
+
 object NameServerSpec extends Specification with JMocker with ClassMocker {
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
@@ -18,6 +19,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
     val shardChildren = Map(3 -> childrenList)
     val shardForwardings = List(new Forwarding(1, 1, 1), new Forwarding(1, 2, 2), new Forwarding(1, 3, 3), new Forwarding(2, 1, 4))
     var shard = mock[gizzard.shards.Shard]
+
     doBefore {
       expect {
         one(nameServerShard).reload()
@@ -56,6 +58,14 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       }
 
       nameServer.findShardById(3) mustEqual shard
+    }
+
+    "create shard" in {
+      expect {
+        one(nameServerShard).createShard(shards(0), shardRepository) willThrow new InvalidShard
+        one(nameServerShard).createShard(shards(0), shardRepository) willReturn 23
+      }
+      nameServer.createShard(shards(0)) mustEqual 23
     }
   }
 }
