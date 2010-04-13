@@ -5,7 +5,8 @@ import scala.collection.Map
 
 
 trait Shard extends shards.Shard {
-  def createShard(shardInfo: ShardInfo, materialize: => Unit): Int
+  @throws(classOf[InvalidShard])
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]): Int
   def findShard(shardInfo: ShardInfo): Int
   def getShard(shardId: Int): ShardInfo
   def updateShard(shardInfo: ShardInfo)

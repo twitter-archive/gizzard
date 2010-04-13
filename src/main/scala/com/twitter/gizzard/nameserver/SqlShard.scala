@@ -1,16 +1,16 @@
 package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
+import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import scheduler.JobScheduler
-import scala.collection.mutable
 import shards._
 
 
 object SqlShard {
   val SHARDS_DDL = """
 CREATE TABLE IF NOT EXISTS shards (
-    id                      INT          NOT NULL AUTO_INCREMENT,
+    id                      INT          NOT NULL,
     class_name              VARCHAR(125) NOT NULL,
     table_prefix            VARCHAR(125) NOT NULL,
     hostname                VARCHAR(25)  NOT NULL,
@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS shard_children (
     UNIQUE unique_family (parent_id, child_id),
     UNIQUE unique_child (child_id)
 ) ENGINE=INNODB
-/* ALTER TABLE shard_children ADD weight INT NOT NULL DEFAULT 1; */
 """
 
   val FORWARDINGS_DDL = """
@@ -48,6 +47,7 @@ CREATE TABLE IF NOT EXISTS forwardings (
 ) ENGINE=INNODB;
 """
 }
+
 
 class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   val children = List()
@@ -68,18 +68,26 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
   }
 
-  def createShard(shardInfo: ShardInfo, materialize: => Unit) = {
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = {
     queryEvaluator.transaction { transaction =>
       try {
-        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.tablePrefix, shardInfo.hostname) { row =>
-          if (row.getString("class_name") != shardInfo.className || row.getString("source_type") != shardInfo.sourceType || row.getString("destination_type") != shardInfo.destinationType) {
+        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type " +
+                                            "FROM shards WHERE table_prefix = ? AND hostname = ?",
+                                            shardInfo.tablePrefix, shardInfo.hostname) { row =>
+          if (row.getString("class_name") != shardInfo.className ||
+              row.getString("source_type") != shardInfo.sourceType ||
+              row.getString("destination_type") != shardInfo.destinationType) {
             throw new InvalidShard
           }
           row.getInt("id")
         } getOrElse {
-          transaction.insert("INSERT INTO shards (class_name, table_prefix, hostname, source_type, destination_type) VALUES (?, ?, ?, ?, ?)", shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
+          transaction.insert("INSERT INTO shards (id, class_name, table_prefix, hostname, " +
+                             "source_type, destination_type) VALUES (?, ?, ?, ?, ?, ?)",
+                             shardInfo.shardId, shardInfo.className, shardInfo.tablePrefix,
+                             shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
+          shardInfo.shardId
         }
-        materialize
+        repository.create(shardInfo)
         shardId
       } catch {
         case e: SQLIntegrityConstraintViolationException =>
@@ -189,12 +197,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   }
 
   def getForwardings(): List[Forwarding] = {
-    // XXX: REVISIT ORDERING
-    queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id DESC") { row =>
+    queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id ASC") { row =>
       rowToForwarding(row)
     }.toList
   }
-
 
   def shardIdsForHostname(hostname: String, className: String): List[Int] = {
     queryEvaluator.select("SELECT id FROM shards WHERE hostname = ? AND class_name = ?", hostname, className) { row =>

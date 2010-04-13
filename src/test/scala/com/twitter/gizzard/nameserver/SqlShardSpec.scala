@@ -3,13 +3,15 @@ package com.twitter.gizzard.nameserver
 import com.twitter.xrayspecs.TimeConversions._
 import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
 import org.specs.Specification
-import org.specs.mock.JMocker
+import org.specs.mock.{ClassMocker, JMocker}
 
-object SqlShardSpec extends Specification with JMocker with Database {
+
+object SqlShardSpec extends Specification with JMocker with ClassMocker with Database {
   "SqlShard" should {
     val SQL_SHARD = "com.example.SqlShard"
 
     var nameServer: SqlShard = null
+    var shardRepository: ShardRepository[Shard] = null
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
@@ -23,43 +25,53 @@ object SqlShardSpec extends Specification with JMocker with Database {
       sentinel = 0
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
+      shardRepository = mock[ShardRepository[Shard]]
     }
 
     "create" in {
       "a new shard" >> {
-        val shardId = nameServer.createShard(forwardShardInfo, materialize)
+        expect {
+          one(shardRepository).create(forwardShardInfo)
+        }
+
+        val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
         nameServer.findShard(forwardShardInfo) mustEqual shardId
-        sentinel mustEqual 1
       }
 
       "when the shard already exists" >> {
         "when the shard matches existing data" >> {
-          val shardId = nameServer.createShard(forwardShardInfo, materialize)
+          expect {
+            exactly(2).of(shardRepository).create(forwardShardInfo)
+          }
+
+          val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
           nameServer.findShard(forwardShardInfo) mustEqual shardId
-          nameServer.createShard(forwardShardInfo, materialize)
+          nameServer.createShard(forwardShardInfo, shardRepository)
           nameServer.findShard(forwardShardInfo) mustEqual shardId
-          sentinel mustEqual 2
         }
 
         "when the shard contradicts existing data" >> {
           expect {
+            one(shardRepository).create(forwardShardInfo)
           }
 
-          nameServer.createShard(forwardShardInfo, materialize)
+          nameServer.createShard(forwardShardInfo, shardRepository)
           val otherShard = forwardShardInfo.clone()
           otherShard.className = "garbage"
-          nameServer.createShard(otherShard, materialize) must throwA[InvalidShard]
-          sentinel mustEqual 1
+          nameServer.createShard(otherShard, shardRepository) must throwA[InvalidShard]
         }
       }
     }
 
     "find" in {
       "a created shard" >> {
-        val shardId = nameServer.createShard(forwardShardInfo, materialize)
+        expect {
+          one(shardRepository).create(forwardShardInfo)
+        }
+
+        val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
         nameServer.findShard(forwardShardInfo) mustEqual shardId
         nameServer.getShard(shardId).tablePrefix mustEqual forwardShardInfo.tablePrefix
-        sentinel mustEqual 1
       }
 
       "when the shard doesn't exist" >> {
@@ -67,17 +79,20 @@ object SqlShardSpec extends Specification with JMocker with Database {
       }
     }
 
-    // XXX: GET SHRARD
+    // FIXME: GET SHARD
 
     "update" in {
       "existing shard" >> {
-        val shardId = nameServer.createShard(forwardShardInfo, materialize)
+        expect {
+          one(shardRepository).create(forwardShardInfo)
+        }
+
+        val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
         val otherShardInfo = forwardShardInfo.clone
         otherShardInfo.tablePrefix = "other_table"
         otherShardInfo.shardId = shardId
         nameServer.updateShard(otherShardInfo)
         nameServer.getShard(shardId) mustEqual otherShardInfo
-        sentinel mustEqual 1
       }
 
       "nonexistent shard" >> {
@@ -86,11 +101,14 @@ object SqlShardSpec extends Specification with JMocker with Database {
     }
 
     "delete" in {
-      val shardId = nameServer.createShard(forwardShardInfo, materialize)
+      expect {
+        one(shardRepository).create(forwardShardInfo)
+      }
+
+      val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
       nameServer.findShard(forwardShardInfo) mustEqual shardId
       nameServer.deleteShard(shardId)
       nameServer.findShard(forwardShardInfo) must throwA[NonExistentShard]
-      sentinel mustEqual 1
     }
 
     "children" in {
@@ -129,10 +147,13 @@ object SqlShardSpec extends Specification with JMocker with Database {
     }
 
     "set shard busy" in {
-      val shardId = nameServer.createShard(forwardShardInfo, materialize)
+      expect {
+        one(shardRepository).create(forwardShardInfo)
+      }
+
+      val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
       nameServer.markShardBusy(shardId, Busy.Busy)
       nameServer.getShard(shardId).busy mustEqual Busy.Busy
-      sentinel mustEqual 1
     }
 
     "forwarding changes" in {
@@ -140,9 +161,12 @@ object SqlShardSpec extends Specification with JMocker with Database {
       var forwarding: Forwarding = null
 
       doBefore {
-        shardId = nameServer.createShard(forwardShardInfo, materialize)
+        expect {
+          one(shardRepository).create(forwardShardInfo)
+        }
+
+        shardId = nameServer.createShard(forwardShardInfo, shardRepository)
         forwarding = new Forwarding(1, 0L, shardId)
-        sentinel mustEqual 1
       }
 
       "set and get for shard" in {
@@ -172,45 +196,51 @@ object SqlShardSpec extends Specification with JMocker with Database {
       val shard1 = new ShardInfo(SQL_SHARD, "forward_1", "localhost")
       val shard2 = new ShardInfo(SQL_SHARD, "forward_1_also", "localhost")
       val shard3 = new ShardInfo(SQL_SHARD, "forward_1_too", "localhost")
-      var id1 = 0
-      var id2 = 0
-      var id3 = 0
+      shard1.shardId = 101
+      shard2.shardId = 102
+      shard3.shardId = 103
 
       doBefore {
-        id1 = nameServer.createShard(shard1, materialize)
-        id2 = nameServer.createShard(shard2, materialize)
-        id3 = nameServer.createShard(shard3, materialize)
+        expect {
+          one(shardRepository).create(shard1)
+          one(shardRepository).create(shard2)
+          one(shardRepository).create(shard3)
+        }
+
+        nameServer.createShard(shard1, shardRepository)
+        nameServer.createShard(shard2, shardRepository)
+        nameServer.createShard(shard3, shardRepository)
         sentinel mustEqual 3
-        nameServer.addChildShard(id1, id2, 10)
-        nameServer.addChildShard(id2, id3, 10)
+        nameServer.addChildShard(shard1.shardId, shard2.shardId, 10)
+        nameServer.addChildShard(shard2.shardId, shard3.shardId, 10)
       }
 
       "shardIdsForHostname" in {
-        nameServer.shardIdsForHostname("localhost", SQL_SHARD) mustEqual List(id1, id2, id3)
+        nameServer.shardIdsForHostname("localhost", SQL_SHARD).sort(_ < _) mustEqual List(shard1.shardId, shard2.shardId, shard3.shardId).sort(_ < _)
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId } mustEqual List(id1, id2, id3)
+        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId }.sort(_ < _) mustEqual List(shard1.shardId, shard2.shardId, shard3.shardId).sort(_ < _)
       }
 
       "getBusyShards" in {
         nameServer.getBusyShards() mustEqual List()
-        nameServer.markShardBusy(id1, Busy.Busy)
-        nameServer.getBusyShards().map { _.shardId } mustEqual List(id1)
+        nameServer.markShardBusy(shard1.shardId, Busy.Busy)
+        nameServer.getBusyShards().map { _.shardId } mustEqual List(shard1.shardId)
       }
 
       "getParentShard" in {
-        nameServer.getParentShard(id3).shardId mustEqual id2
-        nameServer.getParentShard(id2).shardId mustEqual id1
-        nameServer.getParentShard(id1).shardId mustEqual id1
+        nameServer.getParentShard(shard3.shardId).shardId mustEqual shard2.shardId
+        nameServer.getParentShard(shard2.shardId).shardId mustEqual shard1.shardId
+        nameServer.getParentShard(shard1.shardId).shardId mustEqual shard1.shardId
       }
 
       "getRootShard" in {
-        nameServer.getRootShard(id3).shardId mustEqual id1
+        nameServer.getRootShard(shard3.shardId).shardId mustEqual shard1.shardId
       }
 
       "getChildShardsOfClass" in {
-        nameServer.getChildShardsOfClass(id1, SQL_SHARD).map { _.shardId } mustEqual List(id2, id3)
+        nameServer.getChildShardsOfClass(shard1.shardId, SQL_SHARD).map { _.shardId } mustEqual List(shard2.shardId, shard3.shardId)
       }
     }
   }
