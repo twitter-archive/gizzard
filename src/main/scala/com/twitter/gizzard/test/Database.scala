@@ -1,26 +1,22 @@
 package com.twitter.gizzard.test
 
-import com.twitter.querulous.database.ApachePoolingDatabaseFactory
+import com.twitter.querulous.database.{ApachePoolingDatabaseFactory, MemoizingDatabaseFactory}
 import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.xrayspecs.TimeConversions._
-import net.lag.configgy.Configgy
+import net.lag.configgy.{ConfigMap, Configgy}
 
 
 trait Database {
-  val config = Configgy.config
-  val databaseName = config("db.database")
-  val databaseHostname = config("db.hostname")
-  val databaseUsername = config("db.username")
-  val databasePassword = config("db.password")
+  val poolConfig: ConfigMap
 
-  val databaseFactory = new ApachePoolingDatabaseFactory(
-    config("db.connection_pool.size_min").toInt,
-    config("db.connection_pool.size_max").toInt,
-    config("db.connection_pool.test_idle_msec").toLong.millis,
-    config("db.connection_pool.max_wait").toLong.millis,
-    config("db.connection_pool.test_on_borrow").toBoolean,
-    config("db.connection_pool.min_evictable_idle_msec").toLong.millis)
+  val databaseFactory = new MemoizingDatabaseFactory(new ApachePoolingDatabaseFactory(
+    poolConfig("size_min").toInt,
+    poolConfig("size_max").toInt,
+    poolConfig("test_idle_msec").toLong.millis,
+    poolConfig("max_wait").toLong.millis,
+    poolConfig("test_on_borrow").toBoolean,
+    poolConfig("min_evictable_idle_msec").toLong.millis))
 
   val queryEvaluatorFactory = try {
     val sqlQueryFactory = new SqlQueryFactory
@@ -31,14 +27,7 @@ trait Database {
       throw e
   }
 
-  def getQueryEvaluator() = try {
-    val topLevelEvaluator = queryEvaluatorFactory(databaseHostname, null, databaseUsername, databasePassword)
-    topLevelEvaluator.execute("DROP DATABASE IF EXISTS " + databaseName)
-    topLevelEvaluator.execute("CREATE DATABASE " + databaseName)
-    queryEvaluatorFactory(databaseHostname, databaseName, databaseUsername, databasePassword)
-  } catch {
-    case e =>
-      println(e.toString())
-      throw e
-  }
+  def evaluator(configMap: ConfigMap) = queryEvaluatorFactory(configMap("hostname"), configMap("database"), configMap("username"), configMap("password"))
+  def rootEvaluator(configMap: ConfigMap) = queryEvaluatorFactory(configMap("hostname"), null, configMap("username"), configMap("password"))
 }
+

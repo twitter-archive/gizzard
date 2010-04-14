@@ -2,12 +2,19 @@ package com.twitter.gizzard.nameserver
 
 import com.twitter.xrayspecs.TimeConversions._
 import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
+import com.twitter.gizzard.test.NameServerDatabase
+import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object SqlShardSpec extends Specification with JMocker with ClassMocker with Database {
+object SqlShardSpec extends Specification with JMocker with ClassMocker with NameServerDatabase {
+  val poolConfig = Configgy.config.configMap("db")
+
   "SqlShard" should {
+    materialize(Configgy.config.configMap("db"))
+    val queryEvaluator = evaluator(Configgy.config.configMap("db"))
+
     val SQL_SHARD = "com.example.SqlShard"
 
     var nameServer: SqlShard = null
@@ -17,9 +24,6 @@ object SqlShardSpec extends Specification with JMocker with ClassMocker with Dat
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
 
     var sentinel = 0
-    val queryEvaluator = getQueryEvaluator()
-
-    def materialize: Unit = { sentinel += 1 }
 
     doBefore {
       sentinel = 0

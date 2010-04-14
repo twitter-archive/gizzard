@@ -4,14 +4,19 @@ import java.sql.SQLException
 import scala.collection.mutable
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.querulous.evaluator.QueryEvaluator
+import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
+import net.lag.configgy.Configgy
 import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.{NameServer, SqlShard, ShardRepository}
 
 
-object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with Database {
+object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker with NameServerDatabase {
+  val poolConfig = Configgy.config.configMap("db")
   val shardInfo1 = new ShardInfo("com.example.UserShard", "table1", "localhost")
   val shardInfo2 = new ShardInfo("com.example.UserShard", "table2", "localhost")
+  materialize(Configgy.config.configMap("db"))
+  val queryEvaluator = evaluator(Configgy.config.configMap("db"))
 
   class UserShard(val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard]) extends Shard {
     val data = new mutable.HashMap[Int, String]
@@ -33,19 +38,12 @@ object ShardsIntegrationSpec extends Specification with JMocker with ClassMocker
     }
   }
 
-  def reset(queryEvaluator: QueryEvaluator) = {
-    queryEvaluator.execute("DROP TABLE IF EXISTS shard_children")
-    queryEvaluator.execute("DROP TABLE IF EXISTS shards")
-    queryEvaluator.execute("DROP TABLE IF EXISTS forwardings")
-  }
-
   "Shards" should {
     var shardRepository: ShardRepository[UserShard] = null
     var nameServerShard: nameserver.Shard = null
     var nameServer: NameServer[UserShard] = null
 
     var mapping = (a: Long) => a
-    val queryEvaluator = getQueryEvaluator()
 
     var nextId = 10
     def idGenerator() = {
