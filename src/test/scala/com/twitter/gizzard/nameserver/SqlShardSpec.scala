@@ -9,7 +9,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 
 object SqlShardSpec extends Specification with JMocker with ClassMocker with NameServerDatabase {
-  val poolConfig = Configgy.config.configMap("db")
+  lazy val poolConfig = Configgy.config.configMap("db.connection_pool")
 
   "SqlShard" should {
     materialize(Configgy.config.configMap("db"))
@@ -27,6 +27,7 @@ object SqlShardSpec extends Specification with JMocker with ClassMocker with Nam
 
     doBefore {
       sentinel = 0
+      reset(Configgy.config.configMap("db"))
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
       shardRepository = mock[ShardRepository[Shard]]

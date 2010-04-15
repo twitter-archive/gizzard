@@ -10,46 +10,73 @@ import org.specs.Specification
 
 trait IdServerDatabase extends Specification with Database {
   def reset(config: ConfigMap) {
-    config.getConfigMap("ids").foreach { id =>
-      val idQueryEvaluator = evaluator(id)
-      idQueryEvaluator.execute("DELETE FROM " + id("table"))
-      idQueryEvaluator.execute("INSERT INTO " + id("table") + " VALUES (0)")
+    try {
+      config.getConfigMap("ids").foreach { id =>
+        val idQueryEvaluator = evaluator(id)
+        idQueryEvaluator.execute("DELETE FROM " + id("table"))
+        idQueryEvaluator.execute("INSERT INTO " + id("table") + " VALUES (0)")
+      }
+    } catch {
+      case e =>
+        e.printStackTrace()
+        throw e
     }
   }
 
   def materialize(config: ConfigMap) {
-    config.getConfigMap("ids").foreach { id =>
-      val queryEvaluator = rootEvaluator(id)
-      queryEvaluator.execute("CREATE DATABASE IF NOT EXISTS " + id("database"))
+    try {
+      config.getConfigMap("ids").foreach { id =>
+        val queryEvaluator = rootEvaluator(id)
+        queryEvaluator.execute("CREATE DATABASE IF NOT EXISTS " + id("database"))
+      }
+    } catch {
+      case e =>
+        e.printStackTrace()
+        throw e
     }
   }
 }
 
 trait NameServerDatabase extends Specification with Database {
   def materialize(config: ConfigMap) {
-    val key = config.configMap("nameservers").keys.next
-    val ns = config.configMap("nameservers." + key)
-    val evaluator = rootEvaluator(ns)
-    evaluator.execute("CREATE DATABASE IF NOT EXISTS " + ns("database"))
+    try {
+      val ns = config.getConfigMap("nameservers").map { map =>
+        val key = map.keys.next
+        config.configMap("nameservers." + key)
+      } getOrElse(config)
+      val evaluator = rootEvaluator(ns)
+      evaluator.execute("CREATE DATABASE IF NOT EXISTS " + ns("database"))
+    } catch {
+      case e =>
+        e.printStackTrace()
+        throw e
+    }
   }
 
   def reset(config: ConfigMap) {
-    val key = config.configMap("nameservers").keys.next
-    val ns = config.configMap("nameservers." + key)
-    val nameServerQueryEvaluator = evaluator(ns)
-    reset(nameServerQueryEvaluator)
+    try {
+      val ns = config.getConfigMap("nameservers").map { map =>
+        val key = map.keys.next
+        config.configMap("nameservers." + key)
+      } getOrElse(config)
+      val nameServerQueryEvaluator = evaluator(ns)
+      reset(nameServerQueryEvaluator)
+    } catch {
+      case e =>
+        e.printStackTrace()
+        throw e
+    }
   }
 
   def reset(queryEvaluator: QueryEvaluator) {
-    queryEvaluator.execute("DELETE FROM forwardings")
-    queryEvaluator.execute("DELETE FROM shard_children")
-    queryEvaluator.execute("DELETE FROM shards")
+    try {
+      queryEvaluator.execute("DELETE FROM forwardings")
+      queryEvaluator.execute("DELETE FROM shard_children")
+      queryEvaluator.execute("DELETE FROM shards")
+    } catch {
+      case e =>
+        e.printStackTrace()
+        throw e
+    }
   }
-
-/*  def reset(database: String) {
-    Time.reset()
-    Time.freeze()
-    val queryEvaluator = queryEvaluatorFactory("localhost", null, config("db.username"), config("db.password"))
-    queryEvaluator.execute("DROP DATABASE IF EXISTS " + database)
-  } */
 }

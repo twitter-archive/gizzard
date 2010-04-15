@@ -10,15 +10,21 @@ import net.lag.configgy.{ConfigMap, Configgy}
 trait Database {
   val poolConfig: ConfigMap
 
-  val databaseFactory = new MemoizingDatabaseFactory(new ApachePoolingDatabaseFactory(
+  lazy val databaseFactory = try { new MemoizingDatabaseFactory(new ApachePoolingDatabaseFactory(
     poolConfig("size_min").toInt,
     poolConfig("size_max").toInt,
     poolConfig("test_idle_msec").toLong.millis,
     poolConfig("max_wait").toLong.millis,
     poolConfig("test_on_borrow").toBoolean,
     poolConfig("min_evictable_idle_msec").toLong.millis))
+  } catch {
+    case e =>
+      println(e.toString())
+      e.printStackTrace()
+      throw e
+  }
 
-  val queryEvaluatorFactory = try {
+  def queryEvaluatorFactory = try {
     val sqlQueryFactory = new SqlQueryFactory
     new StandardQueryEvaluatorFactory(databaseFactory, sqlQueryFactory)
   } catch {
@@ -27,7 +33,20 @@ trait Database {
       throw e
   }
 
-  def evaluator(configMap: ConfigMap) = queryEvaluatorFactory(configMap("hostname"), configMap("database"), configMap("username"), configMap("password"))
-  def rootEvaluator(configMap: ConfigMap) = queryEvaluatorFactory(configMap("hostname"), null, configMap("username"), configMap("password"))
+  def evaluator(configMap: ConfigMap) = try {
+    queryEvaluatorFactory(configMap("hostname"), configMap("database"), configMap("username"), configMap("password"))
+  } catch { 
+    case e =>
+      e.printStackTrace()
+      throw e
+  }
+
+  def rootEvaluator(configMap: ConfigMap) = try {
+    queryEvaluatorFactory(configMap("hostname"), null, configMap("username"), configMap("password"))
+  } catch {
+    case e =>
+      e.printStackTrace()
+      throw e
+  }
 }
 
