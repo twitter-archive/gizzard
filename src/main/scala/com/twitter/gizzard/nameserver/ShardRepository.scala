@@ -32,9 +32,14 @@ class ShardRepository[S <: shards.Shard] {
 class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
                                               log: ThrottledLogger[String], future: Future)
       extends ShardRepository[S] {
-  this += ("com.twitter.gizzard.shards.ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
-  this += ("com.twitter.gizzard.shards.BlockedShard"     -> new shards.BlockedShardFactory(constructor))
-  this += ("com.twitter.gizzard.shards.WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
-  this += ("com.twitter.gizzard.shards.ReplicatingShard" ->
-           new shards.ReplicatingShardFactory(constructor, log, future))
+
+  setupPackage("com.twitter.gizzard.shards")
+
+  def setupPackage(packageName: String) {
+    this += (packageName + ".ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
+    this += (packageName + ".BlockedShard"     -> new shards.BlockedShardFactory(constructor))
+    this += (packageName + ".WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
+    this += (packageName + ".ReplicatingShard" ->
+             new shards.ReplicatingShardFactory(constructor, log, future))
+  }
 }
