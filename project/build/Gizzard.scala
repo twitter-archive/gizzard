@@ -2,6 +2,9 @@ import sbt._
 import Process._
 
 class GizzardProject(info: ProjectInfo) extends DefaultProject(info) {
+  override def dependencyPath = "lib"
+  override def disableCrossPaths = true
+
   val jbossRepository   = "jboss" at "http://repository.jboss.org/maven2/"
   val lagRepository     = "lag.net" at "http://www.lag.net/repo/"
   val twitterRepository = "twitter.com" at "http://www.lag.net/nest/"
@@ -18,7 +21,7 @@ class GizzardProject(info: ProjectInfo) extends DefaultProject(info) {
   val objenesis = "org.objenesis" % "objenesis" % "1.1"
   val ostrich   = "com.twitter" % "ostrich" % "1.1.3"
   val pool      = "commons-pool" % "commons-pool" % "1.3"
-  val querulous = "com.twitter" % "querulous" % "1.1.3"
+  val querulous = "com.twitter" % "querulous" % "1.1.7"
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
   val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.1"
@@ -29,11 +32,23 @@ class GizzardProject(info: ProjectInfo) extends DefaultProject(info) {
     "log4j" % "log4j" % "1.2.12"
     from "http://mirrors.ibiblio.org/pub/mirrors/maven2/log4j/log4j/1.2.12/log4j-1.2.12.jar")
 
-  def thriftCompileTask(lang: String, paths: PathFinder) = task {
-    (paths.getPaths.map { path => 
-      execTask { "thrift --gen %s -o %s %s".format(lang, outputPath.absolutePath, path) }
-    } map ( _.run ) flatMap ( _.toList ) toSeq).firstOption
-  }
+  def thriftCompileTask(lang: String, paths: PathFinder) = dynamic({
+    def thriftCompile = {
+      (paths.getPaths.map { path => 
+        execTask { "thrift --gen %s -o %s %s".format(lang, outputPath.absolutePath, path) }
+      } map ( _.run ) flatMap ( _.toList ) toSeq).firstOption
+    }
+
+    val thriftCompilePath = (outputPath / ("gen-"+lang) ##)
+    if (thriftCompilePath.exists) {
+      val thriftCompiledFiles = thriftCompilePath ** "*.java"
+      fileTask(thriftCompiledFiles.get from paths) {
+        thriftCompile
+      }
+    } else {
+      task { thriftCompile }
+    }
+  })
 
   outputPath.asFile.mkdir()
 
