@@ -7,7 +7,7 @@ import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{NameServer, SqlShard, ShardRepository}
+import nameserver.{IdGenerator, NameServer, SqlShard, ShardRepository}
 
 
 object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
@@ -44,10 +44,12 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
 
     var mapping = (a: Long) => a
 
-    var nextId = 10
-    def idGenerator() = {
-      nextId += 1
-      nextId
+    object FakeIdGenerator extends IdGenerator {
+      private var nextId = 10
+      def apply() = {
+        nextId += 1
+        nextId
+      }
     }
 
     doBefore {
@@ -56,7 +58,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
       shardRepository += (("com.example.SqlShard", factory))
       reset(queryEvaluator)
       nameServerShard = new SqlShard(queryEvaluator)
-      nameServer = new NameServer(nameServerShard, shardRepository, mapping, idGenerator)
+      nameServer = new NameServer(nameServerShard, shardRepository, mapping, FakeIdGenerator)
       nameServer.reload()
 
       nameServer.createShard(shardInfo1)
