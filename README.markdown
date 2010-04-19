@@ -67,6 +67,16 @@ Write conflicts are when two manipulations to the same record try to change the 
 
 The source-code to Gizzard is [available on GitHub](http://github.com/twitter/gizzard). A sample application that uses Gizzard, called Rowz, [is also available](http://github.com/nkallen/Rowz). The best way to get started with Gizzard is to clone Rowz and customize.
 
+## Building
+
+Ant is the current build method:
+
+    $ ant
+
+This should download any missing jars using ivy (which is ant's implementation of the maven dependency fetcher) and build a jar in `dist/`.
+
+Apache Thrift 0.2.0 is pre-requisite for building java stubs of the thrift IDL. It can't be installed via jar, so you'll need to install it separately before you build. If you install the thrift binary into an unusual place, you can tell ant where it is with `-Dthrift.bin=<where>`.
+
 ## Installation
 
 ### Maven
@@ -77,9 +87,17 @@ The source-code to Gizzard is [available on GitHub](http://github.com/twitter/gi
         <version>1.0</version>
     </dependency>
 
+It may require you to add the "Twitter nest" maven repo to your repo list. The nest repo is located here:
+
+    http://www.lag.net/nest/
+
 ### Ivy
 
     <dependency org="com.twitter" name="gizzard" rev="1.0"/>
+
+You will need to add a reference to the "Twitter nest" to your `ivysettings.xml` file if it isn't already there:
+
+    <ibiblio name="twitter.com" m2compatible="true" root="http://www.lag.net/nest/" />
 
 The Github issue tracker is [here](http://github.com/twitter/gizzard/issues).
  
