@@ -9,7 +9,7 @@ import shards.{Busy, Shard}
 import scheduler.JobScheduler
 
 
-object ShardManagerServiceSpec extends Specification with JMocker with ClassMocker {
+object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer = mock[nameserver.NameServer[Shard]]
   val copier = mock[jobs.CopyFactory[Shard]]
   val scheduler = mock[JobScheduler]

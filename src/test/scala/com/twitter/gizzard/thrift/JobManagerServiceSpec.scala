@@ -6,7 +6,7 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import scheduler.{PrioritizingJobScheduler, JobScheduler}
 
 
-object JobManagerServiceSpec extends Specification with JMocker with ClassMocker {
+object JobManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val scheduler = mock[PrioritizingJobScheduler]
   val subScheduler = mock[JobScheduler]
   val service = new JobManagerService(scheduler)

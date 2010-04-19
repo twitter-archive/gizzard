@@ -4,7 +4,7 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object NameServerSpec extends Specification with JMocker with ClassMocker {
+object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 

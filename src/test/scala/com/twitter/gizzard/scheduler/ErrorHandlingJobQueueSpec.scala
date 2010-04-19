@@ -9,7 +9,7 @@ import jobs.{Schedulable, Job, JobParser}
 import com.twitter.ostrich.DevNullStats
 
 
-object ErrorHandlingJobQueueSpec extends Specification with JMocker with ClassMocker with Eventually {
+object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker with Eventually {
   "ErrorHandlingJobQueue" should {
     val job = mock[Job]
     val jobParser = mock[JobParser]

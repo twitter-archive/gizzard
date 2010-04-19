@@ -17,7 +17,7 @@ class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob:
   }
 }
 
-object CopySpec extends Specification with JMocker with ClassMocker {
+object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "Copy" should {
     val sourceShardId = 1
     val destinationShardId = 2

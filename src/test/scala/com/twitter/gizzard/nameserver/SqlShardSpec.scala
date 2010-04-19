@@ -3,17 +3,16 @@ package com.twitter.gizzard.nameserver
 import com.twitter.xrayspecs.TimeConversions._
 import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
 import com.twitter.gizzard.test.NameServerDatabase
-import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object SqlShardSpec extends Specification with JMocker with ClassMocker with NameServerDatabase {
-  lazy val poolConfig = Configgy.config.configMap("db.connection_pool")
+object SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
+  lazy val poolConfig = config.configMap("db.connection_pool")
 
   "SqlShard" should {
-    materialize(Configgy.config.configMap("db"))
-    val queryEvaluator = evaluator(Configgy.config.configMap("db"))
+    materialize(config.configMap("db"))
+    val queryEvaluator = evaluator(config.configMap("db"))
 
     val SQL_SHARD = "com.example.SqlShard"
 
@@ -27,7 +26,7 @@ object SqlShardSpec extends Specification with JMocker with ClassMocker with Nam
 
     doBefore {
       sentinel = 0
-      reset(Configgy.config.configMap("db"))
+      reset(config.configMap("db"))
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
       shardRepository = mock[ShardRepository[Shard]]

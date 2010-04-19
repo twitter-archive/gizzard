@@ -8,7 +8,7 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object FutureSpec extends Specification with JMocker with ClassMocker {
+object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
   "Future" should {
     var future: Future = null

@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import org.specs.Specification
 
-object ByteSwapperSpec extends Specification {
+object ByteSwapperSpec extends ConfiguredSpecification {
   "ByteSwapper" should {
     "reverse the bytes" in {
       ByteSwapper(0xabcdL) mustEqual 0x0abcd00000000000L
