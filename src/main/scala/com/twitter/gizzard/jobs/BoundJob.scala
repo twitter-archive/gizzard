@@ -10,7 +10,9 @@ trait UnboundJob[E] extends Schedulable {
 class BoundJobParser[E](bindingEnvironment: E)(implicit manifest: Manifest[E]) extends JobParser {
   def apply(json: Map[String, Map[String, Any]]) = {
     val (key, attributes) = json.toList.first
-    val jobClass = Class.forName(key).asInstanceOf[Class[UnboundJob[E]]]
+    // XXX: hack for now
+    val jankykey = key.replace("service.flock.edges", "flockdb")
+    val jobClass = Class.forName(jankykey).asInstanceOf[Class[UnboundJob[E]]]
     val unboundJob = jobClass.getConstructor(classOf[Map[String, AnyVal]]).newInstance(attributes)
     new BoundJob(unboundJob, bindingEnvironment)
   }
