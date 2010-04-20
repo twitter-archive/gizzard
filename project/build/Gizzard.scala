@@ -5,6 +5,8 @@ class GizzardProject(info: ProjectInfo) extends DefaultProject(info) {
   override def dependencyPath = "lib"
   override def disableCrossPaths = true
 
+  override def managedDependencyPath = ".ivy2cache"
+
   val jbossRepository   = "jboss" at "http://repository.jboss.org/maven2/"
   val lagRepository     = "lag.net" at "http://www.lag.net/repo/"
   val twitterRepository = "twitter.com" at "http://www.lag.net/nest/"
