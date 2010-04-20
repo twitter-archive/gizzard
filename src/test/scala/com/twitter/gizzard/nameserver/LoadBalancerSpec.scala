@@ -5,7 +5,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import util.Random
 
 
-object LoadBalancerSpec extends Specification with JMocker with ClassMocker {
+object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "LoadBalancer" should {
     val random = new Random(0)
     val shard1 = mock[shards.Shard]

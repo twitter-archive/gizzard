@@ -4,7 +4,7 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object NameServerSpec extends Specification with JMocker with ClassMocker {
+object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
@@ -22,10 +22,12 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
                                 new Forwarding(1, 3, 3), new Forwarding(2, 1, 4))
     var shard = mock[shards.Shard]
 
-    var nextId = 10
-    def idGenerator() = {
-      nextId += 1
-      nextId
+    object FakeIdGenerator extends IdGenerator {
+      private var nextId = 10
+      def apply()  = {
+        nextId += 1
+        nextId
+      }
     }
 
     doBefore {
@@ -37,7 +39,7 @@ object NameServerSpec extends Specification with JMocker with ClassMocker {
       }
 
       nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository,
-                                                        mappingFunction, idGenerator)
+                                                        mappingFunction, FakeIdGenerator)
       nameServer.reload()
     }
 

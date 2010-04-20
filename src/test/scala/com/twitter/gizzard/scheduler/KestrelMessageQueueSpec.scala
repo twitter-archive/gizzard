@@ -10,7 +10,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{Job, JobParser}
 
 
-object KestrelMessageQueueSpec extends Specification with JMocker with ClassMocker {
+object KestrelMessageQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "KestrelMessageQueue" should {
     Time.freeze()
     val message1 = "message1"

@@ -2,13 +2,12 @@ package com.twitter.gizzard.jobs
 
 import scala.collection.mutable
 import com.twitter.json.Json
-import net.lag.configgy.Configgy
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import shards.ShardRejectedOperationException
 
 
-object JournaledJobSpec extends Specification with JMocker with ClassMocker {
+object JournaledJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JournaledJob" should {
     "journal on success" in {
       val job = mock[Job]

@@ -2,13 +2,12 @@ package com.twitter.gizzard.jobs
 
 import scala.collection.mutable
 import com.twitter.json.Json
-import net.lag.configgy.Configgy
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import shards.ShardRejectedOperationException
 
 
-object SchedulableWithTasksSpec extends Specification with JMocker with ClassMocker {
+object SchedulableWithTasksSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "SchedulableWithTasks" should {
     "to and from json" >> {
       val schedulables = List(mock[Schedulable], mock[Schedulable])

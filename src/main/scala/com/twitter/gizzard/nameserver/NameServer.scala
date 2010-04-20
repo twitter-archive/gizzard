@@ -10,7 +10,7 @@ class NonExistentShard extends ShardException("Shard does not exist")
 class InvalidShard extends ShardException("Shard has invalid attributes (such as hostname)")
 
 class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRepository[S],
-                                    mappingFunction: Long => Long, idGenerator: () => Int)
+                                    mappingFunction: Long => Long, idGenerator: IdGenerator)
   extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")

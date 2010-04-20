@@ -8,7 +8,7 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.ostrich.W3CReporter
 
 
-object ReplicatingShardSpec extends Specification with JMocker {
+object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
   "ReplicatingShard" should {
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]

@@ -6,7 +6,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{Schedulable, Job}
 
 
-object JobEvaluatorThreadSpec extends Specification with JMocker with Eventually {
+object JobEvaluatorThreadSpec extends ConfiguredSpecification with JMocker with Eventually {
   "JobEvaluatorThread" should {
     "pause & resume" in {
       val queue = new fake.MessageQueue

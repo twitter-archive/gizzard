@@ -2,7 +2,6 @@ package com.twitter.gizzard.jobs
 
 import scala.collection.mutable
 import com.twitter.json.Json
-import net.lag.configgy.Configgy
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import shards.ShardRejectedOperationException
@@ -11,7 +10,7 @@ import scheduler.{ErrorHandlingConfig, MessageQueue}
 import com.twitter.ostrich.DevNullStats
 
 
-object ErrorHandlingJobSpec extends Specification with JMocker with ClassMocker {
+object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val job = mock[Job]
   val errorQueue = mock[MessageQueue[Schedulable, Job]]
   val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
@@ -51,7 +50,7 @@ object ErrorHandlingJobSpec extends Specification with JMocker with ClassMocker 
     }
 
     "when the shard is darkmoded and the job has errored a lot" >> {
-      Configgy.config("errors.max_errors_per_job") = 0
+      config("errors.max_errors_per_job") = 0
       expect {
         allowing(job).apply() willThrow new ShardRejectedOperationException("darkmode")
         one(errorQueue).put(errorHandlingJob)

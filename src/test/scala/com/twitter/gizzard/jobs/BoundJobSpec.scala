@@ -1,12 +1,11 @@
 package com.twitter.gizzard.jobs
 
-import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.json.Json
 
 
-object BoundJobSpec extends Specification with JMocker with ClassMocker {
+object BoundJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "BoundJobParser" should {
     "apply" in {
       val job = new fake.Job(Map("a" -> 1, "error_count" -> 0))

@@ -7,7 +7,7 @@ import org.specs.Specification
 import jobs.Schedulable
 
 
-object PrioritizingJobSchedulerSpec extends Specification with JMocker with ClassMocker {
+object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "PrioritizingJobScheduler" should {
     val low = mock[JobScheduler]
     val medium = mock[JobScheduler]
