@@ -11,7 +11,7 @@ class BoundJobParser[E](bindingEnvironment: E)(implicit manifest: Manifest[E]) e
   def apply(json: Map[String, Map[String, Any]]) = {
     val (key, attributes) = json.toList.first
     // XXX: hack for now
-    val jankykey = key.replace("service.flock.edges", "flockdb")
+    val jankykey = key.replace("service.flock.edges", "flockdb").replace("service.flock.groups", "glock.groups")
     val jobClass = Class.forName(jankykey).asInstanceOf[Class[UnboundJob[E]]]
     val unboundJob = jobClass.getConstructor(classOf[Map[String, AnyVal]]).newInstance(attributes)
     new BoundJob(unboundJob, bindingEnvironment)
