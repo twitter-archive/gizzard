@@ -32,7 +32,6 @@ class Migrate[S <: Shard](val copy: Copy[S], migration: ShardMigration)
   }
 
   override def finish(nameServer: NameServer[S], scheduler: JobScheduler) = {
-    copy.finish(nameServer, scheduler)
     ShardMigration.finish(migration, nameServer)
     super.finish(nameServer, scheduler)
   }
