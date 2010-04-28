@@ -9,10 +9,14 @@ import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException
 
 class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob: => Option[FakeCopy]) extends Copy[Shard](sourceShardId, destinationShardId, count) {
   def serialize = Map("cursor" -> 1)
+
   @throws(classOf[Exception])
   def copyPage(sourceShard: Shard, destinationShard: Shard, count: Int) = nextJob
+
   override def equals(that: Any) = that match {
-    case that: FakeCopy => this.sourceShardId == that.sourceShardId && this.destinationShardId == that.destinationShardId
+    case that: FakeCopy =>
+      this.sourceShardId == that.sourceShardId &&
+        this.destinationShardId == that.destinationShardId
     case _ => false
   }
 }
@@ -32,7 +36,9 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
     "toMap" in {
       val copy = makeCopy(Some(nextCopy))
       copy.toMap mustEqual Map(
-        "source_shard_id" -> sourceShardId, "destination_shard_id" -> destinationShardId, "count" -> count
+        "source_shard_id" -> sourceShardId,
+        "destination_shard_id" -> destinationShardId,
+        "count" -> count
       ) ++ copy.serialize
     }
 

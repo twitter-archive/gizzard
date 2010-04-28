@@ -29,7 +29,7 @@ trait Database {
 
   def evaluator(configMap: ConfigMap) = try {
     queryEvaluatorFactory(configMap("hostname"), configMap("database"), configMap("username"), configMap("password"))
-  } catch { 
+  } catch {
     case e =>
       e.printStackTrace()
       throw e

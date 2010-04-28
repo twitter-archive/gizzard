@@ -4,10 +4,9 @@ import nameserver.{ShardMigration, NameServer}
 import shards.Shard
 import com.twitter.xrayspecs.TimeConversions._
 import scheduler.JobScheduler
-import scala.reflect.Manifest
 
 
-class Migrate[S <: Shard](copy: Copy[S], migration: ShardMigration)
+class Migrate[S <: Shard](val copy: Copy[S], migration: ShardMigration)
   extends Copy[S](migration.sourceShardId, migration.destinationShardId, copy.count) {
 
   def this(attributes: Map[String, AnyVal]) = {
@@ -29,7 +28,7 @@ class Migrate[S <: Shard](copy: Copy[S], migration: ShardMigration)
   ).asInstanceOf[Map[String, AnyVal]] ++ copy.serialize
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int) = {
-    copy.copyPage(sourceShard, destinationShard, count)
+    copy.copyPage(sourceShard, destinationShard, count).map { new Migrate(_, migration) }
   }
 
   override def finish(nameServer: NameServer[S], scheduler: JobScheduler) = {
