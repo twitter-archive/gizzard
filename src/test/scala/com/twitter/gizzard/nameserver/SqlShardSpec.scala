@@ -7,7 +7,7 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
+class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
   lazy val poolConfig = config.configMap("db.connection_pool")
 
   "SqlShard" should {
@@ -22,10 +22,7 @@ object SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocke
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
 
-    var sentinel = 0
-
     doBefore {
-      sentinel = 0
       reset(config.configMap("db"))
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
@@ -214,7 +211,6 @@ object SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocke
         nameServer.createShard(shard1, shardRepository)
         nameServer.createShard(shard2, shardRepository)
         nameServer.createShard(shard3, shardRepository)
-        sentinel mustEqual 3
         nameServer.addChildShard(shard1.shardId, shard2.shardId, 10)
         nameServer.addChildShard(shard2.shardId, shard3.shardId, 10)
       }
