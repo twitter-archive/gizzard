@@ -1,7 +1,6 @@
 package com.twitter.gizzard
 
-import java.util.concurrent.{CountDownLatch, ExecutionException, SynchronousQueue,
-  ThreadPoolExecutor, TimeoutException, TimeUnit}
+import java.util.concurrent.{CountDownLatch, ExecutionException, TimeoutException, TimeUnit}
 import scala.collection.mutable
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
@@ -32,10 +31,11 @@ object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker 
     "timeout a stuffed-up queue" in {
       val startFlag = new CountDownLatch(1)
       val continueFlag = new CountDownLatch(1)
-      future { startFlag.await(); continueFlag.countDown(); Thread.sleep(200) }
+      future { startFlag.await(); continueFlag.countDown(); Thread.sleep(2000) }
       startFlag.countDown()
       continueFlag.await()
-      future { 3 * 4 }.get must throwA[ExecutionException]
+      3 mustEqual 3
+      future { 3 * 4 }.get must throwA[Exception]
     }
   }
 }

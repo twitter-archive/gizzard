@@ -16,4 +16,3 @@ class JobWithTasksParser(jobParser: JobParser) extends JobParser {
 case class JobWithTasks(override val tasks: Iterable[Job]) extends SchedulableWithTasks(tasks) with Job {
   def apply() = tasks.foreach(_.apply())
 }
-
