@@ -1,7 +1,8 @@
 package com.twitter.gizzard
 
-import java.util.concurrent.{CountDownLatch, ExecutionException, TimeoutException, TimeUnit}
+import java.util.concurrent.{CountDownLatch, ExecutionException, RejectedExecutionHandler, ThreadPoolExecutor, TimeoutException, TimeUnit}
 import scala.collection.mutable
+import com.twitter.xrayspecs.Time
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -25,17 +26,22 @@ object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker 
     }
 
     "timeout appropriately" in {
-      future { Thread.sleep(20) }.get(10, TimeUnit.MILLISECONDS) must throwA[TimeoutException]
+      future { Thread.sleep(2000) }.get(10, TimeUnit.MILLISECONDS) must throwA[TimeoutException]
     }
 
     "timeout a stuffed-up queue" in {
-      val startFlag = new CountDownLatch(1)
-      val continueFlag = new CountDownLatch(1)
-      future { startFlag.await(); continueFlag.countDown(); Thread.sleep(2000) }
-      startFlag.countDown()
-      continueFlag.await()
-      3 mustEqual 3
-      future { 3 * 4 }.get must throwA[Exception]
+      future.executor.shutdown()
+      future.executor.setRejectedExecutionHandler(new RejectedExecutionHandler() {
+        def rejectedExecution(r: Runnable, executor: ThreadPoolExecutor) {
+          // do nothing.
+        }
+      })
+      future.executor.awaitTermination(1, TimeUnit.MINUTES)
+      Time.freeze
+      val f = future { 3 * 4 }
+      Time.advance(23.seconds)
+      f.run()
+      f.get(1, TimeUnit.MILLISECONDS) must throwA[Exception]
     }
   }
 }
