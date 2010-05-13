@@ -5,7 +5,7 @@ import com.twitter.sbt.StandardProject
 class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
   val asm       = "asm" % "asm" %  "1.5.3"
   val cglib     = "cglib" % "cglib" % "2.1_3"
-  val configgy  = "net.lag" % "configgy" % "1.5.2"
+  val configgy  = "net.lag" % "configgy" % "1.5.4"
   val dbcp      = "commons-dbcp" % "commons-dbcp" % "1.2.2"
   val hamcrest  = "org.hamcrest" % "hamcrest-all" % "1.1"
   val jmock     = "org.jmock" % "jmock" % "2.4.0"
