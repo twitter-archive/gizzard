@@ -14,17 +14,17 @@ object JobScheduler {
    * Configure a JobScheduler from a queue ConfigMap and a scheduler-specific ConfigMap, creating
    * a new ErrorHandlingJobParser and linking the job & error queues together through it.
    */
-  def apply(name: String, queueConfig: ConfigMap, jobParser: jobs.JobParser, stats: StatsProvider) = {
+  def apply(name: String, queueConfig: ConfigMap, jobParser: jobs.JobParser) = {
     val path = queueConfig("path")
     val schedulerConfig = queueConfig.configMap(name)
 
     val jobQueueName = schedulerConfig("job_queue")
     val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
-    val jobQueue = new KestrelMessageQueue(jobQueueName, persistentJobQueue, stats)
+    val jobQueue = new KestrelMessageQueue(jobQueueName, persistentJobQueue)
 
     val errorQueueName = schedulerConfig("error_queue")
     val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
-    val errorQueue = new KestrelMessageQueue(errorQueueName, persistentErrorQueue, stats)
+    val errorQueue = new KestrelMessageQueue(errorQueueName, persistentErrorQueue)
 
     val badJobQueue = new JobQueue(new LoggerScheduler(Logger.get("bad_jobs")), jobParser)
     val unparsableMessageQueue = new LoggerScheduler(Logger.get("unparsable_jobs"))
@@ -32,7 +32,7 @@ object JobScheduler {
     val errorHandlingConfig = ErrorHandlingConfig(schedulerConfig("replay_interval").toInt.seconds,
                                                   schedulerConfig("error_limit").toInt,
                                                   errorQueue, badJobQueue,
-                                                  unparsableMessageQueue, jobParser, stats)
+                                                  unparsableMessageQueue, jobParser)
     val errorHandlingJobQueue = new ErrorHandlingJobQueue(name, jobQueue, errorHandlingConfig)
     new JobScheduler(name, schedulerConfig("threads").toInt, errorHandlingJobQueue)
   }

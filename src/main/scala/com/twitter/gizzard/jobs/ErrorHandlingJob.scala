@@ -1,5 +1,6 @@
 package com.twitter.gizzard.jobs
 
+import com.twitter.ostrich.Stats
 import net.lag.logging.Logger
 import shards.ShardRejectedOperationException
 import scheduler.{ErrorHandlingConfig, MessageQueue, Scheduler}
@@ -21,18 +22,18 @@ class ErrorHandlingJob(job: Job, var errorCount: Int,
   extends JobProxy(job) {
 
   private val log = Logger.get(getClass.getName)
-  val (errorLimit, badJobQueue, stats) = (config.errorLimit, config.badJobQueue, config.stats)
+  val (errorLimit, badJobQueue) = (config.errorLimit, config.badJobQueue)
 
   def apply() {
     try {
       job()
-      stats.incr("job-success-count", 1)
+      Stats.incr("job-success-count")
     } catch {
       case e: ShardRejectedOperationException =>
-        stats.incr("job-darkmoded-count", 1)
+        Stats.incr("job-darkmoded-count")
         errorJobQueue.put(this)
       case e =>
-        stats.incr("job-error-count", 1)
+        Stats.incr("job-error-count")
         log.error(e, "Error in Job: " + e)
         errorCount += 1
         if (errorCount > errorLimit) {

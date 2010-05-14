@@ -20,7 +20,7 @@ object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker wi
                                                   errorQueue,
                                                   mock[MessageQueue[Schedulable, Job]],
                                                   mock[MessageQueue[String, String]],
-                                                  jobParser, DevNullStats)
+                                                  jobParser)
     val errorHandlingJobQueue = new ErrorHandlingJobQueue("name", normalQueue, errorHandlingConfig)
 
     "retry" >> {
@@ -94,7 +94,7 @@ object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker wi
                                                       mock[MessageQueue[String, String]],
                                                       mock[MessageQueue[Schedulable, Job]],
                                                       unparsableMessageQueue,
-                                                      jobParser, DevNullStats)
+                                                      jobParser)
         val errorHandlingJobQueue = new ErrorHandlingJobQueue("name", normalQueue, errorHandlingConfig)
 
         expect {

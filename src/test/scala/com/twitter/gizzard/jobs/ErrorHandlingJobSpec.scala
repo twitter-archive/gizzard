@@ -17,7 +17,7 @@ object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with Cl
                                                 mock[MessageQueue[String, String]],
                                                 mock[MessageQueue[Schedulable, Job]],
                                                 mock[MessageQueue[String, String]],
-                                                mock[JobParser], DevNullStats)
+                                                mock[JobParser])
   val errorHandlingJob = new ErrorHandlingJob(job, 0, errorQueue, errorHandlingConfig)
   val errorHandlingParser = new ErrorHandlingJobParser(errorHandlingConfig, errorQueue)
 
