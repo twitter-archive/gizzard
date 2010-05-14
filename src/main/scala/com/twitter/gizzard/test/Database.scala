@@ -8,8 +8,6 @@ import net.lag.configgy.{ConfigMap, Configgy}
 
 
 trait Database {
-  val poolConfig: ConfigMap
-
   lazy val databaseFactory = try {
     new MemoizingDatabaseFactory(new SingleConnectionDatabaseFactory)
   } catch {
