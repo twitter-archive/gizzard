@@ -44,7 +44,8 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
   private def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
     replicas match {
-      case Seq() => throw new ShardOfflineException
+      case Seq() =>
+        throw new ShardOfflineException
       case Seq(shard, remainder @ _*) =>
         try {
           f(shard)

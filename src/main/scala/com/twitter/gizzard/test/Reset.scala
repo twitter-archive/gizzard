@@ -40,9 +40,9 @@ trait IdServerDatabase extends Specification with Database {
 trait NameServerDatabase extends Specification with Database {
   def materialize(config: ConfigMap) {
     try {
-      val ns = config.getConfigMap("nameservers").map { map =>
+      val ns = config.getConfigMap("nameservers.replicas").map { map =>
         val key = map.keys.next
-        config.configMap("nameservers." + key)
+        config.configMap("nameservers.replicas." + key)
       } getOrElse(config)
       val evaluator = rootEvaluator(ns)
       evaluator.execute("CREATE DATABASE IF NOT EXISTS " + ns("database"))
@@ -55,9 +55,9 @@ trait NameServerDatabase extends Specification with Database {
 
   def reset(config: ConfigMap) {
     try {
-      val ns = config.getConfigMap("nameservers").map { map =>
+      val ns = config.getConfigMap("nameservers.replicas").map { map =>
         val key = map.keys.next
-        config.configMap("nameservers." + key)
+        config.configMap("nameservers.replicas." + key)
       } getOrElse(config)
       val nameServerQueryEvaluator = evaluator(ns)
       reset(nameServerQueryEvaluator)
