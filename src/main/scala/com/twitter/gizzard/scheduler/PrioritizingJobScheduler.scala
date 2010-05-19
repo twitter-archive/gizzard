@@ -1,8 +1,20 @@
 package com.twitter.gizzard.scheduler
 
 import scala.collection.Map
+import scala.collection.mutable
+import net.lag.configgy.ConfigMap
 import jobs.Schedulable
 
+
+object PrioritizingJobScheduler {
+  def apply(config: ConfigMap, jobParser: jobs.JobParser, queueNames: Map[Int, String]) = {
+    val schedulerMap = new mutable.HashMap[Int, JobScheduler]
+    queueNames.foreach { case (priority, queueName) =>
+      schedulerMap(priority) = JobScheduler(queueName, config, jobParser)
+    }
+    new PrioritizingJobScheduler(schedulerMap)
+  }
+}
 
 class PrioritizingJobScheduler(schedulers: Map[Int, JobScheduler]) extends Process {
   def apply(priority: Int, schedulable: Schedulable) {
