@@ -40,7 +40,6 @@ object NameServer {
     val replicas = replicaConfig.keys.map { key =>
       new SqlShard(queryEvaluatorFactory(replicaConfig.configMap(key)))
     }.collect
-    println("replicas: " + replicas)
 
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicas)
