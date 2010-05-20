@@ -10,10 +10,6 @@ import net.lag.configgy.ConfigMap
 class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
              val timeout: Duration) {
 
-  // FIXME. for backwards compat. remove.
-  def this(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration) =
-    this(name, poolSize, maxPoolSize, keepAlive, 6.seconds)
-
   def this(name: String, config: ConfigMap) =
     this(name, config("pool_size").toInt, config("max_pool_size").toInt,
          config("keep_alive_time_seconds").toInt.seconds,

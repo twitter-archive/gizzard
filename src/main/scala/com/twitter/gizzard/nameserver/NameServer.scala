@@ -15,7 +15,7 @@ class InvalidShard extends ShardException("Shard has invalid attributes (such as
 
 object NameServer {
   /**
-   * nameserver {
+   * nameserver (inherit="db") {
    *   mapping = "byte_swapper"
    *   id_generator = "random"
    *   replicas {
