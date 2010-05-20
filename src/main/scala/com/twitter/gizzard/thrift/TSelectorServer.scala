@@ -36,7 +36,8 @@ object TSelectorServer {
     val minThreads = config("min_threads").toInt
     val maxThreads = config.getInt("max_threads", Math.MAX_INT)
     val queue = new LinkedBlockingQueue[Runnable]
-    val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS, queue)
+    val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
+                                          queue, new NamedPoolThreadFactory(name))
     cache(name) = executor
     executor
   }
