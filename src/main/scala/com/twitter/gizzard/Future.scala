@@ -37,6 +37,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
 
   def shutdown() {
     executor.shutdown()
+    executor.awaitTermination(60, TimeUnit.SECONDS)
   }
 }
 
