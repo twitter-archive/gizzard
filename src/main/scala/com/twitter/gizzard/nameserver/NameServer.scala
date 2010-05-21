@@ -9,24 +9,23 @@ import shards._
 class NonExistentShard extends ShardException("Shard does not exist")
 class InvalidShard extends ShardException("Shard has invalid attributes (such as hostname)")
 
-class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRepository[S],
-                                    mappingFunction: Long => Long, idGenerator: IdGenerator)
+class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
+                                    mappingFunction: Long => Long)
   extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
   val RETRIES = 5
 
-  @volatile protected var shardInfos = mutable.Map.empty[Int, ShardInfo]
-  @volatile private var familyTree: scala.collection.Map[Int, Seq[ChildInfo]] = null
+  @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
+  @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
 
-  def createShard(shardInfo: ShardInfo): Int = createShard(shardInfo, RETRIES)
+  def createShard(shardInfo: ShardInfo) { createShard(shardInfo, RETRIES) }
 
-  def createShard(shardInfo: ShardInfo, retries: Int): Int = {
-    shardInfo.shardId = idGenerator()
+  def createShard(shardInfo: ShardInfo, retries: Int) {
     try {
-      nameServer.createShard(shardInfo, shardRepository)
+      nameServerShard.createShard(shardInfo, shardRepository)
     } catch {
       case e: InvalidShard if (retries > 0) =>
         // allow conflicts on the id generator
@@ -34,24 +33,28 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
     }
   }
 
-  def getShardInfo(id: Int) = shardInfos(id)
+  def getShardInfo(id: ShardId) = shardInfos(id)
 
-  def getChildren(id: Int) = {
-    familyTree.getOrElse(id, new mutable.ArrayBuffer[ChildInfo])
+  def getChildren(id: ShardId) = {
+    familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
   }
 
   def reload() {
-    nameServer.reload()
+    nameServerShard.reload()
 
-    val newShardInfos = mutable.Map.empty[Int, ShardInfo]
-    nameServer.listShards().foreach { shardInfo =>
-      newShardInfos += (shardInfo.shardId -> shardInfo)
+    val newShardInfos = mutable.Map.empty[ShardId, ShardInfo]
+    nameServerShard.listShards().foreach { shardInfo =>
+      newShardInfos += (shardInfo.id -> shardInfo)
     }
 
-    val newFamilyTree = nameServer.listShardChildren()
+    val newFamilyTree = new mutable.HashMap[ShardId, mutable.ArrayBuffer[LinkInfo]]
+    nameServerShard.listLinks().foreach { link =>
+      val children = newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo])
+      children += link
+    }
 
     val newForwardings = new mutable.HashMap[Int, TreeMap[Long, ShardInfo]]
-    nameServer.getForwardings().foreach { forwarding =>
+    nameServerShard.getForwardings().foreach { forwarding =>
       val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
       treeMap.put(forwarding.baseId, newShardInfos.getOrElse(forwarding.shardId, throw new NonExistentShard))
     }
@@ -61,16 +64,16 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
     forwardings = newForwardings
   }
 
-  def findShardById(shardId: Int, weight: Int): S = {
-    val shardInfo = getShardInfo(shardId)
-    val children = getChildren(shardId).map { childInfo =>
-      findShardById(childInfo.shardId, childInfo.weight)
+  def findShardById(id: ShardId, weight: Int): S = {
+    val shardInfo = getShardInfo(id)
+    val children = getChildren(id).map { linkInfo =>
+      findShardById(linkInfo.downId, linkInfo.weight)
     }.toList
     shardRepository.find(shardInfo, weight, children)
   }
 
   @throws(classOf[NonExistentShard])
-  def findShardById(shardId: Int): S = findShardById(shardId, 1)
+  def findShardById(id: ShardId): S = findShardById(id, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
     val shardInfo = forwardings.get(tableId).flatMap { bySourceIds =>
@@ -84,31 +87,26 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
       throw new NonExistentShard
     }
 
-    findShardById(shardInfo.shardId)
+    findShardById(shardInfo.id)
   }
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServer.createShard(shardInfo, repository)
-  def listShardChildren(parentId: Int) = nameServer.listShardChildren(parentId)
-  def findShard(shardInfo: ShardInfo) = nameServer.findShard(shardInfo)
-  def getShard(shardId: Int) = nameServer.getShard(shardId)
-  def updateShard(shardInfo: ShardInfo) = nameServer.updateShard(shardInfo)
-  def deleteShard(shardId: Int) = nameServer.deleteShard(shardId)
-  def addChildShard(parentShardId: Int, childShardId: Int, weight: Int) = nameServer.addChildShard(parentShardId, childShardId, weight)
-  def removeChildShard(parentShardId: Int, childShardId: Int) = nameServer.removeChildShard(parentShardId, childShardId)
-  def replaceChildShard(oldChildShardId: Int, newChildShardId: Int) = nameServer.replaceChildShard(oldChildShardId, newChildShardId)
-  def markShardBusy(shardId: Int, busy: Busy.Value) = nameServer.markShardBusy(shardId, busy)
-  def setForwarding(forwarding: Forwarding) = nameServer.setForwarding(forwarding)
-  def replaceForwarding(oldShardId: Int, newShardId: Int) = nameServer.replaceForwarding(oldShardId, newShardId)
-  def getForwarding(tableId: Int, baseId: Long) = nameServer.getForwarding(tableId, baseId)
-  def getForwardingForShard(shardId: Int) = nameServer.getForwardingForShard(shardId)
-  def getForwardings() = nameServer.getForwardings()
-  def shardIdsForHostname(hostname: String, className: String) = nameServer.shardIdsForHostname(hostname, className)
-  def listShards() = nameServer.listShards()
-  def listShardChildren() = nameServer.listShardChildren()
-  def shardsForHostname(hostname: String, className: String) = nameServer.shardsForHostname(hostname, className)
-  def getBusyShards() = nameServer.getBusyShards()
-  def getParentShard(shardId: Int) = nameServer.getParentShard(shardId)
-  def getRootShard(shardId: Int) = nameServer.getRootShard(shardId)
-  def getChildShardsOfClass(parentShardId: Int, className: String) = nameServer.getChildShardsOfClass(parentShardId, className)
-  def rebuildSchema() = nameServer.rebuildSchema()
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
+  def getShard(id: ShardId) = nameServerShard.getShard(id)
+  def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
+  def addLink(upId: ShardId, downId: ShardId, weight: Int) = nameServerShard.addLink(upId, downId, weight)
+  def removeLink(upId: ShardId, downId: ShardId) = nameServerShard.removeLink(upId, downId)
+  def listUpwardLinks(id: ShardId) = nameServerShard.listUpwardLinks(id)
+  def listDownwardLinks(id: ShardId) = nameServerShard.listDownwardLinks(id)
+  def listLinks() = nameServerShard.listLinks()
+  def markShardBusy(id: ShardId, busy: Busy.Value) = nameServerShard.markShardBusy(id, busy)
+  def setForwarding(forwarding: Forwarding) = nameServerShard.setForwarding(forwarding)
+  def replaceForwarding(oldId: ShardId, newId: ShardId) = nameServerShard.replaceForwarding(oldId, newId)
+  def getForwarding(tableId: Int, baseId: Long) = nameServerShard.getForwarding(tableId, baseId)
+  def getForwardingForShard(id: ShardId) = nameServerShard.getForwardingForShard(id)
+  def getForwardings() = nameServerShard.getForwardings()
+  def shardsForHostname(hostname: String) = nameServerShard.shardsForHostname(hostname)
+  def listShards() = nameServerShard.listShards()
+  def getBusyShards() = nameServerShard.getBusyShards()
+  def getChildShardsOfClass(parentId: ShardId, className: String) = nameServerShard.getChildShardsOfClass(parentId, className)
+  def rebuildSchema() = nameServerShard.rebuildSchema()
 }

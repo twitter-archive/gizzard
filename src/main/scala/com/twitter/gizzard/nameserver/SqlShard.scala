@@ -10,7 +10,6 @@ import shards._
 object SqlShard {
   val SHARDS_DDL = """
 CREATE TABLE IF NOT EXISTS shards (
-    id                      INT          NOT NULL,
     class_name              VARCHAR(125) NOT NULL,
     table_prefix            VARCHAR(125) NOT NULL,
     hostname                VARCHAR(25)  NOT NULL,
@@ -18,20 +17,20 @@ CREATE TABLE IF NOT EXISTS shards (
     destination_type        VARCHAR(125),
     busy                    TINYINT      NOT NULL DEFAULT 0,
 
-    PRIMARY KEY primary_key_id (id),
-
-    UNIQUE unique_name (table_prefix, hostname)
+   PRIMARY KEY primary_key_table_prefix_hostname (hostname, table_prefix)
 ) ENGINE=INNODB
 """
 
   val SHARD_CHILDREN_DDL = """
 CREATE TABLE IF NOT EXISTS shard_children (
-    parent_id               INT NOT NULL,
-    child_id                INT NOT NULL,
+    parent_table_prefix     VARCHAR(125) NOT NULL,
+    parent_hostname         VARCHAR(125) NOT NULL,
+    child_table_prefix      VARCHAR(125) NOT NULL,
+    child_hostname          VARCHAR(125) NOT NULL,
     weight                  INT NOT NULL DEFAULT 1,
 
-    UNIQUE unique_family (parent_id, child_id),
-    UNIQUE unique_child (child_id)
+    PRIMARY KEY primary_key_family (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
+    INDEX child (child_hostname, child_table_prefix)
 ) ENGINE=INNODB
 """
 
@@ -39,11 +38,12 @@ CREATE TABLE IF NOT EXISTS shard_children (
 CREATE TABLE IF NOT EXISTS forwardings (
     base_source_id          BIGINT                  NOT NULL,
     table_id                INT                     NOT NULL,
-    shard_id                INT                     NOT NULL,
+    shard_hostname          VARCHAR(125)            NOT NULL,
+    shard_table_prefix      VARCHAR(125)            NOT NULL,
 
     PRIMARY KEY (base_source_id, table_id),
 
-    UNIQUE unique_shard_id (shard_id)
+    UNIQUE unique_shard (shard_hostname, shard_table_prefix)
 ) ENGINE=INNODB;
 """
 }
@@ -55,40 +55,38 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   val weight = 1 // hardcode for now
 
   private def rowToShardInfo(row: ResultSet) = {
-    new ShardInfo(row.getString("class_name"), row.getString("table_prefix"), row.getString("hostname"),
-      row.getString("source_type"), row.getString("destination_type"), Busy(row.getInt("busy")),
-      row.getInt("id"))
+    ShardInfo(ShardId(row.getString("hostname"), row.getString("table_prefix")), row.getString("class_name"),
+      row.getString("source_type"), row.getString("destination_type"), Busy(row.getInt("busy")))
   }
 
   private def rowToForwarding(row: ResultSet) = {
-    new Forwarding(row.getInt("table_id"), row.getLong("base_source_id"), row.getInt("shard_id"))
+    Forwarding(row.getInt("table_id"), row.getLong("base_source_id"), ShardId(row.getString("shard_hostname"), row.getString("shard_table_prefix")))
   }
 
-  private def rowToChildInfo(row: ResultSet) = {
-    new ChildInfo(row.getInt("child_id"), row.getInt("weight"))
+  private def rowToLinkInfo(row: ResultSet) = {
+    LinkInfo(ShardId(row.getString("parent_hostname"), row.getString("parent_table_prefix")),
+             ShardId(row.getString("child_hostname"), row.getString("child_table_prefix")),
+             row.getInt("weight"))
   }
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = {
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
       try {
-        val shardId = transaction.selectOne("SELECT id, class_name, source_type, destination_type " +
-                                            "FROM shards WHERE table_prefix = ? AND hostname = ?",
-                                            shardInfo.tablePrefix, shardInfo.hostname) { row =>
+        transaction.selectOne("SELECT class_name, source_type, destination_type " +
+                              "FROM shards WHERE table_prefix = ? AND hostname = ?",
+                              shardInfo.tablePrefix, shardInfo.hostname) { row =>
           if (row.getString("class_name") != shardInfo.className ||
               row.getString("source_type") != shardInfo.sourceType ||
               row.getString("destination_type") != shardInfo.destinationType) {
             throw new InvalidShard
           }
-          row.getInt("id")
         } getOrElse {
-          transaction.insert("INSERT INTO shards (id, class_name, table_prefix, hostname, " +
-                             "source_type, destination_type) VALUES (?, ?, ?, ?, ?, ?)",
-                             shardInfo.shardId, shardInfo.className, shardInfo.tablePrefix,
-                             shardInfo.hostname, shardInfo.sourceType, shardInfo.destinationType)
-          shardInfo.shardId
+          transaction.insert("INSERT INTO shards (hostname, table_prefix, class_name, " +
+                             "source_type, destination_type) VALUES (?, ?, ?, ?, ?)",
+                             shardInfo.hostname, shardInfo.tablePrefix, shardInfo.className,
+                             shardInfo.sourceType, shardInfo.destinationType)
+          repository.create(shardInfo)
         }
-        repository.create(shardInfo)
-        shardId
       } catch {
         case e: SQLIntegrityConstraintViolationException =>
           throw new InvalidShard
@@ -96,67 +94,59 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     }
   }
 
-  def findShard(shardInfo: ShardInfo): Int = {
-    queryEvaluator.selectOne("SELECT id FROM shards WHERE table_prefix = ? AND hostname = ?", shardInfo.tablePrefix, shardInfo.hostname) { row =>
-      row.getInt("id")
-    } getOrElse {
-      throw new NonExistentShard
-    }
-  }
-
-  def getShard(shardId: Int): ShardInfo = {
-    queryEvaluator.selectOne("SELECT * FROM shards WHERE id = ?", shardId) { row =>
+  def getShard(id: ShardId) = {
+    queryEvaluator.selectOne("SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) { row =>
       rowToShardInfo(row)
     } getOrElse {
       throw new NonExistentShard
     }
   }
 
-  def updateShard(shardInfo: ShardInfo) {
+/*  def updateShard(shardInfo: ShardInfo) {
     val rows = queryEvaluator.execute(
-      "UPDATE shards SET class_name = ?, table_prefix = ?, hostname = ?, source_type = ?, " +
-      "destination_type = ? WHERE id = ?",
-      shardInfo.className, shardInfo.tablePrefix, shardInfo.hostname, shardInfo.sourceType,
-      shardInfo.destinationType, shardInfo.shardId)
+      "UPDATE shards SET class_name = ?, source_type = ?, " +
+      "destination_type = ? WHERE hostname = ? AND table_prefix = ?",
+      shardInfo.className, shardInfo.sourceType, shardInfo.destinationType, shardInfo.hostname,
+      shardInfo.tablePrefix)
     if (rows < 1) {
       throw new NonExistentShard
     }
+  } */
+
+  def deleteShard(id: ShardId) {
+    queryEvaluator.execute("DELETE FROM shard_children WHERE "+
+                           "(parent_hostname = ? AND parent_table_prefix = ?) OR " +
+                           "(child_hostname = ? AND child_table_prefix = ?)",
+                           id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
+    queryEvaluator.execute("DELETE FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) == 0
   }
 
-  def deleteShard(shardId: Int) {
-    queryEvaluator.execute("DELETE FROM shard_children where parent_id = ? OR child_id = ?", shardId, shardId)
-    if (queryEvaluator.execute("DELETE FROM shards where id = ?", shardId) == 0) {
-      throw new NonExistentShard
-    }
+  def addLink(upId: ShardId, downId: ShardId, weight: Int) {
+    queryEvaluator.execute("INSERT INTO shard_children (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix, weight) VALUES (?, ?, ?, ?, ?)",
+      upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix, weight)
+    // XXX: todo - check loops
   }
 
-  def addChildShard(parentShardId: Int, childShardId: Int, weight: Int) {
-    queryEvaluator.execute("INSERT INTO shard_children (parent_id, child_id, weight) VALUES (?, ?, ?)",
-      parentShardId, childShardId, weight)
+  def removeLink(upId: ShardId, downId: ShardId) {
+    queryEvaluator.execute("DELETE FROM shard_children WHERE parent_hostname = ? AND parent_table_prefix = ? AND child_hostname = ? AND child_table_prefix = ?",
+      upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix) == 0
   }
 
-  def removeChildShard(parentShardId: Int, childShardId: Int) {
-    if (queryEvaluator.execute("DELETE FROM shard_children WHERE parent_id = ? AND child_id = ?", parentShardId, childShardId) == 0) {
-      throw new NonExistentShard
-    }
+  def listLinks() = {
+    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_hostname, parent_table_prefix") { row =>
+      rowToLinkInfo(row)
+    }.toList
   }
 
-  def replaceChildShard(oldChildShardId: Int, newChildShardId: Int) {
-    queryEvaluator.execute("UPDATE shard_children SET child_id = ? WHERE child_id = ?", newChildShardId, oldChildShardId)
+  def listDownwardLinks(id: ShardId) = {
+    queryEvaluator.select("SELECT * FROM shard_children WHERE parent_hostname = ? AND parent_table_prefix = ? ORDER BY weight DESC", id.hostname, id.tablePrefix) { row =>
+      rowToLinkInfo(row)
+    }.toList
   }
 
-  def listShardChildren() = {
-    val map = mutable.HashMap.empty[Int, mutable.ArrayBuffer[ChildInfo]]
-    queryEvaluator.select("SELECT parent_id, child_id, weight FROM shard_children ORDER BY parent_id, child_id") { row =>
-      val arrayBuffer = map.getOrElseUpdate(row.getInt("parent_id"), new mutable.ArrayBuffer[ChildInfo]())
-      arrayBuffer += rowToChildInfo(row)
-    }
-    map
-  }
-
-  def listShardChildren(shardId: Int) = {
-    queryEvaluator.select("SELECT child_id, weight FROM shard_children WHERE parent_id = ? ORDER BY weight DESC", shardId) { row =>
-      rowToChildInfo(row)
+  def listUpwardLinks(id: ShardId) = {
+    queryEvaluator.select("SELECT * FROM shard_children WHERE child_hostname = ? AND child_table_prefix = ? ORDER BY weight DESC", id.hostname, id.tablePrefix) { row =>
+      rowToLinkInfo(row)
     }.toList
   }
 
@@ -166,80 +156,52 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     }.toList
   }
 
-  def markShardBusy(shardId: Int, busy: Busy.Value) {
-    if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE id = ?", busy.id, shardId) == 0) {
+  def markShardBusy(id: ShardId, busy: Busy.Value) {
+    if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE hostname = ? AND table_prefix = ?", busy.id, id.hostname, id.tablePrefix) == 0) {
       throw new NonExistentShard
     }
   }
 
   def setForwarding(forwarding: Forwarding) {
-    if (queryEvaluator.execute("UPDATE forwardings SET shard_id = ? WHERE base_source_id = ? AND table_id = ?",
-                               forwarding.shardId, forwarding.baseId, forwarding.tableId) == 0) {
-      queryEvaluator.execute("INSERT INTO forwardings (base_source_id, table_id, shard_id) VALUES (?, ?, ?)",
-                             forwarding.baseId, forwarding.tableId, forwarding.shardId)
-    }
+    queryEvaluator.execute("REPLACE forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix) VALUES (?, ?, ?, ?)",
+      forwarding.baseId, forwarding.tableId, forwarding.shardId.hostname, forwarding.shardId.tablePrefix)
   }
 
-  def replaceForwarding(oldShardId: Int, newShardId: Int) {
-    queryEvaluator.execute("UPDATE forwardings SET shard_id = ? WHERE shard_id = ?", newShardId, oldShardId)
+  def replaceForwarding(oldId: ShardId, newId: ShardId) {
+    queryEvaluator.execute("UPDATE forwardings SET shard_hostname = ?, shard_table_prefix = ? WHERE shard_hostname = ? AND shard_table_prefix = ?",
+      newId.hostname, newId.tablePrefix, oldId.hostname, oldId.tablePrefix)
   }
 
-  def getForwarding(tableId: Int, baseId: Long): ShardInfo = {
-    getShard(queryEvaluator.select("SELECT shard_id FROM forwardings WHERE base_source_id = ? AND table_id = ?", baseId, tableId) { row =>
-      row.getInt("shard_id")
-    }.firstOption.getOrElse { throw new ShardException("No such forwarding") })
+  def getForwarding(tableId: Int, baseId: Long) = {
+    queryEvaluator.selectOne("SELECT * FROM forwardings WHERE base_source_id = ? AND table_id = ?", baseId, tableId) { row =>
+      rowToForwarding(row)
+    } getOrElse { throw new ShardException("No such forwarding") }
   }
 
-  def getForwardingForShard(shardId: Int): Forwarding = {
-    queryEvaluator.select("SELECT * FROM forwardings WHERE shard_id = ?", shardId) { row =>
+  def getForwardingForShard(id: ShardId) = {
+    queryEvaluator.select("SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ?", id.hostname, id.tablePrefix) { row =>
       rowToForwarding(row)
     }.firstOption.getOrElse { throw new ShardException("No such forwarding") }
   }
 
-  def getForwardings(): List[Forwarding] = {
+  def getForwardings() = {
     queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id ASC") { row =>
       rowToForwarding(row)
     }.toList
   }
 
-  def shardIdsForHostname(hostname: String, className: String): List[Int] = {
-    queryEvaluator.select("SELECT id FROM shards WHERE hostname = ? AND class_name = ?", hostname, className) { row =>
-      row.getInt("id")
-    }.toList
-  }
-
-  def shardsForHostname(hostname: String, className: String): List[ShardInfo] = {
-    queryEvaluator.select("SELECT * FROM shards WHERE hostname = ? AND class_name = ?", hostname, className) { row =>
-      rowToShardInfo(row)
-    }.toList
+  def shardsForHostname(hostname: String) = {
+    queryEvaluator.select("SELECT * FROM shards WHERE hostname = ?", hostname) { row => rowToShardInfo(row) }.toList
   }
 
   def getBusyShards() = {
     queryEvaluator.select("SELECT * FROM shards where busy != 0") { row => rowToShardInfo(row) }.toList
   }
 
-  def getParentShard(shardId: Int): ShardInfo = {
-    queryEvaluator.select("SELECT parent_id FROM shard_children WHERE child_id = ?", shardId) { row =>
-      row.getInt("parent_id")
-    }.firstOption match {
-      case None => getShard(shardId)
-      case Some(parentId) => getShard(parentId)
-    }
-  }
-
-  def getRootShard(shardId: Int): ShardInfo = {
-    queryEvaluator.select("SELECT parent_id FROM shard_children WHERE child_id = ?", shardId) { row =>
-      row.getInt("parent_id")
-    }.firstOption match {
-      case None => getShard(shardId)
-      case Some(parentId) => getRootShard(parentId)
-    }
-  }
-
-  def getChildShardsOfClass(parentShardId: Int, className: String): List[ShardInfo] = {
-    val childIds = listShardChildren(parentShardId)
-    childIds.map { child => getShard(child.shardId) }.filter { _.className == className }.toList ++
-      childIds.flatMap { child => getChildShardsOfClass(child.shardId, className) }
+  def getChildShardsOfClass(parentId: ShardId, className: String) = {
+    val links = listDownwardLinks(parentId)
+    links.map { link => getShard(link.downId) }.filter { _.className == className }.toList ++
+      links.flatMap { link => getChildShardsOfClass(link.downId, className) }
   }
 
   def reload() {

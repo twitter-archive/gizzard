@@ -1,7 +1,7 @@
 package com.twitter.gizzard.nameserver
 
 import com.twitter.xrayspecs.TimeConversions._
-import com.twitter.gizzard.shards.{ShardInfo, Busy, ChildInfo}
+import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -23,9 +23,9 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
 
     doBefore {
-      reset(config.configMap("db"))
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
+      reset(config.configMap("db"))
       shardRepository = mock[ShardRepository[Shard]]
     }
 
@@ -35,20 +35,20 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(shardRepository).create(forwardShardInfo)
         }
 
-        val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-        nameServer.findShard(forwardShardInfo) mustEqual shardId
+        nameServer.createShard(forwardShardInfo, shardRepository)
+        nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
       }
 
       "when the shard already exists" >> {
         "when the shard matches existing data" >> {
           expect {
-            exactly(2).of(shardRepository).create(forwardShardInfo)
+            one(shardRepository).create(forwardShardInfo)
           }
 
-          val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-          nameServer.findShard(forwardShardInfo) mustEqual shardId
           nameServer.createShard(forwardShardInfo, shardRepository)
-          nameServer.findShard(forwardShardInfo) mustEqual shardId
+          nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+          nameServer.createShard(forwardShardInfo, shardRepository)
+          nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
         }
 
         "when the shard contradicts existing data" >> {
@@ -70,80 +70,57 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(shardRepository).create(forwardShardInfo)
         }
 
-        val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-        nameServer.findShard(forwardShardInfo) mustEqual shardId
-        nameServer.getShard(shardId).tablePrefix mustEqual forwardShardInfo.tablePrefix
+        nameServer.createShard(forwardShardInfo, shardRepository)
+        nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+        nameServer.getShard(forwardShardInfo.id).className mustEqual forwardShardInfo.className
       }
 
       "when the shard doesn't exist" >> {
-        nameServer.findShard(backwardShardInfo) must throwA[NonExistentShard]
+        nameServer.getShard(backwardShardInfo.id) must throwA[NonExistentShard]
       }
     }
 
     // FIXME: GET SHARD
-
-    "update" in {
-      "existing shard" >> {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-        val otherShardInfo = forwardShardInfo.clone
-        otherShardInfo.tablePrefix = "other_table"
-        otherShardInfo.shardId = shardId
-        nameServer.updateShard(otherShardInfo)
-        nameServer.getShard(shardId) mustEqual otherShardInfo
-      }
-
-      "nonexistent shard" >> {
-        nameServer.updateShard(new ShardInfo(SQL_SHARD, "other_table", "localhost", "", "", Busy.Normal, 500)) must throwA[NonExistentShard]
-      }
-    }
 
     "delete" in {
       expect {
         one(shardRepository).create(forwardShardInfo)
       }
 
-      val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-      nameServer.findShard(forwardShardInfo) mustEqual shardId
-      nameServer.deleteShard(shardId)
-      nameServer.findShard(forwardShardInfo) must throwA[NonExistentShard]
+      nameServer.createShard(forwardShardInfo, shardRepository)
+      nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+      nameServer.deleteShard(forwardShardInfo.id)
+      nameServer.getShard(forwardShardInfo.id) must throwA[NonExistentShard]
     }
 
     "children" in {
+      def shard(i: Int) = ShardId("host", i.toString)
+      def linkInfo(up: Int, down: Int, weight: Int) = LinkInfo(shard(up), shard(down), weight)
+      def link = linkInfo(1, _: Int, _: Int)
+
       "add & find" >> {
-        nameServer.addChildShard(1, 100, 2)
-        nameServer.addChildShard(1, 200, 2)
-        nameServer.addChildShard(1, 300, 1)
-        nameServer.listShardChildren(1) mustEqual
-          List(ChildInfo(100, 2), ChildInfo(200, 2), ChildInfo(300, 1))
+        nameServer.addLink(shard(1), shard(100), 2)
+        nameServer.addLink(shard(1), shard(200), 2)
+        nameServer.addLink(shard(1), shard(300), 1)
+        nameServer.listDownwardLinks(shard(1)) mustEqual
+          List(link(100, 2), link(200, 2), link(300, 1))
       }
 
       "remove" >> {
-        nameServer.addChildShard(1, 100, 2)
-        nameServer.addChildShard(1, 200, 2)
-        nameServer.addChildShard(1, 300, 1)
-        nameServer.removeChildShard(1, 200)
-        nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(300, 1))
+        nameServer.addLink(shard(1), shard(100), 2)
+        nameServer.addLink(shard(1), shard(200), 2)
+        nameServer.addLink(shard(1), shard(300), 1)
+        nameServer.removeLink(shard(1), shard(200))
+        nameServer.listDownwardLinks(shard(1)) mustEqual List(link(100, 2), link(300, 1))
       }
 
       "add & remove, retaining order" >> {
-        nameServer.addChildShard(1, 100, 5)
-        nameServer.addChildShard(1, 200, 2)
-        nameServer.addChildShard(1, 300, 1)
-        nameServer.removeChildShard(1, 200)
-        nameServer.addChildShard(1, 150, 8)
-        nameServer.listShardChildren(1) mustEqual List(ChildInfo(150, 8), ChildInfo(100, 5), ChildInfo(300, 1))
-      }
-
-      "replace" >> {
-        nameServer.addChildShard(1, 100, 2)
-        nameServer.addChildShard(1, 200, 2)
-        nameServer.addChildShard(1, 300, 1)
-        nameServer.replaceChildShard(300, 400)
-        nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(200, 2), ChildInfo(400, 1))
+        nameServer.addLink(shard(1), shard(100), 5)
+        nameServer.addLink(shard(1), shard(200), 2)
+        nameServer.addLink(shard(1), shard(300), 1)
+        nameServer.removeLink(shard(1), shard(200))
+        nameServer.addLink(shard(1), shard(150), 8)
+        nameServer.listDownwardLinks(shard(1)) mustEqual List(link(150, 8), link(100, 5), link(300, 1))
       }
     }
 
@@ -152,13 +129,12 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         one(shardRepository).create(forwardShardInfo)
       }
 
-      val shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-      nameServer.markShardBusy(shardId, Busy.Busy)
-      nameServer.getShard(shardId).busy mustEqual Busy.Busy
+      nameServer.createShard(forwardShardInfo, shardRepository)
+      nameServer.markShardBusy(forwardShardInfo.id, Busy.Busy)
+      nameServer.getShard(forwardShardInfo.id).busy mustEqual Busy.Busy
     }
 
     "forwarding changes" in {
-      var shardId: Int = 0
       var forwarding: Forwarding = null
 
       doBefore {
@@ -166,8 +142,8 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(shardRepository).create(forwardShardInfo)
         }
 
-        shardId = nameServer.createShard(forwardShardInfo, shardRepository)
-        forwarding = new Forwarding(1, 0L, shardId)
+        nameServer.createShard(forwardShardInfo, shardRepository)
+        forwarding = new Forwarding(1, 0L, forwardShardInfo.id)
       }
 
       "set and get for shard" in {
@@ -176,15 +152,15 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
 
       "replace" in {
-        val newShardId = 2
+        val newShardId = ShardId("new", "shard")
         nameServer.setForwarding(forwarding)
-        nameServer.replaceForwarding(forwarding.shardId, newShardId)
-        nameServer.getForwardingForShard(2).shardId mustEqual newShardId
+        nameServer.replaceForwarding(forwardShardInfo.id, newShardId)
+        nameServer.getForwardingForShard(newShardId).shardId mustEqual newShardId
       }
 
       "set and get" in {
         nameServer.setForwarding(forwarding)
-        nameServer.getForwarding(1, 0L).shardId mustEqual shardId
+        nameServer.getForwarding(1, 0L).shardId mustEqual forwardShardInfo.id
       }
 
       "get all" in {
@@ -197,9 +173,6 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val shard1 = new ShardInfo(SQL_SHARD, "forward_1", "localhost")
       val shard2 = new ShardInfo(SQL_SHARD, "forward_1_also", "localhost")
       val shard3 = new ShardInfo(SQL_SHARD, "forward_1_too", "localhost")
-      shard1.shardId = 101
-      shard2.shardId = 102
-      shard3.shardId = 103
 
       doBefore {
         expect {
@@ -211,36 +184,28 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(shard1, shardRepository)
         nameServer.createShard(shard2, shardRepository)
         nameServer.createShard(shard3, shardRepository)
-        nameServer.addChildShard(shard1.shardId, shard2.shardId, 10)
-        nameServer.addChildShard(shard2.shardId, shard3.shardId, 10)
-      }
-
-      "shardIdsForHostname" in {
-        nameServer.shardIdsForHostname("localhost", SQL_SHARD).sort(_ < _) mustEqual List(shard1.shardId, shard2.shardId, shard3.shardId).sort(_ < _)
+        nameServer.addLink(shard1.id, shard2.id, 10)
+        nameServer.addLink(shard2.id, shard3.id, 10)
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost", SQL_SHARD).map { _.shardId }.sort(_ < _) mustEqual List(shard1.shardId, shard2.shardId, shard3.shardId).sort(_ < _)
+        nameServer.shardsForHostname("localhost").map { _.id }.sort(_.tablePrefix < _.tablePrefix) mustEqual List(shard1.id, shard2.id, shard3.id).sort(_.tablePrefix < _.tablePrefix)
       }
 
       "getBusyShards" in {
         nameServer.getBusyShards() mustEqual List()
-        nameServer.markShardBusy(shard1.shardId, Busy.Busy)
-        nameServer.getBusyShards().map { _.shardId } mustEqual List(shard1.shardId)
+        nameServer.markShardBusy(shard1.id, Busy.Busy)
+        nameServer.getBusyShards().map { _.id } mustEqual List(shard1.id)
       }
 
       "getParentShard" in {
-        nameServer.getParentShard(shard3.shardId).shardId mustEqual shard2.shardId
-        nameServer.getParentShard(shard2.shardId).shardId mustEqual shard1.shardId
-        nameServer.getParentShard(shard1.shardId).shardId mustEqual shard1.shardId
-      }
-
-      "getRootShard" in {
-        nameServer.getRootShard(shard3.shardId).shardId mustEqual shard1.shardId
+        nameServer.listUpwardLinks(shard3.id) mustEqual List(LinkInfo(shard2.id, shard3.id, 10))
+        nameServer.listUpwardLinks(shard2.id) mustEqual List(LinkInfo(shard1.id, shard2.id, 10))
+        nameServer.listUpwardLinks(shard1.id) mustEqual List()
       }
 
       "getChildShardsOfClass" in {
-        nameServer.getChildShardsOfClass(shard1.shardId, SQL_SHARD).map { _.shardId } mustEqual List(shard2.shardId, shard3.shardId)
+        nameServer.getChildShardsOfClass(shard1.id, SQL_SHARD).map { _.id } mustEqual List(shard2.id, shard3.id)
       }
     }
   }

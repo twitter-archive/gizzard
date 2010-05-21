@@ -14,12 +14,11 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     var nameServer: NameServer[shards.Shard] = null
 
     val shardInfos = (1 until 5).force.map { id =>
-      new shards.ShardInfo(SQL_SHARD, "test", "localhost", "a", "b", shards.Busy.Normal, id)
+      new shards.ShardInfo(shards.ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
     }.toList
-    val childrenList = List(new shards.ChildInfo(4, 1))
-    val shardChildren = Map(3 -> childrenList)
-    val shardForwardings = List(new Forwarding(1, 1, 1), new Forwarding(1, 2, 2),
-                                new Forwarding(1, 3, 3), new Forwarding(2, 1, 4))
+    val linksList = List(new shards.LinkInfo(shardInfos(2).id, shardInfos(3).id, 1))
+    val shardForwardings = List(new Forwarding(1, 1, shardInfos(0).id), new Forwarding(1, 2, shardInfos(1).id),
+                                new Forwarding(1, 3, shardInfos(2).id), new Forwarding(2, 1, shardInfos(3).id))
     var shard = mock[shards.Shard]
 
     object FakeIdGenerator extends IdGenerator {
@@ -34,24 +33,23 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       expect {
         one(nameServerShard).reload()
         one(nameServerShard).listShards() willReturn shardInfos
-        one(nameServerShard).listShardChildren() willReturn shardChildren
+        one(nameServerShard).listLinks() willReturn linksList
         one(nameServerShard).getForwardings() willReturn shardForwardings
       }
 
-      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository,
-                                                        mappingFunction, FakeIdGenerator)
+      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository, mappingFunction)
       nameServer.reload()
     }
 
     "reload and get shard info" in {
-      nameServer.getShardInfo(1) mustEqual shardInfos(0)
-      nameServer.getShardInfo(2) mustEqual shardInfos(1)
-      nameServer.getShardInfo(3) mustEqual shardInfos(2)
-      nameServer.getShardInfo(4) mustEqual shardInfos(3)
+      nameServer.getShardInfo(shardInfos(0).id) mustEqual shardInfos(0)
+      nameServer.getShardInfo(shardInfos(1).id) mustEqual shardInfos(1)
+      nameServer.getShardInfo(shardInfos(2).id) mustEqual shardInfos(2)
+      nameServer.getShardInfo(shardInfos(3).id) mustEqual shardInfos(3)
     }
 
     "get children" in {
-      nameServer.getChildren(3) mustEqual childrenList
+      nameServer.getChildren(shardInfos(2).id).toList mustEqual linksList
     }
 
     "find current forwarding" in {
@@ -68,15 +66,15 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(shardRepository).find(shardInfos(2), 1, List(shard)) willReturn shard
       }
 
-      nameServer.findShardById(3) mustEqual shard
+      nameServer.findShardById(shardInfos(2).id) mustEqual shard
     }
 
     "create shard" in {
       expect {
         one(nameServerShard).createShard(shardInfos(0), shardRepository) willThrow new InvalidShard
-        one(nameServerShard).createShard(shardInfos(0), shardRepository) willReturn 23
+        one(nameServerShard).createShard(shardInfos(0), shardRepository)
       }
-      nameServer.createShard(shardInfos(0)) mustEqual 23
+      nameServer.createShard(shardInfos(0)) mustNot throwA[InvalidShard]
     }
   }
 }
