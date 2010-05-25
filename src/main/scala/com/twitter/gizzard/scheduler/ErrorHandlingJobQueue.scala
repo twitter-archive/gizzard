@@ -44,6 +44,8 @@ class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, 
 
   def put(schedulable: Schedulable) = normalJobQueue.put(schedulable)
 
+  def putError(schedulable: Schedulable) = errorJobQueue.put(schedulable)
+
   def start() {
     normalQueue.start()
     errorQueue.start()
