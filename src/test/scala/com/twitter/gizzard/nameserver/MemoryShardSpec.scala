@@ -111,7 +111,7 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
         nameServer.addChildShard(1, 200, 2)
         nameServer.addChildShard(1, 300, 1)
         nameServer.listShardChildren(1) mustEqual
-          List(ChildInfo(100, 2), ChildInfo(200, 2), ChildInfo(300, 1))
+          List(ChildInfo(200, 2), ChildInfo(100, 2), ChildInfo(300, 1))
       }
 
       "remove" >> {
@@ -136,7 +136,7 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
         nameServer.addChildShard(1, 200, 2)
         nameServer.addChildShard(1, 300, 1)
         nameServer.replaceChildShard(300, 400)
-        nameServer.listShardChildren(1) mustEqual List(ChildInfo(100, 2), ChildInfo(200, 2), ChildInfo(400, 1))
+        nameServer.listShardChildren(1) mustEqual List(ChildInfo(200, 2), ChildInfo(100, 2), ChildInfo(400, 1))
       }
     }
 
