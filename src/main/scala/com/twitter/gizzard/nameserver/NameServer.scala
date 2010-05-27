@@ -20,6 +20,7 @@ object NameServer {
    *   id_generator = "random"
    *   replicas {
    *     ns1 (inherit="db") {
+   *       type = "mysql"
    *       hostname = "nameserver1"
    *       database = "shards"
    *     }
@@ -38,7 +39,11 @@ object NameServer {
 
     val replicaConfig = config.configMap("replicas")
     val replicas = replicaConfig.keys.map { key =>
-      new SqlShard(queryEvaluatorFactory(replicaConfig.configMap(key)))
+      val shardConfig = replicaConfig.configMap(key)
+      shardConfig.getString("type", "mysql") match {
+        case "mysql" => new SqlShard(queryEvaluatorFactory(shardConfig))
+        case "memory" => new MemoryShard()
+      }
     }.collect
 
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
