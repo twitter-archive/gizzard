@@ -21,5 +21,15 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
   val thrift    = "thrift" % "libthrift" % "0.2.0"
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
 
-  val publishTo = Resolver.sftp("green.lag.net", "green.lag.net", "/web/nest")
+  Credentials(Path.userHome / ".ivy2" / "credentials", log)
+  val publishTo = "nexus" at "http://nexus.scala-tools.org/content/repositories/releases/"
+
+  override def pomExtra =
+    <licenses>
+      <license>
+        <name>Apache 2</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+      </license>
+    </licenses>
 }
