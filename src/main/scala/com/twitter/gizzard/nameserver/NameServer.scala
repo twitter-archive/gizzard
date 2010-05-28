@@ -21,16 +21,9 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
 
-  def createShard(shardInfo: ShardInfo) { createShard(shardInfo, RETRIES) }
-
-  def createShard(shardInfo: ShardInfo, retries: Int) {
-    try {
-      nameServerShard.createShard(shardInfo, shardRepository)
-    } catch {
-      case e: InvalidShard if (retries > 0) =>
-        // allow conflicts on the id generator
-        createShard(shardInfo, retries - 1)
-    }
+  @throws(classOf[shards.ShardException])
+  def createShard(shardInfo: ShardInfo) {
+    nameServerShard.createShard(shardInfo, shardRepository)
   }
 
   def getShardInfo(id: ShardId) = shardInfos(id)
@@ -90,23 +83,23 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
     findShardById(shardInfo.id)
   }
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
-  def getShard(id: ShardId) = nameServerShard.getShard(id)
-  def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
-  def addLink(upId: ShardId, downId: ShardId, weight: Int) = nameServerShard.addLink(upId, downId, weight)
-  def removeLink(upId: ShardId, downId: ShardId) = nameServerShard.removeLink(upId, downId)
-  def listUpwardLinks(id: ShardId) = nameServerShard.listUpwardLinks(id)
-  def listDownwardLinks(id: ShardId) = nameServerShard.listDownwardLinks(id)
-  def listLinks() = nameServerShard.listLinks()
-  def markShardBusy(id: ShardId, busy: Busy.Value) = nameServerShard.markShardBusy(id, busy)
-  def setForwarding(forwarding: Forwarding) = nameServerShard.setForwarding(forwarding)
-  def replaceForwarding(oldId: ShardId, newId: ShardId) = nameServerShard.replaceForwarding(oldId, newId)
-  def getForwarding(tableId: Int, baseId: Long) = nameServerShard.getForwarding(tableId, baseId)
-  def getForwardingForShard(id: ShardId) = nameServerShard.getForwardingForShard(id)
-  def getForwardings() = nameServerShard.getForwardings()
-  def shardsForHostname(hostname: String) = nameServerShard.shardsForHostname(hostname)
-  def listShards() = nameServerShard.listShards()
-  def getBusyShards() = nameServerShard.getBusyShards()
-  def getChildShardsOfClass(parentId: ShardId, className: String) = nameServerShard.getChildShardsOfClass(parentId, className)
-  def rebuildSchema() = nameServerShard.rebuildSchema()
+  @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
+  @throws(classOf[shards.ShardException]) def getShard(id: ShardId) = nameServerShard.getShard(id)
+  @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
+  @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int) = nameServerShard.addLink(upId, downId, weight)
+  @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId) = nameServerShard.removeLink(upId, downId)
+  @throws(classOf[shards.ShardException]) def listUpwardLinks(id: ShardId) = nameServerShard.listUpwardLinks(id)
+  @throws(classOf[shards.ShardException]) def listDownwardLinks(id: ShardId) = nameServerShard.listDownwardLinks(id)
+  @throws(classOf[shards.ShardException]) def listLinks() = nameServerShard.listLinks()
+  @throws(classOf[shards.ShardException]) def markShardBusy(id: ShardId, busy: Busy.Value) = nameServerShard.markShardBusy(id, busy)
+  @throws(classOf[shards.ShardException]) def setForwarding(forwarding: Forwarding) = nameServerShard.setForwarding(forwarding)
+  @throws(classOf[shards.ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId) = nameServerShard.replaceForwarding(oldId, newId)
+  @throws(classOf[shards.ShardException]) def getForwarding(tableId: Int, baseId: Long) = nameServerShard.getForwarding(tableId, baseId)
+  @throws(classOf[shards.ShardException]) def getForwardingForShard(id: ShardId) = nameServerShard.getForwardingForShard(id)
+  @throws(classOf[shards.ShardException]) def getForwardings() = nameServerShard.getForwardings()
+  @throws(classOf[shards.ShardException]) def shardsForHostname(hostname: String) = nameServerShard.shardsForHostname(hostname)
+  @throws(classOf[shards.ShardException]) def listShards() = nameServerShard.listShards()
+  @throws(classOf[shards.ShardException]) def getBusyShards() = nameServerShard.getBusyShards()
+  @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String) = nameServerShard.getChildShardsOfClass(parentId, className)
+  @throws(classOf[shards.ShardException]) def rebuildSchema() = nameServerShard.rebuildSchema()
 }

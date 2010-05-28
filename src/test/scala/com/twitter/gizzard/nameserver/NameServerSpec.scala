@@ -21,14 +21,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
                                 new Forwarding(1, 3, shardInfos(2).id), new Forwarding(2, 1, shardInfos(3).id))
     var shard = mock[shards.Shard]
 
-    object FakeIdGenerator extends IdGenerator {
-      private var nextId = 10
-      def apply()  = {
-        nextId += 1
-        nextId
-      }
-    }
-
     doBefore {
       expect {
         one(nameServerShard).reload()
@@ -71,7 +63,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "create shard" in {
       expect {
-        one(nameServerShard).createShard(shardInfos(0), shardRepository) willThrow new InvalidShard
+//        one(nameServerShard).createShard(shardInfos(0), shardRepository) willThrow new InvalidShard
         one(nameServerShard).createShard(shardInfos(0), shardRepository)
       }
       nameServer.createShard(shardInfos(0)) mustNot throwA[InvalidShard]

@@ -30,6 +30,13 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
   val thriftForwarding = new thrift.Forwarding(tableId, 0, thriftShardInfo1.id)
 
   "ShardManagerService" should {
+    "explode" in {
+      expect {
+        one(nameServer).createShard(shardInfo1) willThrow new shards.ShardException("blarg!")
+      }
+      manager.create_shard(thriftShardInfo1) must throwA[thrift.ShardException]
+    }
+
     "create_shard" in {
       expect {
         one(nameServer).createShard(shardInfo1)
