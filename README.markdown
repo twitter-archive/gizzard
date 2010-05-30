@@ -69,13 +69,24 @@ The source-code to Gizzard is [available on GitHub](http://github.com/twitter/gi
 
 ## Building
 
-Ant is the current build method:
+We use [sbt](http://code.google.com/p/simple-build-tool/) to build:
 
-    $ ant
+    $ sbt clean update package-dist
 
-This should download any missing jars using ivy (which is ant's implementation of the maven dependency fetcher) and build a jar in `dist/`.
+but there are some pre-requisites. You need:
 
-Apache Thrift 0.2.0 is pre-requisite for building java stubs of the thrift IDL. It can't be installed via jar, so you'll need to install it separately before you build. If you install the thrift binary into an unusual place, you can tell ant where it is with `-Dthrift.bin=<where>`.
+- java 1.6
+- sbt 0.7.4
+- thrift 0.2.0
+
+Apache Thrift 0.2.0 is pre-requisite for building java stubs of the thrift IDL. It can't be
+installed via jar, so you'll need to install it separately before you build.
+
+In addition, the tests require a local mysql instance to be running, and for `DB_USERNAME` and
+`DB_PASSWORD` env vars to contain login info for it.
+
+The sbt build should download any missing jars using ivy (which is ant's implementation of the maven
+dependency fetcher) and build a jar in `dist/`.
 
 ## Installation
 
@@ -87,17 +98,17 @@ Apache Thrift 0.2.0 is pre-requisite for building java stubs of the thrift IDL. 
         <version>1.0</version>
     </dependency>
 
-It may require you to add the "Twitter nest" maven repo to your repo list. The nest repo is located here:
+It may require you to add the "scala-tools" maven repo to your repo list. The nest repo is located here:
 
-    http://www.lag.net/nest/
+    http://scala-tools.org/repo-releases/
 
-### Ivy
+### Sbt
 
-    <dependency org="com.twitter" name="gizzard" rev="1.0"/>
+    val gizzard = "com.twitter" % "gizzard" % "1.0"
 
-You will need to add a reference to the "Twitter nest" to your `ivysettings.xml` file if it isn't already there:
+You will need to add a reference to the "scala-tools" repo if it isn't already there:
 
-    <ibiblio name="twitter.com" m2compatible="true" root="http://www.lag.net/nest/" />
+    val scalaToolsReleases = "scala-tools.org" at "http://scala-tools.org/repo-releases/"
 
 The Github issue tracker is [here](http://github.com/twitter/gizzard/issues).
  
