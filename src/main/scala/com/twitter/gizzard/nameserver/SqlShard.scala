@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS shards (
 
   val SHARD_CHILDREN_DDL = """
 CREATE TABLE IF NOT EXISTS shard_children (
-    parent_table_prefix     VARCHAR(125) NOT NULL,
     parent_hostname         VARCHAR(125) NOT NULL,
-    child_table_prefix      VARCHAR(125) NOT NULL,
+    parent_table_prefix     VARCHAR(125) NOT NULL,
     child_hostname          VARCHAR(125) NOT NULL,
+    child_table_prefix      VARCHAR(125) NOT NULL,
     weight                  INT NOT NULL DEFAULT 1,
 
     PRIMARY KEY primary_key_family (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),

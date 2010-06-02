@@ -18,8 +18,10 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
   private val log = Logger.get(getClass.getName)
 
   def toMap = {
-    Map("source_shard_id" -> sourceId,
-        "destination_shard_id" -> destinationId,
+    Map("source_shard_hostname" -> sourceId.hostname,
+        "source_shard_table_prefix" -> sourceId.tablePrefix,
+        "destination_shard_hostname" -> destinationId.hostname,
+        "destination_shard_table_prefix" -> destinationId.tablePrefix,
         "count" -> count
     ) ++ serialize
   }

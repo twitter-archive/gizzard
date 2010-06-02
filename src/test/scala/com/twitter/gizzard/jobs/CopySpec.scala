@@ -36,8 +36,10 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
     "toMap" in {
       val copy = makeCopy(Some(nextCopy))
       copy.toMap mustEqual Map(
-        "source_shard_id" -> sourceShardId,
-        "destination_shard_id" -> destinationShardId,
+        "source_shard_hostname" -> sourceShardId.hostname,
+        "source_shard_table_prefix" -> sourceShardId.tablePrefix,
+        "destination_shard_hostname" -> destinationShardId.hostname,
+        "destination_shard_table_prefix" -> destinationShardId.tablePrefix,
         "count" -> count
       ) ++ copy.serialize
     }
