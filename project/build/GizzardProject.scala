@@ -1,8 +1,8 @@
 import sbt._
-import com.twitter.sbt.StandardProject
+import com.twitter.sbt.{SubversionRepository, StandardProject}
 
 
-class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
+class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionRepository {
   val asm       = "asm" % "asm" %  "1.5.3"
   val cglib     = "cglib" % "cglib" % "2.1_3"
   val configgy  = "net.lag" % "configgy" % "1.5.4"
@@ -12,7 +12,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
   val kestrel   = "net.lag" % "kestrel" % "1.2"
   val mysqljdbc = "mysql" % "mysql-connector-java" % "5.1.6"
   val objenesis = "org.objenesis" % "objenesis" % "1.1"
-  val ostrich   = "com.twitter" % "ostrich" % "1.1.15"
+  val ostrich   = "com.twitter" % "ostrich" % "1.1.17"
   val pool      = "commons-pool" % "commons-pool" % "1.3"
   val querulous = "com.twitter" % "querulous" % "1.1.8"
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
@@ -20,6 +20,4 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1"
   val thrift    = "thrift" % "libthrift" % "0.2.0"
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
-
-  val publishTo = Resolver.sftp("green.lag.net", "green.lag.net", "/web/nest")
 }
