@@ -120,8 +120,6 @@ class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRep
     shardInfos = newShardInfos
     familyTree = newFamilyTree
     forwardings = newForwardings
-
-    shardRepository.reset()
   }
 
   def findShardById(shardId: Int, weight: Int): S = {

@@ -7,24 +7,17 @@ import shards.{ShardInfo, ShardFactory}
 
 class ShardRepository[S <: shards.Shard] {
   private val shardFactories = mutable.Map.empty[String, ShardFactory[S]]
-  private val shardCache = mutable.Map.empty[ShardInfo, S]
 
   def +=(item: (String, ShardFactory[S])) {
     shardFactories += item
   }
 
   def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
-    shardCache.synchronized {
-      shardCache.getOrElseUpdate(shardInfo, shardFactories(shardInfo.className).instantiate(shardInfo, weight, children))
-    }
+    shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
   def create(shardInfo: ShardInfo) {
     shardFactories(shardInfo.className).materialize(shardInfo)
-  }
-
-  def reset() {
-    shardCache.clear()
   }
 
   override def toString() = {

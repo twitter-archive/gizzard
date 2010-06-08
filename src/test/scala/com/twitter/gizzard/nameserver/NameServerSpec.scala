@@ -32,7 +32,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     doBefore {
       expect {
-        one(shardRepository).reset()
         one(nameServerShard).reload()
         one(nameServerShard).listShards() willReturn shardInfos
         one(nameServerShard).listShardChildren() willReturn shardChildren
