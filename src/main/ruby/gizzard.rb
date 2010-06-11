@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'simple.rb'
+require 'vendor/simple'
 
 module Gizzard
   module Thrift
