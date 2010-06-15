@@ -6,8 +6,8 @@ Initial position
                                                                  S1         <- Initial shard to split
 
 Then we split the forwarding for S1, adding a b->S1  
-forwarding entry.                                                a b
-                                                            |___|_|_|___|   <- Forwarding table
+forwarding entry.                                                  a b
+                                                              |___|_|_|___|   <- Forwarding table
 def split(S1, COUNT)                                               \ /  
     END = find_endpoint(S1) # scan get_forwardings or               R       <- Replicating Shard      
                             # possibly binary search on             | 
@@ -16,7 +16,7 @@ def split(S1, COUNT)                                               \ /
     add_link(R, S1)
     for i in COUNT                                      
         set_forwarding(f(i), R)
-                                                                     a b
+                                                                        a b
 def create_splitting_twin_of(FORWARDINGS = [a, b])               SP(___|_|_|___)  <- Knows about the relevant 
     SHARDS = FORWARDINGS.map{ create_shard(concrete) }                  / \          chunk of the forwarding table.
     SPLITTER = create_splitter(SHARDS, FORWARDINGS)                    S2 S3
