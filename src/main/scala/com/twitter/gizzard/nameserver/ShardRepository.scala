@@ -12,8 +12,8 @@ class ShardRepository[S <: shards.Shard] {
     shardFactories += item
   }
 
-  def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
-    shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
+  def find(nameServer: NameServer[S], shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
+    shardFactories(shardInfo.className).instantiate(nameServer, shardInfo, weight, children)
   }
 
   def create(shardInfo: ShardInfo) {

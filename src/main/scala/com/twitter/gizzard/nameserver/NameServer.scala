@@ -62,7 +62,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
     val children = getChildren(id).map { linkInfo =>
       findShardById(linkInfo.downId, linkInfo.weight)
     }.toList
-    shardRepository.find(shardInfo, weight, children)
+    shardRepository.find(this, shardInfo, weight, children)
   }
 
   @throws(classOf[NonExistentShard])
