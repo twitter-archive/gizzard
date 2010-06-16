@@ -1,7 +1,7 @@
 <ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
   <info organisation="com.twitter"
     module="gizzard"
-    revision="1.0.8"
+    revision="1.1.0"
     e:buildpackage="com.twitter.gizzard"
     e:testclass="com.twitter.gizzard.TestRunner"
     e:jarclassname="com.twitter.gizzard.Main"
