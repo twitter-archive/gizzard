@@ -17,21 +17,15 @@ object SplittingShardSpec extends ConfiguredSpecification with JMocker with Clas
     var splittingShard = new fake.ReadWriteShardAdapter(new SplittingShard(nameServer, null, 1, shards))
     
     "splitting behavior" in {
-      "writes should only go to one shard" in {
+      "writes should go to the shard specified in the nameserver" in {
         expect {
           val address:(Int, Long) = (1, "a".charAt(0).asDigit)
           one(nameServer).findCurrentForwarding(address).willReturn(shard1)
           one(shard1).put("a", "b")
-          never(shard1).put("a", "b")
+          never(shard2).put("a", "b")
         }
         
         splittingShard.put("a", "b")
-      }
-      "split chooser should choose which shard" in {
-        
-      }
-      "reads should happen from the same shard as the write" in {
-        
       }
     }
     

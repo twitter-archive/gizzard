@@ -30,14 +30,14 @@ def create_splitting_twin_of(FORWARDINGS = [a, b])               SP(___|_|_|___)
     #   Pros:
     #   - Improve system flexibility
     #   Cons:                                               
-    #   - Additional complexity
-    #   - Increase in scope of gizzard tools!?
-    #   
-    # - Maybe the splitting_shard could query the nameserver
-    #   such that when it's injected into the live stack, it knows
-    #   about its association with a, b?
-    #   Pros:             
-    #   - No API changes
+    #   - Additional complexity                                                                                    a b
+    #   - Increase in scope of gizzard tools!?                                                                |___|_|_|___|
+    #                                                                                                              | |
+    # - Maybe the splitting_shard could query the nameserver                                                       R R
+    #   such that when it's injected into the live stack, it knows                                                / \|\
+    #   about its association with a, b?                                                                        S2  RO S3
+    #   Pros:                                                                                                       |
+    #   - No API changes                                                                                            S1
     #   Cons:           
     #   - The query could be expensive, and/or complicated.
     
@@ -45,7 +45,7 @@ def add_splitting                                                          a b
     add_link(R, SP, write-only) # how to specify write-only?          |___|_|_|___| 
     copy_shard(S1, SP)                                                     \ /  
                                                                             R     
-                                                                           / \
+                                                                           / \   
                                                                           S1  SP                         
                                                                              /  \
                                                                             S2  S3
