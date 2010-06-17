@@ -9,9 +9,8 @@ import shards._
 class NonExistentShard extends ShardException("Shard does not exist")
 class InvalidShard extends ShardException("Shard has invalid attributes (such as hostname)")
 
-class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
-                                    mappingFunction: Long => Long)
-  extends Shard {
+class NameServer[S <: shards.Shard](nameServerShard: Shard[S], shardRepository: ShardRepository[S])
+  extends Shard[S] {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
@@ -68,9 +67,10 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @throws(classOf[NonExistentShard])
   def findShardById(id: ShardId): S = findShardById(id, 1)
 
-  def findCurrentForwarding(tableId: Int, id: Long) = {
+  def findCurrentForwarding(address: (Int, Long)): S = {
+    val (tableId, id) = address
     val shardInfo = forwardings.get(tableId).flatMap { bySourceIds =>
-      val item = bySourceIds.floorEntry(mappingFunction(id))
+      val item = bySourceIds.floorEntry(id)
       if (item != null) {
         Some(item.getValue)
       } else {
@@ -95,7 +95,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @throws(classOf[shards.ShardException]) def setForwarding(forwarding: Forwarding) = nameServerShard.setForwarding(forwarding)
   @throws(classOf[shards.ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId) = nameServerShard.replaceForwarding(oldId, newId)
   @throws(classOf[shards.ShardException]) def getForwarding(tableId: Int, baseId: Long) = nameServerShard.getForwarding(tableId, baseId)
-  @throws(classOf[shards.ShardException]) def getForwardingForShard(id: ShardId) = nameServerShard.getForwardingForShard(id)
+  @throws(classOf[shards.ShardException]) def getForwardingsForShard(id: ShardId) = nameServerShard.getForwardingsForShard(id)
   @throws(classOf[shards.ShardException]) def getForwardings() = nameServerShard.getForwardings()
   @throws(classOf[shards.ShardException]) def shardsForHostname(hostname: String) = nameServerShard.shardsForHostname(hostname)
   @throws(classOf[shards.ShardException]) def listShards() = nameServerShard.listShards()

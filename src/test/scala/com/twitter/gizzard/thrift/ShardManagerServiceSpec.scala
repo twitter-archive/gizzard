@@ -180,9 +180,9 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
 
     "get_forwarding_for_shard" in {
       expect {
-        one(nameServer).getForwardingForShard(shardInfo1.id) willReturn forwarding
+        one(nameServer).getForwardingsForShard(shardInfo1.id) willReturn List(forwarding)
       }
-      manager.get_forwarding_for_shard(thriftShardInfo1.id) mustEqual thriftForwarding
+      manager.get_forwardings_for_shard(thriftShardInfo1.id) mustEqual List(thriftForwarding).toJavaList
     }
 
     "get_forwardings" in {

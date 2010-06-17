@@ -8,9 +8,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val nameServerShard = mock[Shard]
+    val nameServerShard = mock[Shard[shards.Shard]]
     var shardRepository = mock[ShardRepository[shards.Shard]]
-    val mappingFunction = (n: Long) => n
     var nameServer: NameServer[shards.Shard] = null
 
     val shardInfos = (1 until 5).force.map { id =>
@@ -29,7 +28,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).getForwardings() willReturn shardForwardings
       }
 
-      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository, mappingFunction)
+      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository)
       nameServer.reload()
     }
 

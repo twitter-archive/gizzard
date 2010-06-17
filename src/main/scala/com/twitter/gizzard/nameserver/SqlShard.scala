@@ -178,10 +178,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     } getOrElse { throw new ShardException("No such forwarding") }
   }
 
-  def getForwardingForShard(id: ShardId) = {
+  def getForwardingsForShard(id: ShardId) = {
     queryEvaluator.select("SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ?", id.hostname, id.tablePrefix) { row =>
       rowToForwarding(row)
-    }.firstOption.getOrElse { throw new ShardException("No such forwarding") }
+    }.toList
   }
 
   def getForwardings() = {

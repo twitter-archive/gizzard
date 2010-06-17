@@ -14,9 +14,9 @@ class BlockedShard[ConcreteShard <: Shard]
 
   val shard = children.first
 
-  def readOperation[A](id: Long, method: (ConcreteShard => A)) =
+  override def readOperation[A](method: (ConcreteShard => A)) =
     throw new ShardRejectedOperationException("shard is offline")
 
-  def writeOperation[A](id: Long, method: (ConcreteShard => A)) =
+  override def writeOperation[A](method: (ConcreteShard => A)) =
     throw new ShardRejectedOperationException("shard is offline")
 }

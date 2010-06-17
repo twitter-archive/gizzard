@@ -73,8 +73,8 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
     nameServer.getForwarding(tableId, baseId).toThrift
   }
 
-  def get_forwarding_for_shard(id: ShardId) = wrapWithThriftExceptions {
-    nameServer.getForwardingForShard(id.fromThrift).toThrift
+  def get_forwardings_for_shard(id: ShardId) = wrapWithThriftExceptions {
+    nameServer.getForwardingsForShard(id.fromThrift).map(_.toThrift).toJavaList
   }
 
   def get_forwardings(): java.util.List[Forwarding] = wrapWithThriftExceptions {

@@ -4,7 +4,7 @@ import shards._
 import scala.collection.Map
 
 
-trait Shard extends shards.Shard {
+trait Shard[S <: shards.Shard] extends shards.Shard {
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S])
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId): ShardInfo
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
@@ -16,7 +16,7 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def setForwarding(forwarding: Forwarding)
   @throws(classOf[shards.ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId)
   @throws(classOf[shards.ShardException]) def getForwarding(tableId: Int, baseId: Long): Forwarding
-  @throws(classOf[shards.ShardException]) def getForwardingForShard(id: ShardId): Forwarding
+  @throws(classOf[shards.ShardException]) def getForwardingsForShard(id: ShardId): Seq[Forwarding]
   @throws(classOf[shards.ShardException]) def getForwardings(): Seq[Forwarding]
   @throws(classOf[shards.ShardException]) def shardsForHostname(hostname: String): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def listShards(): Seq[ShardInfo]
@@ -25,4 +25,6 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def rebuildSchema()
   @throws(classOf[shards.ShardException]) def reload()
+  @throws(classOf[NonExistentShard])      def findShardById(id: ShardId): S
+                                          def findCurrentForwarding(address: (Int, Long)): S
 }

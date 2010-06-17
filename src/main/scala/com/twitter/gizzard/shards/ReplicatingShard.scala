@@ -23,8 +23,8 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
   val log: ThrottledLogger[String], val future: Future)
   extends ReadWriteShard[ConcreteShard] {
 
-  def readOperation[A](id: Long, method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
-  def writeOperation[A](id: Long, method: (ConcreteShard => A)) = fanoutWrite(method, children)
+  override def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
+  override def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)
 
   private def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
     val exceptions = new mutable.ArrayBuffer[Exception]()
