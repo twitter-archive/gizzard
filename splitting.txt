@@ -1,0 +1,63 @@
+Initial position
+
+                                                             R1  R2  R3     <- Ranges
+                                                            |___|___|___|   <- Forwarding table
+                                                                 |
+                                                                 S1         <- Initial shard to split
+
+Then we split the forwarding for S1, adding a b->S1  
+forwarding entry.                                                  a b
+                                                              |___|_|_|___|   <- Forwarding table
+def split(S1, COUNT)                                               \ /  
+    END = find_endpoint(S1) # scan get_forwardings or               R       <- Replicating Shard      
+                            # possibly binary search on             | 
+                            # find_current_forwarding               S1                           
+    R = create_shard(replicating, etc)
+    add_link(R, S1)
+    for i in COUNT                                      
+        set_forwarding(f(i), R)
+                                                                        a b
+def create_splitting_twin_of(FORWARDINGS = [a, b])               SP(___|_|_|___)  <- Knows about the relevant 
+    SHARDS = FORWARDINGS.map{ create_shard(concrete) }                  / \          chunk of the forwarding table.
+    SPLITTER = create_splitter(SHARDS, FORWARDINGS)                    S2 S3
+
+    # create_splitter is a new api call!! There could be a 
+    # splitting shard, but how to pass the forwardings into it
+    # on creation!?  
+    # 
+    # Ideas to avoid this scenario:
+    # - Maybe create_shard should take (arbitrary?) metadata?
+    #   Pros:
+    #   - Improve system flexibility
+    #   Cons:                                               
+    #   - Additional complexity
+    #   - Increase in scope of gizzard tools!?
+    #   
+    # - Maybe the splitting_shard could query the nameserver
+    #   such that when it's injected into the live stack, it knows
+    #   about its association with a, b?
+    #   Pros:             
+    #   - No API changes
+    #   Cons:           
+    #   - The query could be expensive, and/or complicated.
+    
+def add_splitting                                                          a b
+    add_link(R, SP, write-only) # how to specify write-only?          |___|_|_|___| 
+    copy_shard(S1, SP)                                                     \ /  
+                                                                            R     
+                                                                           / \
+                                                                          S1  SP                         
+                                                                             /  \
+                                                                            S2  S3
+                                                                            
+def finalize                                                               a b        
+    set_forwarding(a, S2)                                             |___|_|_|___|         R   <- floating sub-tree, to be   
+    set_forwarding(b, S3)                                                  | |             / \     garbage-collected...
+                                                                          S2 S3           S1  SP        
+Questions                                                                                    /  \       
+- how to create splitter?                                                                  *S2 *S3      
+- how to gc?
+- does set_forwarding overwrite identical ring values?                      
+                                                                                        
+                                                                                        
+                                                                                              

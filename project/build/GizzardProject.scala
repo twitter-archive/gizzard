@@ -1,8 +1,8 @@
 import sbt._
-import com.twitter.sbt.StandardProject
+import com.twitter.sbt.{SubversionRepository, StandardProject}
 
 
-class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
+class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionRepository {
   val asm       = "asm" % "asm" %  "1.5.3"
   val cglib     = "cglib" % "cglib" % "2.1_3"
   val configgy  = "net.lag" % "configgy" % "1.5.4"

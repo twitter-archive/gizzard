@@ -8,7 +8,7 @@ import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException
 
 
 object MigrateSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  "Migrate" should {
+  /*"Migrate" should {
     val copyJob = mock[Copy[Shard]]
     val sourceShardId = 20
     val destinationShardId = 25
@@ -43,5 +43,5 @@ object MigrateSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
       migrate.copyPage(shard1, shard2, 20) must beSome[Migrate[Shard]].which { m => m.copy mustEqual copyJob2 }
     }
-  }
+  } */
 }
