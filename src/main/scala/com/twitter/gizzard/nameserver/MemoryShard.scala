@@ -16,7 +16,7 @@ class MemoryShard extends Shard {
   val weight = 1 // hardcode for now
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
-  val parentTable = new mutable.HashMap[Int, (Int, Int)]()
+  val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
@@ -25,15 +25,16 @@ class MemoryShard extends Shard {
     }
   }
 
-  private def find(shardId: Int): Option[ShardInfo] = {
-    shardTable.find { _.shardId == shardId }
+  private def find(shardId: ShardId): Option[ShardInfo] = {
+    shardTable.find { _.id == shardId }
   }
 
-  private def sortedChildren(list: List[ChildInfo]): List[ChildInfo] = {
-    list.sort { (a, b) => a.weight > b.weight || (a.weight == b.weight && a.shardId > b.shardId) }
+  private def sortedLinks(list: List[LinkInfo]): List[LinkInfo] = {
+    list.sort { (a, b) => a.weight > b.weight ||
+                          (a.weight == b.weight && a.downId.hashCode > b.downId.hashCode) }
   }
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]): Int = {
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     find(shardInfo) match {
       case Some(x) =>
         if (x.className != shardInfo.className ||
@@ -45,56 +46,43 @@ class MemoryShard extends Shard {
         shardTable += shardInfo.clone
     }
     repository.create(shardInfo)
-    shardInfo.shardId
   }
 
-  def findShard(shardInfo: ShardInfo): Int = {
-    find(shardInfo).map { _.shardId }.getOrElse { throw new NonExistentShard }
-  }
-
-  def getShard(shardId: Int): ShardInfo = {
+  def getShard(shardId: ShardId): ShardInfo = {
     find(shardId).getOrElse { throw new NonExistentShard }
   }
 
-  def updateShard(shardInfo: ShardInfo) = {
-    find(shardInfo.shardId) match {
-      case Some(x) =>
-        shardTable -= x
-        shardTable += shardInfo.clone
-      case None =>
-        throw new NonExistentShard
-    }
-  }
-
-  def deleteShard(shardId: Int) {
-    parentTable.elements.toList.foreach { case (child, (parent, weight)) =>
-      if (parent == shardId || child == shardId) {
-        parentTable -= child
+  def deleteShard(shardId: ShardId) {
+    parentTable.elements.toList.foreach { link =>
+      if (link.upId == shardId || link.downId == shardId) {
+        parentTable -= link
       }
     }
     find(shardId).foreach { x => shardTable -= x }
   }
 
-  def addChildShard(parentShardId: Int, childShardId: Int, weight: Int) {
-    parentTable(childShardId) = (parentShardId, weight)
+  def addLink(upId: ShardId, downId: ShardId, weight: Int) {
+    removeLink(upId, downId)
+    parentTable += LinkInfo(upId, downId, weight)
   }
 
-  def removeChildShard(parentShardId: Int, childShardId: Int) {
-    parentTable.elements.toList.foreach { case (child, (parent, weight)) =>
-      if (parentShardId == parent && childShardId == child) {
-        parentTable -= child
+  def removeLink(upId: ShardId, downId: ShardId) {
+    parentTable.elements.toList.foreach { link =>
+      if (upId == link.upId && downId == link.downId) {
+        parentTable -= link
       }
     }
   }
 
-  def replaceChildShard(oldChildShardId: Int, newChildShardId: Int) {
-    parentTable.get(oldChildShardId).foreach { case (parent, weight) =>
-      parentTable -= oldChildShardId
-      parentTable(newChildShardId) = (parent, weight)
-    }
+  def listUpwardLinks(id: ShardId): Seq[LinkInfo] = {
+    sortedLinks(parentTable.filter { link => link.downId == id }.toList)
   }
 
-  def markShardBusy(shardId: Int, busy: Busy.Value) {
+  def listDownwardLinks(id: ShardId): Seq[LinkInfo] = {
+    sortedLinks(parentTable.filter { link => link.upId == id }.toList)
+  }
+
+  def markShardBusy(shardId: ShardId, busy: Busy.Value) {
     find(shardId).foreach { _.busy = busy }
   }
 
@@ -105,7 +93,7 @@ class MemoryShard extends Shard {
     forwardingTable += forwarding
   }
 
-  def replaceForwarding(oldShardId: Int, newShardId: Int) {
+  def replaceForwarding(oldShardId: ShardId, newShardId: ShardId) {
     forwardingTable.find { x =>
       x.shardId == oldShardId
     }.foreach { x =>
@@ -114,13 +102,13 @@ class MemoryShard extends Shard {
     }
   }
 
-  def getForwarding(tableId: Int, baseId: Long): ShardInfo = {
+  def getForwarding(tableId: Int, baseId: Long): Forwarding = {
     forwardingTable.find { x =>
       x.tableId == tableId && x.baseId == baseId
-    }.map { x => getShard(x.shardId) }.getOrElse { throw new ShardException("No such forwarding") }
+    }.getOrElse { throw new ShardException("No such forwarding") }
   }
 
-  def getForwardingForShard(shardId: Int): Forwarding = {
+  def getForwardingForShard(shardId: ShardId): Forwarding = {
     forwardingTable.find { x =>
       x.shardId == shardId
     }.getOrElse { throw new ShardException("No such forwarding") }
@@ -130,68 +118,29 @@ class MemoryShard extends Shard {
     forwardingTable.toList
   }
 
-  def shardIdsForHostname(hostname: String, className: String): List[Int] = {
-    shardsForHostname(hostname, className).map { _.shardId }
+  def shardsForHostname(hostname: String): Seq[ShardInfo] = {
+    shardTable.filter { x => x.hostname == hostname }
   }
 
   def listShards(): Seq[ShardInfo] = {
     shardTable.toList
   }
 
-  def listShardChildren(): Map[Int, Seq[ChildInfo]] = {
-    val map = new mutable.HashMap[Int, mutable.ListBuffer[ChildInfo]]()
-    parentTable.foreach { case (child, (parent, weight)) =>
-      map.getOrElseUpdate(parent, new mutable.ListBuffer[ChildInfo]()) += ChildInfo(child, weight)
-    }
-    map.toList.foreach { case (k, v) =>
-      val x = new mutable.ListBuffer[ChildInfo]()
-      x ++= sortedChildren(v.toList)
-      map(k) = x
-    }
-    map
-  }
-
-  def shardsForHostname(hostname: String, className: String): List[ShardInfo] = {
-    shardTable.filter { x =>
-      x.hostname == hostname && x.className == className
-    }.toList
+  def listLinks(): Seq[LinkInfo] = {
+    parentTable.toList
   }
 
   def getBusyShards(): Seq[ShardInfo] = {
     shardTable.filter { _.busy.id > 0 }.toList
   }
 
-  def getParentShard(shardId: Int): ShardInfo = {
-    parentTable.get(shardId) match {
-      case Some((parent, weight)) => find(parent).get
-      case None => find(shardId).get
-    }
-  }
-
-  def getRootShard(shardId: Int): ShardInfo = {
-    parentTable.get(shardId) match {
-      case Some((parent, weight)) => getRootShard(parent)
-      case None => find(shardId).get
-    }
-  }
-
-  def getChildShardsOfClass(parentShardId: Int, className: String): List[ShardInfo] = {
-    val childIds = listShardChildren(parentShardId)
-    childIds.map { child => getShard(child.shardId) }.filter { _.className == className }.toList ++
-      childIds.flatMap { child => getChildShardsOfClass(child.shardId, className) }
+  def getChildShardsOfClass(parentShardId: ShardId, className: String): List[ShardInfo] = {
+    val childIds = listDownwardLinks(parentShardId).map { _.downId }
+    childIds.map { child => getShard(child) }.filter { _.className == className }.toList ++
+      childIds.flatMap { child => getChildShardsOfClass(child, className) }
   }
 
   def rebuildSchema() { }
 
   def reload() { }
-
-  def listShardChildren(parentId: Int): Seq[ChildInfo] = {
-    val rv = new mutable.ListBuffer[ChildInfo]
-    parentTable.foreach { case (child, (parent, weight)) =>
-      if (parent == parentId) {
-        rv += ChildInfo(child, weight)
-      }
-    }
-    sortedChildren(rv.toList)
-  }
 }
