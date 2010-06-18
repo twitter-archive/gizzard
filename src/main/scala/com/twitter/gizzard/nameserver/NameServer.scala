@@ -59,18 +59,10 @@ object NameServer {
       case Some("identity") =>
         { n => n }
     }
-    val idGenerator = config.getString("id_generator") match {
-      case None =>
-        RandomIdGenerator
-      case Some("random") =>
-        RandomIdGenerator
-    }
-    new NameServer(shard, shardRepository, mappingFunction, idGenerator)
+    new NameServer(shard, shardRepository, mappingFunction)
   }
 }
 
-class NameServer[S <: shards.Shard](nameServer: Shard, shardRepository: ShardRepository[S],
-                                    mappingFunction: Long => Long, idGenerator: IdGenerator)
 class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
                                     mappingFunction: Long => Long)
   extends Shard {
