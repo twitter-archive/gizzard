@@ -155,7 +155,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         val newShardId = ShardId("new", "shard")
         nameServer.setForwarding(forwarding)
         nameServer.replaceForwarding(forwardShardInfo.id, newShardId)
-        nameServer.getForwardingsForShard(newShardId).map(_.shardId) mustEqual Seq(newShardId)
+        nameServer.getForwardingsForShard(newShardId).map(_.shardId) mustEqual List(newShardId)
       }
 
       "set and get" in {

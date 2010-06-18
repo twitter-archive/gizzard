@@ -25,10 +25,10 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         val exception = new ShardException("o noes")
         expect {
           one(shard1).shardInfo.willReturn(shard1Info)
-          one(shard1).get("name").willThrow(exception) then
-          one(shard2).get("name").willReturn(Some("bob"))
+          one(shard1).getName.willThrow(exception) then
+          one(shard2).getName.willReturn("bob")
         }
-        replicatingShard.get("name") mustEqual Some("bob")
+        replicatingShard.getName mustEqual "bob"
       }
 
       "when all shards throw an exception" in {
@@ -37,36 +37,36 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         expect {
           one(shard1).shardInfo willReturn shard1Info
           one(shard2).shardInfo willReturn shard1Info
-          one(shard1).get("name").willThrow(exception)
-          one(shard2).get("name").willThrow(exception)
+          one(shard1).getName.willThrow(exception)
+          one(shard2).getName.willThrow(exception)
         }
-        replicatingShard.get("name") must throwA[ShardException]
+        replicatingShard.getName must throwA[ShardException]
       }
     }
 
     "writes happen to all shards" in {
       "when they succeed" in {
         expect {
-          one(shard1).put("name", "alice")
-          one(shard2).put("name", "alice")
+          one(shard1).setName("alice")
+          one(shard2).setName("alice")
         }
-        replicatingShard.put("name", "alice")
+        replicatingShard.setName("alice")
       }
 
       "when the first one fails" in {
         expect {
-          one(shard1).put("name", "alice").willThrow(new ShardException("o noes"))
-          one(shard2).put("name", "alice")
+          one(shard1).setName("alice").willThrow(new ShardException("o noes"))
+          one(shard2).setName("alice")
         }
-        replicatingShard.put("name", "alice") must throwA[Exception]
+        replicatingShard.setName("alice") must throwA[Exception]
       }
     }
 
     "reads happen to shards in order" in {
       expect {
-        one(shard1).get("name").willReturn(Some("ted"))
+        one(shard1).getName.willReturn("ted")
       }
-      replicatingShard.get("name") mustEqual Some("ted")
+      replicatingShard.getName mustEqual "ted"
     }
   }
 }

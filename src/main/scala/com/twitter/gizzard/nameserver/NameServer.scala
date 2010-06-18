@@ -9,8 +9,9 @@ import shards._
 class NonExistentShard extends ShardException("Shard does not exist")
 class InvalidShard extends ShardException("Shard has invalid attributes (such as hostname)")
 
-class NameServer[S <: shards.Shard](nameServerShard: Shard[S], shardRepository: ShardRepository[S])
-  extends Shard[S] {
+class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
+                                    mappingFunction: Long => Long)
+  extends Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
@@ -61,16 +62,15 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard[S], shardRepository: 
     val children = getChildren(id).map { linkInfo =>
       findShardById(linkInfo.downId, linkInfo.weight)
     }.toList
-    shardRepository.find(this, shardInfo, weight, children)
+    shardRepository.find(shardInfo, weight, children)
   }
 
   @throws(classOf[NonExistentShard])
   def findShardById(id: ShardId): S = findShardById(id, 1)
 
-  def findCurrentForwarding(address: (Int, Long)): S = {
-    val (tableId, id) = address
+  def findCurrentForwarding(tableId: Int, id: Long) = {
     val shardInfo = forwardings.get(tableId).flatMap { bySourceIds =>
-      val item = bySourceIds.floorEntry(id)
+      val item = bySourceIds.floorEntry(mappingFunction(id))
       if (item != null) {
         Some(item.getValue)
       } else {

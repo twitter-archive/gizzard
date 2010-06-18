@@ -8,8 +8,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val nameServerShard = mock[Shard[shards.Shard]]
+    val nameServerShard = mock[Shard]
     var shardRepository = mock[ShardRepository[shards.Shard]]
+    val mappingFunction = (n: Long) => n
     var nameServer: NameServer[shards.Shard] = null
 
     val shardInfos = (1 until 5).force.map { id =>
@@ -28,7 +29,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).getForwardings() willReturn shardForwardings
       }
 
-      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository)
+      nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository, mappingFunction)
       nameServer.reload()
     }
 
@@ -45,7 +46,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "find current forwarding" in {
       expect {
-        one(shardRepository).find(nameServer, shardInfos(1), 1, List()) willReturn shard
+        one(shardRepository).find(shardInfos(1), 1, List()) willReturn shard
       }
 
       nameServer.findCurrentForwarding(1, 2) mustEqual shard
@@ -53,8 +54,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "find shard by id" in {
       expect {
-        one(shardRepository).find(nameServer, shardInfos(3), 1, List()) willReturn shard
-        one(shardRepository).find(nameServer, shardInfos(2), 1, List(shard)) willReturn shard
+        one(shardRepository).find(shardInfos(3), 1, List()) willReturn shard
+        one(shardRepository).find(shardInfos(2), 1, List(shard)) willReturn shard
       }
 
       nameServer.findShardById(shardInfos(2).id) mustEqual shard
