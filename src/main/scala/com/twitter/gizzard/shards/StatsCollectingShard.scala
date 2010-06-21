@@ -9,6 +9,6 @@ class StatsCollectingShard[ConcreteShard <: Shard]
 
   val shardName = shardInfo.hostname
   val shard = children.first.asInstanceOf[ConcreteShard]
-  def readOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-read")(method(shard))
-  def writeOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-write")(method(shard))
+  def readOperation[A](address: Option[Address], method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-read")(method(shard))
+  def writeOperation[A](address: Option[Address], method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-write")(method(shard))
 }

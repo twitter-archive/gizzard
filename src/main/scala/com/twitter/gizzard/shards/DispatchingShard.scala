@@ -1,21 +1,21 @@
 package com.twitter.gizzard.shards
 
-trait DispatchingShard {}
-// [ConcreteShard <: Shard] extends ReadWriteShard[ConcreteShard] {
-//   
-//   override def readOperation[A](address: Option[(Int, Long)], method: (ConcreteShard => A)): A
-//   override def writeOperation[A](address: Option[(Int, Long)], method: (ConcreteShard => A)): A 
-//   
-//   def findCurrentForwarding(address: (Int, Long)): ConcreteShard
-//   
-//   def getForwarding(tableId: Int, baseId: Long): Forwarding
-//   
-//   def getForwardingsForShard(id: ShardId): Seq[Forwarding]
-//   
-//   def getForwardings(): Seq[Forwarding]
-//   
-//   // extract....
-//   @throws(classOf[NonExistentShard])      def findShardById(id: ShardId): S
-//                                           def findCurrentForwarding(address: (Int, Long)): S
-//   
-// }
+class DispatchWithoutAddress extends Exception
+
+class DispatchingShard [ConcreteShard <: Shard](
+      val shardInfo: ShardInfo, val weight: Int, val forwardingTable: ForwardingTable[ConcreteShard]
+      ) extends ReadWriteShard[ConcreteShard] {
+        
+  def children = {
+    forwardingTable.getShards
+  }
+  
+  def readOperation[A](address: Option[Address], method: (ConcreteShard => A)): A = {
+    method(forwardingTable.getShard(address.getOrElse{ throw new DispatchWithoutAddress }))
+  }
+  
+  def writeOperation[A](address: Option[Address], method: (ConcreteShard => A)): A = {
+    method(forwardingTable.getShard(address.getOrElse{ throw new DispatchWithoutAddress }))
+  }
+  
+}

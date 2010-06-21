@@ -9,33 +9,14 @@ object ForwardingTableSpec extends ConfiguredSpecification with JMocker with Cla
     val s1 = new fake.NestableShard(Seq())
     val s2 = new fake.NestableShard(Seq())
     val s4 = new fake.NestableShard(Seq())
+    val s5 = new fake.NestableShard(Seq())
     val s3 = new fake.NestableShard(List(s4))
-    
-    // expect { 
-    //   allowing(s1).equalsOrContains(s1) willReturn true
-    //   allowing(s1).equalsOrContains(s1) willReturn true
-    //   allowing(s1).equalsOrContains(s1) willReturn true
-    //   allowing(s1).equalsOrContains(s1) willReturn true
-    //   allowing(s1).equalsOrContains(s4) willReturn false
-    //   
-    //   allowing(s2).equalsOrContains(s1) willReturn true
-    //   allowing(s2).equalsOrContains(s1) willReturn true
-    //   allowing(s2).equalsOrContains(s1) willReturn true
-    //   allowing(s2).equalsOrContains(s1) willReturn true
-    //   allowing(s2).equalsOrContains(s4) willReturn false
-    //   
-    //   allowing(s4).equalsOrContains(s1) willReturn true
-    //   allowing(s4).equalsOrContains(s1) willReturn true
-    //   allowing(s4).equalsOrContains(s1) willReturn true
-    //   allowing(s4).equalsOrContains(s1) willReturn true
-    //   allowing(s4).equalsOrContains(s4) willReturn false
-    // }
-    
+        
     val f1  = Forwarding(Address(0, 1), s1)
     val f1a = Forwarding(Address(0, 3), s1)
     val f2  = Forwarding(Address(0, 5), s2)
     val f3  = Forwarding(Address(0, 10), s3)
-    val table = new ForwardingTable(List(f1, f2, f3))
+    val table = new ForwardingTable(List(f1, f1a, f2, f3))
 
     "#forwardingsForShard" in {
       "returns the simple forwardings" in {
@@ -52,7 +33,7 @@ object ForwardingTableSpec extends ConfiguredSpecification with JMocker with Cla
       }
       
       "returns empty list for irrelevant shard" in {
-        table.forwardingsForShard(s4).size  mustEqual 0
+        table.forwardingsForShard(s5).size  mustEqual 0
       }
     }
     

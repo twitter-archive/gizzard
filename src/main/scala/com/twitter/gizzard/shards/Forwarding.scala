@@ -1,3 +1,3 @@
 package com.twitter.gizzard.shards
 
-case class Forwarding(address:Address, shard: shards.Shard)
+case class Forwarding[ConcreteShard <: Shard](address:Address, shard: ConcreteShard)
