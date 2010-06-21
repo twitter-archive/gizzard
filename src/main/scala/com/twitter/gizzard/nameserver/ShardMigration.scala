@@ -3,36 +3,48 @@ package com.twitter.gizzard.nameserver
 import shards._
 
 object ShardMigration {
-  def setup[ConcreteShard <: shards.Shard](sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo, nameServer: NameServer[ConcreteShard]): ShardMigration = {
+/*  def setup[ConcreteShard <: shards.Shard](sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo, nameServer: NameServer[ConcreteShard]): ShardMigration = {
+    if (sourceShardInfo.id == destinationShardInfo.id) throw new ShardException("Cannot migrate to the same shard")
+
     val lastDot = sourceShardInfo.className.lastIndexOf('.')
-    val sourceShardId = nameServer.findShard(sourceShardInfo)
-    val destinationShardId = nameServer.createShard(destinationShardInfo)
+    val sourceId = sourceShardInfo.id
+    nameServer.createShard(destinationShardInfo)
+    val destinationId = destinationShardInfo.id
 
-    val writeOnlyShard = new ShardInfo("com.twitter.gizzard.shards.WriteOnlyShard",
-      sourceShardInfo.tablePrefix + "_migrate_write_only", "localhost", "", "", Busy.Normal, 0)
-    val writeOnlyShardId = nameServer.createShard(writeOnlyShard)
-    nameServer.addChildShard(writeOnlyShardId, destinationShardId, 1)
+    val writeOnlyShard = new ShardInfo(ShardId("localhost", sourceShardInfo.tablePrefix + "_migrate_write_only"),
+      "com.twitter.gizzard.shards.WriteOnlyShard", "", "", Busy.Normal)
+    nameServer.createShard(writeOnlyShard)
+    val writeOnlyId = writeOnlyShard.id
+    nameServer.addLink(writeOnlyId, destinationId, 1)
 
-    val replicatingShard = new ShardInfo("com.twitter.gizzard.shards.ReplicatingShard",
-      sourceShardInfo.tablePrefix + "_migrate_replicating", "localhost", "", "", Busy.Normal, 0)
-    val replicatingShardId = nameServer.createShard(replicatingShard)
-    nameServer.replaceChildShard(sourceShardId, replicatingShardId)
-    nameServer.addChildShard(replicatingShardId, sourceShardId, 1)
-    nameServer.addChildShard(replicatingShardId, writeOnlyShardId, 1)
+    val replicatingShard = new ShardInfo(ShardId("localhost", sourceShardInfo.tablePrefix + "_migrate_replicating"),
+      "com.twitter.gizzard.shards.ReplicatingShard", "", "", Busy.Normal)
+    nameServer.createShard(replicatingShard)
+    val replicatingId = replicatingShard.id
+    nameServer.listUpwardLinks(sourceId).foreach { link =>
+      nameServer.addLink(link.upId, replicatingId, link.weight)
+      nameServer.removeLink(link.upId, link.downId)
+    }
 
-    nameServer.replaceForwarding(sourceShardId, replicatingShardId)
-    new ShardMigration(sourceShardId, destinationShardId, replicatingShardId, writeOnlyShardId)
+    nameServer.addLink(replicatingId, sourceId, 1)
+    nameServer.addLink(replicatingId, writeOnlyId, 1)
+
+    nameServer.replaceForwarding(sourceId, replicatingId)
+    new ShardMigration(sourceId, destinationId, replicatingId, writeOnlyId)
   }
 
   def finish[ConcreteShard <: shards.Shard](migration: ShardMigration, nameServer: NameServer[ConcreteShard]) {
-    nameServer.removeChildShard(migration.writeOnlyShardId, migration.destinationShardId)
-    nameServer.replaceChildShard(migration.replicatingShardId, migration.destinationShardId)
-    nameServer.replaceForwarding(migration.replicatingShardId, migration.destinationShardId)
-    nameServer.deleteShard(migration.replicatingShardId)
-    nameServer.deleteShard(migration.writeOnlyShardId)
-    nameServer.deleteShard(migration.sourceShardId)
-  }
-}
+    nameServer.removeLink(migration.writeOnlyId, migration.destinationId)
+    nameServer.listUpwardLinks(migration.replicatingId).foreach { link =>
+      nameServer.addLink(link.upId, migration.destinationId, link.weight)
+      nameServer.removeLink(link.upId, link.downId)
+    }
 
-case class ShardMigration(sourceShardId: Int, destinationShardId: Int, replicatingShardId: Int,
-                          writeOnlyShardId: Int)
+    nameServer.replaceForwarding(migration.replicatingId, migration.destinationId)
+    nameServer.deleteShard(migration.replicatingId)
+    nameServer.deleteShard(migration.writeOnlyId)
+    nameServer.deleteShard(migration.sourceId)
+  } */
+} 
+
+case class ShardMigration(sourceId: ShardId, destinationId: ShardId)

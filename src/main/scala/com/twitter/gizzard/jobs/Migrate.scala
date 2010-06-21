@@ -1,30 +1,28 @@
 package com.twitter.gizzard.jobs
 
 import nameserver.{ShardMigration, NameServer}
-import shards.Shard
+import shards.{Shard, ShardId}
 import com.twitter.xrayspecs.TimeConversions._
 import scheduler.JobScheduler
 
 
 class Migrate[S <: Shard](val copy: Copy[S], migration: ShardMigration)
-  extends Copy[S](migration.sourceShardId, migration.destinationShardId, copy.count) {
+  extends Copy[S](migration.sourceId, migration.destinationId, copy.count) {
 
   def this(attributes: Map[String, AnyVal]) = {
     this(
       Class.forName(attributes("copy_class_name").toString).asInstanceOf[Class[Copy[S]]].getConstructor(classOf[Map[String, AnyVal]]).newInstance(attributes),
       new ShardMigration(
-        attributes("source_shard_id").toInt,
-        attributes("destination_shard_id").toInt,
-        attributes("replicating_shard_id").toInt,
-        attributes("write_only_shard_id").toInt))
+        ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
+        ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString)))
   }
 
   def serialize = Map(
     "copy_class_name" -> copy.getClass.getName,
-    "source_shard_id" -> migration.sourceShardId,
-    "destination_shard_id" -> migration.destinationShardId,
-    "replicating_shard_id" -> migration.replicatingShardId,
-    "write_only_shard_id" -> migration.writeOnlyShardId
+    "souce_shard_hostname" -> migration.sourceId.hostname,
+    "source_shard_table_prefix" -> migration.sourceId.tablePrefix,
+    "destination_shard_hostname" -> migration.destinationId.hostname,
+    "destination_shard_table_prefix" -> migration.destinationId.tablePrefix
   ).asInstanceOf[Map[String, AnyVal]] ++ copy.serialize
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int) = {
@@ -32,7 +30,7 @@ class Migrate[S <: Shard](val copy: Copy[S], migration: ShardMigration)
   }
 
   override def finish(nameServer: NameServer[S], scheduler: JobScheduler) = {
-    ShardMigration.finish(migration, nameServer)
+//    ShardMigration.finish(migration, nameServer)
     super.finish(nameServer, scheduler)
   }
 }

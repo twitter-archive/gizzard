@@ -44,21 +44,13 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
 
     var mapping = (a: Long) => a
 
-    object FakeIdGenerator extends IdGenerator {
-      private var nextId = 10
-      def apply() = {
-        nextId += 1
-        nextId
-      }
-    }
-
     doBefore {
       shardRepository = new ShardRepository
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
       reset(queryEvaluator)
       nameServerShard = new SqlShard(queryEvaluator)
-      nameServer = new NameServer(nameServerShard, shardRepository, mapping, FakeIdGenerator)
+      nameServer = new NameServer(nameServerShard, shardRepository, mapping)
       nameServer.reload()
 
       nameServer.createShard(shardInfo1)

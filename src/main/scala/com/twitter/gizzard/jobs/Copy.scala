@@ -2,43 +2,45 @@ package com.twitter.gizzard.jobs
 
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
-import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
-import nameserver.NameServer
+
 import scheduler.JobScheduler
 import nameserver._
+import shards._
 
 
 object Copy {
   val MIN_COPY = 500
 }
 
-trait CopyFactory[S <: shards.Shard] extends ((Int, Int) => Copy[S])
+trait CopyFactory[S <: shards.Shard] extends ((ShardId, ShardId) => Copy[S])
 
-abstract case class Copy[S <: Shard](sourceShardId: Int, destinationShardId: Int, var count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
+abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: ShardId, var count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
   private val log = Logger.get(getClass.getName)
 
   def toMap = {
-    Map("source_shard_id" -> sourceShardId,
-        "destination_shard_id" -> destinationShardId,
+    Map("source_shard_hostname" -> sourceId.hostname,
+        "source_shard_table_prefix" -> sourceId.tablePrefix,
+        "destination_shard_hostname" -> destinationId.hostname,
+        "destination_shard_table_prefix" -> destinationId.tablePrefix,
         "count" -> count
     ) ++ serialize
   }
 
   def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
-    nameServer.markShardBusy(destinationShardId, Busy.Normal)
+    nameServer.markShardBusy(destinationId, Busy.Normal)
     log.info("Copying finished for (type %s) from %d to %d",
-             getClass.getName.split("\\.").last, sourceShardId, destinationShardId)
+             getClass.getName.split("\\.").last, sourceId, destinationId)
   }
 
   def apply(environment: (NameServer[S], JobScheduler)) {
     val (nameServer, scheduler) = environment
     try {
       log.info("Copying shard block (type %s) from %d to %d: state=%s",
-               getClass.getName.split("\\.").last, sourceShardId, destinationShardId, toMap)
-      val sourceShard = nameServer.findShardById(sourceShardId)
-      val destinationShard = nameServer.findShardById(destinationShardId)
+               getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
+      val sourceShard = nameServer.findShardById(sourceId)
+      val destinationShard = nameServer.findShardById(destinationId)
       // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-      nameServer.markShardBusy(destinationShardId, Busy.Busy)
+      nameServer.markShardBusy(destinationId, Busy.Busy)
       val nextJob = copyPage(sourceShard, destinationShard, count)
       nextJob match {
         case Some(job) => scheduler(job)

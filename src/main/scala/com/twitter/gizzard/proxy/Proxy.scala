@@ -15,25 +15,26 @@ import net.lag.logging.Logger
  * to invoke the inner method call.
  */
 object Proxy {
-  def apply[T <: AnyRef](obj: T)(f: MethodCall[T] => Object)(implicit manifest: Manifest[T]): T = {
+  def apply[T <: AnyRef](obj: T)(f: MethodCall[T] => Object): T = {
+    val cls = obj.getClass
     val invocationHandler = new reflect.InvocationHandler {
       def invoke(unused: Object, method: reflect.Method, args: Array[Object]) = {
         f(new MethodCall(obj, method, args))
       }
     }
 
-    reflect.Proxy.newProxyInstance(obj.getClass.getClassLoader, Array(manifest.erasure),
+    reflect.Proxy.newProxyInstance(cls.getClassLoader, cls.getInterfaces,
                                    invocationHandler).asInstanceOf[T]
   }
 
-  def apply[T <: AnyRef](cls: Class[T])(f: MethodCall[T] => Object)(implicit manifest: Manifest[T]): T = {
+  def apply[T <: AnyRef](cls: Class[T])(f: MethodCall[T] => Object): T = {
     val invocationHandler = new reflect.InvocationHandler {
       def invoke(obj: Object, method: reflect.Method, args: Array[Object]) = {
         f(new MethodCall(obj.asInstanceOf[T], method, args))
       }
     }
 
-    reflect.Proxy.newProxyInstance(cls.getClassLoader, Array(manifest.erasure),
+    reflect.Proxy.newProxyInstance(cls.getClassLoader, cls.getInterfaces,
                                    invocationHandler).asInstanceOf[T]
   }
 

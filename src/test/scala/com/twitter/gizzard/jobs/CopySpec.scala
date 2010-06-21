@@ -4,10 +4,10 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.{NameServer, NonExistentShard}
 import scheduler.JobScheduler
-import shards.{Busy, Shard, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards._
 
 
-class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob: => Option[FakeCopy]) extends Copy[Shard](sourceShardId, destinationShardId, count) {
+class FakeCopy(val sourceShardId: ShardId, val destinationShardId: ShardId, count: Int)(nextJob: => Option[FakeCopy]) extends Copy[Shard](sourceShardId, destinationShardId, count) {
   def serialize = Map("cursor" -> 1)
 
   @throws(classOf[Exception])
@@ -23,8 +23,8 @@ class FakeCopy(sourceShardId: Int, destinationShardId: Int, count: Int)(nextJob:
 
 object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "Copy" should {
-    val sourceShardId = 1
-    val destinationShardId = 2
+    val sourceShardId = ShardId("testhost", "1")
+    val destinationShardId = ShardId("testhost", "2")
     val count = Copy.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
     val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count)(_)
@@ -36,8 +36,10 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
     "toMap" in {
       val copy = makeCopy(Some(nextCopy))
       copy.toMap mustEqual Map(
-        "source_shard_id" -> sourceShardId,
-        "destination_shard_id" -> destinationShardId,
+        "source_shard_hostname" -> sourceShardId.hostname,
+        "source_shard_table_prefix" -> sourceShardId.tablePrefix,
+        "destination_shard_hostname" -> destinationShardId.hostname,
+        "destination_shard_table_prefix" -> destinationShardId.tablePrefix,
         "count" -> count
       ) ++ copy.serialize
     }

@@ -1,8 +1,10 @@
 package com.twitter.gizzard.thrift
 
+import scala.reflect.Manifest
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.Busy._
-import com.twitter.gizzard.thrift.conversions.ChildInfo._
+import com.twitter.gizzard.thrift.conversions.LinkInfo._
+import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
@@ -12,120 +14,95 @@ import com.twitter.gizzard.nameserver._
 import com.twitter.gizzard.scheduler.JobScheduler
 import net.lag.logging.Logger
 
-
 class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[ConcreteShard], copier: CopyFactory[ConcreteShard], scheduler: JobScheduler) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
+  def wrapWithThriftExceptions[A](f: => A): A = {
+    try {
+      f
+    } catch {
+      case ex: shards.ShardException =>
+        throw new thrift.ShardException(ex.toString)
+    }
+  }
 
-  def create_shard(shard: ShardInfo) = {
+  def create_shard(shard: ShardInfo) = wrapWithThriftExceptions {
     nameServer.createShard(shard.fromThrift)
   }
 
-  def find_shard(shard: ShardInfo) = {
-    nameServer.findShard(shard.fromThrift)
+  def get_shard(id: ShardId): ShardInfo = wrapWithThriftExceptions {
+    nameServer.getShard(id.fromThrift).toThrift
   }
 
-  def get_shard(shardId: Int): ShardInfo = {
-    nameServer.getShard(shardId).toThrift
+  def delete_shard(id: ShardId) = wrapWithThriftExceptions {
+    nameServer.deleteShard(id.fromThrift)
   }
 
-  def update_shard(shard: ShardInfo) {
-    nameServer.updateShard(shard.fromThrift)
+  def add_link(upId: ShardId, downId: ShardId, weight: Int) = wrapWithThriftExceptions {
+    nameServer.addLink(upId.fromThrift, downId.fromThrift, weight)
   }
 
-  def delete_shard(shardId: Int) {
-    nameServer.deleteShard(shardId)
+  def remove_link(upId: ShardId, downId: ShardId) = wrapWithThriftExceptions {
+    nameServer.removeLink(upId.fromThrift, downId.fromThrift)
   }
 
-  def add_child_shard(parentShardId: Int, childShardId: Int, weight: Int) {
-    nameServer.addChildShard(parentShardId, childShardId, weight)
+  def list_upward_links(id: ShardId): java.util.List[LinkInfo] = wrapWithThriftExceptions {
+    nameServer.listUpwardLinks(id.fromThrift).map(_.toThrift).toJavaList
   }
 
-  def remove_child_shard(parentShardId: Int, childShardId: Int) {
-    nameServer.removeChildShard(parentShardId, childShardId)
+  def list_downward_links(id: ShardId): java.util.List[LinkInfo] = wrapWithThriftExceptions {
+    nameServer.listDownwardLinks(id.fromThrift).map(_.toThrift).toJavaList
   }
 
-  def replace_child_shard(oldChildShardId: Int, newChildShardId: Int) {
-    nameServer.replaceChildShard(oldChildShardId, newChildShardId)
+  def mark_shard_busy(id: ShardId, busy: Int) = wrapWithThriftExceptions {
+    nameServer.markShardBusy(id.fromThrift, busy.fromThrift)
   }
 
-  def list_shard_children(shardId: Int): java.util.List[ChildInfo] = {
-    nameServer.listShardChildren(shardId).map(_.toThrift).toJavaList
+  def copy_shard(sourceId: ShardId, destinationId: ShardId) = wrapWithThriftExceptions {
+    scheduler(copier(sourceId.fromThrift, destinationId.fromThrift))
   }
 
-  def mark_shard_busy(shardId: Int, busy: Int) {
-    nameServer.markShardBusy(shardId, busy.fromThrift)
-  }
-
-  def copy_shard(sourceShardId: Int, destinationShardId: Int) {
-    scheduler(copier(sourceShardId, destinationShardId))
-  }
-
-  def setup_migration(sourceShardInfo: ShardInfo, destinationShardInfo: ShardInfo) = {
-    nameserver.ShardMigration.setup(sourceShardInfo.fromThrift, destinationShardInfo.fromThrift, nameServer).toThrift
-  }
-
-  def migrate_shard(migration: ShardMigration) {
-    scheduler(new Migrate(copier(migration.source_shard_id, migration.destination_shard_id), migration.fromThrift))
-  }
-
-  def finish_migration(migration: ShardMigration) {
-    nameserver.ShardMigration.finish(migration.fromThrift, nameServer)
-  }
-
-  def set_forwarding(forwarding: Forwarding) {
+  def set_forwarding(forwarding: Forwarding) = wrapWithThriftExceptions {
     nameServer.setForwarding(forwarding.fromThrift)
   }
 
-  def replace_forwarding(oldShardId: Int, newShardId: Int) = {
-    nameServer.replaceForwarding(oldShardId, newShardId)
+  def replace_forwarding(oldId: ShardId, newId: ShardId) = wrapWithThriftExceptions {
+    nameServer.replaceForwarding(oldId.fromThrift, newId.fromThrift)
   }
 
-  def get_forwarding(tableId: Int, baseId: Long) = {
+  def get_forwarding(tableId: Int, baseId: Long) = wrapWithThriftExceptions {
     nameServer.getForwarding(tableId, baseId).toThrift
   }
 
-  def get_forwarding_for_shard(shardId: Int) = {
-    nameServer.getForwardingForShard(shardId).toThrift
+  def get_forwarding_for_shard(id: ShardId) = wrapWithThriftExceptions {
+    nameServer.getForwardingForShard(id.fromThrift).toThrift
   }
 
-  def get_forwardings(): java.util.List[Forwarding] = {
+  def get_forwardings(): java.util.List[Forwarding] = wrapWithThriftExceptions {
     nameServer.getForwardings().map(_.toThrift).toJavaList
   }
 
-  def reload_forwardings() {
+  def reload_forwardings() = wrapWithThriftExceptions {
     log.info("Reloading forwardings...")
     nameServer.reload()
   }
 
-  def find_current_forwarding(tableId: Int, id: Long) = {
+  def find_current_forwarding(tableId: Int, id: Long) = wrapWithThriftExceptions {
     nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift
   }
 
-  def shard_ids_for_hostname(hostname: String, className: String): java.util.List[java.lang.Integer] = {
-    nameServer.shardIdsForHostname(hostname, className).toJavaList
+  def shards_for_hostname(hostname: String): java.util.List[ShardInfo] = wrapWithThriftExceptions {
+    nameServer.shardsForHostname(hostname).map(_.toThrift).toJavaList
   }
 
-  def shards_for_hostname(hostname: String, className: String): java.util.List[ShardInfo] = {
-    nameServer.shardsForHostname(hostname, className).map(_.toThrift).toJavaList
-  }
-
-  def get_busy_shards(): java.util.List[ShardInfo] = {
+  def get_busy_shards(): java.util.List[ShardInfo] = wrapWithThriftExceptions {
     nameServer.getBusyShards().map(_.toThrift).toJavaList
   }
 
-  def get_parent_shard(shardId: Int) = {
-    nameServer.getParentShard(shardId).toThrift
+  def get_child_shards_of_class(parentId: ShardId, className: String): java.util.List[ShardInfo] = wrapWithThriftExceptions {
+    nameServer.getChildShardsOfClass(parentId.fromThrift, className).map(_.toThrift).toJavaList
   }
 
-  def get_root_shard(shardId: Int) = {
-    nameServer.getRootShard(shardId).toThrift
-  }
-
-  def get_child_shards_of_class(parentShardId: Int, className: String): java.util.List[ShardInfo] = {
-    nameServer.getChildShardsOfClass(parentShardId, className).map(_.toThrift).toJavaList
-  }
-
-  def rebuild_schema() {
+  def rebuild_schema() = wrapWithThriftExceptions {
     nameServer.rebuildSchema()
   }
 }
