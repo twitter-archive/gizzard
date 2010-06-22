@@ -5,18 +5,18 @@ import net.lag.logging.ThrottledLogger
 import shards.{ShardInfo, ShardFactory}
 
 
-class ShardRepository[S <: shards.Shard] {
+class ShardRepository[S <: shards.Shard] extends ShardFactory[S] {
   private val shardFactories = mutable.Map.empty[String, ShardFactory[S]]
 
   def +=(item: (String, ShardFactory[S])) {
     shardFactories += item
   }
 
-  def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
+  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
     shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
-  def create(shardInfo: ShardInfo) {
+  def materialize(shardInfo: ShardInfo) {
     shardFactories(shardInfo.className).materialize(shardInfo)
   }
 

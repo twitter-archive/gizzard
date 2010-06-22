@@ -37,25 +37,25 @@ object ForwardingTableSpec extends ConfiguredSpecification with JMocker with Cla
       }
     }
     
-    "#getShard" in {    
+    "#findCurrentForwarding" in {    
       "returns the shard for the forwarding range whose baseid is the largest base id less than or equal to the requested address" in {
         "when less than" in {
-          table.getShard(Address(0, 2)) mustEqual s1
-          table.getShard(Address(0, 4)) mustEqual s1
-          table.getShard(Address(0, 7)) mustEqual s2
-          table.getShard(Address(0, 11)) mustEqual s3
+          table.findCurrentForwarding(Address(0, 2)) mustEqual s1
+          table.findCurrentForwarding(Address(0, 4)) mustEqual s1
+          table.findCurrentForwarding(Address(0, 7)) mustEqual s2
+          table.findCurrentForwarding(Address(0, 11)) mustEqual s3
         }
         
         "when equal to" in {
-          table.getShard(Address(0, 1)) mustEqual s1
-          table.getShard(Address(0, 3)) mustEqual s1
-          table.getShard(Address(0, 5)) mustEqual s2
-          table.getShard(Address(0, 10)) mustEqual s3
+          table.findCurrentForwarding(Address(0, 1)) mustEqual s1
+          table.findCurrentForwarding(Address(0, 3)) mustEqual s1
+          table.findCurrentForwarding(Address(0, 5)) mustEqual s2
+          table.findCurrentForwarding(Address(0, 10)) mustEqual s3
         }
       } 
        
       "throws exception if no matching forwarding range" in {
-        table.getShard(Address(0, 0)) must throwA[AddressOutOfBounds]
+        table.findCurrentForwarding(Address(0, 0)) must throwA[AddressOutOfBounds]
       }
     }    
   }

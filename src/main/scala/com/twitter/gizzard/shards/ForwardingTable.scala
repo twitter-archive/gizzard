@@ -5,7 +5,7 @@ import java.util.TreeMap
 
 class AddressOutOfBounds extends Exception
 
-class ForwardingTable[ConcreteShard <: Shard](val forwardings: Seq[Forwarding[ConcreteShard]]) {
+class ForwardingTable[ConcreteShard <: Shard](val forwardings: Seq[Forwarding[ConcreteShard]]) extends Forwarder[ConcreteShard]{
   private var data = new mutable.HashMap[Int, TreeMap[Long, ConcreteShard]]
   
   forwardings.foreach { forwarding => 
@@ -18,11 +18,11 @@ class ForwardingTable[ConcreteShard <: Shard](val forwardings: Seq[Forwarding[Co
     forwardings.filter(_.shard.equalsOrContains(shard))
   }
   
-  def getShards = {
+  def shards = {
     forwardings.map(_.shard)
   }
     
-  def getShard(address: Address) = {
+  def findCurrentForwarding(address: Address) = {
     data.get(address.tableId).flatMap { byBaseIds =>
       val item = byBaseIds.floorEntry(address.baseId)
       if (item == null) {

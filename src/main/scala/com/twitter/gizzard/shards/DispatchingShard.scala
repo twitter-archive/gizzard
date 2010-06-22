@@ -7,15 +7,15 @@ class DispatchingShard [ConcreteShard <: Shard](
       ) extends ReadWriteShard[ConcreteShard] {
         
   def children = {
-    forwardingTable.getShards
+    forwardingTable.shards
   }
   
   def readOperation[A](address: Option[Address], method: (ConcreteShard => A)): A = {
-    method(forwardingTable.getShard(address.getOrElse{ throw new DispatchWithoutAddress }))
+    method(forwardingTable.findCurrentForwarding(address.getOrElse{ throw new DispatchWithoutAddress }))
   }
   
   def writeOperation[A](address: Option[Address], method: (ConcreteShard => A)): A = {
-    method(forwardingTable.getShard(address.getOrElse{ throw new DispatchWithoutAddress }))
+    method(forwardingTable.findCurrentForwarding(address.getOrElse{ throw new DispatchWithoutAddress }))
   }
   
 }

@@ -8,6 +8,9 @@ class ShardException(description: String, cause: Throwable) extends Exception(de
   def this(description: String) = this(description, null)
 }
 
+class NonExistentShard extends ShardException("Couldn't find the shard")
+class InvalidShard extends ShardException("Don't know")
+
 /**
  * Shard timed out while waiting for a query response. This may or may not be a retryable error,
  * depending on if the database is just overloaded, or if the query is intrinsically too complex

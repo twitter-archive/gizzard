@@ -69,7 +69,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
              row.getInt("weight"))
   }
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
+  def createShard[S <: shards.Shard](shardInfo: ShardInfo) {
     queryEvaluator.transaction { transaction =>
       try {
         transaction.selectOne("SELECT class_name, source_type, destination_type " +
@@ -85,7 +85,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
                              "source_type, destination_type) VALUES (?, ?, ?, ?, ?)",
                              shardInfo.hostname, shardInfo.tablePrefix, shardInfo.className,
                              shardInfo.sourceType, shardInfo.destinationType)
-          repository.create(shardInfo)
+                             
+          // Kyle: I think this isn't neccessary in the new model
+          // repository.create(shardInfo)
         }
       } catch {
         case e: SQLIntegrityConstraintViolationException =>
@@ -109,7 +111,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
       shardInfo.className, shardInfo.sourceType, shardInfo.destinationType, shardInfo.hostname,
       shardInfo.tablePrefix)
     if (rows < 1) {
-      throw new NonExistentShard
+      throw new `
     }
   } */
 

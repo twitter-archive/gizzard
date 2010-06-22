@@ -5,7 +5,7 @@ import scala.collection.Map
 
 
 trait Shard extends shards.Shard {
-  @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S])
+  @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo)
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId): ShardInfo
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)

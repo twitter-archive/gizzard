@@ -5,12 +5,12 @@ import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.ShardMigration._
-import shards.{Busy, Shard}
+import shards.{Busy, Shard, Address}
 import scheduler.JobScheduler
 
 
 object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val nameServer = mock[nameserver.NameServer[Shard]]
+  val nameServer = mock[nameserver.Shard]
   val copier = mock[jobs.CopyFactory[Shard]]
   val scheduler = mock[JobScheduler]
   val manager = new thrift.ShardManagerService(nameServer, copier, scheduler)
@@ -197,14 +197,6 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
         one(nameServer).reload()
       }
       manager.reload_forwardings()
-    }
-
-    "find_current_forwarding" in {
-      expect {
-        one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shard
-        one(shard).shardInfo willReturn shardInfo1
-      }
-      manager.find_current_forwarding(tableId, 23L) mustEqual thriftShardInfo1
     }
 
     "shards_for_hostname" in {

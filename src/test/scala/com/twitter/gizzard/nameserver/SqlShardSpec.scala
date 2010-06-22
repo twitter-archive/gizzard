@@ -1,7 +1,7 @@
 package com.twitter.gizzard.nameserver
 
 import com.twitter.xrayspecs.TimeConversions._
-import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
+import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo, InvalidShard, NonExistentShard}
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -31,46 +31,30 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
     "create" in {
       "a new shard" >> {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        nameServer.createShard(forwardShardInfo, shardRepository)
+        nameServer.createShard(forwardShardInfo)
         nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
       }
 
       "when the shard already exists" >> {
         "when the shard matches existing data" >> {
-          expect {
-            one(shardRepository).create(forwardShardInfo)
-          }
-
-          nameServer.createShard(forwardShardInfo, shardRepository)
+          nameServer.createShard(forwardShardInfo)
           nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
-          nameServer.createShard(forwardShardInfo, shardRepository)
+          nameServer.createShard(forwardShardInfo)
           nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
         }
 
         "when the shard contradicts existing data" >> {
-          expect {
-            one(shardRepository).create(forwardShardInfo)
-          }
-
-          nameServer.createShard(forwardShardInfo, shardRepository)
+          nameServer.createShard(forwardShardInfo)
           val otherShard = forwardShardInfo.clone()
           otherShard.className = "garbage"
-          nameServer.createShard(otherShard, shardRepository) must throwA[InvalidShard]
+          nameServer.createShard(otherShard) must throwA[InvalidShard]
         }
       }
     }
 
     "find" in {
       "a created shard" >> {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        nameServer.createShard(forwardShardInfo, shardRepository)
+        nameServer.createShard(forwardShardInfo)
         nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
         nameServer.getShard(forwardShardInfo.id).className mustEqual forwardShardInfo.className
       }
@@ -83,11 +67,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     // FIXME: GET SHARD
 
     "delete" in {
-      expect {
-        one(shardRepository).create(forwardShardInfo)
-      }
-
-      nameServer.createShard(forwardShardInfo, shardRepository)
+      nameServer.createShard(forwardShardInfo)
       nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
       nameServer.deleteShard(forwardShardInfo.id)
       nameServer.getShard(forwardShardInfo.id) must throwA[NonExistentShard]
@@ -125,11 +105,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     }
 
     "set shard busy" in {
-      expect {
-        one(shardRepository).create(forwardShardInfo)
-      }
-
-      nameServer.createShard(forwardShardInfo, shardRepository)
+      nameServer.createShard(forwardShardInfo)
       nameServer.markShardBusy(forwardShardInfo.id, Busy.Busy)
       nameServer.getShard(forwardShardInfo.id).busy mustEqual Busy.Busy
     }
@@ -138,11 +114,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       var forwarding: Forwarding = null
 
       doBefore {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        nameServer.createShard(forwardShardInfo, shardRepository)
+        nameServer.createShard(forwardShardInfo)
         forwarding = new Forwarding(1, 0L, forwardShardInfo.id)
       }
 
@@ -175,15 +147,9 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val shard3 = new ShardInfo(SQL_SHARD, "forward_1_too", "localhost")
 
       doBefore {
-        expect {
-          one(shardRepository).create(shard1)
-          one(shardRepository).create(shard2)
-          one(shardRepository).create(shard3)
-        }
-
-        nameServer.createShard(shard1, shardRepository)
-        nameServer.createShard(shard2, shardRepository)
-        nameServer.createShard(shard3, shardRepository)
+        nameServer.createShard(shard1)
+        nameServer.createShard(shard2)
+        nameServer.createShard(shard3)
         nameServer.addLink(shard1.id, shard2.id, 10)
         nameServer.addLink(shard2.id, shard3.id, 10)
       }

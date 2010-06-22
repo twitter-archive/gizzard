@@ -3,7 +3,6 @@ package com.twitter.gizzard.jobs
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
 
-import scheduler.JobScheduler
 import nameserver._
 import shards._
 
@@ -14,7 +13,7 @@ object Copy {
 
 trait CopyFactory[S <: shards.Shard] extends ((ShardId, ShardId) => Copy[S])
 
-abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: ShardId, var count: Int) extends UnboundJob[(NameServer[S], JobScheduler)] {
+abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: ShardId, var count: Int) extends UnboundJob[Environment[S]] {
   private val log = Logger.get(getClass.getName)
 
   def toMap = {
@@ -26,25 +25,28 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
     ) ++ serialize
   }
 
-  def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
-    nameServer.markShardBusy(destinationId, Busy.Normal)
+  def finish(env: Environment[S]) {
+    env.nameServer.markShardBusy(destinationId, Busy.Normal)
     log.info("Copying finished for (type %s) from %d to %d",
              getClass.getName.split("\\.").last, sourceId, destinationId)
   }
 
-  def apply(environment: (NameServer[S], JobScheduler)) {
-    val (nameServer, scheduler) = environment
+  def apply(env: Environment[S]) {
+    val nameServer   = env.nameServer
+    val scheduler    = env.scheduler
+    val root         = env.root
+    
     try {
       log.info("Copying shard block (type %s) from %d to %d: state=%s",
                getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
-      val sourceShard = nameServer.findShardById(sourceId)
-      val destinationShard = nameServer.findShardById(destinationId)
+      val sourceShard = root.findChild(sourceId).getOrElse { throw new NonExistentShard }
+      val destinationShard = root.findChild(destinationId).getOrElse { throw new NonExistentShard }
       // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
       nameServer.markShardBusy(destinationId, Busy.Busy)
       val nextJob = copyPage(sourceShard, destinationShard, count)
       nextJob match {
         case Some(job) => scheduler(job)
-        case None => finish(nameServer, scheduler)
+        case None => finish(env)
       }
     } catch {
       case e: NonExistentShard =>
@@ -62,7 +64,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
     }
   }
 
-  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[Copy[S]]
+  def copyPage(sourceShard: shards.Shard, destinationShard: shards.Shard, count: Int): Option[Copy[S]]
 
   def serialize(): Map[String, AnyVal]
 }

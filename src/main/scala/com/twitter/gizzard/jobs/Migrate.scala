@@ -1,6 +1,6 @@
 package com.twitter.gizzard.jobs
 
-import nameserver.{ShardMigration, NameServer}
+import nameserver.{ShardMigration}
 import shards.{Shard, ShardId}
 import com.twitter.xrayspecs.TimeConversions._
 import scheduler.JobScheduler
@@ -25,12 +25,7 @@ class Migrate[S <: Shard](val copy: Copy[S], migration: ShardMigration)
     "destination_shard_table_prefix" -> migration.destinationId.tablePrefix
   ).asInstanceOf[Map[String, AnyVal]] ++ copy.serialize
 
-  def copyPage(sourceShard: S, destinationShard: S, count: Int) = {
+  def copyPage(sourceShard: Shard, destinationShard: Shard, count: Int) = {
     copy.copyPage(sourceShard, destinationShard, count).map { new Migrate(_, migration) }
-  }
-
-  override def finish(nameServer: NameServer[S], scheduler: JobScheduler) = {
-//    ShardMigration.finish(migration, nameServer)
-    super.finish(nameServer, scheduler)
   }
 }

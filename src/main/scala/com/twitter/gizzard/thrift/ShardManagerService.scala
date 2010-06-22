@@ -14,7 +14,7 @@ import com.twitter.gizzard.nameserver._
 import com.twitter.gizzard.scheduler.JobScheduler
 import net.lag.logging.Logger
 
-class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[ConcreteShard], copier: CopyFactory[ConcreteShard], scheduler: JobScheduler) extends ShardManager.Iface {
+class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: nameserver.Shard, copier: CopyFactory[ConcreteShard], scheduler: JobScheduler) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
   def wrapWithThriftExceptions[A](f: => A): A = {
     try {
@@ -84,10 +84,6 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
   def reload_forwardings() = wrapWithThriftExceptions {
     log.info("Reloading forwardings...")
     nameServer.reload()
-  }
-
-  def find_current_forwarding(tableId: Int, id: Long) = wrapWithThriftExceptions {
-    nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift
   }
 
   def shards_for_hostname(hostname: String): java.util.List[ShardInfo] = wrapWithThriftExceptions {
