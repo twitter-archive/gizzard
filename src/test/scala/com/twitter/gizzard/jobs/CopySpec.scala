@@ -29,9 +29,10 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
     val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count)(_)
     val nameServer = mock[nameserver.Shard]
     val jobScheduler = mock[JobScheduler]
+    val root   = mock[Shard] 
     val shard1 = mock[Shard]
     val shard2 = mock[Shard]
-    val env = Environment(nameServer, shard1, jobScheduler)
+    val env = Environment(nameServer, root, jobScheduler)
 
     "toMap" in {
       val copy = makeCopy(Some(nextCopy))
@@ -48,8 +49,8 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       "normally" in {
         val copy = makeCopy(Some(nextCopy))
         expect {
-          // one(nameServer).findShardById(sourceShardId) willReturn shard1
-          // one(nameServer).findShardById(destinationShardId) willReturn shard2
+          one(root).findChild(sourceShardId) willReturn Some(shard1)
+          one(root).findChild(destinationShardId) willReturn Some(shard2)
           one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
           one(jobScheduler).apply(nextCopy)
         }
@@ -60,7 +61,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       "no shard" in {
         val copy = makeCopy(Some(nextCopy))
         expect {
-          // one(nameServer).findShardById(sourceShardId) willThrow new NonExistentShard
+          one(root).findChild(sourceShardId) willReturn None
           never(jobScheduler).apply(nextCopy)
         }
 
@@ -70,8 +71,8 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       "with a database connection timeout" in {
         val copy = makeCopy(throw new ShardDatabaseTimeoutException)
         expect {
-          // one(nameServer).findShardById(sourceShardId) willReturn shard1
-          // one(nameServer).findShardById(destinationShardId) willReturn shard2
+          one(root).findChild(sourceShardId) willReturn Some(shard1)
+          one(root).findChild(destinationShardId) willReturn Some(shard2)
           one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
           one(jobScheduler).apply(copy)
         }
@@ -83,8 +84,8 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       "with a random exception" in {
         val copy = makeCopy(throw new Exception("boo"))
         expect {
-          // one(nameServer).findShardById(sourceShardId) willReturn shard1
-          // one(nameServer).findShardById(destinationShardId) willReturn shard2
+          one(root).findChild(sourceShardId) willReturn Some(shard1)
+          one(root).findChild(destinationShardId) willReturn Some(shard2)
           one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
           never(jobScheduler).apply(nextCopy)
         }
@@ -96,8 +97,8 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
         "early on" in {
           val copy = makeCopy(throw new ShardTimeoutException)
           expect {
-            // one(nameServer).findShardById(sourceShardId) willReturn shard1
-            // one(nameServer).findShardById(destinationShardId) willReturn shard2
+            one(root).findChild(sourceShardId) willReturn Some(shard1)
+            one(root).findChild(destinationShardId) willReturn Some(shard2)
             one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
             one(jobScheduler).apply(copy)
           }
@@ -110,8 +111,8 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
           val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException)
 
           expect {
-            // one(nameServer).findShardById(sourceShardId) willReturn shard1
-            // one(nameServer).findShardById(destinationShardId) willReturn shard2
+            one(root).findChild(sourceShardId) willReturn Some(shard1)
+            one(root).findChild(destinationShardId) willReturn Some(shard2)
             one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
             never(jobScheduler).apply(nextCopy)
           }
@@ -124,8 +125,8 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
         val copy = makeCopy(None)
 
         expect {
-          // one(nameServer).findShardById(sourceShardId) willReturn shard1
-          // one(nameServer).findShardById(destinationShardId) willReturn shard2
+          one(root).findChild(sourceShardId) willReturn Some(shard1)
+          one(root).findChild(destinationShardId) willReturn Some(shard2)
           one(nameServer).markShardBusy(destinationShardId, Busy.Busy)
           one(nameServer).markShardBusy(destinationShardId, Busy.Normal)
         }
