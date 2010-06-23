@@ -166,6 +166,21 @@ module Gizzard
       delete_shard(write_only_shard_id)
       delete_shard(source_id)
     end
+
+    def setup_dev_shards(klass, options = {})
+      options[:table_ids] ||= [0]
+      options[:num_shards] ||= 1
+      options[:source_type] ||= "INT UNSIGNED"
+      options[:dest_type] ||= "INT UNSIGNED"
+      options[:table_ids].each do |table_id|
+        0.upto(options[:num_shards]).each do |num|
+          id = shard_id("localhost", "development_shard_#{table_id}_%03d" % num)
+          shard = shard_info(id, klass, options[:source_type], options[:dest_type], 0)
+          create_shard(shard)
+          set_forwarding(forwarding(table_id, ((1 << 60) / options[:num_shards]) * num, id))
+        end
+      end
+    end
   end
 
   class Manager
