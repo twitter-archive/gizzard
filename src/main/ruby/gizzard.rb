@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+$: << 'src/main/ruby'
 
 require 'rubygems'
 require 'vendor/simple'
