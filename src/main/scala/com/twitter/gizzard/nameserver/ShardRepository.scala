@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
 import net.lag.logging.ThrottledLogger
-import shards.{ShardInfo, ShardFactory, LinkInfo, LinkSource, ForwardingTable, ShardInfoSource, ForwardingSource}
+import shards.{ShardInfo, ShardFactory}
 
 
 class ShardRepository[S <: shards.Shard] extends ShardFactory[S] {
@@ -11,9 +11,9 @@ class ShardRepository[S <: shards.Shard] extends ShardFactory[S] {
   def +=(item: (String, ShardFactory[S])) {
     shardFactories += item
   }
-  
-  def instantiate(shardInfo: ShardInfo, weight: Int, forwarding: ForwardingTable[ConcreteShard]) = {
-    shardFactories(shardInfo.className).instantiate(shardInfo, weight, forwarding)
+
+  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
+    shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
   def materialize(shardInfo: ShardInfo) {
@@ -26,20 +26,20 @@ class ShardRepository[S <: shards.Shard] extends ShardFactory[S] {
 }
 
 /**
- * A ShardRepository that is pre-seeded
+ * A ShardRepository that is pre-seeded with read-only, write-only, replicating, and blocked
+ * shard types.
  */
-class BasicShardRepository[S <: shards.Shard](val constructor: shards.ReadWriteShard[S] => S,
-      val linkSource: LinkSource, val shardInfoSource: ShardInfoSource, val forwardingSource: ForwardingSource,
-      val log: ThrottledLogger[String], val future: Future)
+class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
+                                              log: ThrottledLogger[String], future: Future)
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
-    
+
   def setupPackage(packageName: String) {
-    this += (packageName + ".DispatchingShard"  -> new shards.DispatchingShardFactory(this))
-    this += (packageName + ".ReadOnlyShard"     -> new shards.ReadOnlyShardFactory(this))
-    this += (packageName + ".BlockedShard"      -> new shards.BlockedShardFactory(this))
-    this += (packageName + ".WriteOnlyShard"    -> new shards.WriteOnlyShardFactory(this))
-    this += (packageName + ".ReplicatingShard"  -> new shards.ReplicatingShardFactory(this))
+    this += (packageName + ".ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
+    this += (packageName + ".BlockedShard"     -> new shards.BlockedShardFactory(constructor))
+    this += (packageName + ".WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
+    this += (packageName + ".ReplicatingShard" ->
+             new shards.ReplicatingShardFactory(constructor, log, future))
   }
 }

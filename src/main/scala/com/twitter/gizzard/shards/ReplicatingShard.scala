@@ -13,7 +13,8 @@ import net.lag.logging.{Logger, ThrottledLogger}
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
       log: ThrottledLogger[String], future: Future) extends shards.ShardFactory[ConcreteShard] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, table: ForwardingTable) = repo.constructor(new ReplicatingShard(shardInfo, weight, getChildren(table), repo.log, repo.future))
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
+    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
