@@ -107,6 +107,17 @@ module Gizzard
 
       thrift_method :rebuild_schema, void
     end
+
+    class JobManager < T::ThriftService
+      thrift_method :retry_errors, void
+      thrift_method :stop_writes, void
+      thrift_method :resume_writes, void
+      thrift_method :retry_errors_for, void, field(:priority, i32, 1)
+      thrift_method :stop_writes_for, void, field(:priority, i32, 1)
+      thrift_method :resume_writes_for, void, field(:priority, i32, 1)
+      thrift_method :is_writing, bool, field(:priority, i32, 1)
+      thrift_method :inject_job, void, field(:priority, i32, 1), field(:job, string, 2)
+    end
   end
 end
 
@@ -196,6 +207,16 @@ module Gizzard
     end
 
     def inspect_shard_tree(root_shard, prefix = '')
+    end
+  end
+
+  class JobManager
+    def initialize(hostname, port=7919)
+      @client = hostname.is_a?(Gizzard::Thrift::JobManager) ? hostname : Gizzard::Thrift::JobManager.new(hostname, port)
+    end
+
+    def method_missing(method, *args, &block)
+      @client.send(method, *args, &block)
     end
   end
 end
