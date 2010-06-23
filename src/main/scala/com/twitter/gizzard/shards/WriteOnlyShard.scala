@@ -4,8 +4,7 @@ import scala.collection.mutable
 
 
 class WriteOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new WriteOnlyShard(shardInfo, weight, children))
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, table: ForwardingTable) = repo.constructor(new WriteOnlyShard(shardInfo, weight, getChildren(table)))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
