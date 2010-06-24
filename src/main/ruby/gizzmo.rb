@@ -15,32 +15,22 @@ subcommand_options = OpenStruct.new
 argv = nil
 
 subcommands = {
-  'getweight' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} getweight SHARD [MORE SHARD_IDS...]"
-  # ...
-  end,
-  'setweight' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} setweight VALUE SHARD [MORE SHARD_IDS...]"
-  # ...
-  end,
   'create' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} create [options] HOST TABLE_PREFIX CLASS_NAME"    
+    opts.banner = "Usage: #{$0} create [options] HOST TABLE_PREFIX CLASS_NAME"
 
     opts.on("-s", "--source-type=[TYPE]") do |s|
       subcommand_options.source_type = s
     end
-    
+
     opts.on("-d", "--destination-type=[TYPE]") do |s|
       subcommand_options.destination_type = s
     end
   end,
   'wrap' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} wrap CLASS_NAME SHARD_ID_TO_WRAP [MORE SHARD_IDS...]"
-  # ...
   end,
   'unwrap' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} unwrap SHARD_ID_TO_REMOVE"
-  # ...
+    opts.banner = "Usage: #{$0} unwrap SHARD_ID_TO_REMOVE [MORE SHARD_IDS]"
   end,
   'find' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} find [options]"
@@ -52,10 +42,6 @@ subcommands = {
     opts.on("-H", "--host=HOST", "HOST of shard") do |shard_host|
       subcommand_options.shard_host = shard_host
     end
-  # ...
-  end,
-  'add-link' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} add-link UP_ID DOWN_ID"
   end,
   'links' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} links SHARD_ID [MORE SHARD_IDS...]"
@@ -63,14 +49,14 @@ subcommands = {
   'info' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} info SHARD_ID [MORE SHARD_IDS...]"
   end,
-  # ...
-  'push' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} push PARENT_SHARD_ID CHILD_SHARD_ID"
-  # ...
+  'reload' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} reload"
   end,
-  'pop' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} pop SHARD_ID_TO_REMOVE [MORE SHARD_IDS...]"
-  # ...
+  'link' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} link PARENT_SHARD_ID CHILD_SHARD_ID WEIGHT"
+  end,
+  'unlink' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} unlink PARENT_SHARD_ID CHILD_SHARD_ID"
   end
 }
 
@@ -151,10 +137,15 @@ else
   rescue HelpNeededError => e
     STDERR.puts e.message if e.class.name != e.message
     STDERR.puts subcommands[subcommand_name]
+    exit 1
+  rescue ThriftClient::Simple::ThriftException => e
+    STDERR.puts e.message
+    exit 1
   end
 
   # include Gizzard::Thrift
   # 20.times do |i|
+  #   i += 20
   #   repl = service.create_shard(ShardInfo.new(repl_id = ShardId.new("localhost", "table_repl_#{i}"), "com.twitter.service.flock.edges.ReplicatingShard", "", "", 0))
   #   a    = service.create_shard(ShardInfo.new(a_id    = ShardId.new("localhost", "table_a_#{i}"), "com.twitter.service.flock.edges.SqlShard", "INT UNSIGNED", "INT UNSIGNED", 0))
   #   b    = service.create_shard(ShardInfo.new(b_id    = ShardId.new("localhost", "table_b_#{i}"), "com.twitter.service.flock.edges.SqlShard", "INT UNSIGNED", "INT UNSIGNED", 0))
