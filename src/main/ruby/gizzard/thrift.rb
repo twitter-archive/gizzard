@@ -38,7 +38,7 @@ module Gizzard
       end
 
       def inspect(short = false)
-        "#{id.inspect} #{class_name}" + (busy? ? " (BUSY)" : "")
+        "#{id.inspect}" + (busy? ? " (BUSY)" : "")
       end
     end
 
@@ -71,7 +71,7 @@ module Gizzard
         "[#{table_id}] #{base_id.to_s(16)} -> #{shard_id.inspect}"
       end
     end
-   
+
     class ShardManager < T::ThriftService
       thrift_method :create_shard, void, field(:shard, struct(ShardInfo), 1), :throws => exception(ShardException)
       thrift_method :delete_shard, void, field(:id, struct(ShardId), 1)
