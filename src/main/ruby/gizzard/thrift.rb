@@ -62,6 +62,11 @@ module Gizzard
       def inspect
         "#{up_id.inspect} -> #{down_id.inspect}" + (weight == 1 ? "" : " <#{weight}>")
       end
+      
+      def to_unix
+        [up_id.to_unix, down_id.to_unix, weight].join("\t")
+      end
+      
     end
 
     ShardMigration = T.make_struct(:ShardMigration,

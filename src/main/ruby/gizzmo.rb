@@ -28,6 +28,9 @@ subcommands = {
     end
   # ...
   end,
+  'links' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} links SHARD_ID [MORE SHARD_IDS...]"
+  end,
   'info' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} info SHARD_ID [MORE SHARD_IDS...]"
   end,
