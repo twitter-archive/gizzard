@@ -7,7 +7,7 @@ module Gizzard
     end
 
     def self.classify(string)
-      string.split(/\W+/).map(&:capitalize).join("")
+      string.split(/\W+/).map{|s| s.capitalize }.join("")
     end
 
     attr_reader :service, :global_options, :argv, :command_options
