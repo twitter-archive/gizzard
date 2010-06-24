@@ -14,6 +14,16 @@ subcommand_options = OpenStruct.new
 # Leftover arguments
 argv = nil
 
+begin
+  YAML.load_file(File.join(ENV["HOME"], ".gizzmorc")).each do |k, v|
+    global_options.send("#{k}=", v)
+  end
+rescue Errno::ENOENT 
+  # Do nothing...
+rescue => e
+  abort "Unknown error loading ~/.gizzmorc: #{e.message}"
+end
+
 subcommands = {
   'create' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} create [options] HOST TABLE_PREFIX CLASS_NAME"
@@ -89,8 +99,6 @@ global = OptionParser.new do |opts|
       global_options.send("#{k}=", v)
     end
   end
-
-  # ...
 end
 
 # Print banner if no args
@@ -113,6 +121,7 @@ def process_nested_parsers(global, subcommands)
     exit 1
   end
 end
+
 
 subcommand_name, argv = process_nested_parsers(global, subcommands)
 
