@@ -22,6 +22,12 @@ module Gizzard
       def inspect
         "#{hostname}/#{table_prefix}"
       end
+      
+      alias_method :to_unix, :inspect
+      
+      def self.parse(string)
+        new(*string.split("/"))
+      end
     end
 
     ShardInfo = T.make_struct(:ShardInfo,
@@ -39,6 +45,10 @@ module Gizzard
 
       def inspect(short = false)
         "#{id.inspect}" + (busy? ? " (BUSY)" : "")
+      end
+      
+      def to_unix
+        [id.to_unix, class_name, busy? ? "busy" : "unbusy"].join("\t")
       end
     end
 

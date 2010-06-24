@@ -13,40 +13,47 @@ subcommand_options = OpenStruct.new
 argv = nil
 
 subcommands = {
+  'create' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} create [options]"    
+  end,
   'find' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} find HOSTNAME [OTHER_HOSTNAME ...]"
+    opts.banner = "Usage: #{$0} find [options]"
 
-    opts.on("-t", "--type=[TYPE]", "Return only shards of the specified type") do |shard_type|
+    opts.on("-t", "--type=[TYPE]", "Return only shards of the specified TYPE") do |shard_type|
       subcommand_options.shard_type = shard_type
     end
 
-    opts.on("-H", "--host=[HOSTNAME]", "HOSTNAME of shard") do |shard_host|
+    opts.on("-H", "--host=HOST", "HOST of shard") do |shard_host|
       subcommand_options.shard_host = shard_host
     end
   # ...
   end,
+  'info' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} info SHARD_ID [MORE SHARD_IDS...]"
+  end,
+  # ...
   'wrap' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} wrap"
+    opts.banner = "Usage: #{$0} wrap CLASS_NAME SHARD_ID_TO_WRAP [MORE SHARD_IDS...]"
   # ...
   end,
   'unwrap' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} unwrap"
+    opts.banner = "Usage: #{$0} unwrap SHARD_ID_TO_REMOVE"
   # ...
   end,
   'push' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} push"
+    opts.banner = "Usage: #{$0} push PARENT_SHARD_ID CHILD_SHARD_ID"
   # ...
   end,
   'pop' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} pop"
+    opts.banner = "Usage: #{$0} pop SHARD_ID_TO_REMOVE [MORE SHARD_IDS...]"
   # ...
   end,
   'get' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} get"
+    opts.banner = "Usage: #{$0} get ATTRIBUTE SHARD [MORE SHARD_IDS...]"
   # ...
   end,
   'set' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} set"
+    opts.banner = "Usage: #{$0} set ATTRIBUTE VALUE SHARD [MORE SHARD_IDS...]"
   # ...
   end
 }
