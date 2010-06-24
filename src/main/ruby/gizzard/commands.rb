@@ -119,7 +119,7 @@ module Gizzard
 
     def run
       class_name, *shard_ids = @argv
-      abort "No shards specified" if shard_ids.empty?
+      help! "No shards specified" if shard_ids.empty?
       shard_ids.each do |shard_id_string|
         shard_id   = ShardId.parse(shard_id_string)
         shard_info = service.get_shard(shard_id)
@@ -138,6 +138,7 @@ module Gizzard
 
   class FindCommand < Command
     def run
+      help!("host is a required option") unless command_options.shard_host
       service.shards_for_hostname(command_options.shard_host).each do |shard|
         next if command_options.shard_type && shard.class_name !~ Regexp.new(command_options.shard_type)
         puts shard.id.to_unix

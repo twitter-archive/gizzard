@@ -135,7 +135,11 @@ else
   begin
     Gizzard::Command.run(subcommand_name, service, global_options, argv, subcommand_options)
   rescue HelpNeededError => e
-    STDERR.puts e.message if e.class.name != e.message
+    if e.class.name != e.message 
+      STDERR.puts("=" * 80)
+      STDERR.puts e.message 
+      STDERR.puts("=" * 80)
+    end
     STDERR.puts subcommands[subcommand_name]
     exit 1
   rescue ThriftClient::Simple::ThriftException => e
