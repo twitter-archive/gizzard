@@ -18,11 +18,11 @@ subcommands = {
   'create' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} create [options] HOST TABLE_PREFIX CLASS_NAME"
 
-    opts.on("-s", "--source-type=[TYPE]") do |s|
+    opts.on("-s", "--source-type=TYPE") do |s|
       subcommand_options.source_type = s
     end
 
-    opts.on("-d", "--destination-type=[TYPE]") do |s|
+    opts.on("-d", "--destination-type=TYPE") do |s|
       subcommand_options.destination_type = s
     end
   end,
@@ -35,7 +35,7 @@ subcommands = {
   'find' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} find [options]"
 
-    opts.on("-t", "--type=[TYPE]", "Return only shards of the specified TYPE") do |shard_type|
+    opts.on("-t", "--type=TYPE", "Return only shards of the specified TYPE") do |shard_type|
       subcommand_options.shard_type = shard_type
     end
 
@@ -72,11 +72,11 @@ global = OptionParser.new do |opts|
   opts.separator ""
   opts.separator "Global options:"
 
-  opts.on("-H", "--host=[HOSTNAME]", "HOSTNAME of remote thrift service") do |host|
+  opts.on("-H", "--host=HOSTNAME", "HOSTNAME of remote thrift service") do |host|
     global_options.host = host
   end
 
-  opts.on("-P", "--port=[PORT]", "PORT of remote thrift service") do |port|
+  opts.on("-P", "--port=PORT", "PORT of remote thrift service") do |port|
     global_options.port = port
   end
 
@@ -84,7 +84,7 @@ global = OptionParser.new do |opts|
     global_options.dry = true
   end
 
-  opts.on("-C", "--config=[YAML_FILE]", "YAML_FILE of option key/values") do |file|
+  opts.on("-C", "--config=YAML_FILE", "YAML_FILE of option key/values") do |file|
     YAML.load(File.open(file)).each do |k, v|
       global_options.send("#{k}=", v)
     end

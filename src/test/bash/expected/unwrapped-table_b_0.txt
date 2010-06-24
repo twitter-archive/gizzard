@@ -1,0 +1,1 @@
+localhost/table_repl_0	localhost/table_b_0	1

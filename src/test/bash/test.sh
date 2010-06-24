@@ -1,11 +1,11 @@
 #!/bin/bash
 cd `dirname $0`
 function g {
-  echo "> g $@" >&2
+  # echo "> g $@" >&2
   ../../../script/gizzmo -Cconfig.yaml "$@" 2>&1
 }
 function expect {
-  diff - "expected/$1" && echo "    success." || echo "    failed." && exit 1
+  diff -u - "expected/$1" && echo "    success." || echo "    failed." && exit 1
 }
 
 # set -ex
@@ -32,3 +32,21 @@ do
   g link "localhost/table_repl_$i" "localhost/table_a_$i" 2
   g link "localhost/table_repl_$i" "localhost/table_b_$i" 1
 done
+
+for i in `g find -h localhost`; do g info $i; done | expect info.txt
+g find -hlocalhost | expect original-find.txt
+g find -hlocalhost -tSqlShard | expect find-only-sql-shard-type.txt
+
+g wrap com.twitter.service.flock.edges.ReplicatingShard localhost/table_b_0 | expect wrap-table_b_0.txt
+g links localhost/table_b_0 | expect links-for-table_b_0.txt
+g links localhost/table_repl_0 | expect links-for-table_repl_0.txt
+g links localhost/replicating_table_b_0 | expect links-for-replicating_table_b_0.txt
+
+g unwrap localhost/replicating_table_b_0 | expect unwrapped-replicating_table_b_0.txt
+g links localhost/table_b_0 | expect unwrapped-table_b_0.txt
+
+g unlink localhost/table_repl_0 localhost/table_b_0 | expect empty-file.txt
+g links localhost/table_b_0 | expect empty-file.txt
+
+
+

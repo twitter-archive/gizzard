@@ -1,0 +1,1 @@
+localhost/replicating_table_b_0

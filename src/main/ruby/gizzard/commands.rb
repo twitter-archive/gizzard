@@ -58,12 +58,14 @@ module Gizzard
 
   class UnwrapCommand < Command
     def run
+      shard_ids = argv
       help! "No shards specified" if shard_ids.empty?
       shard_ids.each do |shard_id_string|
         shard_id   = ShardId.parse(shard_id_string)
         service.list_upward_links(shard_id).each do |uplink|
           service.list_downward_links(shard_id).each do |downlink|
-            new_link = service.add_link(uplink.up_id, downlink.down_id, uplink.weight)
+            service.add_link(uplink.up_id, downlink.down_id, uplink.weight)
+            new_link = LinkInfo.new(uplink.up_id, downlink.down_id, uplink.weight)
             service.remove_link(uplink.up_id, uplink.down_id)
             service.remove_link(downlink.up_id, downlink.down_id)
             puts new_link.to_unix
