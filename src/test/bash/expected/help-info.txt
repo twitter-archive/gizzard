@@ -1,0 +1,1 @@
+Usage: ../../../script/gizzmo info SHARD_ID [MORE SHARD_IDS...]
