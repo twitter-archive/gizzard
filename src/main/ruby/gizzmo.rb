@@ -1,9 +1,11 @@
 #!/usr/bin/env ruby
 $: << File.dirname(__FILE__)
+class HelpNeededError < RuntimeError; end
 require "optparse"
 require "ostruct"
 require "gizzard"
 require "yaml"
+
 
 # Container for parsed options
 global_options     = OpenStruct.new
@@ -13,8 +15,32 @@ subcommand_options = OpenStruct.new
 argv = nil
 
 subcommands = {
+  'getweight' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} getweight SHARD [MORE SHARD_IDS...]"
+  # ...
+  end,
+  'setweight' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} setweight VALUE SHARD [MORE SHARD_IDS...]"
+  # ...
+  end,
   'create' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} create [options]"    
+    opts.banner = "Usage: #{$0} create [options] HOST TABLE_PREFIX CLASS_NAME"    
+
+    opts.on("-s", "--source-type=[TYPE]") do |s|
+      subcommand_options.source_type = s
+    end
+    
+    opts.on("-d", "--destination-type=[TYPE]") do |s|
+      subcommand_options.destination_type = s
+    end
+  end,
+  'wrap' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} wrap CLASS_NAME SHARD_ID_TO_WRAP [MORE SHARD_IDS...]"
+  # ...
+  end,
+  'unwrap' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} unwrap SHARD_ID_TO_REMOVE"
+  # ...
   end,
   'find' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} find [options]"
@@ -28,6 +54,9 @@ subcommands = {
     end
   # ...
   end,
+  'add-link' => OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} add-link UP_ID DOWN_ID"
+  end,
   'links' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} links SHARD_ID [MORE SHARD_IDS...]"
   end,
@@ -35,28 +64,12 @@ subcommands = {
     opts.banner = "Usage: #{$0} info SHARD_ID [MORE SHARD_IDS...]"
   end,
   # ...
-  'wrap' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} wrap CLASS_NAME SHARD_ID_TO_WRAP [MORE SHARD_IDS...]"
-  # ...
-  end,
-  'unwrap' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} unwrap SHARD_ID_TO_REMOVE"
-  # ...
-  end,
   'push' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} push PARENT_SHARD_ID CHILD_SHARD_ID"
   # ...
   end,
   'pop' => OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} pop SHARD_ID_TO_REMOVE [MORE SHARD_IDS...]"
-  # ...
-  end,
-  'get' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} get ATTRIBUTE SHARD [MORE SHARD_IDS...]"
-  # ...
-  end,
-  'set' => OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} set ATTRIBUTE VALUE SHARD [MORE SHARD_IDS...]"
   # ...
   end
 }
@@ -133,7 +146,12 @@ if global_options.dry
   puts "Sending #{subcommand_name} with #{argv.inspect}, #{subcommand_options.inspect}"
 else
   service = Gizzard::Thrift::ShardManager.new(global_options.host, global_options.port)
-  Gizzard::Command.run(subcommand_name, service, global_options, argv, subcommand_options)
+  begin
+    Gizzard::Command.run(subcommand_name, service, global_options, argv, subcommand_options)
+  rescue HelpNeededError => e
+    STDERR.puts e.message if e.class.name != e.message
+    STDERR.puts subcommands[subcommand_name]
+  end
 
   # include Gizzard::Thrift
   # 20.times do |i|

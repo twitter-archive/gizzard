@@ -13,7 +13,25 @@ module Gizzard
       @argv            = argv
       @command_options = command_options
     end
+    
+    def help!(message = nil)
+      raise HelpNeededError, message
+    end
   end
+  
+  class CreateCommand < Command
+    def run
+      help! if argv.length != 3
+      host, table, class_name = argv
+      busy = 0
+      source_type = command_options.source_type || ""
+      destination_type = command_options.destination_type || ""
+      service.create_shard(ShardInfo.new(shard_id = ShardId.new(host, table), class_name, source_type, destination_type, busy))
+      service.get_shard(shard_id)
+      puts shard_id.to_unix
+    end
+  end
+  
   
   class LinksCommand < Command
     def run
@@ -41,8 +59,8 @@ module Gizzard
   end
   
   class WrapCommand < Command
-    def derive_wrapper_shard_id(shard_info)
-      prefix_prefix = shard_info.class_name.split(".").last.downcase.gsub("shard", "") + "_"
+    def self.derive_wrapper_shard_id(shard_info, wrapping_class_name)
+      prefix_prefix = wrapping_class_name.split(".").last.downcase.gsub("shard", "") + "_"
       ShardId.new(shard_info.id.hostname, prefix_prefix + shard_info.id.table_prefix)
     end
     
@@ -52,7 +70,7 @@ module Gizzard
       shard_ids.each do |shard_id_string|
         shard_id   = ShardId.parse(shard_id_string)
         shard_info = service.get_shard(shard_id)
-        service.create_shard(ShardInfo.new(wrapper_id = derive_wrapper_shard_id(shard_info), class_name, "", "", 0))
+        service.create_shard(ShardInfo.new(wrapper_id = self.class.derive_wrapper_shard_id(shard_info, class_name), class_name, "", "", 0))
         
         # This line of code appears to link wrapping table with itself.  Marcel and Kyle couldn't immediately figure out why.
         #
