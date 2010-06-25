@@ -1,3 +1,0 @@
-#!/usr/bin/env ruby
-$: << File.dirname(__FILE__) + "/../src/main/ruby"
-load "gizzmo.rb"

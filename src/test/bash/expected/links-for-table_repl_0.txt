@@ -1,2 +1,0 @@
-localhost/table_repl_0	localhost/table_a_0	2
-localhost/table_repl_0	localhost/replicating_table_b_0	1
