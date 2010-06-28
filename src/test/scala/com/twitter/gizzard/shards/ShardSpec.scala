@@ -3,15 +3,12 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 object ShardSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   
-  val s1 = mock[Shard]
-  val s2 = mock[Shard]
-  val s3 = mock[Shard]
-  val s4 = mock[Shard]
-  val s5 = mock[Shard]
+  val s2 = new fake.NestableShard(Seq())
+  val s3 = new fake.NestableShard(Seq())
+  val s4 = new fake.NestableShard(Seq())
+  val s5 = new fake.NestableShard(Seq())
+  val s1 = new fake.NestableShard(Seq(s2, s3))
   
-  expect {
-    s1.children willReturn Seq(s2, s3)
-  }
 
   "Shard" should {
     "#isSelfOrDecendant" in {
