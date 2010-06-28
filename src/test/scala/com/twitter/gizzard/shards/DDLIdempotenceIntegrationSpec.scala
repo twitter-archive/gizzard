@@ -20,19 +20,20 @@ object DDLIdempotenceIntegrationSpec extends ConfiguredSpecification with JMocke
   val log = new ThrottledLogger[String](Logger(), 1, 1)
     
   val repo = new BasicShardRepository[fake.Shard](adapter, log, future)
+  repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
   reset(queryEvaluator)
   val nameServerShard = new SqlShard(queryEvaluator)
   
   "Idempotence" should {
     "be creatable" in {
-      val shardInfo = new ShardInfo("com.twitter.gizzard.fake.Shard", "table1", "localhost")
+      val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
       nameServerShard.createShard(shardInfo, repo)
       nameServerShard.createShard(shardInfo, repo)
       nameServerShard.getShard(shardInfo.id) mustEqual shardInfo
     }
     "be linkable" in {
-      val a = new ShardInfo("com.twitter.gizzard.fake.Shard", "a", "localhost")
-      val b = new ShardInfo("com.twitter.gizzard.fake.Shard", "b", "localhost")
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
       nameServerShard.createShard(a, repo)
       nameServerShard.createShard(b, repo)
       nameServerShard.addLink(a.id, b.id, 1)
