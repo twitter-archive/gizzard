@@ -9,7 +9,7 @@ import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{IdGenerator, SqlShard, ShardRepository, BasicShardRepository}
+import nameserver.{Forwarding, IdGenerator, SqlShard, ShardRepository, BasicShardRepository}
 
 object DDLIdempotenceIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
   val poolConfig = config.configMap("db.connection_pool")
@@ -31,7 +31,13 @@ object DDLIdempotenceIntegrationSpec extends ConfiguredSpecification with JMocke
       nameServerShard.createShard(shardInfo, repo)
       nameServerShard.getShard(shardInfo.id) mustEqual shardInfo
     }
-    "be linkable" in {
+    "be deletable" in {
+      val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
+      nameServerShard.createShard(shardInfo, repo)
+      nameServerShard.deleteShard(shardInfo.id)
+      nameServerShard.deleteShard(shardInfo.id)
+    }
+    "be linkable and unlinkable" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
       nameServerShard.createShard(a, repo)
@@ -39,6 +45,22 @@ object DDLIdempotenceIntegrationSpec extends ConfiguredSpecification with JMocke
       nameServerShard.addLink(a.id, b.id, 1)
       nameServerShard.addLink(a.id, b.id, 2)
       nameServerShard.listUpwardLinks(b.id).first.weight mustEqual 2
+      nameServerShard.removeLink(a.id, b.id)
+      nameServerShard.removeLink(a.id, b.id)
     }
+    "be markable busy" in {
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      nameServerShard.createShard(a, repo)
+      nameServerShard.markShardBusy(a.id, shards.Busy.Busy)
+      nameServerShard.markShardBusy(a.id, shards.Busy.Busy)
+    }
+    "sets forwarding" in {
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      nameServerShard.createShard(a, repo)
+      
+      nameServerShard.setForwarding(Forwarding(0, 0, a.id))
+      nameServerShard.setForwarding(Forwarding(0, 0, a.id))
+    }
+    
   }
 }
