@@ -2,10 +2,9 @@ package com.twitter.gizzard.fake
 
 import shards.ReadWriteShard
 
-
 class ReadWriteShardAdapter(shard: ReadWriteShard[Shard])
   extends shards.ReadWriteShardAdapter(shard) with Shard {
 
-  def getName() = shard.readOperation(_.getName)
-  def setName(name: String) = shard.writeOperation(_.setName(name))
+  def get(k: String):Option[String] = shard.readOperation(_.get(k))
+  def put(k: String, v: String) = shard.writeOperation(_.put(k))
 }
