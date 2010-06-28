@@ -40,9 +40,9 @@ trait IdServerDatabase extends Specification with Database {
 trait NameServerDatabase extends Specification with Database {
   def materialize(config: ConfigMap) {
     try {
-      val ns = config.getConfigMap("nameservers").map { map =>
+      val ns = config.getConfigMap("replicas").map { map =>
         val key = map.keys.next
-        config.configMap("nameservers." + key)
+        config.configMap("replicas." + key)
       } getOrElse(config)
       val evaluator = rootEvaluator(ns)
       evaluator.execute("CREATE DATABASE IF NOT EXISTS " + ns("database"))
@@ -55,9 +55,9 @@ trait NameServerDatabase extends Specification with Database {
 
   def reset(config: ConfigMap) {
     try {
-      val ns = config.getConfigMap("nameservers").map { map =>
+      val ns = config.getConfigMap("replicas").map { map =>
         val key = map.keys.next
-        config.configMap("nameservers." + key)
+        config.configMap("replicas." + key)
       } getOrElse(config)
       val nameServerQueryEvaluator = evaluator(ns)
       reset(nameServerQueryEvaluator)
@@ -69,14 +69,20 @@ trait NameServerDatabase extends Specification with Database {
   }
 
   def reset(queryEvaluator: QueryEvaluator) {
-    try {
-      queryEvaluator.execute("DELETE FROM forwardings")
-      queryEvaluator.execute("DELETE FROM shard_children")
-      queryEvaluator.execute("DELETE FROM shards")
-    } catch {
-      case e =>
-        e.printStackTrace()
-        throw e
+    List("forwardings", "shard_children", "shards").foreach { tableName =>
+      try {
+        queryEvaluator.execute("DELETE FROM " + tableName)
+      } catch {
+        case e =>
+          // it's okay. might not be such a table yet!
+          try {
+            queryEvaluator.execute("DROP TABLE IF EXISTS " + tableName)
+          } catch {
+            case e =>
+              e.printStackTrace()
+              throw e
+          }
+      }
     }
   }
 }

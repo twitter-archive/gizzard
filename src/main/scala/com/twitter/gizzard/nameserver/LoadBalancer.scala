@@ -16,7 +16,7 @@ class LoadBalancer[ConcreteShard <: shards.Shard](random: Random, replicas: Seq[
 
       if (first.weight == 0) {
         sort(remainingWeight, rest)
-      } else if (random.nextInt(totalWeight) <= first.weight - 1) {
+      } else if (random.nextInt(totalWeight) < first.weight) {
         first :: sort(remainingWeight, rest)
       } else {
         sort(remainingWeight, rest) ++ List(first)
