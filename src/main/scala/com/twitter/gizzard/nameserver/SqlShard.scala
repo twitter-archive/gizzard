@@ -122,6 +122,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   }
 
   def addLink(upId: ShardId, downId: ShardId, weight: Int) {
+    if(upId == downId) {
+      throw new ShardException("Can't link shard to itself")
+    }
     queryEvaluator.execute("INSERT INTO shard_children (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix, weight) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE weight=VALUES(weight)",
       upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix, weight)
     // XXX: todo - check loops
