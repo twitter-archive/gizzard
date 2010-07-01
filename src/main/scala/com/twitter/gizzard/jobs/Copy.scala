@@ -28,7 +28,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
 
   def finish(nameServer: NameServer[S], scheduler: JobScheduler) {
     nameServer.markShardBusy(destinationId, Busy.Normal)
-    log.info("Copying finished for (type %s) from %d to %d",
+    log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
   }
 
