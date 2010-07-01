@@ -18,7 +18,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
     var nameServer: SqlShard = null
     var shardRepository: ShardRepository[Shard] = null
-    val adapter = (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard)
+    val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val log = new ThrottledLogger[String](Logger(), 1, 1)
     
@@ -42,12 +42,14 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(shardInfo, repo)
         nameServer.getShard(shardInfo.id) mustEqual shardInfo
       }
+
       "be deletable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
         nameServer.createShard(shardInfo, repo)
         nameServer.deleteShard(shardInfo.id)
         nameServer.deleteShard(shardInfo.id)
       }
+
       "be linkable and unlinkable" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
@@ -59,12 +61,14 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.removeLink(a.id, b.id)
         nameServer.removeLink(a.id, b.id)
       }
+
       "be markable busy" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         nameServer.createShard(a, repo)
         nameServer.markShardBusy(a.id, shards.Busy.Busy)
         nameServer.markShardBusy(a.id, shards.Busy.Busy)
       }
+
       "sets forwarding" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         nameServer.createShard(a, repo)
