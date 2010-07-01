@@ -35,7 +35,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
   def apply(environment: (NameServer[S], JobScheduler)) {
     val (nameServer, scheduler) = environment
     try {
-      log.info("Copying shard block (type %s) from %d to %d: state=%s",
+      log.info("Copying shard block (type %s) from %s to %s: state=%s",
                getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
       val sourceShard = nameServer.findShardById(sourceId)
       val destinationShard = nameServer.findShardById(destinationId)
@@ -56,7 +56,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
       case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler(this)
-      case e: Exception =>
+      case e: Throwable =>
         log.warning("Shard block copy stopped due to exception: %s", e)
         throw e
     }
