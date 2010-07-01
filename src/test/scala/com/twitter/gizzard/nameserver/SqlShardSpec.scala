@@ -5,7 +5,7 @@ import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-
+import net.lag.logging.{Logger, ThrottledLogger}
 
 class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
   lazy val poolConfig = config.configMap("db.connection_pool")
@@ -18,6 +18,12 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
     var nameServer: SqlShard = null
     var shardRepository: ShardRepository[Shard] = null
+    val adapter = (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard)
+    val future = new Future("Future!", 1, 1, 1.second, 1.second)
+    val log = new ThrottledLogger[String](Logger(), 1, 1)
+    
+    val repo = new BasicShardRepository[fake.Shard](adapter, log, future)
+    repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
@@ -28,6 +34,47 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       reset(config.configMap("db"))
       shardRepository = mock[ShardRepository[Shard]]
     }
+    
+    "be idempotent" in {
+      "be creatable" in {
+        val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
+        nameServer.createShard(shardInfo, repo)
+        nameServer.createShard(shardInfo, repo)
+        nameServer.getShard(shardInfo.id) mustEqual shardInfo
+      }
+      "be deletable" in {
+        val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
+        nameServer.createShard(shardInfo, repo)
+        nameServer.deleteShard(shardInfo.id)
+        nameServer.deleteShard(shardInfo.id)
+      }
+      "be linkable and unlinkable" in {
+        val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+        val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
+        nameServer.createShard(a, repo)
+        nameServer.createShard(b, repo)
+        nameServer.addLink(a.id, b.id, 1)
+        nameServer.addLink(a.id, b.id, 2)
+        nameServer.listUpwardLinks(b.id).first.weight mustEqual 2
+        nameServer.removeLink(a.id, b.id)
+        nameServer.removeLink(a.id, b.id)
+      }
+      "be markable busy" in {
+        val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+        nameServer.createShard(a, repo)
+        nameServer.markShardBusy(a.id, shards.Busy.Busy)
+        nameServer.markShardBusy(a.id, shards.Busy.Busy)
+      }
+      "sets forwarding" in {
+        val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+        nameServer.createShard(a, repo)
+
+        nameServer.setForwarding(Forwarding(0, 0, a.id))
+        nameServer.setForwarding(Forwarding(0, 0, a.id))
+      }
+
+    }
+    
 
     "create" in {
       "a new shard" >> {
