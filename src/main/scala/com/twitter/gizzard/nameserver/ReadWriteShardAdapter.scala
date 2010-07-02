@@ -24,6 +24,6 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def replaceForwarding(oldId: ShardId, newId: ShardId)                         = shard.writeOperation(_.replaceForwarding(oldId, newId))
   def setForwarding(forwarding: Forwarding)                                     = shard.writeOperation(_.setForwarding(forwarding))
 
-  def reload()                                                                  = shard.readOperation(_.reload())
+  def reload()                                                                  = shard.writeOperation(_.reload())
   def rebuildSchema()                                                           = shard.writeOperation(_.rebuildSchema())
 }
