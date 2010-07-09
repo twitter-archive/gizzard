@@ -8,7 +8,7 @@ import shards._
 
 
 object Copy {
-  val MIN_COPY = 500
+  val MIN_COPY = 500 
 }
 
 trait CopyFactory[S <: shards.Shard] extends ((ShardId, ShardId) => Copy[S])
@@ -27,8 +27,8 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
 
   def finish(env: Environment[S]) {
     env.nameServer.markShardBusy(destinationId, Busy.Normal)
-    log.info("Copying finished for (type %s) from %d to %d",
-             getClass.getName.split("\\.").last, sourceId, destinationId)
+    log.info("Copying finished for (type %s) from %s to %s",
+    getClass.getName.split("\\.").last, sourceId, destinationId)
   }
 
   def apply(env: Environment[S]) {
@@ -37,7 +37,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
     val root         = env.root
     
     try {
-      log.info("Copying shard block (type %s) from %d to %d: state=%s",
+      log.info("Copying shard block (type %s) from %s to %s: state=%s",
                getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
       val sourceShard = root.findChild(sourceId).getOrElse { throw new NonExistentShard }
       val destinationShard = root.findChild(destinationId).getOrElse { throw new NonExistentShard }
@@ -58,7 +58,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
       case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler(this)
-      case e: Exception =>
+      case e: Throwable =>
         log.warning("Shard block copy stopped due to exception: %s", e)
         throw e
     }

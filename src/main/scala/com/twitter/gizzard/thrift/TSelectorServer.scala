@@ -112,7 +112,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
     selectorThread.start()
   }
 
-  override def stop() {
+  def shutdown() {
     running = false
     selectorThread.join()
     try {
