@@ -7,15 +7,16 @@ import com.twitter.gizzard.thrift.conversions.LinkInfo._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
-import com.twitter.gizzard.thrift.conversions.ShardMigration._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.jobs.{Migrate, CopyFactory}
+import com.twitter.gizzard.jobs.CopyFactory
 import com.twitter.gizzard.nameserver._
 import com.twitter.gizzard.scheduler.JobScheduler
 import net.lag.logging.Logger
 
+
 class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[ConcreteShard], copier: CopyFactory[ConcreteShard], scheduler: JobScheduler) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
+
   def wrapWithThriftExceptions[A](f: => A): A = {
     try {
       f
