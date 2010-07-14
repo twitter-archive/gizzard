@@ -24,11 +24,6 @@ struct LinkInfo {
   3: i32 weight
 }
 
-struct ShardMigration {
-  1: ShardId source_id
-  2: ShardId destination_id
-}
-
 struct Forwarding {
   1: i32 table_id
   2: i64 base_id
@@ -50,9 +45,6 @@ service ShardManager {
 
   void mark_shard_busy(1: ShardId id, 2: i32 busy) throws(1: ShardException ex)
   void copy_shard(1: ShardId source_id, 2: ShardId destination_id) throws(1: ShardException ex)
-//  ShardMigration setup_migration(1: ShardInfo source_shard_info, 2: ShardInfo destination_shard_info) throws(1: ShardException ex)
-//  void migrate_shard(1:ShardMigration migration) throws(1: ShardException ex)
-//  void finish_migration(1: ShardMigration migration) throws(1: ShardException ex)
 
   void set_forwarding(1: Forwarding forwarding) throws(1: ShardException ex)
   void replace_forwarding(1: ShardId old_id, 2: ShardId new_id) throws(1: ShardException ex)
