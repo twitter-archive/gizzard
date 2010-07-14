@@ -102,17 +102,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     }
   }
 
-/*  def updateShard(shardInfo: ShardInfo) {
-    val rows = queryEvaluator.execute(
-      "UPDATE shards SET class_name = ?, source_type = ?, " +
-      "destination_type = ? WHERE hostname = ? AND table_prefix = ?",
-      shardInfo.className, shardInfo.sourceType, shardInfo.destinationType, shardInfo.hostname,
-      shardInfo.tablePrefix)
-    if (rows < 1) {
-      throw new NonExistentShard
-    }
-  } */
-
   def deleteShard(id: ShardId) {
     queryEvaluator.execute("DELETE FROM shard_children WHERE "+
                            "(parent_hostname = ? AND parent_table_prefix = ?) OR " +
