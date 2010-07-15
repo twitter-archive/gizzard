@@ -40,7 +40,7 @@ class MemoryShard extends Shard {
         if (x.className != shardInfo.className ||
             x.sourceType != shardInfo.sourceType ||
             x.destinationType != shardInfo.destinationType) {
-          throw new InvalidShard
+          throw new InvalidShard("Invalid shard: %s doesn't match %s".format(x, shardInfo))
         }
       case None =>
         shardTable += shardInfo.clone
@@ -49,7 +49,7 @@ class MemoryShard extends Shard {
   }
 
   def getShard(shardId: ShardId): ShardInfo = {
-    find(shardId).getOrElse { throw new NonExistentShard }
+    find(shardId).getOrElse { throw new NonExistentShard("Shard not found: %s".format(shardId)) }
   }
 
   def deleteShard(shardId: ShardId) {

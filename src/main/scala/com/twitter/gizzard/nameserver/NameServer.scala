@@ -10,8 +10,8 @@ import net.lag.logging.{Logger, ThrottledLogger}
 import shards._
 
 
-class NonExistentShard extends ShardException("Shard does not exist")
-class InvalidShard extends ShardException("Shard has invalid attributes (such as hostname)")
+class NonExistentShard(message: String) extends ShardException(message: String)
+class InvalidShard(message: String) extends ShardException(message: String)
 
 object NameServer {
   /**
@@ -104,7 +104,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
     val newForwardings = new mutable.HashMap[Int, TreeMap[Long, ShardInfo]]
     nameServerShard.getForwardings().foreach { forwarding =>
       val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
-      treeMap.put(forwarding.baseId, newShardInfos.getOrElse(forwarding.shardId, throw new NonExistentShard))
+      treeMap.put(forwarding.baseId, newShardInfos.getOrElse(forwarding.shardId, throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))))
     }
 
     shardInfos = newShardInfos
@@ -132,7 +132,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
         None
       }
     } getOrElse {
-      throw new NonExistentShard
+      throw new NonExistentShard("No shard for address: %s %s".format(tableId, id))
     }
 
     findShardById(shardInfo.id)
