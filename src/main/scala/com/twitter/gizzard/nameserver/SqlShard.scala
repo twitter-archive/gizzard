@@ -78,7 +78,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
           if (row.getString("class_name") != shardInfo.className ||
               row.getString("source_type") != shardInfo.sourceType ||
               row.getString("destination_type") != shardInfo.destinationType) {
-            throw new InvalidShard
+            throw new InvalidShard("Invalid shard: %s doesn't match %s".format(row, shardInfo))
           }
         } getOrElse {
           transaction.insert("INSERT INTO shards (hostname, table_prefix, class_name, " +
@@ -89,7 +89,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
         }
       } catch {
         case e: SQLIntegrityConstraintViolationException =>
-          throw new InvalidShard
+          throw new InvalidShard("SQL Error: %s".format(e.getMessage))
       }
     }
   }
@@ -98,7 +98,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
     queryEvaluator.selectOne("SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) { row =>
       rowToShardInfo(row)
     } getOrElse {
-      throw new NonExistentShard
+      throw new NonExistentShard("Shard not found: %s".format(id))
     }
   }
 
@@ -150,7 +150,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
 
   def markShardBusy(id: ShardId, busy: Busy.Value) {
     if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE hostname = ? AND table_prefix = ?", busy.id, id.hostname, id.tablePrefix) == 0) {
-      throw new NonExistentShard
+      throw new NonExistentShard("Could not find shard: %s".format(id))
     }
   }
 

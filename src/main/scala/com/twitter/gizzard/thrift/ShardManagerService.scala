@@ -21,7 +21,7 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
     try {
       f
     } catch {
-      case ex: shards.ShardException =>
+      case ex: Throwable =>
         throw new thrift.ShardException(ex.toString)
     }
   }

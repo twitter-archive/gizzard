@@ -60,7 +60,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       "no shard" in {
         val copy = makeCopy(Some(nextCopy))
         expect {
-          one(nameServer).findShardById(sourceShardId) willThrow new NonExistentShard
+          one(nameServer).findShardById(sourceShardId) willThrow new NonExistentShard("foo")
           never(jobScheduler).apply(nextCopy)
         }
 
