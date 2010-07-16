@@ -37,6 +37,23 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       }
       manager.create_shard(thriftShardInfo1) must throwA[thrift.ShardException]
     }
+    
+    "deliver messages for runtime exceptions" in {
+      var woot = false
+      expect {
+        one(nameServer).createShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
+      }
+      try{
+        manager.create_shard(thriftShardInfo1) 
+      } catch {
+        case e: thrift.ShardException => {
+          e.getDescription mustEqual "Monkeys!"
+          woot = true
+        }
+      }
+      woot mustEqual true
+    }
+    
 
     "create_shard" in {
       expect {
