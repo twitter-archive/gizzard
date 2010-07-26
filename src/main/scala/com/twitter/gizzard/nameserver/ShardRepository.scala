@@ -13,11 +13,19 @@ class ShardRepository[S <: shards.Shard] {
   }
 
   def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
-    shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
+    factory(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
   def create(shardInfo: ShardInfo) {
-    shardFactories(shardInfo.className).materialize(shardInfo)
+    factory(shardInfo.className).materialize(shardInfo)
+  }
+  
+  def factory(className: String) = {
+    shardFactories.get(className).getOrElse {
+      val classes = shardFactories.keySet
+      val message = "No such class: " + className + "\nValid classes:\n" + classes
+      throw new NoSuchElementException(message)
+    }
   }
 
   override def toString() = {
