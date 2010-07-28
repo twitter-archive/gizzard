@@ -21,21 +21,40 @@ import net.lag.logging.Logger
 object TSelectorServer {
   val log = Logger.get(getClass.getName)
 
-  def makeThreadPoolExecutor(config: ConfigMap) = {
+  val cache = new mutable.HashMap[String, ThreadPoolExecutor]()
+
+  def makeThreadPoolExecutor(config: ConfigMap): ThreadPoolExecutor = {
+    val name = config("name")
+    cache.get(name) foreach { executor =>
+      if (!executor.isShutdown()) {
+        return executor
+      }
+      cache.removeKey(name)
+    }
+
     val stopTimeout = config.getInt("stop_timeout", 60)
     val minThreads = config("min_threads").toInt
     val maxThreads = config.getInt("max_threads", Math.MAX_INT)
     val queue = new LinkedBlockingQueue[Runnable]
-    new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS, queue)
+    val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
+                                          queue, new NamedPoolThreadFactory(name))
+    cache(name) = executor
+    executor
   }
 
   def apply(name: String, port: Int, processor: TProcessor, executor: ThreadPoolExecutor,
-            timeout: Duration, idleTimeout: Duration) = {
+            timeout: Duration, idleTimeout: Duration): TSelectorServer = {
     val socket = ServerSocketChannel.open()
     socket.socket().setReuseAddress(true)
     socket.socket().bind(new InetSocketAddress(port), 8192)
     log.info("Starting %s (%s) on port %d", name, processor.getClass.getName, port)
     new TSelectorServer(name, processor, socket, executor, timeout, idleTimeout)
+  }
+
+  def apply(name: String, port: Int, config: ConfigMap, processor: TProcessor): TSelectorServer = {
+    val clientTimeout = config("client_timeout_msec").toInt.milliseconds
+    val idleTimeout = config("idle_timeout_sec").toInt.seconds
+    apply(name, port, processor, makeThreadPoolExecutor(config), clientTimeout, idleTimeout)
   }
 }
 
@@ -93,7 +112,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
     selectorThread.start()
   }
 
-  override def stop() {
+  def shutdown() {
     running = false
     selectorThread.join()
     try {

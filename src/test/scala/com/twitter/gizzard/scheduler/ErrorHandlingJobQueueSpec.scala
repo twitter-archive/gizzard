@@ -9,7 +9,7 @@ import jobs.{Schedulable, Job, JobParser}
 import com.twitter.ostrich.DevNullStats
 
 
-object ErrorHandlingJobQueueSpec extends Specification with JMocker with ClassMocker with Eventually {
+object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "ErrorHandlingJobQueue" should {
     val job = mock[Job]
     val jobParser = mock[JobParser]
@@ -20,7 +20,7 @@ object ErrorHandlingJobQueueSpec extends Specification with JMocker with ClassMo
                                                   errorQueue,
                                                   mock[MessageQueue[Schedulable, Job]],
                                                   mock[MessageQueue[String, String]],
-                                                  jobParser, DevNullStats)
+                                                  jobParser)
     val errorHandlingJobQueue = new ErrorHandlingJobQueue("name", normalQueue, errorHandlingConfig)
 
     "retry" >> {
@@ -94,7 +94,7 @@ object ErrorHandlingJobQueueSpec extends Specification with JMocker with ClassMo
                                                       mock[MessageQueue[String, String]],
                                                       mock[MessageQueue[Schedulable, Job]],
                                                       unparsableMessageQueue,
-                                                      jobParser, DevNullStats)
+                                                      jobParser)
         val errorHandlingJobQueue = new ErrorHandlingJobQueue("name", normalQueue, errorHandlingConfig)
 
         expect {

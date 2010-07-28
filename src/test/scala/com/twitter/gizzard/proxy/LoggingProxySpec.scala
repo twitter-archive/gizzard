@@ -7,7 +7,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.ostrich.DevNullStats
 
 
-object LoggingProxySpec extends Specification with JMocker with ClassMocker {
+object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassMocker {
   trait Named {
     def name: String
   }

@@ -1,2 +1,10 @@
 dist/*
-target/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+Gizzard.iml
+gizzard.ipr
+gizzard.iws
+gizzmo.log

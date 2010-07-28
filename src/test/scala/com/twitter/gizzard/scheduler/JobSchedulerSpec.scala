@@ -6,7 +6,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 
 
-object JobSchedulerSpec extends Specification with JMocker with ClassMocker {
+object JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
     val bob = 1
     val mary = 2

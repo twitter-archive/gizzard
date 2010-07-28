@@ -11,7 +11,7 @@ case class ErrorHandlingConfig(retryInterval: Duration, errorLimit: Int,
                                errorQueue: MessageQueue[String, String],
                                badJobQueue: Scheduler[Schedulable],
                                unparsableMessageQueue: Scheduler[String],
-                               jobParser: JobParser, stats: StatsProvider)
+                               jobParser: JobParser)
 
 
 class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, String],
@@ -43,6 +43,8 @@ class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, 
   }
 
   def put(schedulable: Schedulable) = normalJobQueue.put(schedulable)
+
+  def putError(schedulable: Schedulable) = errorJobQueue.put(schedulable)
 
   def start() {
     normalQueue.start()

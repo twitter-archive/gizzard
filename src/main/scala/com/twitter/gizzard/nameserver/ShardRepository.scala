@@ -13,11 +13,19 @@ class ShardRepository[S <: shards.Shard] {
   }
 
   def find(shardInfo: ShardInfo, weight: Int, children: Seq[S]) = {
-    shardFactories(shardInfo.className).instantiate(shardInfo, weight, children)
+    factory(shardInfo.className).instantiate(shardInfo, weight, children)
   }
 
   def create(shardInfo: ShardInfo) {
-    shardFactories(shardInfo.className).materialize(shardInfo)
+    factory(shardInfo.className).materialize(shardInfo)
+  }
+  
+  def factory(className: String) = {
+    shardFactories.get(className).getOrElse {
+      val classes = shardFactories.keySet
+      val message = "No such class: " + className + "\nValid classes:\n" + classes
+      throw new NoSuchElementException(message)
+    }
   }
 
   override def toString() = {
@@ -32,9 +40,14 @@ class ShardRepository[S <: shards.Shard] {
 class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
                                               log: ThrottledLogger[String], future: Future)
       extends ShardRepository[S] {
-  this += ("com.twitter.gizzard.shards.ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
-  this += ("com.twitter.gizzard.shards.BlockedShard"     -> new shards.BlockedShardFactory(constructor))
-  this += ("com.twitter.gizzard.shards.WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
-  this += ("com.twitter.gizzard.shards.ReplicatingShard" ->
-           new shards.ReplicatingShardFactory(constructor, log, future))
+
+  setupPackage("com.twitter.gizzard.shards")
+
+  def setupPackage(packageName: String) {
+    this += (packageName + ".ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
+    this += (packageName + ".BlockedShard"     -> new shards.BlockedShardFactory(constructor))
+    this += (packageName + ".WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
+    this += (packageName + ".ReplicatingShard" ->
+             new shards.ReplicatingShardFactory(constructor, log, future))
+  }
 }

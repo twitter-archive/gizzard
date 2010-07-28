@@ -1,11 +1,10 @@
 package com.twitter.gizzard.jobs
 
-import net.lag.configgy.Configgy
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-object PolymorphicJobParserSpec extends Specification with JMocker with ClassMocker {
+object PolymorphicJobParserSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "PolymorphicJobParser" should {
     "+= & apply" in {
       val multiParser = new PolymorphicJobParser

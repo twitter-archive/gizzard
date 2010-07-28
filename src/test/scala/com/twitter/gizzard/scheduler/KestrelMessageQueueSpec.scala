@@ -10,7 +10,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{Job, JobParser}
 
 
-object KestrelMessageQueueSpec extends Specification with JMocker with ClassMocker {
+object KestrelMessageQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "KestrelMessageQueue" should {
     Time.freeze()
     val message1 = "message1"
@@ -19,7 +19,7 @@ object KestrelMessageQueueSpec extends Specification with JMocker with ClassMock
     val items = List(message1, message2).map { x => Some(QItem(0, 0, x.getBytes, x.hashCode)) }.toList
 
     expect { allowing(queue).setup() }
-    val kestrelMessageQueue = new KestrelMessageQueue("queue", queue, DevNullStats)
+    val kestrelMessageQueue = new KestrelMessageQueue("queue", queue)
 
     "be empty after shutdown" >> {
       expect {

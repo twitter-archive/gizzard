@@ -8,7 +8,7 @@ import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
 
-class KestrelMessageQueue(queueName: String, queue: PersistentQueue, stats: StatsProvider)
+class KestrelMessageQueue(queueName: String, queue: PersistentQueue)
   extends MessageQueue[String, String] {
 
   val log = Logger.get(getClass.getName)
@@ -27,7 +27,7 @@ class KestrelMessageQueue(queueName: String, queue: PersistentQueue, stats: Stat
   def put(message: String) = {
     val startTime = Time.now
     if (!queue.add(message.getBytes)) throw new Exception("Unable to add job to queue")
-    stats.addTiming("kestrel-put-timing", (Time.now - startTime).inMillis.toInt)
+    Stats.addTiming("kestrel-put-timing", (Time.now - startTime).inMillis.toInt)
   }
 
   def isShutdown = queue.isClosed

@@ -5,21 +5,22 @@ import java.util.Random
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.util.Sorting
-import net.lag.logging.{Logger, ThrottledLogger}
-import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.ostrich.W3CReporter
 import com.twitter.gizzard.nameserver.LoadBalancer
+import com.twitter.gizzard.thrift.conversions.Sequences._
+import net.lag.logging.{Logger, ThrottledLogger}
 
 
-class ReplicatingShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard, log: ThrottledLogger[String], future: Future) extends shards.ShardFactory[ConcreteShard] {
+class ReplicatingShardFactory[ConcreteShard <: Shard](
+      readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
+      log: ThrottledLogger[String], future: Future) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
-  val children: Seq[ConcreteShard], loadBalancer: (() => Seq[ConcreteShard]),
-  log: ThrottledLogger[String], future: Future)
+  val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
+  val log: ThrottledLogger[String], val future: Future)
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
@@ -43,7 +44,8 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
   private def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
     replicas match {
-      case Seq() => throw new ShardOfflineException
+      case Seq() =>
+        throw new ShardOfflineException
       case Seq(shard, remainder @ _*) =>
         try {
           f(shard)

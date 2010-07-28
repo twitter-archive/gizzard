@@ -5,7 +5,7 @@ import org.specs.Specification
 import com.twitter.json.Json
 
 
-object JobParserSpec extends Specification with JMocker with ClassMocker {
+object JobParserSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobParser" should {
     val attributes = Map("a" -> 1)
     val jobMap = Map("Job" -> attributes)
