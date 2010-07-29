@@ -10,14 +10,14 @@ object BoundJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
     "apply" in {
       val job = new fake.Job(Map("a" -> 1, "error_count" -> 0))
 
-      (new BoundJobParser(1)).apply(job.toJson) mustEqual new BoundJob(job, 1)
+      (new BoundJobParser(fake.UnboundJobParser, 1)).apply(job.toJson) mustEqual new BoundJob(job, 1)
     }
   }
 
   "BoundJob" should {
     "use the job's original class" in {
       val job = new fake.Job(Map("a" -> 1))
-      val boundJob = BoundJob(job, 1973)
+      val boundJob = new BoundJob(job, 1973)
       Json.parse(boundJob.toJson) mustEqual Map(job.className -> Map("a" -> 1))
     }
   }

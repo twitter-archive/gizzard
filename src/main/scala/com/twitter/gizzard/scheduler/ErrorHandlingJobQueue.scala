@@ -82,6 +82,7 @@ class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, 
         element = errorHandlingJobParser(message)
       } catch {
         case e: UnparsableJobException =>
+          log.error(e, "Error parsing job!")
           unparsableMessageQueue.put(message)
           return hasNext
       }

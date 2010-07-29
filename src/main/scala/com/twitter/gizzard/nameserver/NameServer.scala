@@ -17,7 +17,6 @@ object NameServer {
   /**
    * nameserver (inherit="db") {
    *   mapping = "byte_swapper"
-   *   id_generator = "random"
    *   replicas {
    *     ns1 (inherit="db") {
    *       type = "mysql"

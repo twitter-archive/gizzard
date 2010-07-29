@@ -11,11 +11,18 @@ class PolymorphicJobParser extends JobParser {
 
   override def apply(json: Map[String, Map[String, Any]]) = {
     val (jobType, attributes) = json.toList.first
-    processors find { p =>
+    val regexpAndProcessor = processors find { p =>
       val (processorRegex, _) = p
       processorRegex.findFirstIn(jobType).isDefined
-    } map(_._2(json)) getOrElse {
-      throw new Exception("Can't find matching processor for '%s' in %s".format(jobType, processors))
+    } getOrElse {
+      println("...")
+      throw new UnparsableJobException("Can't find matching processor for '%s' in %s".format(jobType, processors))
+    }
+    try {
+      val (_, processor) = regexpAndProcessor
+      processor(json)
+    } catch {
+      case e => throw new UnparsableJobException("Processor blew up: " + e.toString)
     }
   }
 }
