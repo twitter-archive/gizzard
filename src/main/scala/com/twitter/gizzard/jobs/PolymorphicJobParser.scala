@@ -22,7 +22,7 @@ class PolymorphicJobParser extends JobParser {
       val (_, processor) = regexpAndProcessor
       processor(json)
     } catch {
-      case e => throw new UnparsableJobException("Processor blew up: e.toString")
+      case e => throw new UnparsableJobException("Processor blew up: " + e.toString)
     }
   }
 }
