@@ -87,10 +87,14 @@ class MemoryShard extends Shard {
   }
 
   def setForwarding(forwarding: Forwarding) {
+    removeForwarding(forwarding)
+    forwardingTable += forwarding
+  }
+  
+  def removeForwarding(forwarding: Forwarding) = {    
     forwardingTable.find { x =>
       x.baseId == forwarding.baseId && x.tableId == forwarding.tableId
     }.foreach { forwardingTable -= _ }
-    forwardingTable += forwarding
   }
 
   def replaceForwarding(oldShardId: ShardId, newShardId: ShardId) {
@@ -116,6 +120,10 @@ class MemoryShard extends Shard {
 
   def getForwardings(): Seq[Forwarding] = {
     forwardingTable.toList
+  }
+  
+  def listHostnames(): Seq[String] = {
+    (Set() ++ shardTable.map { x => x.hostname }).toList
   }
 
   def shardsForHostname(hostname: String): Seq[ShardInfo] = {

@@ -157,4 +157,6 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @throws(classOf[shards.ShardException]) def getBusyShards() = nameServerShard.getBusyShards()
   @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String) = nameServerShard.getChildShardsOfClass(parentId, className)
   @throws(classOf[shards.ShardException]) def rebuildSchema() = nameServerShard.rebuildSchema()
+  @throws(classOf[shards.ShardException]) def removeForwarding(f: Forwarding) = nameServerShard.removeForwarding(f)
+  @throws(classOf[shards.ShardException]) def listHostnames() = nameServerShard.listHostnames()
 }
