@@ -25,4 +25,6 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def rebuildSchema()
   @throws(classOf[shards.ShardException]) def reload()
+  @throws(classOf[shards.ShardException]) def listHostnames(): Seq[String]
+  @throws(classOf[shards.ShardException]) def removeForwarding(forwarding: Forwarding)
 }

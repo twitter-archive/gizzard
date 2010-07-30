@@ -17,7 +17,6 @@ object NameServer {
   /**
    * nameserver (inherit="db") {
    *   mapping = "byte_swapper"
-   *   id_generator = "random"
    *   replicas {
    *     ns1 (inherit="db") {
    *       type = "mysql"
@@ -58,13 +57,15 @@ object NameServer {
         ByteSwapper
       case Some("identity") =>
         { n => n }
+      case Some("fnv1a-64") =>
+        FnvHasher
     }
     new NameServer(shard, shardRepository, mappingFunction)
   }
 }
 
 class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
-                                    mappingFunction: Long => Long)
+                                    val mappingFunction: Long => Long)
   extends Shard {
 
   val children = List()
@@ -157,4 +158,6 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @throws(classOf[shards.ShardException]) def getBusyShards() = nameServerShard.getBusyShards()
   @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String) = nameServerShard.getChildShardsOfClass(parentId, className)
   @throws(classOf[shards.ShardException]) def rebuildSchema() = nameServerShard.rebuildSchema()
+  @throws(classOf[shards.ShardException]) def removeForwarding(f: Forwarding) = nameServerShard.removeForwarding(f)
+  @throws(classOf[shards.ShardException]) def listHostnames() = nameServerShard.listHostnames()
 }

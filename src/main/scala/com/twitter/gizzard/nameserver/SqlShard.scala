@@ -101,8 +101,21 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
       throw new NonExistentShard("Shard not found: %s".format(id))
     }
   }
+  
+  def listHostnames() = {
+    queryEvaluator.select("SELECT DISTINCT hostname FROM shards") { row =>
+      row.getString("hostname")
+    }
+  }
+  
+  def removeForwarding(f: Forwarding) = {    
+    queryEvaluator.execute("DELETE FROM forwardings WHERE base_source_id = ? AND " +
+                           "shard_hostname = ? AND shard_table_prefix = ? AND " +
+                           "table_id = ? LIMIT 1",
+                           f.baseId, f.shardId.hostname, f.shardId.tablePrefix, f.tableId)
+  }
 
-  def deleteShard(id: ShardId) {
+  def deleteShard(id: ShardId) = {
     queryEvaluator.execute("DELETE FROM shard_children WHERE "+
                            "(parent_hostname = ? AND parent_table_prefix = ?) OR " +
                            "(child_hostname = ? AND child_table_prefix = ?)",

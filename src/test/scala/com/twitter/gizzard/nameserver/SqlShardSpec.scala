@@ -76,9 +76,25 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.setForwarding(Forwarding(0, 0, a.id))
         nameServer.setForwarding(Forwarding(0, 0, a.id))
       }
+      
+      "removes forwarding" in {
+        val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+        nameServer.createShard(a, repo)
+
+        nameServer.setForwarding(Forwarding(0, 0, a.id))
+        
+        nameServer.removeForwarding(Forwarding(0, 0, a.id))
+        nameServer.removeForwarding(Forwarding(0, 0, a.id))
+        nameServer.getForwardings.size mustEqual 0
+      }
 
     }
     
+    "list hostnames" in {
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      nameServer.createShard(a, repo)
+      nameServer.listHostnames.first mustEqual "localhost"
+    }
 
     "create" in {
       "a new shard" >> {

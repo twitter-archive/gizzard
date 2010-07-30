@@ -15,6 +15,7 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def listLinks()                                                               = shard.readOperation(_.listLinks())
   def listShards()                                                              = shard.readOperation(_.listShards())
   def shardsForHostname(hostname: String)                                       = shard.readOperation(_.shardsForHostname(hostname))
+  def listHostnames()                                                           = shard.readOperation(_.listHostnames)
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = shard.writeOperation(_.createShard(shardInfo, repository))
   def deleteShard(id: ShardId)                                                  = shard.writeOperation(_.deleteShard(id))
@@ -23,6 +24,7 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def removeLink(upId: ShardId, downId: ShardId)                                = shard.writeOperation(_.removeLink(upId, downId))
   def replaceForwarding(oldId: ShardId, newId: ShardId)                         = shard.writeOperation(_.replaceForwarding(oldId, newId))
   def setForwarding(forwarding: Forwarding)                                     = shard.writeOperation(_.setForwarding(forwarding))
+  def removeForwarding(forwarding: Forwarding)                                  = shard.writeOperation(_.removeForwarding(forwarding))
 
   def reload()                                                                  = shard.writeOperation(_.reload())
   def rebuildSchema()                                                           = shard.writeOperation(_.rebuildSchema())
