@@ -19,8 +19,6 @@ class FakeCopy(val sourceShardId: ShardId, val destinationShardId: ShardId, coun
         this.destinationShardId == that.destinationShardId
     case _ => false
   }
-
-  def progress: Double = { 11.0 }
 }
 
 object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -48,9 +46,6 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
     "apply" in {
       "normally" in {
-         expect {
-            one(nextCopy).progress.willReturn(12.0)
-          }
         val copy = makeCopy(Some(nextCopy))
         expect {
           one(nameServer).findShardById(sourceShardId) willReturn shard1

@@ -35,7 +35,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
     nameServer.markShardBusy(destinationId, Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
-    Stats.clearGauge("X-copying-"+sourceId+"-"+destinationId)
+    Stats.clearGauge(gaugeName)
   }
 
   def apply(environment: (NameServer[S], JobScheduler)) {
@@ -51,8 +51,8 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
       val nextJob = copyPage(sourceShard, destinationShard, count)
       nextJob match {
         case Some(job) => {
+          incrGauge
           scheduler(job)
-          Stats.setGauge("X-copying-"+sourceId+"-"+destinationId, job.progress)
         }
         case None => finish(nameServer, scheduler)
       }
@@ -74,5 +74,12 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[Copy[S]]
   def serialize: Map[String, Any]
-  def progress: Double
+
+  private def incrGauge = {
+    Stats.setGauge(gaugeName, Stats.getGaugeStats(false).getOrElse(gaugeName, 0.0) + count)
+  }
+
+  private def gaugeName = {
+    "x-copying-"+sourceId+"-"+destinationId
+  }
 }
