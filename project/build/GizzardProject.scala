@@ -12,7 +12,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val kestrel   = "net.lag" % "kestrel" % "1.2"
   val mysqljdbc = "mysql" % "mysql-connector-java" % "5.1.6"
   val objenesis = "org.objenesis" % "objenesis" % "1.1"
-  val ostrich   = "com.twitter" % "ostrich" % "1.2.0"
+  val ostrich   = "com.twitter" % "ostrich" % "1.2.1"
   val pool      = "commons-pool" % "commons-pool" % "1.3"
   val querulous = "com.twitter" % "querulous" % "1.1.11"
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
@@ -20,6 +20,8 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1"
   val thrift    = "thrift" % "libthrift" % "0.2.0"
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
+  
+  val json = "com.twitter" % "json" % "1.1.3"
 
   override def pomExtra =
     <licenses>
