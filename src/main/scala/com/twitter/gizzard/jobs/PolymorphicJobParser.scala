@@ -15,7 +15,6 @@ class PolymorphicJobParser extends JobParser {
       val (processorRegex, _) = p
       processorRegex.findFirstIn(jobType).isDefined
     } getOrElse {
-      println("...")
       throw new UnparsableJobException("Can't find matching processor for '%s' in %s".format(jobType, processors))
     }
     try {

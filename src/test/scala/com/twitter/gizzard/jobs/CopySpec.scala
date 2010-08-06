@@ -44,6 +44,17 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       ) ++ copy.serialize
     }
 
+    "toJson" in {
+      val copy = makeCopy(Some(nextCopy))
+      val json = copy.toJson
+      json mustMatch "Copy"
+      json mustMatch "\"source_shard_hostname\":\"%s\"".format(sourceShardId.hostname)
+      json mustMatch "\"source_shard_table_prefix\":\"%s\"".format(sourceShardId.tablePrefix)
+      json mustMatch "\"destination_shard_hostname\":\"%s\"".format(destinationShardId.hostname)
+      json mustMatch "\"destination_shard_table_prefix\":\"%s\"".format(destinationShardId.tablePrefix)
+      json mustMatch "\"count\":" + count
+    }
+
     "apply" in {
       "normally" in {
         val copy = makeCopy(Some(nextCopy))

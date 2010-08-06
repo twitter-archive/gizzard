@@ -57,13 +57,15 @@ object NameServer {
         ByteSwapper
       case Some("identity") =>
         { n => n }
+      case Some("fnv1a-64") =>
+        FnvHasher
     }
     new NameServer(shard, shardRepository, mappingFunction)
   }
 }
 
 class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
-                                    mappingFunction: Long => Long)
+                                    val mappingFunction: Long => Long)
   extends Shard {
 
   val children = List()
