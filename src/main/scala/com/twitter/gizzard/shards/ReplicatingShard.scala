@@ -7,24 +7,25 @@ import scala.collection.mutable
 import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import net.lag.logging.{Logger, ThrottledLogger}
+import net.lag.logging.Logger
 
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      log: ThrottledLogger[String], future: Future) extends shards.ShardFactory[ConcreteShard] {
+      future: Future) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), log, future))
+    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
   val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
-  val log: ThrottledLogger[String], val future: Future)
+  val future: Future)
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
   def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)
+  lazy val log = Logger.get
 
   private def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
     val exceptions = new mutable.ArrayBuffer[Exception]()
@@ -56,7 +57,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             e match {
               case _: ShardRejectedOperationException =>
               case _ =>
-                log.error(shardId, e, "Error on %s: %s", shardId, e)
+                log.error(e, "Error on %s: %s", shardId, e)
             }
             failover(f, remainder)
         }

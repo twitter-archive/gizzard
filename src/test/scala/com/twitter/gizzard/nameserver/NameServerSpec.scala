@@ -3,7 +3,6 @@ package com.twitter.gizzard.nameserver
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import net.lag.configgy.Config
-import net.lag.logging.ThrottledLogger
 
 
 object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -39,9 +38,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       val config = new Config()
       config("mapping") = "fnv1a-64"
       config("replicas.ns1.type") = "memory"
-      val log = mock[ThrottledLogger[String]]
       val future = mock[Future]
-      val ns = NameServer[gizzard.shards.Shard](config, None, shardRepository, log, future)
+      val ns = NameServer[gizzard.shards.Shard](config, None, shardRepository, future)
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L

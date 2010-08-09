@@ -6,7 +6,7 @@ import com.twitter.xrayspecs.Time
 import com.twitter.querulous.StatsCollector
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import net.lag.configgy.ConfigMap
-import net.lag.logging.{Logger, ThrottledLogger}
+import net.lag.logging.Logger
 import shards._
 
 
@@ -32,7 +32,6 @@ object NameServer {
    */
   def apply[S <: shards.Shard](config: ConfigMap, stats: Option[StatsCollector],
                                shardRepository: ShardRepository[S],
-                               log: ThrottledLogger[String],
                                replicationFuture: Future): NameServer[S] = {
     val queryEvaluatorFactory = QueryEvaluatorFactory.fromConfig(config, stats)
 
@@ -48,7 +47,7 @@ object NameServer {
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicas)
     val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, log, replicationFuture))
+      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture))
 
     val mappingFunction: (Long => Long) = config.getString("mapping") match {
       case None =>
