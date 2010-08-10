@@ -7,7 +7,6 @@ import org.specs.Specification
 import shards.ShardRejectedOperationException
 import com.twitter.xrayspecs.TimeConversions._
 import scheduler.{ErrorHandlingConfig, MessageQueue}
-import com.twitter.ostrich.DevNullStats
 
 
 object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
