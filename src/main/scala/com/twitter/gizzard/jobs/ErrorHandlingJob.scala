@@ -12,12 +12,13 @@ class ErrorHandlingJobParser(config: ErrorHandlingConfig, errorJobQueue: Schedul
   def apply(json: Map[String, Map[String, Any]]) = {
     val (_, attributes) = json.toList.first
     val job = config.jobParser(json)
-    new ErrorHandlingJob(job, attributes.getOrElse("error_count", 0).asInstanceOf[Int],
-                         errorJobQueue, config)
+    val errorCount = attributes.getOrElse("error_count", 0).asInstanceOf[Int]
+    val errorMessage = attributes.getOrElse("error_message", "(none)").asInstanceOf[String]
+    new ErrorHandlingJob(job, errorCount, errorMessage, errorJobQueue, config)
   }
 }
 
-class ErrorHandlingJob(job: Job, var errorCount: Int,
+class ErrorHandlingJob(job: Job, var errorCount: Int, var errorMessage: String,
                        errorJobQueue: Scheduler[Schedulable], config: ErrorHandlingConfig)
   extends JobProxy(job) {
 
@@ -36,6 +37,7 @@ class ErrorHandlingJob(job: Job, var errorCount: Int,
         Stats.incr("job-error-count")
         log.error(e, "Error in Job: " + e)
         errorCount += 1
+        errorMessage = e.toString
         if (errorCount > errorLimit) {
           badJobQueue.put(this)
         } else {
@@ -44,6 +46,6 @@ class ErrorHandlingJob(job: Job, var errorCount: Int,
     }
   }
 
-  override def toMap = job.toMap ++ Map("error_count" -> errorCount)
+  override def toMap = job.toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage)
   override def toString = "ErrorHandlingJob(%s, %s, %d)".format(job, errorJobQueue, errorCount)
 }
