@@ -8,6 +8,7 @@ class PolymorphicJobParser extends JobParser {
   private val processors = mutable.Map.empty[Regex, JobParser]
 
   def +=(item: (Regex, JobParser)) = processors += item
+  def +=(r: Regex, p: JobParser) = processors += ((r, p))
 
   override def apply(json: Map[String, Map[String, Any]]) = {
     val (jobType, attributes) = json.toList.first
