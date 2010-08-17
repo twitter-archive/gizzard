@@ -20,7 +20,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1"
   val thrift    = "thrift" % "libthrift" % "0.2.0"
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
-  
+
   val json = "com.twitter" % "json" % "1.1.3"
 
   override def pomExtra =

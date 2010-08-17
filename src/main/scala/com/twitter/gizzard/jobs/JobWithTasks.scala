@@ -1,5 +1,5 @@
 package com.twitter.gizzard.jobs
-
+import scala.collection.mutable.Queue
 
 class JobWithTasksParser(jobParser: JobParser) extends JobParser {
   def apply(json: Map[String, Map[String, Any]]) = {
@@ -14,5 +14,18 @@ class JobWithTasksParser(jobParser: JobParser) extends JobParser {
 }
 
 case class JobWithTasks(override val tasks: Iterable[Job]) extends SchedulableWithTasks(tasks) with Job {
-  def apply() = tasks.foreach(_.apply())
+  private val taskQueue = {
+    val q = new Queue[Job]()
+    q ++= tasks
+    q
+  }
+
+  override val remainingTasks = taskQueue
+
+  def apply() = {
+    while (!taskQueue.isEmpty) {
+      taskQueue.first.apply()
+      taskQueue.dequeue()
+    }
+  }
 }
