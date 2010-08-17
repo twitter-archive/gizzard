@@ -61,7 +61,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
         log.error("Shard block copy failed because one of the shards doesn't exist. Terminating the copy.")
       case e: ShardTimeoutException if (count > Copy.MIN_COPY) =>
         log.warning("Shard block copy timed out; trying a smaller block size.")
-        count = count / 2
+        count = (count * 0.9).toInt
         scheduler(this)
       case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
