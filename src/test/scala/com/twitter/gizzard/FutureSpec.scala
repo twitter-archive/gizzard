@@ -1,11 +1,12 @@
 package com.twitter.gizzard
 
-import java.util.concurrent.{CountDownLatch, ExecutionException, RejectedExecutionHandler, ThreadPoolExecutor, TimeoutException, TimeUnit}
+import java.util.concurrent._
 import scala.collection.mutable
 import com.twitter.xrayspecs.Time
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import thrift.conversions.Sequences._
 
 
 object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -42,6 +43,18 @@ object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker 
       Time.advance(23.seconds)
       f.run()
       f.get(1, TimeUnit.MILLISECONDS) must throwA[Exception]
+    }
+
+    "run sequences in parallel" in {
+      val runs = future.executor.getCompletedTaskCount
+      List(1, 2, 3).parallel(future).map { _ * 2 } mustEqual List(2, 4, 6)
+      future.executor.getCompletedTaskCount mustEqual runs + 3
+    }
+
+    "run one-element sequences in series" in {
+      val runs = future.executor.getCompletedTaskCount
+      List(4).parallel(future).map { _ * 2 } mustEqual List(8)
+      future.executor.getCompletedTaskCount mustEqual runs
     }
   }
 }

@@ -49,10 +49,18 @@ class ParallelSeq[A](seq: Seq[A], future: Future) extends Seq[A] {
   def elements = seq.elements
 
   override def map[B](f: A => B) = {
-    seq.map { a => future(f(a)) }.map { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
+    if (seq.size <= 1) {
+      seq.map(f)
+    } else {
+      seq.map { a => future(f(a)) }.map { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
+    }
   }
 
   override def flatMap[B](f: A => Iterable[B]) = {
-    seq.map { a => future(f(a)) }.flatMap { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
+    if (seq.size <= 1) {
+      seq.flatMap(f)
+    } else {
+      seq.map { a => future(f(a)) }.flatMap { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
+    }
   }
 }

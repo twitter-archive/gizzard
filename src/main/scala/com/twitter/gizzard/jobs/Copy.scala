@@ -2,6 +2,7 @@ package com.twitter.gizzard.jobs
 
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
+import com.twitter.ostrich.Stats
 
 import scheduler.JobScheduler
 import nameserver._
@@ -34,6 +35,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
     nameServer.markShardBusy(destinationId, Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
+    Stats.clearGauge(gaugeName)
   }
 
   def apply(environment: (NameServer[S], JobScheduler)) {
@@ -45,9 +47,13 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
       val destinationShard = nameServer.findShardById(destinationId)
       // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
       nameServer.markShardBusy(destinationId, Busy.Busy)
+
       val nextJob = copyPage(sourceShard, destinationShard, count)
       nextJob match {
-        case Some(job) => scheduler(job)
+        case Some(job) => {
+          incrGauge
+          scheduler(job)
+        }
         case None => finish(nameServer, scheduler)
       }
     } catch {
@@ -55,7 +61,7 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
         log.error("Shard block copy failed because one of the shards doesn't exist. Terminating the copy.")
       case e: ShardTimeoutException if (count > Copy.MIN_COPY) =>
         log.warning("Shard block copy timed out; trying a smaller block size.")
-        count = count / 2
+        count = (count * 0.9).toInt
         scheduler(this)
       case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
@@ -68,4 +74,12 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[Copy[S]]
   def serialize: Map[String, Any]
+  
+  private def incrGauge = {
+    Stats.setGauge(gaugeName, Stats.getGauge(gaugeName).getOrElse(0.0) + count)
+  }
+  
+  private def gaugeName = {
+    "x-copying-"+sourceId+"-"+destinationId
+  }
 }

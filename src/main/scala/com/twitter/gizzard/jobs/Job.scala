@@ -5,7 +5,7 @@ import net.lag.configgy.Configgy
 
 
 trait Job extends Schedulable {
-  def apply()
+  @throws(classOf[Exception]) def apply()
 }
 
 abstract class JobProxy(job: Job) extends SchedulableProxy(job) with Job

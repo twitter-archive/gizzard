@@ -22,5 +22,42 @@ object JobWithTasksSpec extends ConfiguredSpecification with JMocker with ClassM
       )))
       result mustEqual new JobWithTasks(List(job))
     }
+
+    "discard tasks as it goes" in {
+      val a = mock[Job]
+      expect { one(a).apply }
+
+      val b = new Job {
+        def toMap = Map.empty
+        var apply = {}
+      }
+
+      val jobs = new JobWithTasks(List(a, b))
+
+      b.apply = (() => { jobs.remainingTasks.length mustEqual 1 })
+
+      jobs.apply()
+    }
+
+    "discard only after success" in {
+      val a = mock[Job]
+      expect { one(a).apply }
+
+      val b = new Job {
+        def toMap = Map.empty
+        var apply = {}
+      }
+
+      val jobs = new JobWithTasks(List(a, b))
+
+      b.apply = (() => { throw new RuntimeException("boom") })
+
+      try {
+        jobs.apply()
+      } catch {
+        case e: RuntimeException =>
+          jobs.remainingTasks.length mustEqual 1
+      }
+    }
   }
 }

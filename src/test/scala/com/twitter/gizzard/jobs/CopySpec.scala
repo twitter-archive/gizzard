@@ -88,7 +88,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
         }
 
         copy.apply(nameServer, jobScheduler)
-        copy.toMap("count") mustEqual count / 2
+        copy.toMap("count") mustEqual (count * 0.9).toInt
       }
 
       "with a random exception" in {

@@ -4,7 +4,6 @@ import scala.collection.mutable
 import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import org.specs.Specification
-import com.twitter.ostrich.DevNullStats
 import com.twitter.xrayspecs.Time
 import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{Job, JobParser}

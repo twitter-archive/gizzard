@@ -5,11 +5,14 @@ import com.twitter.json.Json
 
 class SchedulableWithTasks(protected val tasks: Iterable[Schedulable]) extends Schedulable {
   override def loggingName = tasks.map(_.loggingName).mkString(",")
-  def toMap = Map("tasks" -> tasks.map { task => (Map(task.className -> task.toMap)) })
+
+  def remainingTasks = tasks
+
+  def toMap = Map("tasks" -> remainingTasks.map { task => (Map(task.className -> task.toMap)) })
   override def equals(other: Any) = {
     other match {
       case other: SchedulableWithTasks =>
-        tasks.toList == other.tasks.toList
+        remainingTasks.toList == other.remainingTasks.toList
       case _ =>
         false
     }

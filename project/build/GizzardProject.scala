@@ -2,7 +2,7 @@ import sbt._
 import com.twitter.sbt.{SubversionRepository, StandardProject}
 
 
-class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionRepository {
+class GizzardProject(info: ProjectInfo) extends StandardProject(info) {
   val asm       = "asm" % "asm" %  "1.5.3"
   val cglib     = "cglib" % "cglib" % "2.1_3"
   val configgy  = "net.lag" % "configgy" % "1.6.0"
@@ -20,6 +20,8 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1"
   val thrift    = "thrift" % "libthrift" % "0.2.0"
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
+
+  val json = "com.twitter" % "json" % "1.1.3"
 
   override def pomExtra =
     <licenses>

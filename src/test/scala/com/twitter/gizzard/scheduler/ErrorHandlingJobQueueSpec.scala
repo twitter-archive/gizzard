@@ -6,7 +6,6 @@ import com.twitter.xrayspecs.TimeConversions._
 import com.twitter.xrayspecs.Eventually
 import com.twitter.json.Json
 import jobs.{Schedulable, Job, JobParser}
-import com.twitter.ostrich.DevNullStats
 
 
 object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {

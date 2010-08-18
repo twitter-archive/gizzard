@@ -7,21 +7,20 @@ import org.specs.Specification
 import shards.ShardRejectedOperationException
 import com.twitter.xrayspecs.TimeConversions._
 import scheduler.{ErrorHandlingConfig, MessageQueue}
-import com.twitter.ostrich.DevNullStats
 
 
 object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val job = mock[Job]
-  val errorQueue = mock[MessageQueue[Schedulable, Job]]
-  val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
-                                                mock[MessageQueue[String, String]],
-                                                mock[MessageQueue[Schedulable, Job]],
-                                                mock[MessageQueue[String, String]],
-                                                mock[JobParser])
-  val errorHandlingJob = new ErrorHandlingJob(job, 0, errorQueue, errorHandlingConfig)
-  val errorHandlingParser = new ErrorHandlingJobParser(errorHandlingConfig, errorQueue)
-
   "ErrorHandlingJob" should {
+    val job = mock[Job]
+    val errorQueue = mock[MessageQueue[Schedulable, Job]]
+    val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
+                                                  mock[MessageQueue[String, String]],
+                                                  mock[MessageQueue[Schedulable, Job]],
+                                                  mock[MessageQueue[String, String]],
+                                                  mock[JobParser])
+    val errorHandlingParser = new ErrorHandlingJobParser(errorHandlingConfig, errorQueue)
+    val errorHandlingJob = new ErrorHandlingJob(job, 0, "", errorQueue, errorHandlingConfig)
+
     expect {
       allowing(job).className willReturn "foo"
       allowing(job).toMap willReturn Map("a" -> 1)
@@ -34,9 +33,9 @@ object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with Cl
         one(errorQueue).put(errorHandlingJob)
       }
 
-      Json.parse(errorHandlingJob.toJson) mustEqual Map("foo" -> Map("a" -> 1, "error_count" -> 0))
+      Json.parse(errorHandlingJob.toJson) mustEqual Map("foo" -> Map("a" -> 1, "error_count" -> 0, "error_message" -> ""))
       errorHandlingJob()
-      Json.parse(errorHandlingJob.toJson) mustEqual Map("foo" -> Map("a" -> 1, "error_count" -> 1))
+      Json.parse(errorHandlingJob.toJson) mustEqual Map("foo" -> Map("a" -> 1, "error_count" -> 1, "error_message" -> "java.lang.Exception: ouch"))
     }
 
     "when the job errors too much" >> {
@@ -58,32 +57,4 @@ object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with Cl
       errorHandlingJob()
     }
   }
-
-  "ErrorHandlingJobParser" should {
-    "register and increment errors" >> {
-      val attributes = Map("a" -> 1)
-      expect {
-        allowing(errorHandlingConfig.jobParser).apply(a[Map[String, Map[String, AnyVal]]]) willReturn job
-        allowing(job).className willReturn "className"
-        allowing(job).apply() willThrow new Exception("ouch")
-        allowing(job).toMap willReturn attributes
-      }
-
-      val errorHandlingJob = errorHandlingParser("{\"className\":{\"a\":1}}").asInstanceOf[ErrorHandlingJob]
-      errorHandlingJob.errorCount mustEqual 0
-      expect {
-        one(errorQueue).put(errorHandlingJob)
-      }
-      errorHandlingJob()
-      errorHandlingParser.apply(errorHandlingJob.toJson)
-      errorHandlingJob.errorCount mustEqual 1
-      expect {
-        one(errorQueue).put(errorHandlingJob)
-      }
-      errorHandlingJob()
-      errorHandlingParser.apply(errorHandlingJob.toJson)
-      errorHandlingJob.errorCount mustEqual 2
-    }
-  }
-
 }
