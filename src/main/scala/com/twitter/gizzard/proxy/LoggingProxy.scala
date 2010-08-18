@@ -1,6 +1,7 @@
 package com.twitter.gizzard.proxy
 
 import scala.reflect.Manifest
+import com.twitter.xrayspecs.Time
 import com.twitter.ostrich.{Stats, StatsProvider, W3CStats}
 
 
@@ -16,6 +17,7 @@ object LoggingProxy {
       val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
       stats.incr("operation-" + shortName + ":" + method.name)
       logger.transaction {
+        logger.log("timestamp", Time.now.inMillis)
         logger.log("operation", name + ":" + method.name)
         val arguments = (if (method.args != null) method.args.mkString(",") else "").replace(' ', '_')
         logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))

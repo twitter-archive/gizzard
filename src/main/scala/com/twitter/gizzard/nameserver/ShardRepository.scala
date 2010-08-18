@@ -1,7 +1,6 @@
 package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
-import net.lag.logging.ThrottledLogger
 import shards.{ShardInfo, ShardFactory}
 
 
@@ -37,8 +36,7 @@ class ShardRepository[S <: shards.Shard] {
  * A ShardRepository that is pre-seeded with read-only, write-only, replicating, and blocked
  * shard types.
  */
-class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
-                                              log: ThrottledLogger[String], future: Future)
+class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S, future: Future)
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
@@ -48,6 +46,6 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
     this += (packageName + ".BlockedShard"     -> new shards.BlockedShardFactory(constructor))
     this += (packageName + ".WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
     this += (packageName + ".ReplicatingShard" ->
-             new shards.ReplicatingShardFactory(constructor, log, future))
+             new shards.ReplicatingShardFactory(constructor, future))
   }
 }

@@ -5,7 +5,7 @@ import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.logging.{Logger, ThrottledLogger}
+import net.lag.logging.Logger
 
 class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
   lazy val poolConfig = config.configMap("db.connection_pool")
@@ -20,9 +20,8 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     var shardRepository: ShardRepository[Shard] = null
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
-    val log = new ThrottledLogger[String](Logger(), 1, 1)
     
-    val repo = new BasicShardRepository[fake.Shard](adapter, log, future)
+    val repo = new BasicShardRepository[fake.Shard](adapter, future)
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")

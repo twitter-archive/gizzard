@@ -1,7 +1,7 @@
 package com.twitter.gizzard.shards
 
 import com.twitter.xrayspecs.TimeConversions._
-import net.lag.logging.{ThrottledLogger, Logger}
+import net.lag.logging.Logger
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
@@ -14,10 +14,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
-    val log = new ThrottledLogger[String](Logger(), 1, 1)
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(null, 1, shards, loadBalancer, log, future))
+    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(null, 1, shards, loadBalancer, future))
 
     "failover" in {
       "when shard1 throws an exception" in {
