@@ -25,6 +25,9 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
   def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)
+  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, A) => Unit) =
+    rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
+
   lazy val log = Logger.get
 
   private def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
@@ -62,5 +65,38 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             failover(f, remainder)
         }
       }
+  }
+
+  private def rebuildableFailover[A](f: ConcreteShard => Option[A], rebuild: (ConcreteShard, A) => Unit,
+                                     replicas: Seq[ConcreteShard], toRebuild: List[ConcreteShard],
+                                     everSuccessful: Boolean): Option[A] = {
+    replicas match {
+      case Seq() =>
+        if (everSuccessful) {
+          None
+        } else {
+          throw new ShardOfflineException
+        }
+      case Seq(shard, remainder @ _*) =>
+        try {
+          f(shard) match {
+            case None =>
+              rebuildableFailover(f, rebuild, remainder, shard :: toRebuild, true)
+            case Some(answer) =>
+              toRebuild.foreach { shard => rebuild(shard, answer) }
+              Some(answer)
+          }
+        } catch {
+          case e: ShardException =>
+            val shardInfo = shard.shardInfo
+            val shardId = shardInfo.hostname + "/" + shardInfo.tablePrefix
+            e match {
+              case _: ShardRejectedOperationException =>
+              case _ =>
+                log.error(e, "Error on %s: %s", shardId, e)
+            }
+            rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
+        }
+    }
   }
 }
