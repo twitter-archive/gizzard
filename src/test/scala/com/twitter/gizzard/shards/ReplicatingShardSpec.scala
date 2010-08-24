@@ -86,7 +86,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(mock1).getPrice willReturn Some(100)
         }
 
-        shard.rebuildableReadOperation(_.getPrice) { (shard, price) => shard.setPrice(price) } mustEqual Some(100)
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
       }
 
       "first shard is down, second has data" in {
@@ -96,17 +96,17 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           allowing(mock1).shardInfo willReturn shardInfo
         }
 
-        shard.rebuildableReadOperation(_.getPrice) { (shard, price) => shard.setPrice(price) } mustEqual Some(100)
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
       }
 
       "first shard is empty, second has data" in {
         expect {
           one(mock1).getPrice willReturn None
-          one(mock2).getPrice willReturn Some(100)
+          exactly(2).of(mock2).getPrice willReturn Some(100)
           one(mock1).setPrice(100)
         }
 
-        shard.rebuildableReadOperation(_.getPrice) { (shard, price) => shard.setPrice(price) } mustEqual Some(100)
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
       }
 
       "both shards are empty" in {
@@ -115,7 +115,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(mock2).getPrice willReturn None
         }
 
-        shard.rebuildableReadOperation(_.getPrice) { (shard, price) => shard.setPrice(price) } mustEqual None
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual None
       }
 
       "both shards are down" in {
@@ -126,7 +126,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           allowing(mock2).shardInfo willReturn shardInfo
         }
 
-        shard.rebuildableReadOperation(_.getPrice) { (shard, price) => shard.setPrice(price) } must throwA[ShardOfflineException]
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } must throwA[ShardOfflineException]
       }
     }
   }

@@ -25,7 +25,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
   def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)
-  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, A) => Unit) =
+  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
     rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
 
   lazy val log = Logger.get
@@ -67,7 +67,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
       }
   }
 
-  private def rebuildableFailover[A](f: ConcreteShard => Option[A], rebuild: (ConcreteShard, A) => Unit,
+  private def rebuildableFailover[A](f: ConcreteShard => Option[A], rebuild: (ConcreteShard, ConcreteShard) => Unit,
                                      replicas: Seq[ConcreteShard], toRebuild: List[ConcreteShard],
                                      everSuccessful: Boolean): Option[A] = {
     replicas match {
@@ -83,7 +83,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             case None =>
               rebuildableFailover(f, rebuild, remainder, shard :: toRebuild, true)
             case Some(answer) =>
-              toRebuild.foreach { shard => rebuild(shard, answer) }
+              toRebuild.foreach { destShard => rebuild(shard, destShard) }
               Some(answer)
           }
         } catch {
