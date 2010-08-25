@@ -1,6 +1,6 @@
 package com.twitter.gizzard.thrift
 
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 import jobs.CopyFactory
 import nameserver.NameServer

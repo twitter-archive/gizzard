@@ -1,6 +1,6 @@
 package com.twitter.gizzard.jobs
 
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import com.twitter.ostrich.Stats
 

@@ -2,8 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import com.twitter.xrayspecs.TimeConversions._
-import com.twitter.xrayspecs.Eventually
+import com.twitter.util.TimeConversions._
 import com.twitter.json.Json
 import jobs.{Schedulable, Job, JobParser}
 

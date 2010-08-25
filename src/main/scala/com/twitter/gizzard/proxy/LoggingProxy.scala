@@ -1,7 +1,7 @@
 package com.twitter.gizzard.proxy
 
 import scala.reflect.Manifest
-import com.twitter.xrayspecs.Time
+import com.twitter.util.Time
 import com.twitter.ostrich.{Stats, StatsProvider, W3CStats}
 
 

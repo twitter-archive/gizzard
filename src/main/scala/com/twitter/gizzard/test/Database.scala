@@ -3,7 +3,7 @@ package com.twitter.gizzard.test
 import com.twitter.querulous.database.{SingleConnectionDatabaseFactory, MemoizingDatabaseFactory}
 import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
 import com.twitter.querulous.query.SqlQueryFactory
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import net.lag.configgy.{ConfigMap, Configgy}
 
 

@@ -2,8 +2,8 @@ package com.twitter.gizzard.test
 
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}
-import com.twitter.xrayspecs.Time
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.Time
+import com.twitter.util.TimeConversions._
 import net.lag.configgy.{ConfigMap, Configgy}
 import org.specs.Specification
 

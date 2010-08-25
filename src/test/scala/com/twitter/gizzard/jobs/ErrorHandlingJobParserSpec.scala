@@ -5,7 +5,7 @@ import com.twitter.json.Json
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import shards.ShardRejectedOperationException
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import scheduler.{ErrorHandlingConfig, MessageQueue}
 
 

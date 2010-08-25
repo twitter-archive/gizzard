@@ -12,8 +12,8 @@ import org.apache.thrift.protocol._
 import org.apache.thrift.transport._
 import org.apache.thrift.server._
 import com.twitter.ostrich.Stats
-import com.twitter.xrayspecs.{Duration, Time}
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.{Duration, Time}
+import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
 

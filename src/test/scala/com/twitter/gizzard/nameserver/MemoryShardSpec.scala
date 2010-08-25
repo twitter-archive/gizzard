@@ -1,6 +1,6 @@
 package com.twitter.gizzard.nameserver
 
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import com.twitter.gizzard.shards.{Busy, LinkInfo, ShardId, ShardInfo}
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification

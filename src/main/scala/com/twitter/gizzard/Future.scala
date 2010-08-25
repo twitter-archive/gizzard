@@ -2,8 +2,8 @@ package com.twitter.gizzard
 
 import java.util.concurrent._
 import com.twitter.ostrich.Stats
-import com.twitter.xrayspecs.{Duration, Time}
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.{Duration, Time}
+import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 
 

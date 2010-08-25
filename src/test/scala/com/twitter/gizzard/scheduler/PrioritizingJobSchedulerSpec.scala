@@ -1,6 +1,6 @@
 package com.twitter.gizzard.scheduler
 
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import net.lag.configgy.Config
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification

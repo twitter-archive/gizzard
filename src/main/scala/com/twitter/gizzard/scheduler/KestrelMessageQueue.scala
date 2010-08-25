@@ -1,9 +1,8 @@
 package com.twitter.gizzard.scheduler
 
-import com.twitter.xrayspecs.Time
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.Time
+import com.twitter.util.TimeConversions._
 import com.twitter.ostrich.{Stats, StatsProvider}
-import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 

@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import java.util.TreeMap
 import scala.collection.mutable
-import com.twitter.xrayspecs.Time
+import com.twitter.util.Time
 import com.twitter.querulous.StatsCollector
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import net.lag.configgy.ConfigMap

@@ -4,7 +4,7 @@ import scala.collection.mutable
 import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import org.specs.Specification
-import com.twitter.xrayspecs.Time
+import com.twitter.util.Time
 import org.specs.mock.{ClassMocker, JMocker}
 import jobs.{Job, JobParser}
 

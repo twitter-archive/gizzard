@@ -2,7 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import com.twitter.ostrich.BackgroundProcess
 import com.twitter.ostrich.StatsProvider
-import com.twitter.xrayspecs.Duration
+import com.twitter.util.Duration
 import net.lag.logging.Logger
 import jobs.{Schedulable, Job, JobParser, ErrorHandlingJobParser, UnparsableJobException}
 
