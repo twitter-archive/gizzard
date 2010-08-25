@@ -17,4 +17,7 @@ class BlockedShard[ConcreteShard <: Shard]
 
   def writeOperation[A](method: (ConcreteShard => A)) =
     throw new ShardRejectedOperationException("shard is offline")
+
+  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
+    throw new ShardRejectedOperationException("shard is offline")
 }
