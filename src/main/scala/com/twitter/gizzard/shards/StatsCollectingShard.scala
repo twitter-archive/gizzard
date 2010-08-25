@@ -11,4 +11,6 @@ class StatsCollectingShard[ConcreteShard <: Shard]
   val shard = children.first.asInstanceOf[ConcreteShard]
   def readOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-read")(method(shard))
   def writeOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-write")(method(shard))
+  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
+    stats.time("shard-" + shardName + "-rebuildable") { method(shard) }
 }

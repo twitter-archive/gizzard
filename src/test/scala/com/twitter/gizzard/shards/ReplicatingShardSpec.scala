@@ -67,5 +67,67 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       }
       replicatingShard.get("name") mustEqual Some("ted")
     }
+
+    "rebuildableFailover" in {
+      trait EnufShard extends Shard {
+        @throws(classOf[ShardException]) def getPrice: Option[Int]
+        @throws(classOf[ShardException]) def setPrice(price: Int)
+      }
+
+      val shardInfo = new ShardInfo("fake", "fake", "localhost")
+      val mock1 = mock[EnufShard]
+      val mock2 = mock[EnufShard]
+      val shards = List(mock1, mock2)
+      val loadBalancer = () => shards
+      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, future)
+
+      "first shard has data" in {
+        expect {
+          one(mock1).getPrice willReturn Some(100)
+        }
+
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
+      }
+
+      "first shard is down, second has data" in {
+        expect {
+          one(mock1).getPrice willThrow new ShardException("oof!")
+          one(mock2).getPrice willReturn Some(100)
+          allowing(mock1).shardInfo willReturn shardInfo
+        }
+
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
+      }
+
+      "first shard is empty, second has data" in {
+        expect {
+          one(mock1).getPrice willReturn None
+          exactly(2).of(mock2).getPrice willReturn Some(100)
+          one(mock1).setPrice(100)
+        }
+
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
+      }
+
+      "both shards are empty" in {
+        expect {
+          one(mock1).getPrice willReturn None
+          one(mock2).getPrice willReturn None
+        }
+
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual None
+      }
+
+      "both shards are down" in {
+        expect {
+          one(mock1).getPrice willThrow new ShardException("oof!")
+          one(mock2).getPrice willThrow new ShardException("oof!")
+          allowing(mock1).shardInfo willReturn shardInfo
+          allowing(mock2).shardInfo willReturn shardInfo
+        }
+
+        shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } must throwA[ShardOfflineException]
+      }
+    }
   }
 }

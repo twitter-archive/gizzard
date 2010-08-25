@@ -19,4 +19,7 @@ class WriteOnlyShard[ConcreteShard <: Shard]
     throw new ShardRejectedOperationException("shard is write-only")
 
   def writeOperation[A](method: (ConcreteShard => A)) = method(shard)
+
+  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
+    throw new ShardRejectedOperationException("shard is write-only")
 }
