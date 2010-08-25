@@ -19,7 +19,7 @@ object LoggingProxy {
       logger.transaction {
         logger.log("timestamp", Time.now.inMillis)
         logger.log("operation", name + ":" + method.name)
-        val arguments = (if (method.args != null) method.args.mkString(",") else "").replace(' ', '_')
+        val arguments = (if (method.args != null) method.args.mkString(",") else "").replaceAll("[ \n]", "_")
         logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
         val (rv, msec) = Stats.duration { method() }
         logger.addTiming("action-timing", msec.toInt)
