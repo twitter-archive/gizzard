@@ -20,5 +20,5 @@ trait JobParser extends (String => Job) {
     }
   }
 
-  def apply(json: Map[String, Map[String, Any]]): Job  
+  def apply(json: Map[String, Map[String, Any]]): Job
 }

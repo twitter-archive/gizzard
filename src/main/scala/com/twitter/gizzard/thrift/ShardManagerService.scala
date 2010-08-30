@@ -29,11 +29,11 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
   def create_shard(shard: ShardInfo) = wrapWithThriftExceptions {
     nameServer.createShard(shard.fromThrift)
   }
-  
+
   def list_hostnames() = wrapWithThriftExceptions {
     nameServer.listHostnames.toJavaList
   }
-  
+
   def remove_forwarding(forwarding: Forwarding) = wrapWithThriftExceptions {
     nameServer.removeForwarding(forwarding.fromThrift)
   }

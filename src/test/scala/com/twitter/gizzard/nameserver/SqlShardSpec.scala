@@ -20,7 +20,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     var shardRepository: ShardRepository[Shard] = null
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
-    
+
     val repo = new BasicShardRepository[fake.Shard](adapter, future)
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
@@ -33,7 +33,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       reset(config.configMap("db"))
       shardRepository = mock[ShardRepository[Shard]]
     }
-    
+
     "be idempotent" in {
       "be creatable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
@@ -75,20 +75,20 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.setForwarding(Forwarding(0, 0, a.id))
         nameServer.setForwarding(Forwarding(0, 0, a.id))
       }
-      
+
       "removes forwarding" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         nameServer.createShard(a, repo)
 
         nameServer.setForwarding(Forwarding(0, 0, a.id))
-        
+
         nameServer.removeForwarding(Forwarding(0, 0, a.id))
         nameServer.removeForwarding(Forwarding(0, 0, a.id))
         nameServer.getForwardings.size mustEqual 0
       }
 
     }
-    
+
     "list hostnames" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       nameServer.createShard(a, repo)
