@@ -61,6 +61,9 @@ service ShardManager {
 
   void rebuild_schema() throws(1: ShardException ex)
 
-  // operate on the current forwardings in memory
+  // ----- operate on the current forwardings in memory:
+
   ShardInfo find_current_forwarding(1: i32 table_id, 2: i64 id) throws(1: ShardException ex)
+  list<LinkInfo> list_current_downward_links(1: ShardId id) throws(1: ShardException ex)
+  ShardInfo get_current_shard(1: ShardId id) throws(1: ShardException ex)
 }

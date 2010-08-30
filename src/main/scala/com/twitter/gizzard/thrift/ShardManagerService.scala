@@ -95,10 +95,6 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
     nameServer.reload()
   }
 
-  def find_current_forwarding(tableId: Int, id: Long) = wrapWithThriftExceptions {
-    nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift
-  }
-
   def shards_for_hostname(hostname: String): java.util.List[ShardInfo] = wrapWithThriftExceptions {
     nameServer.shardsForHostname(hostname).map(_.toThrift).toJavaList
   }
@@ -113,5 +109,17 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
 
   def rebuild_schema() = wrapWithThriftExceptions {
     nameServer.rebuildSchema()
+  }
+
+  def find_current_forwarding(tableId: Int, id: Long) = wrapWithThriftExceptions {
+    nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift
+  }
+
+  def list_current_downward_links(id: ShardId) = wrapWithThriftExceptions {
+    nameServer.listCurrentDownwardLinks(id.fromThrift).map(_.toThrift).toJavaList
+  }
+
+  def get_current_shard(id: ShardId) = wrapWithThriftExceptions {
+    nameServer.getCurrentShard(id.fromThrift).toThrift
   }
 }

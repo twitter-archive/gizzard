@@ -64,6 +64,14 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       nameServer.findCurrentForwarding(1, 2) mustEqual shard
     }
 
+    "list current downward links" in {
+      nameServer.listCurrentDownwardLinks(shardInfos(2).id).toList mustEqual linksList
+    }
+
+    "get current shard" in {
+      nameServer.getCurrentShard(shardInfos(1).id) mustEqual shardInfos(1)
+    }
+
     "find shard by id" in {
       expect {
         one(shardRepository).find(shardInfos(3), 1, List()) willReturn shard

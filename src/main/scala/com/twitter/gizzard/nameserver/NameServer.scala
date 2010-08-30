@@ -138,6 +138,10 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
     findShardById(shardInfo.id)
   }
 
+  def listCurrentDownwardLinks(id: ShardId) = getChildren(id)
+
+  def getCurrentShard(id: ShardId) = getShardInfo(id)
+
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId) = nameServerShard.getShard(id)
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
