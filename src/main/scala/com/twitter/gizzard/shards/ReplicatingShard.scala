@@ -60,7 +60,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             e match {
               case _: ShardRejectedOperationException =>
               case _ =>
-                log.error(e, "Error on %s: %s", shardId, e)
+                log.warn(e, "Error on %s: %s", shardId, e)
             }
             failover(f, remainder)
         }
@@ -93,7 +93,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             e match {
               case _: ShardRejectedOperationException =>
               case _ =>
-                log.error(e, "Error on %s: %s", shardId, e)
+                log.warn(e, "Error on %s: %s", shardId, e)
             }
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }
