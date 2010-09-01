@@ -2,7 +2,7 @@ import sbt._
 import com.twitter.sbt._
 
 
-class GizzardProject(info: ProjectInfo) extends StandardProject(info) with GithubPublisher {
+class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher {
   val configgy  = "net.lag" % "configgy" % "1.6.1"
   val dbcp      = "commons-dbcp" % "commons-dbcp" % "1.2.2"
   val kestrel   = "net.lag" % "kestrel" % "1.2"
@@ -33,5 +33,6 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Githu
     </licenses>
 
   Credentials(Path.userHome / ".ivy2" / "credentials", log)
-  val publishTo = "nexus" at "http://nexus.scala-tools.org/content/repositories/releases/"
+
+  override def subversionRepository = Some("http://svn.local.twitter.com/maven-public")
 }
