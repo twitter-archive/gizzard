@@ -18,7 +18,7 @@ class ShardRepository[S <: shards.Shard] {
   def create(shardInfo: ShardInfo) {
     factory(shardInfo.className).materialize(shardInfo)
   }
-  
+
   def factory(className: String) = {
     shardFactories.get(className).getOrElse {
       val classes = shardFactories.keySet
@@ -40,12 +40,14 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
+  setupPackage("")
 
   def setupPackage(packageName: String) {
-    this += (packageName + ".ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
-    this += (packageName + ".BlockedShard"     -> new shards.BlockedShardFactory(constructor))
-    this += (packageName + ".WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
-    this += (packageName + ".ReplicatingShard" ->
+    val packageNameDot = if (packageName == "") packageName else (packageName + ".")
+    this += (packageNameDot + "ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
+    this += (packageNameDot + "BlockedShard"     -> new shards.BlockedShardFactory(constructor))
+    this += (packageNameDot + "WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
+    this += (packageNameDot + "ReplicatingShard" ->
              new shards.ReplicatingShardFactory(constructor, future))
   }
 }

@@ -1,5 +1,6 @@
 package com.twitter.gizzard.shards
 
+import com.twitter.xrayspecs.Duration
 
 /**
  * Base class for all exceptions thrown by a shard operation.
