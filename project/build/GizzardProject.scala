@@ -14,7 +14,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
   val thrift    = "thrift" % "libthrift" % "0.2.0"
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
-  val json      = "com.twitter" % "json" % "1.1.5"
+  val json      = "com.twitter" % "json" % "1.1.6"
 
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1" % "test"
   val objenesis = "org.objenesis" % "objenesis" % "1.1" % "test"
