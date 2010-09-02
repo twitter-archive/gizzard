@@ -14,12 +14,12 @@ class ShardException(description: String, cause: Throwable) extends Exception(de
  * depending on if the database is just overloaded, or if the query is intrinsically too complex
  * to complete in the desired time.
  */
-class ShardTimeoutException(val timeout: Duration) extends ShardException("timeout: " + timeout.inMillis + " msec")
+class ShardTimeoutException(val timeout: Duration, cause: Throwable) extends ShardException("timeout: " + timeout.inMillis + " msec", cause)
 
 /**
  * Shard timed out while waiting for a database connection. This is a retryable error.
  */
-class ShardDatabaseTimeoutException(timeout: Duration) extends ShardTimeoutException(timeout)
+class ShardDatabaseTimeoutException(timeout: Duration, cause: Throwable) extends ShardTimeoutException(timeout, cause)
 
 /**
  * Shard refused to do the operation, possibly because it's blocked. This is not a retryable error.
