@@ -1,5 +1,6 @@
 package com.twitter.gizzard.jobs
 
+import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.{NameServer, NonExistentShard}
@@ -79,7 +80,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       }
 
       "with a database connection timeout" in {
-        val copy = makeCopy(throw new ShardDatabaseTimeoutException)
+        val copy = makeCopy(throw new ShardDatabaseTimeoutException(100.milliseconds))
         expect {
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
@@ -105,7 +106,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
       "with a shard timeout" in {
         "early on" in {
-          val copy = makeCopy(throw new ShardTimeoutException)
+          val copy = makeCopy(throw new ShardTimeoutException(100.milliseconds))
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
             one(nameServer).findShardById(destinationShardId) willReturn shard2
@@ -118,7 +119,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
         "after too many retries" in {
           val count = Copy.MIN_COPY - 1
-          val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException)
+          val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException(100.milliseconds))
 
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
