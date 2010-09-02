@@ -106,11 +106,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
       "with a shard timeout" in {
         "early on" in {
-<<<<<<< HEAD
           val copy = makeCopy(throw new ShardTimeoutException(sourceShardId))
-=======
-          val copy = makeCopy(throw new ShardTimeoutException(100.milliseconds, null))
->>>>>>> master
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
             one(nameServer).findShardById(destinationShardId) willReturn shard2
