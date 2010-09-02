@@ -49,7 +49,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
   private def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
     replicas match {
       case Seq() =>
-        throw new ShardOfflineException
+        throw new ShardOfflineException(shardInfo.id)
       case Seq(shard, remainder @ _*) =>
         try {
           f(shard)
@@ -60,7 +60,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             e match {
               case _: ShardRejectedOperationException =>
               case _ =>
-                log.warn(e, "Error on %s: %s", shardId, e)
+                log.warning(e, "Error on %s: %s", shardId, e)
             }
             failover(f, remainder)
         }
@@ -75,7 +75,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
         if (everSuccessful) {
           None
         } else {
-          throw new ShardOfflineException
+          throw new ShardOfflineException(shardInfo.id)
         }
       case Seq(shard, remainder @ _*) =>
         try {
@@ -93,7 +93,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             e match {
               case _: ShardRejectedOperationException =>
               case _ =>
-                log.warn(e, "Error on %s: %s", shardId, e)
+                log.warning(e, "Error on %s: %s", shardId, e)
             }
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }

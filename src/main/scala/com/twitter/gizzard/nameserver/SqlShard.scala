@@ -211,7 +211,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
 
   def reload() {
     try {
-      List("shards", "shard_children", "forwardings", "sequence").foreach { table =>
+      List("shards", "shard_children", "forwardings").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {

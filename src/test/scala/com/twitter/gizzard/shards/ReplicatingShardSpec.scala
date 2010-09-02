@@ -16,7 +16,8 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(null, 1, shards, loadBalancer, future))
+    val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
+    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, future))
 
     "failover" in {
       "when shard1 throws an exception" in {

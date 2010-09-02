@@ -79,7 +79,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
       }
 
       "with a database connection timeout" in {
-        val copy = makeCopy(throw new ShardDatabaseTimeoutException)
+        val copy = makeCopy(throw new ShardDatabaseTimeoutException(sourceShardId))
         expect {
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
@@ -105,7 +105,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
       "with a shard timeout" in {
         "early on" in {
-          val copy = makeCopy(throw new ShardTimeoutException)
+          val copy = makeCopy(throw new ShardTimeoutException(sourceShardId))
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
             one(nameServer).findShardById(destinationShardId) willReturn shard2
@@ -118,7 +118,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
         "after too many retries" in {
           val count = Copy.MIN_COPY - 1
-          val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException)
+          val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException(sourceShardId))
 
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
