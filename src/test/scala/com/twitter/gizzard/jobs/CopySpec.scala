@@ -119,11 +119,7 @@ object CopySpec extends ConfiguredSpecification with JMocker with ClassMocker {
 
         "after too many retries" in {
           val count = Copy.MIN_COPY - 1
-<<<<<<< HEAD
           val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException(sourceShardId))
-=======
-          val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new ShardTimeoutException(100.milliseconds, null))
->>>>>>> master
 
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
