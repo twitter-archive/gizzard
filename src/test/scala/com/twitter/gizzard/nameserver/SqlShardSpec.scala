@@ -57,6 +57,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(shardInfo, repo)
         nameServer.deleteShard(shardInfo.id)
         nameServer.deleteShard(shardInfo.id)
+        nameServer.getShard(shardInfo.id) must throwA[Exception]
       }
 
       "be linkable and unlinkable" in {
@@ -76,6 +77,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(a, repo)
         nameServer.markShardBusy(a.id, shards.Busy.Busy)
         nameServer.markShardBusy(a.id, shards.Busy.Busy)
+        nameServer.getShard(a.id).busy mustEqual shards.Busy.Busy
       }
 
       "sets forwarding" in {
@@ -84,6 +86,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
         nameServer.setForwarding(Forwarding(0, 0, a.id))
         nameServer.setForwarding(Forwarding(0, 0, a.id))
+        nameServer.getForwardings.size mustEqual 1
       }
 
       "removes forwarding" in {
