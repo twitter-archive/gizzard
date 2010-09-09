@@ -38,6 +38,8 @@ object TSelectorServer {
     val queue = new LinkedBlockingQueue[Runnable]
     val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
                                           queue, new NamedPoolThreadFactory(name))
+    Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.makeGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
     cache(name) = executor
     executor
   }
@@ -79,10 +81,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   val clientMap = new mutable.HashMap[SelectableChannel, Client]
   val registerQueue = new ConcurrentLinkedQueue[SocketChannel]
 
-
-  Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
   Stats.makeGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
-  Stats.makeGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
 
   def isRunning = running
 
