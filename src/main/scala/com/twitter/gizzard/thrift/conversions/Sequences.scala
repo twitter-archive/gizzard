@@ -81,6 +81,12 @@ object Sequences {
   }
   implicit def javaIntListToRichSeq(list: JList[java.lang.Integer]) = new RichJavaIntList(list)
 
+  class RichJavaLongList(list: JList[java.lang.Long]) {
+    def toSeq = new ScalaSeqAdapter(list)(_.asInstanceOf[Long])
+    def toList = toSeq.toList
+  }
+  implicit def javaLongListToRichSeq(list: JList[java.lang.Long]) = new RichJavaLongList(list)
+
   class RichByteArray(byteArray: Array[Byte]) {
     def toIntArray = {
       val buffer = ByteBuffer.wrap(byteArray)
