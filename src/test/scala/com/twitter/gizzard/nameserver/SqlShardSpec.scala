@@ -1,6 +1,7 @@
 package com.twitter.gizzard.nameserver
 
 import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.xrayspecs.Duration
 import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
@@ -32,6 +33,15 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       nameServer.rebuildSchema()
       reset(config.configMap("db"))
       shardRepository = mock[ShardRepository[Shard]]
+    }
+
+    "be wrappable while replicating" in {
+      val nameServerShards = Seq(nameServer)
+      val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
+      val replicationFuture = new Future("ReplicationFuture", 1, 1, new Duration(1), new Duration(1))
+      val shard: shards.ReadWriteShard[nameserver.Shard] = new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), replicationFuture)
+      val adapted = new nameserver.ReadWriteShardAdapter(shard)
+      1 mustEqual 1
     }
 
     "be idempotent" in {

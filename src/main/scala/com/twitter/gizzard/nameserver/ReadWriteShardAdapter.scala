@@ -1,7 +1,6 @@
 package com.twitter.gizzard.nameserver
 
-import shards._
-
+import shards.{ReadWriteShard, ShardId, ShardInfo, Busy}
 
 class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWriteShardAdapter(shard) with Shard {
   def getBusyShards()                                                           = shard.readOperation(_.getBusyShards())
