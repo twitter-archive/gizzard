@@ -35,7 +35,5 @@ object SchedulableWithTasksSpec extends ConfiguredSpecification with JMocker wit
       }
       schedulableWithTasks.loggingName mustEqual "Schedulable1,Schedulable2"
     }
-
-    "equals" >> {}
   }
 }
