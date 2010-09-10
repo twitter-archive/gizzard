@@ -1,8 +1,9 @@
 package com.twitter.gizzard.shards
 
+import java.lang.reflect.UndeclaredThrowableException
 import java.sql.SQLException
 import java.util.Random
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{ExecutionException, TimeUnit}
 import scala.collection.mutable
 import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
@@ -31,13 +32,20 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
   lazy val log = Logger.get
 
   private def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
-    val exceptions = new mutable.ArrayBuffer[Exception]()
+    val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
     children.map { replica => future(method(replica.asInstanceOf[ConcreteShard])) }.map { future =>
       try {
         results += future.get(6000, TimeUnit.MILLISECONDS)
       } catch {
+        case e: ExecutionException => // this should be unwrapped
+          e.getCause() match {
+            case ute: UndeclaredThrowableException => // this java OutrageException should be unwrapped as well.
+              exceptions += ute.getCause()
+            case ex: Exception =>
+              exceptions += ex
+          }
         case e: Exception =>
           exceptions += e
       }
