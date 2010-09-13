@@ -22,7 +22,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
 
-    val repo = new BasicShardRepository[fake.Shard](adapter, future)
+    val repo = new BasicShardRepository[fake.Shard](adapter, future, 6.seconds)
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
@@ -39,7 +39,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val nameServerShards = Seq(nameServer)
       val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
       val replicationFuture = new Future("ReplicationFuture", 1, 1, new Duration(1), new Duration(1))
-      val shard: shards.ReadWriteShard[nameserver.Shard] = new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), replicationFuture)
+      val shard: shards.ReadWriteShard[nameserver.Shard] = new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), replicationFuture, 6.seconds)
       val adapted = new nameserver.ReadWriteShardAdapter(shard)
       1 mustEqual 1
     }

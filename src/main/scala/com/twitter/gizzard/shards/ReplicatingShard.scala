@@ -9,19 +9,20 @@ import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import net.lag.logging.Logger
+import com.twitter.xrayspecs.Duration
 
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      future: Future) extends shards.ShardFactory[ConcreteShard] {
+      future: Future, timeout: Duration) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future))
+    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future, timeout))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
   val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
-  val future: Future)
+  val future: Future, val futureTimeout: Duration)
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
@@ -37,7 +38,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
     children.map { replica => future(method(replica.asInstanceOf[ConcreteShard])) }.map { future =>
       try {
-        results += future.get(6000, TimeUnit.MILLISECONDS)
+        results += future.get(futureTimeout.inMillis, TimeUnit.MILLISECONDS)
       } catch {
         case e: ExecutionException => // this should be unwrapped
           e.getCause() match {
