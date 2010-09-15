@@ -49,7 +49,7 @@ Fault-tolerance is one of the biggest concerns of distributed systems. Because s
 
 In fact, if any number of replicas in a shard are unavailable, Gizzard will try to write to all healthy replicas as quickly as possible and buffer the writes to the unavailable shard, to try again later when the unhealthy shard returns to life. The basic strategy is that all writes are materialized to a durable, transactional journal. Writes are then performed asynchronously (but with manageably low latency) to all replicas in a shard. If a shard is unavailable, the write operation goes into an error queue and is retried later.
 
-In order to achieve “eventual consistency”, this “retry later” strategy requires that your write operations are idempotent AND commutative. This is because a retry later strategy can apply operations out-of-order (as, for instance, when newer jobs are applied before older failed jobs are retried). In most cases this is an easy requirement. A demonstration is commutative, idempotent writes is given in the Gizzard demo app, [Rowz](http://github.com/nkallen/Rowz).
+In order to achieve “eventual consistency”, this “retry later” strategy requires that your write operations are idempotent AND commutative. This is because a retry later strategy can apply operations out-of-order (as, for instance, when newer jobs are applied before older failed jobs are retried). In most cases this is an easy requirement. A demonstration of commutative, idempotent writes is given in the Gizzard demo app, [Rowz](http://github.com/nkallen/Rowz).
 
 ### Winged migrations
 
