@@ -36,7 +36,8 @@ class ShardRepository[S <: shards.Shard] {
  * A ShardRepository that is pre-seeded with read-only, write-only, replicating, and blocked
  * shard types.
  */
-class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S, future: Future)
+class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
+                                              replicationFuture: Option[Future])
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
@@ -48,6 +49,6 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
     this += (packageNameDot + "BlockedShard"     -> new shards.BlockedShardFactory(constructor))
     this += (packageNameDot + "WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
     this += (packageNameDot + "ReplicatingShard" ->
-             new shards.ReplicatingShardFactory(constructor, future))
+             new shards.ReplicatingShardFactory(constructor, replicationFuture))
   }
 }

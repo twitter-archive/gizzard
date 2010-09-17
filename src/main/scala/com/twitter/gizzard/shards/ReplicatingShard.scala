@@ -13,7 +13,7 @@ import net.lag.logging.Logger
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      future: Future) extends shards.ShardFactory[ConcreteShard] {
+      future: Option[Future]) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future))
   def materialize(shardInfo: shards.ShardInfo) = ()
@@ -21,7 +21,7 @@ class ReplicatingShardFactory[ConcreteShard <: Shard](
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
   val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
-  val future: Future)
+  val future: Option[Future])
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
@@ -31,7 +31,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
   lazy val log = Logger.get
 
-  protected def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
+  protected def fanoutWriteFuture[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard], future: Future): A = {
     val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
@@ -52,6 +52,17 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
     }
     exceptions.map { throw _ }
     results.first
+  }
+
+  protected def fanoutWriteSerial[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
+    replicas.map { shard => method(shard) }.first
+  }
+
+  protected def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
+    future match {
+      case None => fanoutWriteSerial(method, replicas)
+      case Some(f) => fanoutWriteFuture(method, replicas, f)
+    }
   }
 
   protected def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {

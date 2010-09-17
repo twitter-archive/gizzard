@@ -10,7 +10,7 @@ object ShardRepositorySpec extends ConfiguredSpecification with JMocker with Cla
     val future = mock[Future]
     val shard = mock[shards.Shard]
     val constructor = { (shard: shards.ReadWriteShard[shards.Shard]) => shard }
-    val repository = new BasicShardRepository(constructor, future)
+    val repository = new BasicShardRepository(constructor, Some(future))
 
     "find a replicating shard" in {
       repository.factory("ReplicatingShard") must haveClass[shards.ReplicatingShardFactory[shards.Shard]]

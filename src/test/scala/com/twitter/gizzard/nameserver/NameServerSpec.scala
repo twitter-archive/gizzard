@@ -39,7 +39,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       config("mapping") = "fnv1a-64"
       config("replicas.ns1.type") = "memory"
       val future = mock[Future]
-      val ns = NameServer[gizzard.shards.Shard](config, None, shardRepository, future)
+      val ns = NameServer[gizzard.shards.Shard](config, None, shardRepository, Some(future))
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L
