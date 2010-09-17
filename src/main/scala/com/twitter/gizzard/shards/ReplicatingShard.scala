@@ -31,7 +31,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
 
   lazy val log = Logger.get
 
-  private def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
+  protected def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
     val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
@@ -54,7 +54,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
     results.first
   }
 
-  private def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
+  protected def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
     replicas match {
       case Seq() =>
         throw new ShardOfflineException
@@ -75,9 +75,9 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
       }
   }
 
-  private def rebuildableFailover[A](f: ConcreteShard => Option[A], rebuild: (ConcreteShard, ConcreteShard) => Unit,
-                                     replicas: Seq[ConcreteShard], toRebuild: List[ConcreteShard],
-                                     everSuccessful: Boolean): Option[A] = {
+  protected def rebuildableFailover[A](f: ConcreteShard => Option[A], rebuild: (ConcreteShard, ConcreteShard) => Unit,
+                                       replicas: Seq[ConcreteShard], toRebuild: List[ConcreteShard],
+                                       everSuccessful: Boolean): Option[A] = {
     replicas match {
       case Seq() =>
         if (everSuccessful) {
