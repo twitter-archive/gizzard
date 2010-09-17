@@ -59,6 +59,16 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         }
         replicatingShard.put("name", "alice") must throwA[Exception]
       }
+
+      "even serially" in {
+        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(null, 1, shards, loadBalancer, None))
+
+        expect {
+          one(shard1).put("name", "carol")
+          one(shard2).put("name", "carol")
+        }
+        replicatingShard.put("name", "carol")
+      }
     }
 
     "reads happen to shards in order" in {
