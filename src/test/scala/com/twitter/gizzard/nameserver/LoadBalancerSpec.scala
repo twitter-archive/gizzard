@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import util.Random
+import scala.util.Random
 
 
 object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassMocker {

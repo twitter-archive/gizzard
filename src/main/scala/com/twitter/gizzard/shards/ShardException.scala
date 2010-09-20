@@ -14,12 +14,16 @@ class ShardException(description: String, cause: Throwable) extends Exception(de
  * depending on if the database is just overloaded, or if the query is intrinsically too complex
  * to complete in the desired time.
  */
-class ShardTimeoutException(val timeout: Duration, cause: Throwable) extends ShardException("timeout: " + timeout.inMillis + " msec", cause)
+class ShardTimeoutException(shardId: ShardId, cause: Throwable) extends ShardException("Timeout on: %s/%s".format(shardId.hostname, shardId.tablePrefix), cause) {
+  def this(shardId: ShardId) = this(shardId, null)
+}
 
 /**
  * Shard timed out while waiting for a database connection. This is a retryable error.
  */
-class ShardDatabaseTimeoutException(timeout: Duration, cause: Throwable) extends ShardTimeoutException(timeout, cause)
+class ShardDatabaseTimeoutException(shardId: ShardId, cause: Throwable) extends ShardTimeoutException(shardId, cause) {
+  def this(shardId: ShardId) = this(shardId, null)
+}
 
 /**
  * Shard refused to do the operation, possibly because it's blocked. This is not a retryable error.
@@ -33,4 +37,4 @@ class ShardRejectedOperationException(description: String) extends ShardExceptio
  * Shard cannot do the operation because all possible child shards are unavailable. This is only
  * thrown by a ReplicatingShard. This is not a retryable error.
  */
-class ShardOfflineException extends ShardException("All shard replicas are down")
+class ShardOfflineException(shardId: ShardId) extends ShardException("All shard replicas are down for shard: %s/%s".format(shardId.hostname, shardId.tablePrefix))

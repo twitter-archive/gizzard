@@ -2,6 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
 import shards.{ShardInfo, ShardFactory}
+import com.twitter.xrayspecs.Duration
 
 
 class ShardRepository[S <: shards.Shard] {
@@ -37,7 +38,8 @@ class ShardRepository[S <: shards.Shard] {
  * shard types.
  */
 class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
-                                              replicationFuture: Option[Future])
+                                              replicationFuture: Option[Future],
+                                              writeTimeout: Duration)
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
@@ -49,6 +51,6 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
     this += (packageNameDot + "BlockedShard"     -> new shards.BlockedShardFactory(constructor))
     this += (packageNameDot + "WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
     this += (packageNameDot + "ReplicatingShard" ->
-             new shards.ReplicatingShardFactory(constructor, replicationFuture))
+             new shards.ReplicatingShardFactory(constructor, replicationFuture, writeTimeout))
   }
 }
