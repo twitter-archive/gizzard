@@ -3,8 +3,8 @@ package com.twitter.gizzard.jobs
 import com.twitter.json.{Json, JsonException}
 
 
-class UnparsableJobException(s: String) extends Exception(s)
-class BadJsonException(e: JsonException) extends UnparsableJobException(e.toString)
+class UnparsableJobException(s: String, cause: Throwable) extends Exception(s, cause)
+class BadJsonException(e: JsonException) extends UnparsableJobException(e.toString, e)
 
 trait JobParser extends (String => Job) {
   @throws(classOf[UnparsableJobException])

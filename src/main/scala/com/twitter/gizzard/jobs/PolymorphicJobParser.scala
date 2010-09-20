@@ -16,13 +16,13 @@ class PolymorphicJobParser extends JobParser {
       val (processorRegex, _) = p
       processorRegex.findFirstIn(jobType).isDefined
     } getOrElse {
-      throw new UnparsableJobException("Can't find matching processor for '%s' in %s".format(jobType, processors))
+      throw new UnparsableJobException("Can't find matching processor for '%s' in %s".format(jobType, processors), null)
     }
     try {
       val (_, processor) = regexpAndProcessor
       processor(json)
     } catch {
-      case e => throw new UnparsableJobException("Processor blew up: " + e.toString)
+      case e => throw new UnparsableJobException("Processor blew up: " + e.toString, e)
     }
   }
 }
