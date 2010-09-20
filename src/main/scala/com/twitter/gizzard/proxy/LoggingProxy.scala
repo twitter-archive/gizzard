@@ -10,8 +10,6 @@ import com.twitter.ostrich.{Stats, StatsProvider, W3CStats}
  * time to a W3CStats logger.
  */
 object LoggingProxy {
-  var counter = 0
-
   def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
@@ -24,6 +22,14 @@ object LoggingProxy {
         val (rv, msec) = Stats.duration { method() }
         logger.addTiming("action-timing", msec.toInt)
         stats.addTiming("x-operation-" + shortName + ":" + method.name, msec.toInt)
+
+        if (rv != null) {
+          rv match {
+            case col: Collection[_] => logger.log("result-count", col.size)
+            case arr: Array[AnyRef] => logger.log("result-count", arr.size)
+            case _: AnyRef => logger.log("result-count", 1)
+          }
+        }
         rv
       }
     }
