@@ -72,13 +72,12 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
       try {
-        transaction.selectOne("SELECT class_name, source_type, destination_type " +
-                              "FROM shards WHERE table_prefix = ? AND hostname = ?",
+        transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",
                               shardInfo.tablePrefix, shardInfo.hostname) { row =>
           if (row.getString("class_name") != shardInfo.className ||
               row.getString("source_type") != shardInfo.sourceType ||
               row.getString("destination_type") != shardInfo.destinationType) {
-            throw new InvalidShard("Invalid shard: %s doesn't match %s".format(row, shardInfo))
+            throw new InvalidShard("Invalid shard: %s doesn't match %s".format(rowToShardInfo(row), shardInfo))
           }
         } getOrElse {
           transaction.insert("INSERT INTO shards (hostname, table_prefix, class_name, " +
@@ -211,7 +210,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   def reload() {
     try {
-      List("shards", "shard_children", "forwardings", "sequence").foreach { table =>
+      List("shards", "shard_children", "forwardings").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {
