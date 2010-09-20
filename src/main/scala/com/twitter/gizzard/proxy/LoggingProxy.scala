@@ -24,8 +24,10 @@ object LoggingProxy {
         stats.addTiming("x-operation-" + shortName + ":" + method.name, msec.toInt)
 
         if (rv != null) {
+          // structural types don't appear to work for some reason.
           rv match {
             case col: Collection[_] => logger.log("result-count", col.size)
+            case javaCol: java.util.Collection[_] => logger.log("result-count", javaCol.size)
             case arr: Array[AnyRef] => logger.log("result-count", arr.size)
             case _: AnyRef => logger.log("result-count", 1)
           }
