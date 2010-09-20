@@ -10,9 +10,9 @@ import com.twitter.querulous.query.SqlQueryTimeoutException
 class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy({e =>
   e match {
     case e: SqlQueryTimeoutException =>
-      throw new shards.ShardTimeoutException(shardId, e)
+      throw new shards.ShardTimeoutException(e.timeout, shardId, e)
     case e: SqlDatabaseTimeoutException =>
-      throw new shards.ShardDatabaseTimeoutException(shardId, e)
+      throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
     case e: SQLException =>
       throw new shards.ShardException(e.toString, e)
     case e: shards.ShardException =>

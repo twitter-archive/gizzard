@@ -14,15 +14,17 @@ class ShardException(description: String, cause: Throwable) extends Exception(de
  * depending on if the database is just overloaded, or if the query is intrinsically too complex
  * to complete in the desired time.
  */
-class ShardTimeoutException(shardId: ShardId, cause: Throwable) extends ShardException("Timeout on: %s/%s".format(shardId.hostname, shardId.tablePrefix), cause) {
-  def this(shardId: ShardId) = this(shardId, null)
+class ShardTimeoutException(val timeout: Duration, shardId: ShardId, cause: Throwable)
+      extends ShardException("Timeout of " + timeout.inMillis + " msec on: %s/%s".format(shardId.hostname, shardId.tablePrefix), cause) {
+  def this(timeout: Duration, shardId: ShardId) = this(timeout, shardId, null)
 }
 
 /**
  * Shard timed out while waiting for a database connection. This is a retryable error.
  */
-class ShardDatabaseTimeoutException(shardId: ShardId, cause: Throwable) extends ShardTimeoutException(shardId, cause) {
-  def this(shardId: ShardId) = this(shardId, null)
+class ShardDatabaseTimeoutException(timeout: Duration, shardId: ShardId, cause: Throwable)
+      extends ShardTimeoutException(timeout, shardId, cause) {
+  def this(timeout: Duration, shardId: ShardId) = this(timeout, shardId, null)
 }
 
 /**
