@@ -27,9 +27,9 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
       f
     } catch {
       case e: SqlQueryTimeoutException =>
-        throw new shards.ShardTimeoutException(shardId, e)
+        throw new shards.ShardTimeoutException(e.timeout, shardId, e)
       case e: SqlDatabaseTimeoutException =>
-        throw new shards.ShardDatabaseTimeoutException(shardId, e)
+        throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
       case e: SQLException =>
         throw new shards.ShardException(e.toString, e)
       case e: shards.ShardException =>
