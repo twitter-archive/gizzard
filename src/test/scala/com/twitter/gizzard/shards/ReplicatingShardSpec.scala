@@ -48,7 +48,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       "when they succeed" in {
         expect {
           one(shard1).put("name", "alice")
+          one(shard1).shardInfo
           one(shard2).put("name", "alice")
+          one(shard2).shardInfo
         }
         replicatingShard.put("name", "alice")
       }
@@ -56,7 +58,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       "when the first one fails" in {
         expect {
           one(shard1).put("name", "alice").willThrow(new ShardException("o noes"))
+          one(shard1).shardInfo
           one(shard2).put("name", "alice")
+          one(shard2).shardInfo
         }
         replicatingShard.put("name", "alice") must throwA[Exception]
       }

@@ -3,7 +3,7 @@ package com.twitter.gizzard.shards
 import java.lang.reflect.UndeclaredThrowableException
 import java.sql.SQLException
 import java.util.Random
-import java.util.concurrent.{ExecutionException, TimeUnit}
+import java.util.concurrent.{ExecutionException, TimeoutException, TimeUnit}
 import scala.collection.mutable
 import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
@@ -19,6 +19,9 @@ class ReplicatingShardFactory[ConcreteShard <: Shard](
     readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future, timeout))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
+
+class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)
+  extends ShardException("Timeout waiting for write to: %s/%s".format(shard.hostname, shard.tablePrefix), ex)
 
 class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
   val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
@@ -36,7 +39,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
     val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
-    children.map { replica => future(method(replica.asInstanceOf[ConcreteShard])) }.map { future =>
+    replicas.map { replica => (replica.shardInfo, future(method(replica))) }.map { case (shardInfo, future) =>
       try {
         results += future.get(futureTimeout.inMillis, TimeUnit.MILLISECONDS)
       } catch {
@@ -47,6 +50,8 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             case ex: Exception =>
               exceptions += ex
           }
+        case e: TimeoutException =>
+          exceptions += new ReplicatingShardTimeoutException(shardInfo, e)
         case e: Exception =>
           exceptions += e
       }
