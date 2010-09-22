@@ -14,11 +14,9 @@ import com.twitter.xrayspecs.Duration
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      future: Option[Future], timeout: Duration) extends shards.ShardFactory[ConcreteShard] {
+      future: Option[Future], timeout: Duration) extends shards.AbstractShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future, timeout))
-  def materialize(shardInfo: shards.ShardInfo) = ()
-  def purge(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)

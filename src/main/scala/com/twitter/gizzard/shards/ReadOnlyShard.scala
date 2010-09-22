@@ -3,11 +3,9 @@ package com.twitter.gizzard.shards
 import scala.collection.mutable
 
 
-class ReadOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
+class ReadOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.AbstractShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReadOnlyShard(shardInfo, weight, children))
-  def materialize(shardInfo: shards.ShardInfo) = ()
-  def purge(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReadOnlyShard[ConcreteShard <: Shard]

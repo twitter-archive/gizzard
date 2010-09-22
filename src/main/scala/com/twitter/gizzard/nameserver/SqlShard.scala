@@ -151,11 +151,8 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
     lookupShard(Deleted.Deleted, id).map { info =>
       repository.factory(info.className) match {
-        case s: shards.ReadOnlyShardFactory[_] => purgeShard(info, repository)
-        case s: shards.WriteOnlyShardFactory[_] => purgeShard(info, repository)
-        case s: shards.BlockedShardFactory[_] => purgeShard(info, repository)
-        case s: shards.ReplicatingShardFactory[_] => purgeShard(info, repository)
-        case s =>
+        case s: shards.AbstractShardFactory[_] => purgeShard(info, repository)
+        case _ =>
       }
     }
   }

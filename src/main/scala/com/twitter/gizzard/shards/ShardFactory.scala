@@ -6,3 +6,8 @@ trait ShardFactory[ConcreteShard <: Shard] {
   def materialize(shardInfo: ShardInfo)
   def purge(shardInfo: ShardInfo)
 }
+
+trait AbstractShardFactory[S <: Shard] extends ShardFactory[S] {
+  def materialize(shardInfo: shards.ShardInfo) = ()
+  def purge(shardInfo: shards.ShardInfo) = ()
+}
