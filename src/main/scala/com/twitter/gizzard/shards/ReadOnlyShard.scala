@@ -7,6 +7,7 @@ class ReadOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWr
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReadOnlyShard(shardInfo, weight, children))
   def materialize(shardInfo: shards.ShardInfo) = ()
+  def purge(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReadOnlyShard[ConcreteShard <: Shard]

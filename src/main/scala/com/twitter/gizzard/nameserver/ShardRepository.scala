@@ -20,6 +20,10 @@ class ShardRepository[S <: shards.Shard] {
     factory(shardInfo.className).materialize(shardInfo)
   }
 
+  def purge(shardInfo: ShardInfo) {
+    factory(shardInfo.className).purge(shardInfo)
+  }
+
   def factory(className: String) = {
     shardFactories.get(className).getOrElse {
       val classes = shardFactories.keySet

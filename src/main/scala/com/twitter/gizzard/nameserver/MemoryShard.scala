@@ -61,6 +61,10 @@ class MemoryShard extends Shard {
     find(shardId).foreach { x => shardTable -= x }
   }
 
+  def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) { }
+
+  def getDeletedShards() = Nil
+
   def addLink(upId: ShardId, downId: ShardId, weight: Int) {
     removeLink(upId, downId)
     parentTable += LinkInfo(upId, downId, weight)
@@ -90,8 +94,8 @@ class MemoryShard extends Shard {
     removeForwarding(forwarding)
     forwardingTable += forwarding
   }
-  
-  def removeForwarding(forwarding: Forwarding) = {    
+
+  def removeForwarding(forwarding: Forwarding) = {
     forwardingTable.find { x =>
       x.baseId == forwarding.baseId && x.tableId == forwarding.tableId
     }.foreach { forwardingTable -= _ }
@@ -121,7 +125,7 @@ class MemoryShard extends Shard {
   def getForwardings(): Seq[Forwarding] = {
     forwardingTable.toList
   }
-  
+
   def listHostnames(): Seq[String] = {
     (Set() ++ shardTable.map { x => x.hostname }).toList
   }

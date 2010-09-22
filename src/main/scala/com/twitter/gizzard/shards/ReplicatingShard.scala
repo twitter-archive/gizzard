@@ -18,6 +18,7 @@ class ReplicatingShardFactory[ConcreteShard <: Shard](
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future, timeout))
   def materialize(shardInfo: shards.ShardInfo) = ()
+  def purge(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)

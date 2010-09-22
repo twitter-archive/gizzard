@@ -1,8 +1,7 @@
-package com.twitter.gizzard.thrift
+ package com.twitter.gizzard.thrift
 
 import scala.reflect.Manifest
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.gizzard.thrift.conversions.Busy._
 import com.twitter.gizzard.thrift.conversions.LinkInfo._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
@@ -46,6 +45,14 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
     nameServer.deleteShard(id.fromThrift)
   }
 
+  def purge_shard(id: ShardId) = wrapWithThriftExceptions {
+    nameServer.purgeShard(id.fromThrift)
+  }
+
+  def get_deleted_shards() = wrapWithThriftExceptions {
+    nameServer.getDeletedShards().map(_.toThrift).toJavaList
+  }
+
   def add_link(upId: ShardId, downId: ShardId, weight: Int) = wrapWithThriftExceptions {
     nameServer.addLink(upId.fromThrift, downId.fromThrift, weight)
   }
@@ -63,7 +70,7 @@ class ShardManagerService[ConcreteShard <: shards.Shard](nameServer: NameServer[
   }
 
   def mark_shard_busy(id: ShardId, busy: Int) = wrapWithThriftExceptions {
-    nameServer.markShardBusy(id.fromThrift, busy.fromThrift)
+    nameServer.markShardBusy(id.fromThrift, shards.Busy(busy))
   }
 
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = wrapWithThriftExceptions {

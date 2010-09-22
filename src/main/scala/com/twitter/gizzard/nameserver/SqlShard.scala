@@ -16,8 +16,11 @@ CREATE TABLE IF NOT EXISTS shards (
     source_type             VARCHAR(125),
     destination_type        VARCHAR(125),
     busy                    TINYINT      NOT NULL DEFAULT 0,
+    deleted                TINYINT      NOT NULL DEFAULT 0,
 
-   PRIMARY KEY primary_key_table_prefix_hostname (hostname, table_prefix)
+   PRIMARY KEY primary_key_table_prefix_hostname (hostname, table_prefix),
+   INDEX deleted (deleted),
+   INDEX busy (busy)
 ) ENGINE=INNODB
 """
 
@@ -42,7 +45,6 @@ CREATE TABLE IF NOT EXISTS forwardings (
     shard_table_prefix      VARCHAR(125)            NOT NULL,
 
     PRIMARY KEY (base_source_id, table_id),
-
     UNIQUE unique_shard (shard_hostname, shard_table_prefix)
 ) ENGINE=INNODB;
 """

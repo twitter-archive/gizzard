@@ -8,6 +8,8 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S])
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId): ShardInfo
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
+  @throws(classOf[shards.ShardException]) def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S])
+  @throws(classOf[shards.ShardException]) def getDeletedShards(): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
   @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId)
   @throws(classOf[shards.ShardException]) def listUpwardLinks(id: ShardId): Seq[LinkInfo]

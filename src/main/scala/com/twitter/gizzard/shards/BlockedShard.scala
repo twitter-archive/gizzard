@@ -4,6 +4,7 @@ class BlockedShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWri
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
     readWriteShardAdapter(new BlockedShard(shardInfo, weight, children))
   def materialize(shardInfo: shards.ShardInfo) = ()
+  def purge(shardInfo: shards.ShardInfo) = ()
 }
 
 class BlockedShard[ConcreteShard <: Shard]

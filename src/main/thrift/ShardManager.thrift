@@ -16,6 +16,7 @@ struct ShardInfo {
   3: string source_type
   4: string destination_type
   5: i32 busy
+  6: i32 deleted
 }
 
 struct LinkInfo {
@@ -33,6 +34,7 @@ struct Forwarding {
 service ShardManager {
   void create_shard(1: ShardInfo shard) throws(1: ShardException ex)
   void delete_shard(1: ShardId id) throws(1: ShardException ex)
+  void purge_shard(1: ShardId id) throws(1: ShardException ex)
   ShardInfo get_shard(1: ShardId id) throws(1: ShardException ex)
 
   void add_link(1: ShardId up_id, 2: ShardId down_id, 3: i32 weight) throws(1: ShardException ex)
@@ -52,12 +54,13 @@ service ShardManager {
   Forwarding get_forwarding_for_shard(1: ShardId id) throws(1: ShardException ex)
   list<Forwarding> get_forwardings() throws(1: ShardException ex)
   void reload_forwardings() throws(1: ShardException ex)
-  
+
   void remove_forwarding(1: Forwarding forwarding) throws(1: ShardException ex)
 
   list<ShardInfo> shards_for_hostname(1: string hostname) throws(1: ShardException ex)
   list<string> list_hostnames() throws(1: ShardException ex)
   list<ShardInfo> get_busy_shards() throws(1: ShardException ex)
+  list<ShardInfo> get_deleted_shards() throws(1: ShardException ex)
 
   void rebuild_schema() throws(1: ShardException ex)
 
