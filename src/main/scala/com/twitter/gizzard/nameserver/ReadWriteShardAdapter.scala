@@ -17,7 +17,7 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def listHostnames()                                                           = shard.readOperation(_.listHostnames)
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = shard.writeOperation(_.createShard(shardInfo, repository))
-  def deleteShard(id: ShardId)                                                  = shard.writeOperation(_.deleteShard(id))
+  def deleteShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) = shard.writeOperation(_.deleteShard(id, repository))
   def getDeletedShards()                                                           = shard.readOperation(_.getDeletedShards())
   def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) = shard.writeOperation(_.purgeShard(id, repository))
   def markShardBusy(id: ShardId, busy: Busy.Value)                              = shard.writeOperation(_.markShardBusy(id, busy))

@@ -84,6 +84,11 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   }
 
   @throws(classOf[shards.ShardException])
+  def deleteShard(id: ShardId) {
+    nameServerShard.deleteShard(id, shardRepository)
+  }
+
+  @throws(classOf[shards.ShardException])
   def purgeShard(id: ShardId) {
     nameServerShard.purgeShard(id, shardRepository)
   }
@@ -148,7 +153,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
   @throws(classOf[shards.ShardException]) def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) = nameServerShard.purgeShard(id, repository)
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId) = nameServerShard.getShard(id)
-  @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
+  @throws(classOf[shards.ShardException]) def deleteShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) = nameServerShard.deleteShard(id, repository)
   @throws(classOf[shards.ShardException]) def getDeletedShards() = nameServerShard.getDeletedShards()
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int) = nameServerShard.addLink(upId, downId, weight)
   @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId) = nameServerShard.removeLink(upId, downId)

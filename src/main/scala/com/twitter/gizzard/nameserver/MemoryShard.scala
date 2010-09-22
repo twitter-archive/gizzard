@@ -52,7 +52,7 @@ class MemoryShard extends Shard {
     find(shardId).getOrElse { throw new NonExistentShard("Shard not found: %s".format(shardId)) }
   }
 
-  def deleteShard(shardId: ShardId) {
+  def deleteShard[S <: shards.Shard](shardId: ShardId, repository: ShardRepository[S]) {
     parentTable.elements.toList.foreach { link =>
       if (link.upId == shardId || link.downId == shardId) {
         parentTable -= link

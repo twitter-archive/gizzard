@@ -133,19 +133,32 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
-  def removeForwarding(f: Forwarding) = {
+  def removeForwarding(f: Forwarding) {
     queryEvaluator.execute("DELETE FROM forwardings WHERE base_source_id = ? AND " +
                            "shard_hostname = ? AND shard_table_prefix = ? AND " +
                            "table_id = ? LIMIT 1",
                            f.baseId, f.shardId.hostname, f.shardId.tablePrefix, f.tableId)
   }
 
-  def deleteShard(id: ShardId) = {
+  def deleteShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) {
     queryEvaluator.execute("DELETE FROM shard_children WHERE "+
                            "(parent_hostname = ? AND parent_table_prefix = ?) OR " +
                            "(child_hostname = ? AND child_table_prefix = ?)",
                            id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
-    queryEvaluator.execute("DELETE FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) == 0
+
+
+    queryEvaluator.execute("UPDATE shards SET deleted = ? WHERE hostname = ? AND table_prefix = ?",
+                           Deleted.Deleted.id, id.hostname, id.tablePrefix)
+
+    lookupShard(Deleted.Deleted, id).map { info =>
+      repository.find(info, 1, List()) match {
+        case s: shards.ReadOnlyShard[_] => purgeShard(info, repository)
+        case s: shards.WriteOnlyShard[_] => purgeShard(info, repository)
+        case s: shards.BlockedShard[_] => purgeShard(info, repository)
+        case s: shards.ReplicatingShard[_] => purgeShard(info, repository)
+        case _ =>
+      }
+    }
   }
 
   def purgeShard[S <: shards.Shard](info: ShardInfo, repository: ShardRepository[S]) {
