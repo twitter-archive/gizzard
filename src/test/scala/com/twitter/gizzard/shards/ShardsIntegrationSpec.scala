@@ -32,9 +32,8 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
       new UserShard(shardInfo, weight, children)
     }
 
-    def materialize(shardInfo: ShardInfo) {
-      // nothing.
-    }
+    def materialize(shardInfo: ShardInfo) = ()
+    def purge(shardInfo: ShardInfo) = ()
   }
 
   "Shards" should {

@@ -56,8 +56,8 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       "be deletable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
         nameServer.createShard(shardInfo, repo)
-        nameServer.deleteShard(shardInfo.id)
-        nameServer.deleteShard(shardInfo.id)
+        nameServer.deleteShard(shardInfo.id, repo)
+        nameServer.deleteShard(shardInfo.id, repo)
         nameServer.getShard(shardInfo.id) must throwA[Exception]
       }
 
@@ -163,13 +163,16 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     // FIXME: GET SHARD
 
     "delete" in {
+      val forwardShardInfoDeleted = forwardShardInfo.clone()
+      forwardShardInfoDeleted.deleted = shards.Deleted.Deleted
       expect {
-        one(shardRepository).create(forwardShardInfo)
+        one(shardRepository).create(forwardShardInfo) then
+        one(shardRepository).find(forwardShardInfoDeleted, 1, List())
       }
 
       nameServer.createShard(forwardShardInfo, shardRepository)
       nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
-      nameServer.deleteShard(forwardShardInfo.id)
+      nameServer.deleteShard(forwardShardInfo.id, shardRepository)
       nameServer.getShard(forwardShardInfo.id) must throwA[NonExistentShard]
     }
 

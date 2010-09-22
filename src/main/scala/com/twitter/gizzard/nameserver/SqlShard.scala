@@ -177,7 +177,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   def markShardBusy(id: ShardId, busy: Busy.Value) {
     if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE deleted = ? AND hostname = ? AND table_prefix = ?",
-      Deleted.Normal, busy.id, id.hostname, id.tablePrefix) == 0) {
+      busy.id, Deleted.Normal.id, id.hostname, id.tablePrefix) == 0) {
       throw new NonExistentShard("Could not find shard: %s".format(id))
     }
   }

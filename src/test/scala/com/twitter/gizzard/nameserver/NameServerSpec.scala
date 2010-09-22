@@ -15,7 +15,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     var nameServer: NameServer[shards.Shard] = null
 
     val shardInfos = (1 until 5).force.map { id =>
-      new shards.ShardInfo(shards.ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
+      new shards.ShardInfo(shards.ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal, shards.Deleted.Normal)
     }.toList
     val linksList = List(new shards.LinkInfo(shardInfos(2).id, shardInfos(3).id, 1))
     val shardForwardings = List(new Forwarding(1, 1, shardInfos(0).id), new Forwarding(1, 2, shardInfos(1).id),

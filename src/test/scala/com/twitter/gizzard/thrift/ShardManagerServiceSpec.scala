@@ -6,7 +6,7 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import jobs.Copy
-import shards.{Busy, Shard}
+import shards.{Busy, Deleted, Shard}
 import scheduler.JobScheduler
 
 
@@ -17,13 +17,13 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
   val manager = new thrift.ShardManagerService(nameServer, copier, scheduler)
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
-    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id)
+    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, Deleted.Normal.id)
   val shardInfo1 = new shards.ShardInfo(new shards.ShardId("hostname", "table_prefix"),
-    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal)
+    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, Deleted.Normal)
   val thriftShardInfo2 = new thrift.ShardInfo(new thrift.ShardId("other_table_prefix", "hostname"),
-    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id)
+    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id, Deleted.Normal.id)
   val shardInfo2 = new shards.ShardInfo(new shards.ShardId("other_table_prefix", "hostname"),
-    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal)
+    "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal, Deleted.Normal)
   val hostname = "host1"
   val classname = "com.example.Classname"
   val tableId = 4
@@ -37,14 +37,14 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       }
       manager.create_shard(thriftShardInfo1) must throwA[thrift.ShardException]
     }
-    
+
     "deliver messages for runtime exceptions" in {
       var woot = false
       expect {
         one(nameServer).createShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
       }
       try{
-        manager.create_shard(thriftShardInfo1) 
+        manager.create_shard(thriftShardInfo1)
       } catch {
         case e: thrift.ShardException => {
           e.getDescription mustEqual "Monkeys!"
@@ -53,7 +53,6 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       }
       woot mustEqual true
     }
-    
 
     "create_shard" in {
       expect {

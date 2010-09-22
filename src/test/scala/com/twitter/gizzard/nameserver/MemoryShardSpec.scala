@@ -86,7 +86,7 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
       nameServer.createShard(forwardShardInfo, shardRepository)
       nameServer.getShard(forwardShardId).tablePrefix mustEqual forwardShardInfo.tablePrefix
-      nameServer.deleteShard(forwardShardId)
+      nameServer.deleteShard(forwardShardId, shardRepository)
       nameServer.getShard(forwardShardId) must throwA[NonExistentShard]
     }
 
