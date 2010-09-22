@@ -16,6 +16,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val queryEvaluator = evaluator(config.configMap("db"))
 
     val SQL_SHARD = "com.example.SqlShard"
+    val BLOCKED_SHARD = "BlockedShard"
 
     var nameServer: SqlShard = null
     var shardRepository: ShardRepository[Shard] = null
@@ -162,18 +163,29 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
     // FIXME: GET SHARD
 
-    "delete" in {
-      val forwardShardInfoDeleted = forwardShardInfo.clone()
-      forwardShardInfoDeleted.deleted = shards.Deleted.Deleted
-      expect {
-        one(shardRepository).create(forwardShardInfo) then
-        one(shardRepository).find(forwardShardInfoDeleted, 1, List())
-      }
+    "delete and purge" in {
+      val physicalShard = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      val logicalShard = new ShardInfo(BLOCKED_SHARD, "forward_table_write_only", "localhost")
 
-      nameServer.createShard(forwardShardInfo, shardRepository)
-      nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
-      nameServer.deleteShard(forwardShardInfo.id, shardRepository)
-      nameServer.getShard(forwardShardInfo.id) must throwA[NonExistentShard]
+      val physicalShardDeleted = physicalShard.clone()
+      physicalShardDeleted.deleted = shards.Deleted.Deleted
+
+      nameServer.createShard(physicalShard, repo)
+      nameServer.getShard(physicalShard.id) mustEqual physicalShard
+
+      nameServer.deleteShard(physicalShard.id, repo)
+      nameServer.getShard(physicalShard.id) must throwA[NonExistentShard]
+      nameServer.getDeletedShards() mustEqual List(physicalShardDeleted)
+
+      nameServer.purgeShard(physicalShard.id, repo)
+      nameServer.getDeletedShards() mustEqual Nil
+
+      nameServer.createShard(logicalShard, repo)
+      nameServer.getShard(logicalShard.id) mustEqual logicalShard
+
+      nameServer.deleteShard(logicalShard.id, repo)
+      nameServer.getShard(logicalShard.id) must throwA[NonExistentShard]
+      //nameServer.getDeletedShards() mustEqual Nil
     }
 
     "children" in {

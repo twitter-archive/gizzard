@@ -146,17 +146,16 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                            "(child_hostname = ? AND child_table_prefix = ?)",
                            id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
 
-
     queryEvaluator.execute("UPDATE shards SET deleted = ? WHERE hostname = ? AND table_prefix = ?",
                            Deleted.Deleted.id, id.hostname, id.tablePrefix)
 
     lookupShard(Deleted.Deleted, id).map { info =>
-      repository.find(info, 1, List()) match {
-        case s: shards.ReadOnlyShard[_] => purgeShard(info, repository)
-        case s: shards.WriteOnlyShard[_] => purgeShard(info, repository)
-        case s: shards.BlockedShard[_] => purgeShard(info, repository)
-        case s: shards.ReplicatingShard[_] => purgeShard(info, repository)
-        case _ =>
+      repository.factory(info.className) match {
+        case s: shards.ReadOnlyShardFactory[_] => purgeShard(info, repository)
+        case s: shards.WriteOnlyShardFactory[_] => purgeShard(info, repository)
+        case s: shards.BlockedShardFactory[_] => purgeShard(info, repository)
+        case s: shards.ReplicatingShardFactory[_] => purgeShard(info, repository)
+        case s =>
       }
     }
   }
