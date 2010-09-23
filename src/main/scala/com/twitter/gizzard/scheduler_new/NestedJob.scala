@@ -8,7 +8,7 @@ import scala.collection.mutable
  * job and the remaining jobs -- in other words, it's enqueued with its progress so far.
  */
 class NestedJob[E, J <: Job[E]](val environment: E, val jobs: Iterable[J]) extends Job[E] {
-  protected val taskQueue = {
+  val taskQueue = {
     val q = new mutable.Queue[J]()
     q ++= jobs
     q
@@ -31,4 +31,6 @@ class NestedJob[E, J <: Job[E]](val environment: E, val jobs: Iterable[J]) exten
         false
     }
   }
+
+  override def toString = "<NestedJob: tasks=%d>".format(taskQueue.size)
 }

@@ -13,10 +13,5 @@ class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocke
     "fail gracefully" in {
       codec.inflate("gobbledygook".getBytes) must throwA[UnparsableJsonException]
     }
-/* 
-    "when a job fails to parse" >> {
-      jobParser.parse("gobbledygook") must throwA[UnparsableJobException]
-    }
-    */
   }
 }

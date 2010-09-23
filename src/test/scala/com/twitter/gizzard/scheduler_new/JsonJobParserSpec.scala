@@ -18,18 +18,42 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
     }
 
     "parse" in {
-      expect {
-        one(job).errorCount_=(0)
-        one(job).errorMessage_=(any[String])
+      "simple job" in {
+        expect {
+          one(job).errorCount_=(0)
+          one(job).errorMessage_=(any[String])
+        }
+
+        jobParser.parse(codec, attributes) mustEqual job
       }
 
-      jobParser.parse(codec, jobMap) mustEqual job
+      "nested job" in {
+        expect {
+          one(codec).inflate(jobMap) willReturn job
+        }
+
+        val nestedAttributes = Map("tasks" -> List(jobMap))
+        jobParser.parse(codec, nestedAttributes) mustEqual new JsonNestedJob(jobParser.environment, List(job))
+      }
     }
 
-/*
-    "when a job fails to parse" >> {
-      jobParser.parse("gobbledygook") must throwA[UnparsableJobException]
+    "toJson" in {
+      val job = new JsonJob[String] {
+        val environment = "Environment"
+        def toMap = attributes
+        override def className = "FakeJob"
+        def apply(environment: String) { }
+      }
+
+      "JsonJob" in {
+        job.toJson mustEqual """{"FakeJob":{"a":1,"error_count":0,"error_message":"(none)"}}"""
+      }
+
+      "JsonNestedJob" in {
+        val nestedJob = new JsonNestedJob[String, JsonJob[String]]("Environment", List(job))
+
+        nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler_new.JsonNestedJob":{"tasks":[{"FakeJob":{"a":1}}],"error_count":0,"error_message":"(none)"}}"""
+      }
     }
-    */
   }
 }
