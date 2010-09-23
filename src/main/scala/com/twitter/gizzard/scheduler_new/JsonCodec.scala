@@ -25,7 +25,7 @@ class JsonCodec[E, J <: JsonJob[E]](unparsableJobHandler: Array[Byte] => Unit) {
       case e =>
         log.error(e, "Unparsable JsonJob; dropping: " + e.toString)
         unparsableJobHandler(data)
-        throw e
+        throw new UnparsableJsonException("Unparsable json", e)
     }
   }
 
