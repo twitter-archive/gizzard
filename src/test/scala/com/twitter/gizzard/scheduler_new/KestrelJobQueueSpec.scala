@@ -14,6 +14,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     val codec = mock[Codec[String, Job[String]]]
     val job1 = mock[Job[String]]
     val job2 = mock[Job[String]]
+    val destinationQueue = mock[JobQueue[String, Job[String]]]
 
     var kestrelJobQueue: KestrelJobQueue[String, Job[String]] = null
 
@@ -123,46 +124,35 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     }
 
     "drainTo" in {
-      val destinationQueue = mock[JobQueue[String, Job[String]]]
-      val message1 = "message1".getBytes
-      val message2 = "message2".getBytes
-      val items = List(message1, message2).map { x => Some(QItem(0, 0, x, x.hashCode)) }.toList
+      "normal" in {
+        val message1 = "message1".getBytes
+        val message2 = "message2".getBytes
+        val items = List(message1, message2).map { x => Some(QItem(0, 0, x, x.hashCode)) }.toList
 
-      expect {
-        allowing(queue).isClosed willReturn false
-        one(queue).length willReturn 2
-        one(queue).removeReceive(0, true).willReturn(items(0)) then
-          one(queue).removeReceive(0, true).willReturn(items(1))
-        one(queue).confirmRemove(items(0).get.xid)
-        one(queue).confirmRemove(items(1).get.xid)
-        one(codec).inflate(items(0).get.data, environment) willReturn job1
-        one(codec).inflate(items(1).get.data, environment) willReturn job2
-        one(destinationQueue).put(job1)
-        one(destinationQueue).put(job2)
+        expect {
+          allowing(queue).isClosed willReturn false
+          one(queue).length willReturn 2
+          one(queue).removeReceive(0, true).willReturn(items(0)) then
+            one(queue).removeReceive(0, true).willReturn(items(1))
+          one(queue).confirmRemove(items(0).get.xid)
+          one(queue).confirmRemove(items(1).get.xid)
+          one(codec).inflate(items(0).get.data, environment) willReturn job1
+          one(codec).inflate(items(1).get.data, environment) willReturn job2
+          one(destinationQueue).put(job1)
+          one(destinationQueue).put(job2)
+        }
+
+        kestrelJobQueue.drainTo(destinationQueue)
       }
 
-      kestrelJobQueue.drainTo(destinationQueue)
-    }
-/*
+      "after shutdown" in {
+        expect {
+          one(queue).length willReturn 12
+          one(queue).isClosed willReturn true
+        }
 
-
-    Time.freeze()
-
-
-
-    "iteration" >> {
-      expect {
-        one(queue).isClosed.willReturn(false) then
-        one(queue).removeReceive(an[Int], a[Boolean]).willReturn(items(0)) then
-        one(queue).confirmRemove(items(0).get.xid) then
-        one(queue).isClosed.willReturn(false) then
-        one(queue).removeReceive(an[Int], a[Boolean]).willReturn(items(1)) then
-        one(queue).confirmRemove(items(1).get.xid) then
-        one(queue).isClosed.willReturn(true)
+        kestrelJobQueue.drainTo(destinationQueue)
       }
-      kestrelMessageQueue.toList mustEqual List(message1, message2)
     }
-*/
   }
-
 }

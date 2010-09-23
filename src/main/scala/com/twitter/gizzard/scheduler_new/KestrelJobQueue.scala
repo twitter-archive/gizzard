@@ -81,26 +81,3 @@ class KestrelJobQueue[E, J <: Job[E]](queueName: String,
 
   override def toString() = "<KestrelJobQueue '%s'>".format(queueName)
 }
-
-
-/*
-class KestrelMessageQueue(queueName: String, queue: PersistentQueue)
-  extends MessageQueue[String, String] {
-
-
-
-
-  private def poll(): Option[QItem] = {
-    if (queue.isClosed) None else queue.removeReceive(0, true)
-  }
-
-
-  override def writeTo[A](messageQueue: MessageQueue[String, A]) {
-    var bound = size
-    while (bound > 0) {
-      }
-    }
-  }
-
-}
-*/
