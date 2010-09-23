@@ -16,5 +16,5 @@ trait JobQueue[E, J <: Job[E]] extends JobConsumer[E, J] with Process {
 
 trait Codec[E, J <: Job[E]] {
   def flatten(job: J): Array[Byte]
-  def inflate(data: Array[Byte], environment: E): J
+  def inflate(data: Array[Byte]): J
 }

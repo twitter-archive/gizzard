@@ -7,10 +7,8 @@ import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
-class KestrelJobQueue[E, J <: Job[E]](queueName: String,
-                                      queue: PersistentQueue,
-                                      codec: Codec[E, J],
-                                      environment: E) extends JobQueue[E, J] {
+class KestrelJobQueue[E, J <: Job[E]](queueName: String, queue: PersistentQueue, codec: Codec[E, J])
+      extends JobQueue[E, J] {
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
 
@@ -53,7 +51,7 @@ class KestrelJobQueue[E, J <: Job[E]](queueName: String,
       item = queue.removeReceive(System.currentTimeMillis + TIMEOUT, true)
     }
     item.map { qitem =>
-      val decoded = codec.inflate(qitem.data, environment)
+      val decoded = codec.inflate(qitem.data)
       new Ticket[E, J] {
         def job = decoded
         def ack() {
@@ -71,7 +69,7 @@ class KestrelJobQueue[E, J <: Job[E]](queueName: String,
           bound = 0
         case Some(qitem) =>
           bound -= 1
-          val job = codec.inflate(qitem.data, environment)
+          val job = codec.inflate(qitem.data)
           log.info("Replaying error job: %s", job)
           outQueue.put(job)
           queue.confirmRemove(qitem.xid)

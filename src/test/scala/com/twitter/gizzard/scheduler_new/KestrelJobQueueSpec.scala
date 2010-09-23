@@ -9,7 +9,6 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "KestrelJobQueue" should {
-    val environment = "Environment!"
     val queue = mock[PersistentQueue]
     val codec = mock[Codec[String, Job[String]]]
     val job1 = mock[Job[String]]
@@ -19,7 +18,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     var kestrelJobQueue: KestrelJobQueue[String, Job[String]] = null
 
     doBefore {
-      kestrelJobQueue = new KestrelJobQueue("queue", queue, codec, environment)
+      kestrelJobQueue = new KestrelJobQueue("queue", queue, codec)
     }
 
     "size" in {
@@ -99,7 +98,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
         expect {
           allowing(queue).isClosed willReturn false
           one(queue).removeReceive(any[Long], any[Boolean]) willReturn Some(QItem(0, 0, "abc".getBytes, 900))
-          one(codec).inflate("abc".getBytes, environment) willReturn job1
+          one(codec).inflate("abc".getBytes) willReturn job1
           one(queue).confirmRemove(900)
         }
 
@@ -113,7 +112,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
           allowing(queue).isClosed willReturn false
           one(queue).removeReceive(any[Long], any[Boolean]).willReturn(None) then
             one(queue).removeReceive(any[Long], any[Boolean]).willReturn(Some(QItem(0, 0, "abc".getBytes, 900)))
-          one(codec).inflate("abc".getBytes, environment) willReturn job1
+          one(codec).inflate("abc".getBytes) willReturn job1
           one(queue).confirmRemove(900)
         }
 
@@ -136,8 +135,8 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
             one(queue).removeReceive(0, true).willReturn(items(1))
           one(queue).confirmRemove(items(0).get.xid)
           one(queue).confirmRemove(items(1).get.xid)
-          one(codec).inflate(items(0).get.data, environment) willReturn job1
-          one(codec).inflate(items(1).get.data, environment) willReturn job2
+          one(codec).inflate(items(0).get.data) willReturn job1
+          one(codec).inflate(items(1).get.data) willReturn job2
           one(destinationQueue).put(job1)
           one(destinationQueue).put(job2)
         }
