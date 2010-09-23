@@ -1,6 +1,7 @@
 package com.twitter.gizzard.scheduler_new
 
-abstract class Job[E](val environment: E) extends (E => Unit) {
+trait Job[E] extends (E => Unit) {
+  val environment: E
   var errorCount: Int = 0
   var errorMessage: String = "(none)"
 
