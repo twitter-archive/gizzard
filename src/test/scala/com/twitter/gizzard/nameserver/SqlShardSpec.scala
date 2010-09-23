@@ -185,7 +185,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
       nameServer.deleteShard(logicalShard.id, repo)
       nameServer.getShard(logicalShard.id) must throwA[NonExistentShard]
-      //nameServer.getDeletedShards() mustEqual Nil
+      nameServer.getDeletedShards() mustEqual Nil
     }
 
     "children" in {
