@@ -4,8 +4,10 @@ abstract class Job[E](val environment: E) extends (E => Unit) {
   var errorCount: Int = 0
   var errorMessage: String = "(none)"
 
+  @throws(classOf[Exception])
   def apply(): Unit = apply(environment)
 
+  @throws(classOf[Exception])
   def apply(environment: E): Unit
 
   def loggingName = {

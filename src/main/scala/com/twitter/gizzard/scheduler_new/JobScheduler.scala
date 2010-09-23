@@ -42,6 +42,7 @@ class JobScheduler[E, J <: Job[E]](val name: String,
       log.info("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
       workerThreads.foreach { _.start() }
+      retryTask.start()
     }
   }
 
@@ -63,6 +64,7 @@ class JobScheduler[E, J <: Job[E]](val name: String,
     log.info("Shutting down JobScheduler: %s", queue)
     pause()
     queue.shutdown()
+    retryTask.shutdown()
     running = false
   }
 
@@ -75,9 +77,14 @@ class JobScheduler[E, J <: Job[E]](val name: String,
   private def makeWorker(n: Int) = {
     new BackgroundProcess("JobEvaluatorThread:" + name + ":" + n.toString) {
       def runLoop() {
-        process()
+        processWork()
       }
     }
+  }
+
+  // hook to let unit tests stub out threads.
+  protected def processWork() {
+    process()
   }
 
   def process() {
