@@ -74,12 +74,12 @@ abstract case class Copy[S <: shards.Shard](sourceId: ShardId, destinationId: Sh
 
   def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[Copy[S]]
   def serialize: Map[String, Any]
-  
+
   private def incrGauge = {
     Stats.setGauge(gaugeName, Stats.getGauge(gaugeName).getOrElse(0.0) + count)
   }
-  
+
   private def gaugeName = {
-    "x-copying-"+sourceId+"-"+destinationId
+    "x-copying-" + sourceId + "-" + destinationId
   }
 }
