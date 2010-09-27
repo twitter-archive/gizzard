@@ -7,8 +7,8 @@ import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
-class KestrelJobQueue[E, J <: Job[E]](queueName: String, queue: PersistentQueue, codec: Codec[E, J])
-      extends JobQueue[E, J] {
+class KestrelJobQueue[J <: Job[_]](queueName: String, queue: PersistentQueue, codec: Codec[J])
+      extends JobQueue[J] {
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
 
@@ -44,7 +44,7 @@ class KestrelJobQueue[E, J <: Job[E]](queueName: String, queue: PersistentQueue,
     }
   }
 
-  def get(): Option[Ticket[E, J]] = {
+  def get(): Option[Ticket[J]] = {
     var item: Option[QItem] = None
     while (item == None && !queue.isClosed) {
       // do not use Time.now or it will interact strangely with tests.
@@ -52,7 +52,7 @@ class KestrelJobQueue[E, J <: Job[E]](queueName: String, queue: PersistentQueue,
     }
     item.map { qitem =>
       val decoded = codec.inflate(qitem.data)
-      new Ticket[E, J] {
+      new Ticket[J] {
         def job = decoded
         def ack() {
           queue.confirmRemove(qitem.xid)
@@ -61,7 +61,7 @@ class KestrelJobQueue[E, J <: Job[E]](queueName: String, queue: PersistentQueue,
     }
   }
 
-  def drainTo(outQueue: JobQueue[E, J]) {
+  def drainTo(outQueue: JobQueue[J]) {
     var bound = size
     while (bound > 0 && !queue.isClosed) {
       queue.removeReceive(0, true) match {

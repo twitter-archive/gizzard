@@ -5,14 +5,14 @@ import com.twitter.xrayspecs.Duration
 import net.lag.logging.Logger
 import shards.ShardRejectedOperationException
 
-class JobScheduler[E, J <: Job[E]](val name: String,
-                                   val threadCount: Int,
-                                   val retryInterval: Duration,
-                                   val errorLimit: Int,
-                                   val queue: JobQueue[E, J],
-                                   val errorQueue: JobQueue[E, J],
-                                   val badJobQueue: JobConsumer[E, J])
-      extends Process with JobConsumer[E, J] {
+class JobScheduler[J <: Job[_]](val name: String,
+                                val threadCount: Int,
+                                val retryInterval: Duration,
+                                val errorLimit: Int,
+                                val queue: JobQueue[J],
+                                val errorQueue: JobQueue[J],
+                                val badJobQueue: JobConsumer[J])
+      extends Process with JobConsumer[J] {
 
   private val log = Logger.get(getClass.getName)
   var workerThreads: Collection[BackgroundProcess] = Nil
