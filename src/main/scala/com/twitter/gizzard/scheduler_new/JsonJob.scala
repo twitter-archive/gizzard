@@ -1,6 +1,7 @@
 package com.twitter.gizzard.scheduler_new
 
 import com.twitter.json.{Json, JsonException}
+import net.lag.logging.Logger
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
 
@@ -17,6 +18,10 @@ trait JsonJob[E] extends Job[E] {
 
 class JsonNestedJob[E, J <: JsonJob[E]](environment: E, jobs: Iterable[J]) extends NestedJob[E, J](environment, jobs) with JsonJob[E] {
   def toMap = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
+}
+
+class JsonJobLogger[J <: JsonJob[_]](logger: Logger) extends JobConsumer[J] {
+  def put(job: J) = logger.error(job.toJson)
 }
 
 trait JsonJobParser[E, J <: JsonJob[E]] {
