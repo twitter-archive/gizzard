@@ -15,7 +15,13 @@ object LoggingProxy {
       val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
       stats.incr("operation-" + shortName + ":" + method.name)
       logger.transaction {
-        logger.log("timestamp", Time.now.inMillis)
+        val timeMillis = Time.now.inMillis
+        val timeSeconds = timeMillis/1000
+
+        logger.log("second", timeSeconds)
+        logger.log("minute", timeSeconds / 60 * 60)
+        logger.log("hour", timeSeconds / 3600 * 3600)
+        logger.log("timestamp", timeMillis)
         logger.log("operation", name + ":" + method.name)
         val arguments = (if (method.args != null) method.args.mkString(",") else "").replaceAll("[ \n]", "_")
         logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
