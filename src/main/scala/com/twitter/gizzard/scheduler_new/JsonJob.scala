@@ -27,13 +27,13 @@ class JsonJobLogger[J <: JsonJob[_]](logger: Logger) extends JobConsumer[J] {
 trait JsonJobParser[E, J <: JsonJob[E]] {
   val environment: E
 
-  def parse(codec: JsonCodec[E, J], json: Map[String, Any]): JsonJob[E] = {
+  def parse(codec: JsonCodec[J], json: Map[String, Any]): JsonJob[E] = {
     val errorCount = json.getOrElse("error_count", 0).asInstanceOf[Int]
     val errorMessage = json.getOrElse("error_message", "(none)").asInstanceOf[String]
 
     val job = json.get("tasks").map { taskJsons =>
       val tasks = taskJsons.asInstanceOf[Iterable[Map[String, Any]]].map { codec.inflate(_) }
-      new JsonNestedJob(environment, tasks)
+      new JsonNestedJob(environment, tasks.asInstanceOf[Iterable[J]])
     } getOrElse {
       apply(codec, json)
     }
@@ -43,5 +43,5 @@ trait JsonJobParser[E, J <: JsonJob[E]] {
     job
   }
 
-  def apply(codec: JsonCodec[E, J], json: Map[String, Any]): J
+  def apply(codec: JsonCodec[J], json: Map[String, Any]): J
 }

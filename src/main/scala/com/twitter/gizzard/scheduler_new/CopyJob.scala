@@ -13,7 +13,7 @@ trait CopyJobFactory[S <: shards.Shard] extends ((shards.ShardId, shards.ShardId
 
 trait CopyJobParser[S <: shards.Shard]
       extends JsonJobParser[(nameserver.NameServer[S], JobScheduler[_]), CopyJob[S]] {
-  def apply(codec: JsonCodec[(nameserver.NameServer[S], JobScheduler[_]), CopyJob[S]], attributes: Map[String, Any]): CopyJob[S]
+  def apply(codec: JsonCodec[CopyJob[S]], attributes: Map[String, Any]): CopyJob[S]
 }
 
 

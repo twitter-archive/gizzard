@@ -8,7 +8,7 @@ import com.twitter.json.Json
 class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JsonCodec" should {
     var unparsed = new mutable.ListBuffer[String]
-    val codec = new JsonCodec[String, JsonJob[String]]({ (unparsable: Array[Byte]) => unparsed += new String(unparsable) })
+    val codec = new JsonCodec[JsonJob[String]]({ (unparsable: Array[Byte]) => unparsed += new String(unparsable) })
 
     "fail gracefully" in {
       codec.inflate("gobbledygook".getBytes) must throwA[UnparsableJsonException]
@@ -26,12 +26,12 @@ class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocke
       expect {
         one(a).parse(codec, aJson("a")) willReturn job
       }
-      codec.inflate(aJson) mustEqual job
+      codec.inflate[String](aJson) mustEqual job
 
       expect {
         one(b).parse(codec, bJson("b")) willReturn job
       }
-      codec.inflate(bJson) mustEqual job
+      codec.inflate[String](bJson) mustEqual job
     }
   }
 }

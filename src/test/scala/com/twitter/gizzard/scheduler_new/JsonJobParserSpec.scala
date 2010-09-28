@@ -8,11 +8,11 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
   "JsonJobParser" should {
     val attributes = Map("a" -> 1)
     val jobMap = Map("Job" -> attributes)
-    val codec = mock[JsonCodec[String, JsonJob[String]]]
+    val codec = mock[JsonCodec[JsonJob[String]]]
     val job = mock[JsonJob[String]]
     val jobParser = new JsonJobParser[String, JsonJob[String]] {
       val environment = "Environment"
-      def apply(codec: JsonCodec[String, JsonJob[String]], json: Map[String, Any]) = {
+      def apply(codec: JsonCodec[JsonJob[String]], json: Map[String, Any]) = {
         job
       }
     }

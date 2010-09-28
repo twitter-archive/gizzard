@@ -5,16 +5,16 @@ import scala.util.matching.Regex
 import com.twitter.json.Json
 import net.lag.logging.Logger
 
-class JsonCodec[E, J <: JsonJob[E]](unparsableJobHandler: Array[Byte] => Unit) {
+class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) {
   private val log = Logger.get(getClass.getName)
-  private val processors = mutable.Map.empty[Regex, JsonJobParser[E, J]]
+  private val processors = mutable.Map.empty[Regex, JsonJobParser[_, J]]
 
-  def +=(item: (Regex, JsonJobParser[E, J])) = processors += item
-  def +=(r: Regex, p: JsonJobParser[E, J]) = processors += ((r, p))
+  def +=(item: (Regex, JsonJobParser[_, J])) = processors += item
+  def +=(r: Regex, p: JsonJobParser[_, J]) = processors += ((r, p))
 
   def flatten(job: J): Array[Byte] = job.toJson.getBytes
 
-  def inflate(data: Array[Byte]): JsonJob[E] = {
+  def inflate[E](data: Array[Byte]): JsonJob[E] = {
     try {
       Json.parse(new String(data)) match {
         case json: Map[_, _] =>
@@ -29,7 +29,7 @@ class JsonCodec[E, J <: JsonJob[E]](unparsableJobHandler: Array[Byte] => Unit) {
     }
   }
 
-  def inflate(json: Map[String, Any]) = {
+  def inflate[E](json: Map[String, Any]): JsonJob[E] = {
     val (jobType, attributes) = json.toList.first
     val (_, processor) = processors.find { case (processorRegex, _) =>
       processorRegex.findFirstIn(jobType).isDefined

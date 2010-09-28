@@ -25,8 +25,6 @@ object JobScheduler {
     val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
     val errorQueue = new KestrelJobQueue(errorQueueName, persistentErrorQueue, codec)
 
-//    val badJobQueue = new JsonJobLogger[J](Logger.get("bad_jobs"))
-
     val threadCount = schedulerConfig("threads").toInt
     val retryInterval = schedulerConfig("replay_interval").toInt.seconds
     val errorLimit = schedulerConfig("error_limit").toInt
