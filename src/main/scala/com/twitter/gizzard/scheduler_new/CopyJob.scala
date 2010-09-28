@@ -9,16 +9,16 @@ object CopyJob {
   val MIN_COPY = 500
 }
 
-trait CopyJobFactory[S <: shards.Shard, J <: CopyJob[S, J]] extends ((shards.ShardId, shards.ShardId) => J)
+trait CopyJobFactory[S <: shards.Shard] extends ((shards.ShardId, shards.ShardId) => CopyJob[S])
 
-trait CopyJobParser[S <: shards.Shard, J <: CopyJob[S, J]]
-      extends JsonJobParser[(nameserver.NameServer[S], JobScheduler[J]), J] {
-  def apply(codec: JsonCodec[(nameserver.NameServer[S], JobScheduler[J]), J], attributes: Map[String, Any]): J
+trait CopyJobParser[S <: shards.Shard]
+      extends JsonJobParser[(nameserver.NameServer[S], JobScheduler[_]), CopyJob[S]] {
+  def apply(codec: JsonCodec[(nameserver.NameServer[S], JobScheduler[_]), CopyJob[S]], attributes: Map[String, Any]): CopyJob[S]
 }
 
 
-abstract case class CopyJob[S <: shards.Shard, J <: CopyJob[S, J]](sourceId: shards.ShardId, destinationId: shards.ShardId, var count: Int)
-         extends JsonJob[(nameserver.NameServer[S], JobScheduler[J])] {
+abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destinationId: shards.ShardId, var count: Int)
+         extends JsonJob[(nameserver.NameServer[S], JobScheduler[_])] {
   private val log = Logger.get(getClass.getName)
 
   def toMap = {
@@ -30,15 +30,16 @@ abstract case class CopyJob[S <: shards.Shard, J <: CopyJob[S, J]](sourceId: sha
     ) ++ serialize
   }
 
-  def finish(nameServer: nameserver.NameServer[S], scheduler: JobScheduler[J]) {
+  def finish(nameServer: nameserver.NameServer[S], scheduler: JobScheduler[_]) {
     nameServer.markShardBusy(destinationId, shards.Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
     Stats.clearGauge(gaugeName)
   }
 
-  def apply(environment: (nameserver.NameServer[S], JobScheduler[J])) {
-    val (nameServer, scheduler) = environment
+  def apply(environment: (nameserver.NameServer[S], JobScheduler[_])) {
+    val nameServer = environment._1
+    val scheduler = environment._2.asInstanceOf[JobScheduler[Job[_]]]
     try {
       log.info("Copying shard block (type %s) from %s to %s: state=%s",
                getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
@@ -61,11 +62,10 @@ abstract case class CopyJob[S <: shards.Shard, J <: CopyJob[S, J]](sourceId: sha
       case e: shards.ShardTimeoutException if (count > CopyJob.MIN_COPY) =>
         log.warning("Shard block copy timed out; trying a smaller block size.")
         count = (count * 0.9).toInt
-        // FIXME: why is this cast required?
-        scheduler.put(this.asInstanceOf[J])
+        scheduler.put(this)
       case e: shards.ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
-        scheduler.put(this.asInstanceOf[J])
+        scheduler.put(this)
       case e: Throwable =>
         log.warning("Shard block copy stopped due to exception: %s", e)
         throw e
@@ -80,7 +80,7 @@ abstract case class CopyJob[S <: shards.Shard, J <: CopyJob[S, J]](sourceId: sha
     "x-copying-" + sourceId + "-" + destinationId
   }
 
-  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[J]
+  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[CopyJob[_]]
 
   def serialize: Map[String, Any]
 }
