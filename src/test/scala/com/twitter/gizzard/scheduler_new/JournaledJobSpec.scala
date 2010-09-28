@@ -5,32 +5,34 @@ import com.twitter.json.Json
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 
+trait FakeJob extends JsonJob {
+  type Environment = String
+}
+
 class JournaledJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JournaledJob" should {
     val environment = "environment"
-    val job = mock[JsonJob[String]]
+    val job = mock[FakeJob]
     val queue = mock[String => Unit]
 
     "journal on success" in {
       expect {
-        one(job).environment willReturn environment
-        one(job).apply(environment)
+        one(job).apply()
         one(job).toJson willReturn "hello"
         one(queue).apply("hello")
       }
 
-      val journaledJob = new JournaledJob[String](job, queue)
-      journaledJob.apply(environment)
+      val journaledJob = new JournaledJob(job, queue)
+      journaledJob.apply()
     }
 
     "not journal on failure" in {
       expect {
-        one(job).environment willReturn environment
-        one(job).apply(environment) willThrow(new Exception("aiee"))
+        one(job).apply() willThrow(new Exception("aiee"))
       }
 
-      val journaledJob = new JournaledJob[String](job, queue)
-      journaledJob.apply(environment) must throwA[Exception]
+      val journaledJob = new JournaledJob(job, queue)
+      journaledJob.apply() must throwA[Exception]
     }
   }
 }

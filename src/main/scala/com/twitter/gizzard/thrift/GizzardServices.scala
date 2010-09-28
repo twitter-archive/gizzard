@@ -6,11 +6,11 @@ import nameserver.NameServer
 import scheduler.{CopyJob, CopyJobFactory, Job, JobScheduler, JsonJob, PrioritizingJobScheduler}
 import shards.Shard
 
-class GizzardServices[S <: Shard, J <: JsonJob[_]](config: ConfigMap,
-                                                   nameServer: NameServer[S],
-                                                   copyFactory: CopyJobFactory[S],
-                                                   scheduler: PrioritizingJobScheduler[_],
-                                                   copyScheduler: JobScheduler[J]) {
+class GizzardServices[S <: Shard, J <: JsonJob](config: ConfigMap,
+                                                nameServer: NameServer[S],
+                                                copyFactory: CopyJobFactory[S],
+                                                scheduler: PrioritizingJobScheduler[J],
+                                                copyScheduler: JobScheduler[J]) {
 
   val shardServerPort = config("shard_server_port").toInt
   val jobServerPort = config("job_server_port").toInt

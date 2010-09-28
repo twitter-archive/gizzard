@@ -13,33 +13,33 @@ object JobScheduler {
    * Configure a JobScheduler from a queue ConfigMap and a scheduler-specific ConfigMap, creating
    * a new ErrorHandlingJobParser and linking the job & error queues together through it.
    */
-  def apply[E, J <: Job[E]](name: String, queueConfig: ConfigMap, codec: Codec[J], badJobQueue: JobConsumer[J]) = {
+  def apply[J <: Job](name: String, queueConfig: ConfigMap, codec: Codec[J], badJobQueue: JobConsumer[J]) = {
     val path = queueConfig("path")
     val schedulerConfig = queueConfig.configMap(name)
 
     val jobQueueName = schedulerConfig("job_queue")
     val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
-    val jobQueue = new KestrelJobQueue(jobQueueName, persistentJobQueue, codec)
+    val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
 
     val errorQueueName = schedulerConfig("error_queue")
     val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
-    val errorQueue = new KestrelJobQueue(errorQueueName, persistentErrorQueue, codec)
+    val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
 
     val threadCount = schedulerConfig("threads").toInt
     val retryInterval = schedulerConfig("replay_interval").toInt.seconds
     val errorLimit = schedulerConfig("error_limit").toInt
 
-    new JobScheduler(name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+    new JobScheduler[J](name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
   }
 }
 
-class JobScheduler[J <: Job[_]](val name: String,
-                                val threadCount: Int,
-                                val retryInterval: Duration,
-                                val errorLimit: Int,
-                                val queue: JobQueue[J],
-                                val errorQueue: JobQueue[J],
-                                val badJobQueue: JobConsumer[J])
+class JobScheduler[J <: Job](val name: String,
+                             val threadCount: Int,
+                             val retryInterval: Duration,
+                             val errorLimit: Int,
+                             val queue: JobQueue[J],
+                             val errorQueue: JobQueue[J],
+                             val badJobQueue: JobConsumer[J])
       extends Process with JobConsumer[J] {
 
   private val log = Logger.get(getClass.getName)

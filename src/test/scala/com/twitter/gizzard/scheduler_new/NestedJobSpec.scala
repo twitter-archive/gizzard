@@ -8,10 +8,10 @@ import shards.ShardRejectedOperationException
 
 class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NestedJob" should {
-    val job1 = mock[Job[String]]
-    val job2 = mock[Job[String]]
-    val job3 = mock[Job[String]]
-    val nestedJob = new NestedJob("environment", List(job1, job2, job3))
+    val job1 = mock[Job]
+    val job2 = mock[Job]
+    val job3 = mock[Job]
+    val nestedJob = new NestedJob(List(job1, job2, job3))
 
     "loggingName" in {
       expect {
@@ -24,15 +24,15 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
     }
 
     "equals" in {
-      nestedJob mustEqual new NestedJob("foo", List(job1, job2, job3))
+      nestedJob mustEqual new NestedJob(List(job1, job2, job3))
     }
 
     "apply" in {
       "success" in {
         expect {
-          one(job1).apply("environment")
-          one(job2).apply("environment")
-          one(job3).apply("environment")
+          one(job1).apply()
+          one(job2).apply()
+          one(job3).apply()
         }
 
         nestedJob.apply()
@@ -41,7 +41,7 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
 
       "instant failure" in {
         expect {
-          one(job1).apply("environment") willThrow new Exception("oops!")
+          one(job1).apply() willThrow new Exception("oops!")
         }
 
         nestedJob.apply() must throwA[Exception]
@@ -50,9 +50,9 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
 
       "eventual failure" in {
         expect {
-          one(job1).apply("environment")
-          one(job2).apply("environment")
-          one(job3).apply("environment") willThrow new Exception("oops!")
+          one(job1).apply()
+          one(job2).apply()
+          one(job3).apply() willThrow new Exception("oops!")
         }
 
         nestedJob.apply() must throwA[Exception]

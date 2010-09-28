@@ -8,13 +8,13 @@ import shards.ShardRejectedOperationException
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
-    val queue = mock[JobQueue[Job[String]]]
-    val errorQueue = mock[JobQueue[Job[String]]]
-    val badJobQueue = mock[JobConsumer[Job[String]]]
-    val job1 = mock[Job[String]]
-    val ticket1 = mock[Ticket[Job[String]]]
+    val queue = mock[JobQueue[Job]]
+    val errorQueue = mock[JobQueue[Job]]
+    val badJobQueue = mock[JobConsumer[Job]]
+    val job1 = mock[Job]
+    val ticket1 = mock[Ticket[Job]]
 
-    var jobScheduler: JobScheduler[Job[String]] = null
+    var jobScheduler: JobScheduler[Job] = null
     val liveThreads = new AtomicInteger(0)
 
     val MAX_ERRORS = 100

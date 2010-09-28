@@ -11,14 +11,15 @@ object CopyJob {
 
 trait CopyJobFactory[S <: shards.Shard] extends ((shards.ShardId, shards.ShardId) => CopyJob[S])
 
-trait CopyJobParser[S <: shards.Shard]
-      extends JsonJobParser[(nameserver.NameServer[S], JobScheduler[_]), CopyJob[S]] {
+trait CopyJobParser[S <: shards.Shard] extends JsonJobParser[CopyJob[S]] {
+  type Environment = (nameserver.NameServer[S], JobScheduler[_])
   def apply(codec: JsonCodec[CopyJob[S]], attributes: Map[String, Any]): CopyJob[S]
 }
 
 
 abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destinationId: shards.ShardId, var count: Int)
-         extends JsonJob[(nameserver.NameServer[S], JobScheduler[_])] {
+         extends JsonJob {
+  type Environment = (nameserver.NameServer[S], JobScheduler[_])
   private val log = Logger.get(getClass.getName)
 
   def toMap = {
@@ -39,7 +40,7 @@ abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destina
 
   def apply(environment: (nameserver.NameServer[S], JobScheduler[_])) {
     val nameServer = environment._1
-    val scheduler = environment._2.asInstanceOf[JobScheduler[Job[_]]]
+    val scheduler = environment._2.asInstanceOf[JobScheduler[Job]]
     try {
       log.info("Copying shard block (type %s) from %s to %s: state=%s",
                getClass.getName.split("\\.").last, sourceId, destinationId, toMap)

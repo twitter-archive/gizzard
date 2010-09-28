@@ -13,7 +13,7 @@ import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
-class ShardManagerService[S <: shards.Shard, J <: JsonJob[_]](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: JobScheduler[J]) extends ShardManager.Iface {
+class ShardManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: JobScheduler[J]) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapWithThriftExceptions[A](f: => A): A = {

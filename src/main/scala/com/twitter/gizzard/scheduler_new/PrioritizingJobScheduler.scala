@@ -5,16 +5,16 @@ import scala.collection.mutable
 import net.lag.configgy.ConfigMap
 
 object PrioritizingJobScheduler {
-  def apply[E, J <: Job[E]](config: ConfigMap, codec: Codec[J], queueNames: Map[Int, String], badJobQueue: JobConsumer[J]) = {
+  def apply[J <: Job](config: ConfigMap, codec: Codec[J], queueNames: Map[Int, String], badJobQueue: JobConsumer[J]) = {
     val schedulerMap = new mutable.HashMap[Int, JobScheduler[J]]
     queueNames.foreach { case (priority, queueName) =>
-      schedulerMap(priority) = JobScheduler[E, J](queueName, config, codec, badJobQueue)
+      schedulerMap(priority) = JobScheduler(queueName, config, codec, badJobQueue)
     }
-    new PrioritizingJobScheduler(schedulerMap)
+    new PrioritizingJobScheduler[J](schedulerMap)
   }
 }
 
-class PrioritizingJobScheduler[J <: Job[_]](schedulers: Map[Int, JobScheduler[J]]) extends Process {
+class PrioritizingJobScheduler[J <: Job](schedulers: Map[Int, JobScheduler[J]]) extends Process {
   def put(priority: Int, job: J) {
     apply(priority).put(job)
   }

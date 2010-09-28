@@ -7,13 +7,13 @@ import org.specs.Specification
 
 object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "PrioritizingJobScheduler" should {
-    val low = mock[JobScheduler[Job[String]]]
-    val medium = mock[JobScheduler[Job[String]]]
-    val high = mock[JobScheduler[Job[String]]]
+    val low = mock[JobScheduler[Job]]
+    val medium = mock[JobScheduler[Job]]
+    val high = mock[JobScheduler[Job]]
     val prioritizingScheduler = new PrioritizingJobScheduler(Map(3 -> low, 2 -> medium, 1 -> high))
 
     "apply" in {
-      val job = mock[Job[String]]
+      val job = mock[Job]
 
       expect { one(low).put(job) }
       prioritizingScheduler.put(3, job)

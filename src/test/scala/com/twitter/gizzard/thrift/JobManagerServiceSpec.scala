@@ -7,8 +7,8 @@ import scheduler.{PrioritizingJobScheduler, Job, JobScheduler}
 
 
 object JobManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val scheduler = mock[PrioritizingJobScheduler[Job[String]]]
-  val subScheduler = mock[JobScheduler[Job[String]]]
+  val scheduler = mock[PrioritizingJobScheduler[Job]]
+  val subScheduler = mock[JobScheduler[Job]]
   val service = new JobManagerService(scheduler)
 
   "JobManagerService" should {

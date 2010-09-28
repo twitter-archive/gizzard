@@ -5,12 +5,12 @@ import scala.util.matching.Regex
 import com.twitter.json.Json
 import net.lag.logging.Logger
 
-class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) extends Codec[J] {
+class JsonCodec[J <: JsonJob](unparsableJobHandler: Array[Byte] => Unit) extends Codec[J] {
   private val log = Logger.get(getClass.getName)
-  private val processors = mutable.Map.empty[Regex, JsonJobParser[_, J]]
+  private val processors = mutable.Map.empty[Regex, JsonJobParser[J]]
 
-  def +=(item: (Regex, JsonJobParser[_, J])) = processors += item
-  def +=(r: Regex, p: JsonJobParser[_, J]) = processors += ((r, p))
+  def +=(item: (Regex, JsonJobParser[J])) = processors += item
+  def +=(r: Regex, p: JsonJobParser[J]) = processors += ((r, p))
 
   def flatten(job: J): Array[Byte] = job.toJson.getBytes
 
