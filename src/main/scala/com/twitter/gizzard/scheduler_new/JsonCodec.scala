@@ -5,7 +5,7 @@ import scala.util.matching.Regex
 import com.twitter.json.Json
 import net.lag.logging.Logger
 
-class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) {
+class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) extends Codec[J] {
   private val log = Logger.get(getClass.getName)
   private val processors = mutable.Map.empty[Regex, JsonJobParser[_, J]]
 
@@ -14,7 +14,7 @@ class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) {
 
   def flatten(job: J): Array[Byte] = job.toJson.getBytes
 
-  def inflate[E](data: Array[Byte]): JsonJob[E] = {
+  def inflate(data: Array[Byte]): J = {
     try {
       Json.parse(new String(data)) match {
         case json: Map[_, _] =>
@@ -29,7 +29,7 @@ class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) {
     }
   }
 
-  def inflate[E](json: Map[String, Any]): JsonJob[E] = {
+  def inflate(json: Map[String, Any]): J = {
     val (jobType, attributes) = json.toList.first
     val (_, processor) = processors.find { case (processorRegex, _) =>
       processorRegex.findFirstIn(jobType).isDefined
@@ -37,7 +37,7 @@ class JsonCodec[J <: JsonJob[_]](unparsableJobHandler: Array[Byte] => Unit) {
       throw new UnparsableJsonException("Can't find matching processor for '%s' in %s".format(jobType, processors), null)
     }
     try {
-      processor.parse(this, attributes.asInstanceOf[Map[String, Any]])
+      processor.parse(this, attributes.asInstanceOf[Map[String, Any]]).asInstanceOf[J]
     } catch {
       case e =>
         throw new UnparsableJsonException("Processor '%s' blew up: %s".format(jobType, e.toString), e)
