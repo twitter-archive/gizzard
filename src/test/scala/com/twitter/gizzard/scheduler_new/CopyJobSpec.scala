@@ -6,7 +6,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 
 class FakeCopy(val sourceShardId: shards.ShardId, val destinationShardId: shards.ShardId, count: Int)(nextJob: => Option[FakeCopy])
-      extends CopyJob[shards.Shard, FakeCopy](sourceShardId, destinationShardId, count) {
+      extends CopyJob[shards.Shard](sourceShardId, destinationShardId, count) {
   val environment = (null, null)
 
   def serialize = Map("cursor" -> 1)
