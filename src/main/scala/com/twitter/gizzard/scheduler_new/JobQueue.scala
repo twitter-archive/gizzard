@@ -1,4 +1,4 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 trait JobConsumer[J <: Job[_]] {
   def put(job: J)

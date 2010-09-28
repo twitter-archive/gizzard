@@ -1,4 +1,4 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 import scala.util.matching.Regex

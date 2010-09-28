@@ -2,15 +2,15 @@ package com.twitter.gizzard.thrift
 
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.ConfigMap
-import jobs.CopyFactory
 import nameserver.NameServer
-import scheduler.PrioritizingJobScheduler
+import scheduler.{CopyJob, CopyJobFactory, Job, PrioritizingJobScheduler}
 import shards.Shard
 
 
-class GizzardServices[S <: Shard](config: ConfigMap, nameServer: NameServer[S],
-                                  copyFactory: CopyFactory[S],
-                                  scheduler: PrioritizingJobScheduler, copyPriority: Int) {
+class GizzardServices[S <: Shard, J <: Job[_], C <: CopyJob[S, C]](config: ConfigMap,
+                                  nameServer: NameServer[S],
+                                  copyFactory: CopyJobFactory[S, C],
+                                  scheduler: PrioritizingJobScheduler[J], copyPriority: Int) {
 
   val shardServerPort = config("shard_server_port").toInt
   val jobServerPort = config("job_server_port").toInt

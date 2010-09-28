@@ -1,4 +1,4 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 trait Job[E] extends (E => Unit) {
   val environment: E

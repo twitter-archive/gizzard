@@ -3,9 +3,7 @@ package com.twitter.gizzard.nameserver
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
-import scheduler.JobScheduler
 import shards._
-
 
 object SqlShard {
   val SHARDS_DDL = """
@@ -47,7 +45,6 @@ CREATE TABLE IF NOT EXISTS forwardings (
 ) ENGINE=INNODB;
 """
 }
-
 
 class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   val children = List()

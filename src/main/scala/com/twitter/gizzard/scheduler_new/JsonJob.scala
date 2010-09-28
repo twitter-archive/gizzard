@@ -1,4 +1,4 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 import com.twitter.json.{Json, JsonException}
 import net.lag.logging.Logger
