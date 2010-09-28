@@ -1,10 +1,9 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.Config
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import jobs.Schedulable
 
 object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "PrioritizingJobScheduler" should {

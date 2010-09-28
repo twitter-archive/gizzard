@@ -1,4 +1,4 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -61,7 +61,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
       "JsonNestedJob" in {
         val nestedJob = new JsonNestedJob[String, JsonJob[String]]("Environment", List(job))
 
-        nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler_new.JsonNestedJob":{"tasks":[{"FakeJob":{"a":1}}],"error_count":0,"error_message":"(none)"}}"""
+        nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler.JsonNestedJob":{"tasks":[{"FakeJob":{"a":1}}],"error_count":0,"error_message":"(none)"}}"""
       }
 
       "errors" in {

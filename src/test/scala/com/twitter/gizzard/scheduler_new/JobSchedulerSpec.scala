@@ -1,4 +1,4 @@
-package com.twitter.gizzard.scheduler_new
+package com.twitter.gizzard.scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.xrayspecs.TimeConversions._

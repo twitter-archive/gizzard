@@ -3,12 +3,12 @@ package com.twitter.gizzard.thrift
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import scheduler.{PrioritizingJobScheduler, JobScheduler}
+import scheduler.{PrioritizingJobScheduler, Job, JobScheduler}
 
 
 object JobManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val scheduler = mock[PrioritizingJobScheduler]
-  val subScheduler = mock[JobScheduler]
+  val scheduler = mock[PrioritizingJobScheduler[Job[String]]]
+  val subScheduler = mock[JobScheduler[Job[String]]]
   val service = new JobManagerService(scheduler)
 
   "JobManagerService" should {
@@ -70,18 +70,6 @@ object JobManagerServiceSpec extends ConfiguredSpecification with JMocker with C
       }
 
       service.is_writing(3) mustEqual true
-    }
-
-    "inject_job" in {
-      val job = capturingParam[jobs.Job]
-
-      expect {
-        one(scheduler).apply(3) willReturn subScheduler
-        one(subScheduler).apply(job.capture)
-      }
-
-      service.inject_job(3, "maxwell integer")
-      job.captured.toJson mustEqual "maxwell integer"
     }
   }
 }

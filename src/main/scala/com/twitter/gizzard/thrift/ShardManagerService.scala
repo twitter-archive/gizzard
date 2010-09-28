@@ -8,12 +8,12 @@ import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, Job, JobScheduler}
+import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, Job, JobScheduler, JsonJob}
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
 
-class ShardManagerService[S <: shards.Shard, J <: Job[_], C <: CopyJob[S, C]](nameServer: NameServer[S], copier: CopyJobFactory[S, C], scheduler: JobScheduler[J]) extends ShardManager.Iface {
+class ShardManagerService[S <: shards.Shard, J <: JsonJob[_]](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: JobScheduler[J]) extends ShardManager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapWithThriftExceptions[A](f: => A): A = {
@@ -66,7 +66,7 @@ class ShardManagerService[S <: shards.Shard, J <: Job[_], C <: CopyJob[S, C]](na
   }
 
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = wrapWithThriftExceptions {
-    scheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift))
+    scheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift).asInstanceOf[J])
   }
 
   def set_forwarding(forwarding: Forwarding) = wrapWithThriftExceptions {
