@@ -25,9 +25,6 @@ class JsonJobLogger[J <: JsonJob](logger: Logger) extends JobConsumer[J] {
 }
 
 trait JsonJobParser[J <: JsonJob] {
-  type Environment
-  val environment: Environment
-
   def parse(codec: JsonCodec[J], json: Map[String, Any]): JsonJob = {
     val errorCount = json.getOrElse("error_count", 0).asInstanceOf[Int]
     val errorMessage = json.getOrElse("error_message", "(none)").asInstanceOf[String]
