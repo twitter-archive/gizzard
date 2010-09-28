@@ -5,14 +5,10 @@ import com.twitter.json.Json
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 
-trait FakeJob extends JsonJob {
-  type Environment = String
-}
-
 class JournaledJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JournaledJob" should {
     val environment = "environment"
-    val job = mock[FakeJob]
+    val job = mock[JsonJob]
     val queue = mock[String => Unit]
 
     "journal on success" in {
