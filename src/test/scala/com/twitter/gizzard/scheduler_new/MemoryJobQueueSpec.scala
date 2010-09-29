@@ -6,7 +6,6 @@ import net.lag.kestrel.{PersistentQueue, QItem}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
-
 object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "MemoryJobQueue" should {
     val job1 = mock[Job]

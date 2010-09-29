@@ -5,6 +5,18 @@ import scala.util.matching.Regex
 import com.twitter.json.Json
 import net.lag.logging.Logger
 
+/**
+ * Codec for json-encoded jobs.
+ *
+ * A JsonJob can turn itself into a json-encoded string via 'toJson'/'toMap', so encoding is
+ * delegated to the JsonJob itself.
+ *
+ * For decoding, a set of JsonJobParsers are registered with corresponding regular expressions.
+ * If the primary key of the json structure matches the expression, the nested map is passed to
+ * that parser to turn it into a JsonJob.
+ *
+ * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
+ */
 class JsonCodec[J <: JsonJob](unparsableJobHandler: Array[Byte] => Unit) extends Codec[J] {
   private val log = Logger.get(getClass.getName)
   private val processors = mutable.Map.empty[Regex, JsonJobParser[J]]
