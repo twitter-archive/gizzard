@@ -11,9 +11,9 @@ object CopyJob {
 
 trait CopyJobFactory[S <: shards.Shard] extends ((shards.ShardId, shards.ShardId) => CopyJob[S])
 
-trait CopyJobParser[S <: shards.Shard] extends JsonJobParser[CopyJob[S]] {
+trait CopyJobParser[S <: shards.Shard] extends JsonJobParser[JsonJob] {
   type Environment = (nameserver.NameServer[S], JobScheduler[_])
-  def apply(codec: JsonCodec[CopyJob[S]], attributes: Map[String, Any]): CopyJob[S]
+  def apply(codec: JsonCodec[JsonJob], attributes: Map[String, Any]): JsonJob
 }
 
 
