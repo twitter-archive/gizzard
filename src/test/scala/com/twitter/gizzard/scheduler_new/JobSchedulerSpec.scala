@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import net.lag.configgy.Config
 import shards.ShardRejectedOperationException
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -13,6 +14,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val badJobQueue = mock[JobConsumer[Job]]
     val job1 = mock[Job]
     val ticket1 = mock[Ticket[Job]]
+    val codec = mock[Codec[Job]]
 
     var jobScheduler: JobScheduler[Job] = null
     val liveThreads = new AtomicInteger(0)
@@ -30,6 +32,20 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
           }
         }
       }
+    }
+
+    "configure" in {
+      val config = Config.fromMap(Map("path" -> "/tmp", "write.job_queue" -> "write1",
+                                      "write.error_queue" -> "error1", "write.threads" -> "100",
+                                      "write.replay_interval" -> "60", "write.error_limit" -> "5"))
+      val scheduler = JobScheduler("write", config, codec, badJobQueue)
+      scheduler.name mustEqual "write"
+      scheduler.threadCount mustEqual 100
+      scheduler.retryInterval mustEqual 60.seconds
+      scheduler.errorLimit mustEqual 5
+      scheduler.queue must beLike { case k: KestrelJobQueue[_] => k.queueName == "write1" }
+      scheduler.errorQueue must beLike { case k: KestrelJobQueue[_] => k.queueName == "error1" }
+      scheduler.badJobQueue mustEqual badJobQueue
     }
 
     "start & shutdown" in {
