@@ -3,24 +3,50 @@ package com.twitter.gizzard.scheduler
 import com.twitter.ostrich.Stats
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
-
+import nameserver.{NameServer, NonExistentShard}
+import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 object CopyJob {
   val MIN_COPY = 500
 }
 
-trait CopyJobFactory[S <: shards.Shard] extends ((shards.ShardId, shards.ShardId) => CopyJob[S])
+/**
+ * A factory for creating a new copy job (with default count and a starting cursor) from a source
+ * and destination shard ID.
+ */
+trait CopyJobFactory[S <: Shard] extends ((ShardId, ShardId) => CopyJob[S])
 
-trait CopyJobParser[S <: shards.Shard] extends JsonJobParser[JsonJob] {
-  def apply(codec: JsonCodec[JsonJob], attributes: Map[String, Any]): JsonJob
+/**
+ * A parser that creates a copy job out of json. The basic attributes (source shard ID, destination)
+ * shard ID, and count) are parsed out first, and the remaining attributes are passed to
+ * 'deserialize' to decode any shard-specific data (like a cursor).
+ */
+trait CopyJobParser[S <: Shard] extends JsonJobParser[JsonJob] {
+  def deserialize(attributes: Map[String, Any], sourceId: ShardId,
+                  destinationId: ShardId, count: Int): CopyJob[S]
+
+  def apply(codec: JsonCodec[JsonJob], attributes: Map[String, Any]): JsonJob = {
+    deserialize(attributes,
+                ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
+                ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString),
+                attributes("count").asInstanceOf[AnyVal].toInt)
+  }
 }
 
-
-abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId,
-                                               destinationId: shards.ShardId,
-                                               var count: Int,
-                                               nameServer: nameserver.NameServer[S],
-                                               scheduler: JobScheduler[JsonJob])
+/**
+ * A json-encodable job that represents the state of a copy from one shard to another.
+ *
+ * The 'toMap' implementation encodes the source and destination shard IDs, and the count of items.
+ * Other shard-specific data (like the cursor) can be encoded in 'serialize'.
+ *
+ * 'copyPage' is called to do the actual data copying. It should return a new CopyJob representing
+ * the next chunk of work to do, or None if the entire copying job is complete.
+ */
+abstract case class CopyJob[S <: Shard](sourceId: ShardId,
+                                        destinationId: ShardId,
+                                        var count: Int,
+                                        nameServer: NameServer[S],
+                                        scheduler: JobScheduler[JsonJob])
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
@@ -58,13 +84,13 @@ abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId,
           finish()
       }
     } catch {
-      case e: nameserver.NonExistentShard =>
+      case e: NonExistentShard =>
         log.error("Shard block copy failed because one of the shards doesn't exist. Terminating the copy.")
-      case e: shards.ShardTimeoutException if (count > CopyJob.MIN_COPY) =>
+      case e: ShardTimeoutException if (count > CopyJob.MIN_COPY) =>
         log.warning("Shard block copy timed out; trying a smaller block size.")
         count = (count * 0.9).toInt
         scheduler.put(this)
-      case e: shards.ShardDatabaseTimeoutException =>
+      case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler.put(this)
       case e: Throwable =>
