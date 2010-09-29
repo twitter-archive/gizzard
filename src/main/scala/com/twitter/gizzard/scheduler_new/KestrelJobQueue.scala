@@ -7,7 +7,7 @@ import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
-class KestrelJobQueue[J <: Job](val queueName: String, queue: PersistentQueue, codec: Codec[J])
+class KestrelJobQueue[J <: Job](queueName: String, queue: PersistentQueue, codec: Codec[J])
       extends JobQueue[J] {
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
@@ -15,6 +15,7 @@ class KestrelJobQueue[J <: Job](val queueName: String, queue: PersistentQueue, c
   Stats.makeGauge(queueName + "_items") { size }
   Stats.makeGauge(queueName + "_age") { age }
 
+  def name = queueName
   def size = queue.length.toInt
 
   /** Age (in seconds) of items in this queue. */

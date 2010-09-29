@@ -43,8 +43,8 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       scheduler.threadCount mustEqual 100
       scheduler.retryInterval mustEqual 60.seconds
       scheduler.errorLimit mustEqual 5
-      scheduler.queue must beLike { case k: KestrelJobQueue[_] => k.queueName == "write1" }
-      scheduler.errorQueue must beLike { case k: KestrelJobQueue[_] => k.queueName == "error1" }
+      scheduler.queue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "write1"
+      scheduler.errorQueue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "error1"
       scheduler.badJobQueue mustEqual badJobQueue
     }
 
