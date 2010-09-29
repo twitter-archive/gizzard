@@ -33,6 +33,19 @@ object JobScheduler {
   }
 }
 
+/**
+ * A cluster of worker threads which poll a JobQueue for work and execute jobs.
+ *
+ * If a job throws an exception, its error count is incremented. If the error count exceeds
+ * 'errorLimit', the job is written into 'badJobQueue', which is usually some sort of log file.
+ * Otherwise, the job is written into 'errorQueue'.
+ *
+ * At regular intervals specified by 'retryInterval', 'errorQueue' is drained back into 'queue'
+ * to give erroring jobs another chance to run.
+ *
+ * Jobs are added to the scheduler with 'put', and the thread pool & queues can be controlled
+ * with the normal Process methods ('start', 'shutdown', and so on).
+ */
 class JobScheduler[J <: Job](val name: String,
                              val threadCount: Int,
                              val retryInterval: Duration,
