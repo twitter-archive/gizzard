@@ -7,6 +7,12 @@ import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
+/**
+ * A JobQueue backed by a kestrel journal file. A codec is used to convert jobs into byte arrays
+ * on write, and back into jobs on read. Jobs are not completely removed from the queue until the
+ * ticket's 'ack' method is called, so if a job is half-complete when the server dies, it will be
+ * back in the queue when the server restarts.
+ */
 class KestrelJobQueue[J <: Job](queueName: String, queue: PersistentQueue, codec: Codec[J])
       extends JobQueue[J] {
   private val log = Logger.get(getClass.getName)
