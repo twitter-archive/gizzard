@@ -12,14 +12,16 @@ object CopyJob {
 trait CopyJobFactory[S <: shards.Shard] extends ((shards.ShardId, shards.ShardId) => CopyJob[S])
 
 trait CopyJobParser[S <: shards.Shard] extends JsonJobParser[JsonJob] {
-  type Environment = (nameserver.NameServer[S], JobScheduler[_])
   def apply(codec: JsonCodec[JsonJob], attributes: Map[String, Any]): JsonJob
 }
 
 
-abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destinationId: shards.ShardId, var count: Int)
+abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId,
+                                               destinationId: shards.ShardId,
+                                               var count: Int,
+                                               nameServer: nameserver.NameServer[S],
+                                               scheduler: JobScheduler[JsonJob])
          extends JsonJob {
-  type Environment = (nameserver.NameServer[S], JobScheduler[_])
   private val log = Logger.get(getClass.getName)
 
   def toMap = {
@@ -31,16 +33,14 @@ abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destina
     ) ++ serialize
   }
 
-  def finish(nameServer: nameserver.NameServer[S], scheduler: JobScheduler[_]) {
+  def finish() {
     nameServer.markShardBusy(destinationId, shards.Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
     Stats.clearGauge(gaugeName)
   }
 
-  def apply(environment: (nameserver.NameServer[S], JobScheduler[_])) {
-    val nameServer = environment._1
-    val scheduler = environment._2.asInstanceOf[JobScheduler[Job]]
+  def apply() {
     try {
       log.info("Copying shard block (type %s) from %s to %s: state=%s",
                getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
@@ -51,11 +51,11 @@ abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destina
 
       val nextJob = copyPage(sourceShard, destinationShard, count)
       nextJob match {
-        case Some(job) => {
+        case Some(job) =>
           incrGauge
           scheduler.put(job)
-        }
-        case None => finish(nameServer, scheduler)
+        case None =>
+          finish()
       }
     } catch {
       case e: nameserver.NonExistentShard =>
@@ -81,7 +81,7 @@ abstract case class CopyJob[S <: shards.Shard](sourceId: shards.ShardId, destina
     "x-copying-" + sourceId + "-" + destinationId
   }
 
-  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[CopyJob[_]]
+  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[CopyJob[S]]
 
   def serialize: Map[String, Any]
 }

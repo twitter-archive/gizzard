@@ -5,10 +5,9 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-class FakeCopy(val sourceShardId: shards.ShardId, val destinationShardId: shards.ShardId, count: Int)(nextJob: => Option[FakeCopy])
-      extends CopyJob[shards.Shard](sourceShardId, destinationShardId, count) {
-  val environment = (null, null)
-
+class FakeCopy(val sourceShardId: shards.ShardId, val destinationShardId: shards.ShardId, count: Int,
+               nameServer: nameserver.NameServer[shards.Shard], scheduler: JobScheduler[JsonJob])(nextJob: => Option[FakeCopy])
+      extends CopyJob[shards.Shard](sourceShardId, destinationShardId, count, nameServer, scheduler) {
   def serialize = Map("cursor" -> 1)
 
   @throws(classOf[Exception])
@@ -28,9 +27,9 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val destinationShardId = shards.ShardId("testhost", "2")
     val count = CopyJob.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
-    val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count)(_)
     val nameServer = mock[nameserver.NameServer[shards.Shard]]
-    val jobScheduler = mock[JobScheduler[FakeCopy]]
+    val jobScheduler = mock[JobScheduler[JsonJob]]
+    val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(_)
     val shard1 = mock[shards.Shard]
     val shard2 = mock[shards.Shard]
 
@@ -66,7 +65,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(jobScheduler).put(nextCopy)
         }
 
-        copy.apply((nameServer, jobScheduler))
+        copy.apply()
       }
 
       "no shard" in {
@@ -76,7 +75,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           never(jobScheduler).put(nextCopy)
         }
 
-        copy.apply((nameServer, jobScheduler))
+        copy.apply()
       }
 
       "with a database connection timeout" in {
@@ -88,7 +87,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(jobScheduler).put(copy)
         }
 
-        copy.apply((nameServer, jobScheduler))
+        copy.apply()
         copy.toMap("count") mustEqual (count * 0.9).toInt
       }
 
@@ -101,7 +100,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           never(jobScheduler).put(nextCopy)
         }
 
-        copy.apply((nameServer, jobScheduler)) must throwA[Exception]
+        copy.apply() must throwA[Exception]
       }
 
       "with a shard timeout" in {
@@ -114,12 +113,12 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
             one(jobScheduler).put(copy)
           }
 
-          copy.apply((nameServer, jobScheduler))
+          copy.apply()
         }
 
         "after too many retries" in {
           val count = CopyJob.MIN_COPY - 1
-          val copy = new FakeCopy(sourceShardId, destinationShardId, count)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
+          val copy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
 
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
@@ -128,7 +127,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
             never(jobScheduler).put(nextCopy)
           }
 
-          copy.apply((nameServer, jobScheduler)) must throwA[Exception]
+          copy.apply() must throwA[Exception]
         }
       }
 
@@ -142,7 +141,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Normal)
         }
 
-        copy.apply((nameServer, jobScheduler))
+        copy.apply()
       }
     }
   }

@@ -5,10 +5,10 @@ import net.lag.logging.Logger
 /**
  * Wrapper for JsonJob that logs jobs after they are successfully executed.
  */
-class JournaledJob(val job: JsonJob, journaller: String => Unit) extends JobProxy with JsonJob {
+class JournaledJob(val job: JsonJob, journaller: String => Unit) extends JsonJob {
   def toMap = job.toMap
 
-  override def apply() {
+  def apply() {
     job()
     try {
       journaller(job.toJson)

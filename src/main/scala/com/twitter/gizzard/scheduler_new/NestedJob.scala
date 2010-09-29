@@ -7,14 +7,14 @@ import scala.collection.mutable
  * If any of the smaller jobs throws an exception, the NestedJob is enqueued with only that
  * job and the remaining jobs -- in other words, it's enqueued with its progress so far.
  */
-class NestedJob[J <: Job](val jobs: Iterable[J]) extends JobProxy {
+class NestedJob[J <: Job](val jobs: Iterable[J]) extends Job {
   val taskQueue = {
     val q = new mutable.Queue[J]()
     q ++= jobs
     q
   }
 
-  override def apply() {
+  def apply() {
     while (!taskQueue.isEmpty) {
       taskQueue.first.apply()
       taskQueue.dequeue()
