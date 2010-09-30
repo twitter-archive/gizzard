@@ -20,12 +20,12 @@ object TThreadServer {
   }
 
   def apply(name: String, port: Int, idleTimeout: Int, processor: TProcessor): TThreadServer = {
-    TThreadServer(name, port, idleTimeout, makeThreadPool(name), processor)
+    TThreadServer(name, port, idleTimeout, makeThreadPool(name, MIN_THREADS), processor)
   }
 
-  def makeThreadPool(name: String): ExecutorService = {
+  def makeThreadPool(name: String, minThreads: Int): ExecutorService = {
     val queue = new SynchronousQueue[Runnable]
-    val executor = new ThreadPoolExecutor(MIN_THREADS, Math.MAX_INT, 60, TimeUnit.SECONDS, queue,
+    val executor = new ThreadPoolExecutor(minThreads, Math.MAX_INT, 60, TimeUnit.SECONDS, queue,
       new NamedPoolThreadFactory(name))
 
     Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
