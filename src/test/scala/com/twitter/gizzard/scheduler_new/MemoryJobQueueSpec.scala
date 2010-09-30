@@ -43,7 +43,6 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
       queue.paused mustEqual false
       queue.get() must beSome[Ticket[Job]]
 
-      queue.put(job1)
       queue.shutdown()
       queue.running mustEqual false
       queue.paused mustEqual true
@@ -67,27 +66,14 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
     }
 
     "drainTo" in {
-      "normal" in {
-        expect {
-          one(destinationQueue).put(job1)
-          one(destinationQueue).put(job2)
-        }
-
-        queue.put(job1)
-        queue.put(job2)
-        queue.drainTo(destinationQueue)
+      expect {
+        one(destinationQueue).put(job1)
+        one(destinationQueue).put(job2)
       }
 
-      "after shutdown" in {
-        expect {
-          never(destinationQueue).put(any[Job])
-        }
-
-        queue.put(job1)
-        queue.put(job2)
-        queue.shutdown()
-        queue.drainTo(destinationQueue)
-      }
+      queue.put(job1)
+      queue.put(job2)
+      queue.drainTo(destinationQueue)
     }
   }
 }

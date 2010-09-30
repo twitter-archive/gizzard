@@ -79,7 +79,6 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       jobScheduler.isShutdown mustEqual false
 
       expect {
-        one(queue).pause()
         one(queue).shutdown()
         one(queue).isShutdown willReturn true
       }
@@ -117,7 +116,6 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       liveThreads.get() mustEqual 1
 
       expect {
-        one(queue).pause()
         one(queue).shutdown()
       }
 
