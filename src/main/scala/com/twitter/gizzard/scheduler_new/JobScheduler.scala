@@ -116,8 +116,9 @@ class JobScheduler[J <: Job](val name: String,
 
   def shutdown() {
     log.info("Shutting down JobScheduler: %s", queue)
-    pause()
     queue.shutdown()
+    workerThreads.foreach { _.shutdown() }
+    workerThreads = Nil
     retryTask.shutdown()
     running = false
   }
