@@ -14,22 +14,35 @@ object JobScheduler {
    * a new ErrorHandlingJobParser and linking the job & error queues together through it.
    */
   def apply[J <: Job](name: String, queueConfig: ConfigMap, codec: Codec[J], badJobQueue: JobConsumer[J]) = {
-    val path = queueConfig("path")
+    val path = queueConfig.getString("path", "/var/spool/kestrel")
     val schedulerConfig = queueConfig.configMap(name)
-
-    val jobQueueName = schedulerConfig("job_queue")
-    val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
-    val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
-
-    val errorQueueName = schedulerConfig("error_queue")
-    val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
-    val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
 
     val threadCount = schedulerConfig("threads").toInt
     val retryInterval = schedulerConfig("replay_interval").toInt.seconds
     val errorLimit = schedulerConfig("error_limit").toInt
+    val sizeLimit = schedulerConfig.getInt("size_limit", 0)
 
-    new JobScheduler[J](name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+    val jobQueueName = schedulerConfig("job_queue")
+    val errorQueueName = schedulerConfig("error_queue")
+
+    schedulerConfig.getString("type", "kestrel") match {
+      case "kestrel" =>
+        val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
+        val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
+
+        val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
+        val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
+
+        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+
+      case "memory" =>
+        val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
+        val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
+        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+
+      case x =>
+        throw new Exception("Unknown queue type " + x)
+    }
   }
 }
 
