@@ -27,8 +27,8 @@ class GizzardServices[S <: Shard](config: ConfigMap, nameServer: NameServer[S],
   val jobThriftServer = TThreadServer("jobs", jobServerPort, idleTimeout, gizzardThreadPool, jobProcessor)
 
   def start() {
-    shardThriftServer.serve()
-    jobThriftServer.serve()
+    shardThriftServer.start()
+    jobThriftServer.start()
   }
 
   def shutdown() {

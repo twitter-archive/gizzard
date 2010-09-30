@@ -61,6 +61,14 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
   serverSocket.setReuseAddress(true)
   serverSocket.setSoTimeout(ACCEPT_TIMEOUT)
 
+  def start() {
+    new Thread(name) {
+      override def run() {
+        serve()
+      }
+    }.start()
+  }
+
   def serve() {
     log.info("Starting thrift service %s on port %d.", name, port)
 
