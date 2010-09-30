@@ -14,6 +14,10 @@ object PrioritizingJobScheduler {
   }
 }
 
+/**
+ * A map of JobSchedulers by priority. It can be treated as a single scheduler, and all process
+ * operations work on the cluster of schedulers as a whole.
+ */
 class PrioritizingJobScheduler[J <: Job](schedulers: Map[Int, JobScheduler[J]]) extends Process {
   def put(priority: Int, job: J) {
     apply(priority).put(job)
