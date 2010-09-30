@@ -51,14 +51,12 @@ object NameServer {
     val shard = new ReadWriteShardAdapter(
       new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture, writeTimeout))
 
-    val mappingFunction: (Long => Long) = config.getString("mapping") match {
-      case None =>
+    val mappingFunction: (Long => Long) = config.getString("mapping", "identity") match {
+      case "identity" =>
         { n => n }
-      case Some("byte_swapper") =>
+      case "byte_swapper" =>
         ByteSwapper
-      case Some("identity") =>
-        { n => n }
-      case Some("fnv1a-64") =>
+      case "fnv1a-64" =>
         FnvHasher
     }
     new NameServer(shard, shardRepository, mappingFunction)
