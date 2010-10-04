@@ -5,7 +5,7 @@ import scala.collection.mutable
 
 
 class PolymorphicJobParser extends JobParser {
-  private val processors = mutable.Map.empty[Regex, JobParser]
+  private val processors = new LinkedHashMap[Regex, JobParser]
 
   def +=(item: (Regex, JobParser)) = processors += item
   def +=(r: Regex, p: JobParser) = processors += ((r, p))
