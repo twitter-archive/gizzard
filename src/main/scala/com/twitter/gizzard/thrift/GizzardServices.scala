@@ -18,7 +18,6 @@ class GizzardServices[S <: Shard, J <: JsonJob](config: ConfigMap,
   val idleTimeout = config("idle_timeout_sec").toInt * 1000
   val gizzardThreadPool = TThreadServer.makeThreadPool("gizzard", 0)
 
-  val shardServer = new ShardManagerService(nameServer, copyFactory, scheduler(copyPriority))
   val shardServer = new ShardManagerService(nameServer, copyFactory, copyScheduler)
   val shardProcessor = new ShardManager.Processor(shardServer)
   val shardThriftServer = TThreadServer("shards", shardServerPort, idleTimeout, gizzardThreadPool, shardProcessor)
