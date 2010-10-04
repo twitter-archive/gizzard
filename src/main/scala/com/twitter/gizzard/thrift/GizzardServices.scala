@@ -15,21 +15,25 @@ class GizzardServices[S <: Shard, J <: JsonJob](config: ConfigMap,
   val shardServerPort = config("shard_server_port").toInt
   val jobServerPort = config("job_server_port").toInt
 
+  val idleTimeout = config("idle_timeout_sec").toInt * 1000
+  val gizzardThreadPool = TThreadServer.makeThreadPool("gizzard", 0)
+
+  val shardServer = new ShardManagerService(nameServer, copyFactory, scheduler(copyPriority))
   val shardServer = new ShardManagerService(nameServer, copyFactory, copyScheduler)
   val shardProcessor = new ShardManager.Processor(shardServer)
-  val shardThriftServer = TSelectorServer("shards", shardServerPort, config, shardProcessor)
+  val shardThriftServer = TThreadServer("shards", shardServerPort, idleTimeout, gizzardThreadPool, shardProcessor)
 
   val jobServer = new JobManagerService(scheduler)
   val jobProcessor = new JobManager.Processor(jobServer)
-  val jobThriftServer = TSelectorServer("jobs", jobServerPort, config, jobProcessor)
+  val jobThriftServer = TThreadServer("jobs", jobServerPort, idleTimeout, gizzardThreadPool, jobProcessor)
 
   def start() {
-    shardThriftServer.serve()
-    jobThriftServer.serve()
+    shardThriftServer.start()
+    jobThriftServer.start()
   }
 
   def shutdown() {
-    shardThriftServer.shutdown()
-    jobThriftServer.shutdown()
+    shardThriftServer.stop()
+    jobThriftServer.stop()
   }
 }
