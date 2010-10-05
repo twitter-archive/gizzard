@@ -88,6 +88,13 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
   private def lookupShard(deleted: Deleted.Value, id: ShardId): Option[ShardInfo] = lookupShard(queryEvaluator, List(deleted), id)
 
+  private def isAbstractShard[S <: shards.Shard](repository: ShardRepository[S], info: shardInfo) = {
+    repository.factory(info.className) match {
+      case s: shards.AbstractShardFactory[_] => true
+      case _ => false
+    }
+  }
+
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
       try {
@@ -107,7 +114,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
             shardInfo.sourceType,
             shardInfo.destinationType)
 
-          repository.create(shardInfo)
+          if ( !isAbstractShard(repository, shardInfo) ) {
+            repository.create(shardInfo)
+          }
         }
       } catch {
         case e: SQLIntegrityConstraintViolationException =>
@@ -141,23 +150,31 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                            "(child_hostname = ? AND child_table_prefix = ?)",
                            id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
 
-    queryEvaluator.execute("UPDATE shards SET deleted = ? WHERE hostname = ? AND table_prefix = ?",
-                           Deleted.Deleted.id, id.hostname, id.tablePrefix)
-
-    lookupShard(Deleted.Deleted, id).map { info =>
-      repository.factory(info.className) match {
-        case s: shards.AbstractShardFactory[_] => purgeShard(info, repository)
-        case _ =>
+    lookupShard(Deleted.Normal, id).map { info =>
+      if ( isAbstractShard(repository, info) {
+        deleteShardRow(id)
+      } else {
+        queryEvaluator.execute(
+          "UPDATE shards SET deleted = ? WHERE hostname = ? AND table_prefix = ?",
+          Deleted.Deleted.id,
+          id.hostname,
+          id.tablePrefix
+        )
       }
     }
   }
 
-  def purgeShard[S <: shards.Shard](info: ShardInfo, repository: ShardRepository[S]) {
-    if ( queryEvaluator.execute("DELETE FROM shards WHERE deleted = ? AND hostname = ? AND table_prefix = ?",
-      Deleted.Deleted.id, info.hostname, info.tablePrefix) > 0 ) {
+  private def deleteShardRow(id: ShardId) = {
+    queryEvaluator.execute(
+      "DELETE FROM shards WHERE deleted = ? AND hostname = ? AND table_prefix = ?",
+      Deleted.Deleted.id,
+      id.hostname,
+      id.tablePrefix
+    ) > 0
+  }
 
-      repository.purge(info)
-    }
+  def purgeShard[S <: shards.Shard](info: ShardInfo, repository: ShardRepository[S]) {
+    if ( deleteShardRow(info.id) repository.purge(info)
   }
 
   def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) {
