@@ -152,7 +152,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
     lookupShard(Deleted.Normal, id).map { info =>
       if ( isAbstractShard(repository, info) ) {
-        deleteShardRow(id)
+        deleteShardRow(Deleted.Normal, id)
       } else {
         queryEvaluator.execute(
           "UPDATE shards SET deleted = ? WHERE hostname = ? AND table_prefix = ?",
@@ -164,17 +164,17 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
-  private def deleteShardRow(id: ShardId) = {
+  private def deleteShardRow(deleted: Deleted.Value, id: ShardId) = {
     queryEvaluator.execute(
       "DELETE FROM shards WHERE deleted = ? AND hostname = ? AND table_prefix = ?",
-      Deleted.Deleted.id,
+      deleted.id,
       id.hostname,
       id.tablePrefix
     ) > 0
   }
 
   def purgeShard[S <: shards.Shard](info: ShardInfo, repository: ShardRepository[S]) {
-    if ( deleteShardRow(info.id) ) repository.purge(info)
+    if ( deleteShardRow(Deleted.Deleted, info.id) ) repository.purge(info)
   }
 
   def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) {
@@ -200,7 +200,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   def shardsForHostname(hostname: String) = {
     queryEvaluator.select(
       "SELECT * FROM shards WHERE deleted = ? AND hostname = ?",
-      Deleted.Normal,
+      Deleted.Normal.id,
       hostname
     )(rowToShardInfo).toList
   }
