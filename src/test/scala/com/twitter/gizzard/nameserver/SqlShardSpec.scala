@@ -113,6 +113,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "create" in {
       "a new shard" >> {
         expect {
+          one(shardRepository).factory(forwardShardInfo.className)
           one(shardRepository).create(forwardShardInfo)
         }
 
@@ -123,6 +124,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       "when the shard already exists" >> {
         "when the shard matches existing data" >> {
           expect {
+            one(shardRepository).factory(forwardShardInfo.className)
             one(shardRepository).create(forwardShardInfo)
           }
 
@@ -134,6 +136,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
         "when the shard contradicts existing data" >> {
           expect {
+            one(shardRepository).factory(forwardShardInfo.className)
             one(shardRepository).create(forwardShardInfo)
           }
 
@@ -148,6 +151,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "find" in {
       "a created shard" >> {
         expect {
+          one(shardRepository).factory(forwardShardInfo.className)
           one(shardRepository).create(forwardShardInfo)
         }
 
@@ -221,6 +225,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
     "set shard busy" in {
       expect {
+        one(shardRepository).factory(forwardShardInfo.className)
         one(shardRepository).create(forwardShardInfo)
       }
 
@@ -234,6 +239,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
       doBefore {
         expect {
+          one(shardRepository).factory(forwardShardInfo.className)
           one(shardRepository).create(forwardShardInfo)
         }
 
@@ -271,8 +277,11 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
       doBefore {
         expect {
+          one(shardRepository).factory(shard1.className)
           one(shardRepository).create(shard1)
+          one(shardRepository).factory(shard2.className)
           one(shardRepository).create(shard2)
+          one(shardRepository).factory(shard3.className)
           one(shardRepository).create(shard3)
         }
 
