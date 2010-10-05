@@ -11,10 +11,11 @@ class ShardException(description: String, cause: Throwable) extends Exception(de
 
 /**
  * Shard exceptions that aren't interesting as stack traces. They refer to matter-of-course
- * timeouts or rejections that aren't code errors.
+ * timeouts or rejections that aren't code errors. Any "cause" exception is thrown away, and
+ * no stack trace is filled in.
  */
 class NormalShardException(description: String, cause: Throwable) extends
-      ShardException(description, cause) {
+      ShardException(description, null) {
   def this(description: String) = this(description, null)
 
   override def fillInStackTrace() = this
