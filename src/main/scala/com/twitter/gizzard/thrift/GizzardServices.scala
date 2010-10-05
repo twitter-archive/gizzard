@@ -7,7 +7,6 @@ import nameserver.NameServer
 import scheduler.PrioritizingJobScheduler
 import shards.Shard
 
-
 class GizzardServices[S <: Shard](config: ConfigMap, nameServer: NameServer[S],
                                   copyFactory: CopyFactory[S],
                                   scheduler: PrioritizingJobScheduler, copyPriority: Int) {
