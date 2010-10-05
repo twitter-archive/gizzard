@@ -88,7 +88,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
   private def lookupShard(deleted: Deleted.Value, id: ShardId): Option[ShardInfo] = lookupShard(queryEvaluator, List(deleted), id)
 
-  private def isAbstractShard[S <: shards.Shard](repository: ShardRepository[S], info: shardInfo) = {
+  private def isAbstractShard[S <: shards.Shard](repository: ShardRepository[S], info: ShardInfo) = {
     repository.factory(info.className) match {
       case s: shards.AbstractShardFactory[_] => true
       case _ => false
@@ -151,7 +151,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                            id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
 
     lookupShard(Deleted.Normal, id).map { info =>
-      if ( isAbstractShard(repository, info) {
+      if ( isAbstractShard(repository, info) ) {
         deleteShardRow(id)
       } else {
         queryEvaluator.execute(
@@ -174,7 +174,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   def purgeShard[S <: shards.Shard](info: ShardInfo, repository: ShardRepository[S]) {
-    if ( deleteShardRow(info.id) repository.purge(info)
+    if ( deleteShardRow(info.id) ) repository.purge(info)
   }
 
   def purgeShard[S <: shards.Shard](id: ShardId, repository: ShardRepository[S]) {
@@ -191,7 +191,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   private def lookupShards(deleted: Deleted.Value, busy: Seq[Busy.Value]) = {
-    val queryParameters = deleted.map(_.id) :: busy.map(_.id) :: Nil
+    val queryParameters = deleted.id :: busy.map(_.id) :: Nil
     queryEvaluator.select("SELECT * FROM shards WHERE deleted IN (?) AND busy IN (?)", queryParameters: _*)(rowToShardInfo).toList
   }
 
