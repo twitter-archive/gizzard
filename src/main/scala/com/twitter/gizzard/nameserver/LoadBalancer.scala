@@ -1,15 +1,21 @@
 package com.twitter.gizzard.nameserver
 
 import scala.util.Random
+import scala.collection.mutable.ArrayBuffer
 
+class LoadBalancer[ConcreteShard <: shards.Shard](
+      random: Random,
+      replicas: Seq[ConcreteShard])
+  extends (() => Seq[ConcreteShard]) {
 
-class LoadBalancer[ConcreteShard <: shards.Shard](random: Random, replicas: Seq[ConcreteShard]) extends (() => Seq[ConcreteShard]) {
   def this(replicas: Seq[ConcreteShard]) = this(new Random, replicas)
-  val totalWeight = replicas.foldLeft(0) { _ + _.weight }
 
-  def apply() = sort(totalWeight, replicas)
+  def apply() = sort(replicas)
 
-  private def sort(totalWeight: Int, replicas: Seq[ConcreteShard]): List[ConcreteShard] = replicas match {
+  protected def sort(replicas: Seq[ConcreteShard]): List[ConcreteShard] =
+    sort(replicas.foldLeft(0)(_ + _.weight), replicas)
+
+  protected def sort(totalWeight: Int, replicas: Seq[ConcreteShard]): List[ConcreteShard] = replicas match {
     case Seq() => Nil
     case Seq(first, rest @ _*) =>
       val remainingWeight = totalWeight - first.weight
@@ -21,5 +27,45 @@ class LoadBalancer[ConcreteShard <: shards.Shard](random: Random, replicas: Seq[
       } else {
         sort(remainingWeight, rest) ++ List(first)
       }
+  }
+}
+
+class FailingOverLoadBalancer[ConcreteShard <: shards.Shard](
+      random: Random,
+      replicas: Seq[ConcreteShard])
+  extends LoadBalancer[ConcreteShard](random, replicas) {
+
+  def this(replicas: Seq[ConcreteShard]) = this(new Random, replicas)
+
+  val keepWarmFalloverRate = 0.01
+
+  val (online, offline) = replicas.partition(_.weight > 0)
+
+  override def apply() = {
+    val head = sort(online.toSeq).first
+    val tail = randomize(offline.toSeq)
+
+    if ( random.nextFloat <= keepWarmFalloverRate ) {
+      tail ++ List(head)
+    } else {
+      head :: tail
+    }
+  }
+
+  private def randomize(replicas: Seq[ConcreteShard]) = {
+    val buffer = new ArrayBuffer[ConcreteShard]
+    buffer ++= replicas
+
+    def swap(a: Int, b: Int) {
+      val tmp = buffer(a)
+      buffer(a) = buffer(b)
+      buffer(b) = tmp
+    }
+
+    for (n <- 1 to buffer.length) {
+      swap(n - 1, random.nextInt(n))
+    }
+
+    buffer.toList
   }
 }

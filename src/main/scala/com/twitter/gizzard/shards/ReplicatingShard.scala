@@ -14,18 +14,33 @@ import com.twitter.xrayspecs.Duration
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      future: Option[Future], timeout: Duration) extends shards.ShardFactory[ConcreteShard] {
+      future: Option[Future],
+      timeout: Duration)
+  extends shards.ShardFactory[ConcreteShard] {
+
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future, timeout))
+    readWriteShardAdapter(new ReplicatingShard(
+      shardInfo,
+      weight,
+      replicas,
+      new LoadBalancer(replicas),
+      future,
+      timeout
+    ))
+
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
 class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)
   extends ShardException("Timeout waiting for write to: %s/%s".format(shard.hostname, shard.tablePrefix), ex)
 
-class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
-  val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
-  val future: Option[Future], val futureTimeout: Duration)
+class ReplicatingShard[ConcreteShard <: Shard](
+      val shardInfo: ShardInfo,
+      val weight: Int,
+      val children: Seq[ConcreteShard],
+      val loadBalancer: (() => Seq[ConcreteShard]),
+      val future: Option[Future],
+      val futureTimeout: Duration)
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
