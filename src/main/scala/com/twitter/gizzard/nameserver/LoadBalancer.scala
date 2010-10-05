@@ -42,13 +42,13 @@ class FailingOverLoadBalancer[ConcreteShard <: shards.Shard](
   val (online, offline) = replicas.partition(_.weight > 0)
 
   override def apply() = {
-    val head = sort(online.toSeq).first
-    val tail = randomize(offline.toSeq)
+    val (head :: tail) = sort(online.toSeq)
+    val offlineRandomized = randomize(offline.toSeq)
 
     if ( random.nextFloat <= keepWarmFalloverRate ) {
-      tail ++ List(head)
+      offlineRandomized ++ (head :: tail)
     } else {
-      head :: tail
+      head :: (offlineRandomized ++ tail)
     }
   }
 
