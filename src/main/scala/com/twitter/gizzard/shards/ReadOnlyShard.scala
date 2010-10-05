@@ -3,7 +3,7 @@ package com.twitter.gizzard.shards
 import scala.collection.mutable
 
 
-class ReadOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.AbstractShardFactory[ConcreteShard] {
+class ReadOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.VirtualShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
     readWriteShardAdapter(new ReadOnlyShard(shardInfo, weight, children))
 }

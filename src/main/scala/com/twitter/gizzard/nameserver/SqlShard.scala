@@ -88,9 +88,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
   private def lookupShard(deleted: Deleted.Value, id: ShardId): Option[ShardInfo] = lookupShard(queryEvaluator, List(deleted), id)
 
-  private def isAbstractShard[S <: shards.Shard](repository: ShardRepository[S], info: ShardInfo) = {
+  private def isVirtualShard[S <: shards.Shard](repository: ShardRepository[S], info: ShardInfo) = {
     repository.factory(info.className) match {
-      case s: shards.AbstractShardFactory[_] => true
+      case s: shards.VirtualShardFactory[_] => true
       case _ => false
     }
   }
@@ -114,7 +114,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
             shardInfo.sourceType,
             shardInfo.destinationType)
 
-          if ( !isAbstractShard(repository, shardInfo) ) {
+          if ( !isVirtualShard(repository, shardInfo) ) {
             repository.create(shardInfo)
           }
         }
@@ -151,7 +151,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                            id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
 
     lookupShard(Deleted.Normal, id).map { info =>
-      if ( isAbstractShard(repository, info) ) {
+      if ( isVirtualShard(repository, info) ) {
         deleteShardRow(Deleted.Normal, id)
       } else {
         queryEvaluator.execute(

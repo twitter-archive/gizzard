@@ -1,6 +1,6 @@
 package com.twitter.gizzard.shards
 
-class BlockedShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.AbstractShardFactory[ConcreteShard] {
+class BlockedShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.VirtualShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
     readWriteShardAdapter(new BlockedShard(shardInfo, weight, children))
 }
