@@ -1,5 +1,10 @@
 # Gizzard: a library for creating distributed datastores
 
+Check out [Using gizzard](http://github.com/twitter/gizzard/raw/master/doc/using.md)
+for details on requirements, how to build gizzard, and a demo app.
+
+Also check out [the gizzard mailing list](http://groups.google.com/group/gizzard).
+
 ## An introduction to sharding
 
 Many modern web sites need fast access to an amount of information so large
@@ -47,7 +52,7 @@ partitions. Each partition manages its own replication through a declarative
 replication tree. Gizzard supports “migrations” (for example, elastically
 adding machines to the cluster) and gracefully handles failures. The system is
 made *eventually consistent* by requiring that all write-operations are
-idempotent AND commutative and as operations fail (because of, e.g., a network
+idempotent *and* commutative and as operations fail (because of, e.g., a network
 partition) they are retried at a later time.
 
 A very simple sample use of Gizzard is [Rowz](http://github.com/nkallen/Rowz),
@@ -77,7 +82,7 @@ per commodity machine. But your mileage may vary.
 Gizzard is designed to replicate data across any network-available data
 storage service. This could be a relational database, Lucene, Redis, or
 anything you can imagine. As a general rule, Gizzard requires that all write
-operations be idempotent AND commutative (see the section on Fault Tolerance
+operations be idempotent *and* commutative (see the section on Fault Tolerance
 and Migrations), so this places some constraints on how you may use the
 back-end store. In particular, Gizzard does not guarantee that write
 operations are applied in order. It is therefore imperative that the system is
@@ -162,7 +167,7 @@ unavailable, the write operation goes into an error queue and is retried
 later.
 
 In order to achieve “eventual consistency”, this “retry later” strategy
-requires that your write operations are idempotent AND commutative. This is
+requires that your write operations are idempotent *and* commutative. This is
 because a retry later strategy can apply operations out-of-order (as, for
 instance, when newer jobs are applied before older failed jobs are retried).
 In most cases this is an easy requirement. A demonstration of commutative,
@@ -184,8 +189,8 @@ read from it (because it has an incomplete picture of the corpus).
 ![Alt text](http://github.com/twitter/gizzard/raw/master/doc/migration.png)
 
 Because writes will happen out of order (new writes occur before older ones
-and some writes may happen twice), all writes must be idempotent to ensure
-data consistency.
+and some writes may happen twice), all writes must be idempotent and
+commutative to ensure data consistency.
 
 ### How does Gizzard handle write conflicts?
 
