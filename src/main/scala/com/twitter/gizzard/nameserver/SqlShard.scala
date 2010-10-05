@@ -88,11 +88,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
   private def lookupShard(deleted: Deleted.Value, id: ShardId): Option[ShardInfo] = lookupShard(queryEvaluator, List(deleted), id)
 
-  private def lookupShards(deleted: Seq[Deleted.Value], busy: Seq[Busy.Value]) = {
-    val queryParameters = deleted.map(_.id) :: busy.map(_.id) :: Nil
-    queryEvaluator.select("SELECT * FROM shards WHERE deleted IN (?) AND busy IN (?)", queryParameters: _*)(rowToShardInfo)
-  }
-
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
       try {
@@ -178,13 +173,24 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
-  def listShards() = lookupShards(List(Deleted.Normal), Busy.elements.toList).toList
+  private def lookupShards(deleted: Deleted.Value, busy: Seq[Busy.Value]) = {
+    val queryParameters = deleted.map(_.id) :: busy.map(_.id) :: Nil
+    queryEvaluator.select("SELECT * FROM shards WHERE deleted IN (?) AND busy IN (?)", queryParameters: _*)(rowToShardInfo).toList
+  }
 
-  def shardsForHostname(hostname: String) = listShards().filter( shard => shard.hostname == hostname )
+  def listShards() = lookupShards(Deleted.Normal, Busy.elements.toList)
 
-  def getBusyShards() = lookupShards(List(Deleted.Normal), List(Busy.Busy)).toList
+  def shardsForHostname(hostname: String) = {
+    queryEvaluator.select(
+      "SELECT * FROM shards WHERE deleted = ? AND hostname = ?",
+      Deleted.Normal,
+      hostname
+    )(rowToShardInfo).toList
+  }
 
-  def getDeletedShards() = lookupShards(List(Deleted.Deleted), Busy.elements.toList).toList
+  def getBusyShards() = lookupShards(Deleted.Normal, List(Busy.Busy))
+
+  def getDeletedShards() = lookupShards(Deleted.Deleted, Busy.elements.toList)
 
   def addLink(upId: ShardId, downId: ShardId, weight: Int) {
     if (upId == downId) {
