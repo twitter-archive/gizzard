@@ -1,10 +1,10 @@
 # How to use gizzard
 
-The source-code to Gizzard is on github: http://github.com/twitter/gizzard.
+The source-code to Gizzard is on github: [http://github.com/twitter/gizzard](http://github.com/twitter/gizzard).
 
 A sample application that uses Gizzard, called Rowz, is also available:
-http://github.com/nkallen/Rowz. The best way to get started with Gizzard is to
-clone Rowz and customize.
+[http://github.com/nkallen/Rowz](http://github.com/nkallen/Rowz). The best way
+to get started with Gizzard is to clone Rowz and customize.
 
 ## Building
 

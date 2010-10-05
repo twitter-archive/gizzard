@@ -1,6 +1,6 @@
 # Gizzard: a library for creating distributed datastores
 
-Check out [Using gizzard](http://github.com/twitter/gizzard/raw/master/doc/using.md)
+Check out [Using gizzard](http://github.com/twitter/gizzard/blob/master/doc/using.md)
 for details on requirements, how to build gizzard, and a demo app.
 
 Also check out [the gizzard mailing list](http://groups.google.com/group/gizzard).
