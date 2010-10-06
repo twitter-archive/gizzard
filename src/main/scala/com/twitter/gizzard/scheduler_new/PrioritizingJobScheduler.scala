@@ -18,7 +18,7 @@ object PrioritizingJobScheduler {
  * A map of JobSchedulers by priority. It can be treated as a single scheduler, and all process
  * operations work on the cluster of schedulers as a whole.
  */
-class PrioritizingJobScheduler[J <: Job](schedulers: Map[Int, JobScheduler[J]]) extends Process {
+class PrioritizingJobScheduler[J <: Job](val schedulers: Map[Int, JobScheduler[J]]) extends Process {
   def put(priority: Int, job: J) {
     apply(priority).put(job)
   }
@@ -27,6 +27,10 @@ class PrioritizingJobScheduler[J <: Job](schedulers: Map[Int, JobScheduler[J]]) 
     schedulers.get(priority).getOrElse {
       throw new Exception("No scheduler for priority " + priority)
     }
+  }
+
+  def update(priority: Int, scheduler: JobScheduler[J]) {
+    schedulers(priority) = scheduler
   }
 
   def start() = schedulers.values.foreach { _.start() }
