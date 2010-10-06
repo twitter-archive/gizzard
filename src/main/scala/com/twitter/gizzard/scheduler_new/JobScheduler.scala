@@ -13,7 +13,8 @@ object JobScheduler {
    * Configure a JobScheduler from a queue ConfigMap and a scheduler-specific ConfigMap, creating
    * a new ErrorHandlingJobParser and linking the job & error queues together through it.
    */
-  def apply[J <: Job](name: String, queueConfig: ConfigMap, codec: Codec[J], badJobQueue: JobConsumer[J]) = {
+  def apply[J <: Job](name: String, queueConfig: ConfigMap, codec: Codec[J],
+                      badJobQueue: Option[JobConsumer[J]]) = {
     val path = queueConfig.getString("path", "/var/spool/kestrel")
     val schedulerConfig = queueConfig.configMap(name)
 
@@ -65,7 +66,7 @@ class JobScheduler[J <: Job](val name: String,
                              val errorLimit: Int,
                              val queue: JobQueue[J],
                              val errorQueue: JobQueue[J],
-                             val badJobQueue: JobConsumer[J])
+                             val badJobQueue: Option[JobConsumer[J]])
       extends Process with JobConsumer[J] {
 
   private val log = Logger.get(getClass.getName)
@@ -160,7 +161,7 @@ class JobScheduler[J <: Job](val name: String,
           job.errorCount += 1
           job.errorMessage = e.toString
           if (job.errorCount > errorLimit) {
-            badJobQueue.put(job)
+            badJobQueue.foreach { _.put(job) }
           } else {
             errorQueue.put(job)
           }

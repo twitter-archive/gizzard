@@ -22,7 +22,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val MAX_ERRORS = 100
 
     doBefore {
-      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, queue, errorQueue, badJobQueue) {
+      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, queue, errorQueue, Some(badJobQueue)) {
         override def processWork() {
           liveThreads.incrementAndGet()
           try {
@@ -39,28 +39,28 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         val config = Config.fromMap(Map("path" -> "/tmp", "write.job_queue" -> "write1",
                                         "write.error_queue" -> "error1", "write.threads" -> "100",
                                         "write.replay_interval" -> "60", "write.error_limit" -> "5"))
-        val scheduler = JobScheduler("write", config, codec, badJobQueue)
+        val scheduler = JobScheduler("write", config, codec, Some(badJobQueue))
         scheduler.name mustEqual "write"
         scheduler.threadCount mustEqual 100
         scheduler.retryInterval mustEqual 60.seconds
         scheduler.errorLimit mustEqual 5
         scheduler.queue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "write1"
         scheduler.errorQueue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "error1"
-        scheduler.badJobQueue mustEqual badJobQueue
+        scheduler.badJobQueue mustEqual Some(badJobQueue)
       }
 
       "memory queue" in {
         val config = Config.fromMap(Map("write.type" -> "memory", "write.job_queue" -> "write1",
                                         "write.error_queue" -> "error1", "write.threads" -> "100",
                                         "write.replay_interval" -> "60", "write.error_limit" -> "5"))
-        val scheduler = JobScheduler("write", config, codec, badJobQueue)
+        val scheduler = JobScheduler("write", config, codec, Some(badJobQueue))
         scheduler.name mustEqual "write"
         scheduler.threadCount mustEqual 100
         scheduler.retryInterval mustEqual 60.seconds
         scheduler.errorLimit mustEqual 5
         scheduler.queue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "write1"
         scheduler.errorQueue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "error1"
-        scheduler.badJobQueue mustEqual badJobQueue
+        scheduler.badJobQueue mustEqual Some(badJobQueue)
       }
     }
 
