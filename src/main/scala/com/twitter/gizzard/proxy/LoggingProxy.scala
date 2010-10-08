@@ -15,7 +15,7 @@ object LoggingProxy {
       val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
       stats.incr("operation-" + shortName + "-count")
       if (method.name != "apply") {
-        stats.incr("operation-" + shortName + ":" + method.name + "-count")
+        stats.incr("operation-" + shortName + "-" + method.name + "-count")
       }
       logger.transaction {
         val timeMillis = Time.now.inMillis
@@ -30,7 +30,7 @@ object LoggingProxy {
         logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
         val (rv, msec) = Stats.duration { method() }
         logger.addTiming("action-timing", msec.toInt)
-        stats.addTiming("x-operation-" + shortName + ":" + method.name + "-timing", msec.toInt)
+        stats.addTiming("x-operation-" + shortName + "-" + method.name + "-timing", msec.toInt)
 
         if (rv != null) {
           // structural types don't appear to work for some reason.

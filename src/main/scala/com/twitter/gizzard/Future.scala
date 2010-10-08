@@ -8,15 +8,27 @@ import net.lag.configgy.ConfigMap
 
 
 class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
-             val timeout: Duration) {
+             val timeout: Duration, maxQueueDepth: Option[Int]) {
+
+  def this(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
+    timeout: Duration) = this(name, poolSize, maxPoolSize, keepAlive, timeout, None)
 
   def this(name: String, config: ConfigMap) =
     this(name, config("pool_size").toInt, config("max_pool_size").toInt,
          config("keep_alive_time_seconds").toInt.seconds,
-         config.getInt("timeout_seconds").map(_.seconds).getOrElse(config("timeout_msec").toLong.millis))
+         config.getInt("timeout_seconds").map(_.seconds).getOrElse(config("timeout_msec").toLong.millis),
+         config.getInt("max_queue_depth"))
 
+  val queue = maxQueueDepth match {
+    case Some(depth) =>
+      val q = new LinkedBlockingQueue[Runnable](depth)
+      Stats.makeGauge("future-" + name + "-queue-capacity") { q.remainingCapacity() }
+      q
+    case None =>
+      new LinkedBlockingQueue[Runnable]
+  }
   var executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
-    TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
+    TimeUnit.SECONDS, queue, new NamedPoolThreadFactory(name))
 
   Stats.makeGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
 
