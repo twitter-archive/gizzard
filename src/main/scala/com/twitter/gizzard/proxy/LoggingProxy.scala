@@ -13,8 +13,8 @@ object LoggingProxy {
   def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
-      stats.incr("operation-" + shortName + ":" + method.name)
-      stats.incr("operation")
+      stats.incr("operation-" + shortName + ":" + method.name + "-count")
+      stats.incr("operation-count")
       logger.transaction {
         val timeMillis = Time.now.inMillis
         val timeSeconds = timeMillis/1000
@@ -28,7 +28,7 @@ object LoggingProxy {
         logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
         val (rv, msec) = Stats.duration { method() }
         logger.addTiming("action-timing", msec.toInt)
-        stats.addTiming("x-operation-timing-" + shortName + ":" + method.name, msec.toInt)
+        stats.addTiming("x-operation-" + shortName + ":" + method.name + "-timing", msec.toInt)
 
         if (rv != null) {
           // structural types don't appear to work for some reason.
