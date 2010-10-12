@@ -3,8 +3,7 @@ package com.twitter.gizzard.thrift
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.channels._
-import java.util.concurrent.{ConcurrentLinkedQueue, LinkedBlockingQueue, ThreadPoolExecutor,
-  TimeoutException, TimeUnit}
+import java.util.concurrent._
 import scala.collection.jcl
 import scala.collection.mutable
 import org.apache.thrift._
@@ -16,7 +15,6 @@ import com.twitter.xrayspecs.{Duration, Time}
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
-
 
 object TSelectorServer {
   val log = Logger.get(getClass.getName)
