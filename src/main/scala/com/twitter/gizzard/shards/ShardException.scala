@@ -27,8 +27,7 @@ class NormalShardException(description: String, cause: Throwable) extends
  * to complete in the desired time.
  */
 class ShardTimeoutException(val timeout: Duration, shardId: ShardId, cause: Throwable) extends
-      NormalShardException("Timeout of %d msec on: %s/%s".format(timeout.inMillis, shardId.hostname,
-        shardId.tablePrefix), cause) {
+      NormalShardException("Timeout of %d msec on: %s".format(timeout.inMillis, shardId), cause) {
   def this(timeout: Duration, shardId: ShardId) = this(timeout, shardId, null)
 }
 
@@ -55,5 +54,18 @@ class ShardRejectedOperationException(description: String) extends NormalShardEx
  * thrown by a ReplicatingShard. This is not a retryable error.
  */
 class ShardOfflineException(shardId: ShardId) extends
-  NormalShardException("All shard replicas are down for shard: %s/%s".format(shardId.hostname,
-    shardId.tablePrefix))
+  NormalShardException("All shard replicas are down for shard: %s".format(shardId))
+
+/**
+ * Shard would like to be skipped for reads & writes. If all shards within a replica do this, then
+ * the write is "thrown away" and the exception is passed up.
+ */
+class ShardBlackHoleException extends NormalShardException("Skip me", null)
+
+/**
+ * A replicating shard timed out while waiting for a response to a write request to one of the
+ * replica shards. This is a "future" timeout and indicates that the replication future timeout
+ * is lower than your per-database write timeout. It only occurs when doing parallel writes.
+ */
+class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)
+  extends ShardException("Timeout waiting for write to shard: %s".format(shard), ex)
