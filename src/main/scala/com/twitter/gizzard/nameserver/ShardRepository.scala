@@ -50,6 +50,7 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
     this += (packageNameDot + "ReadOnlyShard"    -> new shards.ReadOnlyShardFactory(constructor))
     this += (packageNameDot + "BlockedShard"     -> new shards.BlockedShardFactory(constructor))
     this += (packageNameDot + "WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
+    this += (packageNameDot + "BlackHoleShard"   -> new shards.BlackHoleShardFactory(constructor))
     this += (packageNameDot + "ReplicatingShard" ->
              new shards.ReplicatingShardFactory(constructor, replicationFuture, writeTimeout))
   }
