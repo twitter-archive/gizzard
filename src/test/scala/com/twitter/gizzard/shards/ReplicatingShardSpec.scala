@@ -10,6 +10,7 @@ import com.twitter.ostrich.W3CReporter
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
   "ReplicatingShard" should {
+    val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
@@ -68,7 +69,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
         "when one replica is black holed" in {
           expect {
-            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException
+            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
             one(shard1).shardInfo
             one(shard2).put("name", "alice")
             one(shard2).shardInfo
@@ -78,9 +79,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
         "when all replicas are black holed" in {
           expect {
-            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException
+            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
             one(shard1).shardInfo
-            one(shard2).put("name", "alice") willThrow new ShardBlackHoleException
+            one(shard2).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
             one(shard2).shardInfo
           }
           replicatingShard.put("name", "alice") must throwA[ShardBlackHoleException]
@@ -108,7 +109,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
         "with a black hole" in {
           expect {
-            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException
+            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
             one(shard2).put("name", "carol")
           }
           replicatingShard.put("name", "carol")
@@ -116,8 +117,8 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
         "with all black holes" in {
           expect {
-            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException
-            one(shard2).put("name", "carol") willThrow new ShardBlackHoleException
+            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
           }
           replicatingShard.put("name", "carol") must throwA[ShardBlackHoleException]
         }

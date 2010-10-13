@@ -60,7 +60,7 @@ class ShardOfflineException(shardId: ShardId) extends
  * Shard would like to be skipped for reads & writes. If all shards within a replica do this, then
  * the write is "thrown away" and the exception is passed up.
  */
-class ShardBlackHoleException extends NormalShardException("Skip me", null)
+class ShardBlackHoleException(shardId: ShardId) extends NormalShardException("Shard is blackholed: " + shardId, null)
 
 /**
  * A replicating shard timed out while waiting for a response to a write request to one of the

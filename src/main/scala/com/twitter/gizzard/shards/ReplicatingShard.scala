@@ -65,7 +65,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
     }
     exceptions.map { throw _ }
     if (results.size == 0) {
-      throw new ShardBlackHoleException
+      throw new ShardBlackHoleException(shardInfo.id)
     }
     results.first
   }
@@ -80,7 +80,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
       }
     }
     if (results.size == 0) {
-      throw new ShardBlackHoleException
+      throw new ShardBlackHoleException(shardInfo.id)
     }
     results.first
   }

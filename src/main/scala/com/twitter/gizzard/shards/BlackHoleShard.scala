@@ -13,7 +13,7 @@ class BlackHoleShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard])
   extends ReadWriteShard[ConcreteShard] {
 
-  val exception = new ShardBlackHoleException
+  val exception = new ShardBlackHoleException(shardInfo.id)
 
   def readOperation[A](method: (ConcreteShard => A)) = throw exception
 
