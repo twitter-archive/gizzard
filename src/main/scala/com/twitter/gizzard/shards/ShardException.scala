@@ -14,9 +14,9 @@ class ShardException(description: String, cause: Throwable) extends Exception(de
  * timeouts or rejections that aren't code errors. Any "cause" exception is thrown away, and
  * no stack trace is filled in.
  */
-class NormalShardException(description: String, cause: Throwable) extends
-      ShardException(description, null) {
-  def this(description: String) = this(description, null)
+class NormalShardException(description: String, shardId: ShardId, cause: Throwable) extends
+      ShardException(description + ": " + shardId, null) {
+  def this(description: String, shardId: ShardId) = this(description, shardId, null)
 
   override def fillInStackTrace() = this
 }
@@ -27,7 +27,7 @@ class NormalShardException(description: String, cause: Throwable) extends
  * to complete in the desired time.
  */
 class ShardTimeoutException(val timeout: Duration, shardId: ShardId, cause: Throwable) extends
-      NormalShardException("Timeout of %d msec on: %s".format(timeout.inMillis, shardId), cause) {
+      NormalShardException("Timeout (" + timeout.inMillis + " msec)", shardId, cause) {
   def this(timeout: Duration, shardId: ShardId) = this(timeout, shardId, null)
 }
 
@@ -47,25 +47,27 @@ class ShardDatabaseTimeoutException(timeout: Duration, shardId: ShardId, cause: 
  * Often this exception is used to signal a ReplicatingShard that it should try another shard,
  * because this shard is read-only, write-only, or blocked (offline).
  */
-class ShardRejectedOperationException(description: String) extends NormalShardException(description)
+class ShardRejectedOperationException(description: String, shardId: ShardId) extends
+  NormalShardException(description, shardId)
 
 /**
  * Shard cannot do the operation because all possible child shards are unavailable. This is only
  * thrown by a ReplicatingShard. This is not a retryable error.
  */
 class ShardOfflineException(shardId: ShardId) extends
-  NormalShardException("All shard replicas are down for shard: %s".format(shardId))
+  NormalShardException("All shard replicas are down for shard", shardId)
 
 /**
  * Shard would like to be skipped for reads & writes. If all shards within a replica do this, then
  * the write is "thrown away" and the exception is passed up.
  */
-class ShardBlackHoleException(shardId: ShardId) extends NormalShardException("Shard is blackholed: " + shardId, null)
+class ShardBlackHoleException(shardId: ShardId) extends
+  NormalShardException("Shard is blackholed", shardId, null)
 
 /**
  * A replicating shard timed out while waiting for a response to a write request to one of the
  * replica shards. This is a "future" timeout and indicates that the replication future timeout
  * is lower than your per-database write timeout. It only occurs when doing parallel writes.
  */
-class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)
-  extends ShardException("Timeout waiting for write to shard: %s".format(shard), ex)
+class ReplicatingShardTimeoutException(shardId: ShardId, ex: Throwable)
+  extends NormalShardException("Timeout waiting for write to shard", shardId, ex)

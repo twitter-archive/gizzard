@@ -57,7 +57,7 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
             case e: ShardBlackHoleException =>
               // nothing.
             case e: TimeoutException =>
-              exceptions += new ReplicatingShardTimeoutException(shardInfo, e)
+              exceptions += new ReplicatingShardTimeoutException(shardInfo.id, e)
             case e =>
               exceptions += e
           }

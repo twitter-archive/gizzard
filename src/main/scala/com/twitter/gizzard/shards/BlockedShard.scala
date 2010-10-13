@@ -11,13 +11,12 @@ class BlockedShard[ConcreteShard <: Shard]
   extends ReadWriteShard[ConcreteShard] {
 
   val shard = children.first
+  val exception = new ShardRejectedOperationException("shard is offline", shardInfo.id)
 
-  def readOperation[A](method: (ConcreteShard => A)) =
-    throw new ShardRejectedOperationException("shard is offline")
+  def readOperation[A](method: (ConcreteShard => A)) = throw exception
 
-  def writeOperation[A](method: (ConcreteShard => A)) =
-    throw new ShardRejectedOperationException("shard is offline")
+  def writeOperation[A](method: (ConcreteShard => A)) = throw exception
 
   def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
-    throw new ShardRejectedOperationException("shard is offline")
+    throw exception
 }
