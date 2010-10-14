@@ -7,10 +7,11 @@ import org.specs.Specification
 import shards.ShardRejectedOperationException
 import com.twitter.xrayspecs.TimeConversions._
 import scheduler.{ErrorHandlingConfig, MessageQueue}
-
+import shards.ShardId
 
 object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "ErrorHandlingJob" should {
+    val shardId = ShardId("fake", "shard")
     val job = mock[Job]
     val errorQueue = mock[MessageQueue[Schedulable, Job]]
     val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
@@ -51,7 +52,7 @@ object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with Cl
     "when the shard is darkmoded and the job has errored a lot" >> {
       config("errors.max_errors_per_job") = 0
       expect {
-        allowing(job).apply() willThrow new ShardRejectedOperationException("darkmode")
+        allowing(job).apply() willThrow new ShardRejectedOperationException("darkmode", shardId)
         one(errorQueue).put(errorHandlingJob)
       }
       errorHandlingJob()
