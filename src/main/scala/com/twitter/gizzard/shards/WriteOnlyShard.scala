@@ -16,10 +16,10 @@ class WriteOnlyShard[ConcreteShard <: Shard]
   val shard = children.first
 
   def readOperation[A](method: (ConcreteShard => A)) =
-    throw new ShardRejectedOperationException("shard is write-only")
+    throw new ShardRejectedOperationException("shard is write-only", shardInfo.id)
 
   def writeOperation[A](method: (ConcreteShard => A)) = method(shard)
 
   def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
-    throw new ShardRejectedOperationException("shard is write-only")
+    throw new ShardRejectedOperationException("shard is write-only", shardInfo.id)
 }

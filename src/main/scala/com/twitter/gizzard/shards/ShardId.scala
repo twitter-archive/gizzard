@@ -1,6 +1,5 @@
 package com.twitter.gizzard.shards
 
-
 case class ShardId(val hostname: String, val tablePrefix: String) {
   validateTablePrefix()
 
@@ -10,4 +9,6 @@ case class ShardId(val hostname: String, val tablePrefix: String) {
       throw new ShardException("Invalid character in table prefix: " + badChar)
     }
   }
+
+  override def toString = hostname + "/" + tablePrefix
 }
