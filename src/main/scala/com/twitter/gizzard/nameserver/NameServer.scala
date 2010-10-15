@@ -36,7 +36,6 @@ object NameServer {
                                replicationFuture: Option[Future]): NameServer[S] = {
     val queryEvaluatorFactory = QueryEvaluatorFactory.fromConfig(config, stats)
 
-    val writeTimeout = config.getInt("write_timeout", 6000).millis
     val replicaConfig = config.configMap("replicas")
     val replicas = replicaConfig.keys.map { key =>
       val shardConfig = replicaConfig.configMap(key)
@@ -49,7 +48,7 @@ object NameServer {
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicas)
     val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture, writeTimeout))
+      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture, config))
 
     val mappingFunction: (Long => Long) = config.getString("mapping") match {
       case None =>
