@@ -1,17 +1,19 @@
 package com.twitter.gizzard.shards
 
-class BlockedShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
+class BlackHoleShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new BlockedShard(shardInfo, weight, children))
+    readWriteShardAdapter(new BlackHoleShard[ConcreteShard](shardInfo, weight, children))
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
-class BlockedShard[ConcreteShard <: Shard]
+/**
+ * A shard that refuses all read/write traffic in a silent way. 
+ */
+class BlackHoleShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard])
   extends ReadWriteShard[ConcreteShard] {
 
-  val shard = children.first
-  val exception = new ShardRejectedOperationException("shard is offline", shardInfo.id)
+  val exception = new ShardBlackHoleException(shardInfo.id)
 
   def readOperation[A](method: (ConcreteShard => A)) = throw exception
 

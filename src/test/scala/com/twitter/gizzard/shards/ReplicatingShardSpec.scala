@@ -10,6 +10,7 @@ import com.twitter.ostrich.W3CReporter
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
   "ReplicatingShard" should {
+    val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
@@ -19,7 +20,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
     var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future), 6.seconds))
 
-    "failover" in {
+    "read failover" in {
       "when shard1 throws an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
@@ -45,34 +46,82 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     }
 
     "writes happen to all shards" in {
-      "when they succeed" in {
-        expect {
-          one(shard1).put("name", "alice")
-          one(shard1).shardInfo
-          one(shard2).put("name", "alice")
-          one(shard2).shardInfo
+      "in parallel" in {
+        "when they succeed" in {
+          expect {
+            one(shard1).put("name", "alice")
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice")
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice")
         }
-        replicatingShard.put("name", "alice")
+
+        "when the first one fails" in {
+          expect {
+            one(shard1).put("name", "alice") willThrow new ShardException("o noes")
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice")
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice") must throwA[Exception]
+        }
+
+        "when one replica is black holed" in {
+          expect {
+            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice")
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice")
+        }
+
+        "when all replicas are black holed" in {
+          expect {
+            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice") must throwA[ShardBlackHoleException]
+        }
       }
 
-      "when the first one fails" in {
-        expect {
-          one(shard1).put("name", "alice").willThrow(new ShardException("o noes"))
-          one(shard1).shardInfo
-          one(shard2).put("name", "alice")
-          one(shard2).shardInfo
-        }
-        replicatingShard.put("name", "alice") must throwA[Exception]
-      }
-
-      "even serially" in {
+      "in series" in {
         var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None, 6.seconds))
 
-        expect {
-          one(shard1).put("name", "carol")
-          one(shard2).put("name", "carol")
+        "normal" in {
+          expect {
+            one(shard1).put("name", "carol")
+            one(shard2).put("name", "carol")
+          }
+          replicatingShard.put("name", "carol")
         }
-        replicatingShard.put("name", "carol")
+
+        "with an exception" in {
+          expect {
+            one(shard1).put("name", "carol")
+            one(shard2).put("name", "carol") willThrow new ShardException("o noes")
+          }
+          replicatingShard.put("name", "carol") must throwA[Exception]
+        }
+
+        "with a black hole" in {
+          expect {
+            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).put("name", "carol")
+          }
+          replicatingShard.put("name", "carol")
+        }
+
+        "with all black holes" in {
+          expect {
+            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+          }
+          replicatingShard.put("name", "carol") must throwA[ShardBlackHoleException]
+        }
       }
     }
 
