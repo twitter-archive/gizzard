@@ -10,12 +10,14 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import net.lag.logging.Logger
 import com.twitter.xrayspecs.Duration
+import com.twitter.xrayspecs.TimeConversions._
+import net.lag.configgy.ConfigMap
 
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
       future: Option[Future],
-      timeout: Duration)
+      config: ConfigMap)
   extends shards.ShardFactory[ConcreteShard] {
 
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
@@ -25,7 +27,7 @@ class ReplicatingShardFactory[ConcreteShard <: Shard](
       replicas,
       new LoadBalancer(replicas),
       future,
-      timeout
+      config
     ))
 
   def materialize(shardInfo: shards.ShardInfo) = ()
@@ -37,8 +39,10 @@ class ReplicatingShard[ConcreteShard <: Shard](
       val children: Seq[ConcreteShard],
       val loadBalancer: (() => Seq[ConcreteShard]),
       val future: Option[Future],
-      val futureTimeout: Duration)
+      val config: ConfigMap)
   extends ReadWriteShard[ConcreteShard] {
+
+  val futureTimeout = config.getInt("replication.future.write_timeout_ms", 6000).millis
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
   def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)

@@ -3,7 +3,6 @@ package com.twitter.gizzard.jobs
 import scala.util.matching.Regex
 import scala.collection.mutable
 
-
 class PolymorphicJobParser extends JobParser {
   private val processors = mutable.Map.empty[Regex, JobParser]
 

@@ -6,10 +6,15 @@ import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.ostrich.W3CReporter
+import net.lag.configgy.ConfigMap
 
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
   "ReplicatingShard" should {
+    val config = mock[ConfigMap]
+    expect {
+      allowing(config).getInt("replication.future.write_timeout_ms", 6000) willReturn 6000
+    }
     val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
@@ -18,7 +23,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future), 6.seconds))
+    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future), config))
 
     "read failover" in {
       "when shard1 throws an exception" in {
@@ -89,7 +94,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       }
 
       "in series" in {
-        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None, 6.seconds))
+        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None, config))
 
         "normal" in {
           expect {
@@ -143,7 +148,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val mock2 = mock[EnufShard]
       val shards = List(mock1, mock2)
       val loadBalancer = () => shards
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future), 6.seconds)
+      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future), config)
 
       "first shard has data" in {
         expect {
