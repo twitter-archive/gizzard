@@ -10,23 +10,39 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import net.lag.logging.Logger
 import com.twitter.xrayspecs.Duration
+import com.twitter.xrayspecs.TimeConversions._
+import net.lag.configgy.ConfigMap
 
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      future: Option[Future], timeout: Duration) extends shards.ShardFactory[ConcreteShard] {
+      future: Option[Future],
+      config: ConfigMap)
+  extends shards.ShardFactory[ConcreteShard] {
+
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReplicatingShard(shardInfo, weight, replicas, new LoadBalancer(replicas), future, timeout))
+    readWriteShardAdapter(new ReplicatingShard(
+      shardInfo,
+      weight,
+      replicas,
+      new LoadBalancer(replicas),
+      future,
+      config
+    ))
+
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
-class ReplicatingShardTimeoutException(shard: ShardInfo, ex: Throwable)
-  extends ShardException("Timeout waiting for write to: %s/%s".format(shard.hostname, shard.tablePrefix), ex)
-
-class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val weight: Int,
-  val children: Seq[ConcreteShard], val loadBalancer: (() => Seq[ConcreteShard]),
-  val future: Option[Future], val futureTimeout: Duration)
+class ReplicatingShard[ConcreteShard <: Shard](
+      val shardInfo: ShardInfo,
+      val weight: Int,
+      val children: Seq[ConcreteShard],
+      val loadBalancer: (() => Seq[ConcreteShard]),
+      val future: Option[Future],
+      val config: ConfigMap)
   extends ReadWriteShard[ConcreteShard] {
+
+  val futureTimeout = config.getInt("replication.future.write_timeout_ms", 6000).millis
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
   def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)
@@ -34,6 +50,18 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
     rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
 
   lazy val log = Logger.get
+
+  protected def unwrapException(exception: Throwable): Throwable = {
+    exception match {
+      case e: ExecutionException =>
+        unwrapException(e.getCause)
+      case e: UndeclaredThrowableException =>
+        // fondly known as JavaOutrageException
+        unwrapException(e.getCause)
+      case e =>
+        e
+    }
+  }
 
   protected def fanoutWriteFuture[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard], future: Future): A = {
     val exceptions = new mutable.ArrayBuffer[Throwable]()
@@ -43,25 +71,37 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
       try {
         results += future.get(futureTimeout.inMillis, TimeUnit.MILLISECONDS)
       } catch {
-        case e: ExecutionException => // this should be unwrapped
-          e.getCause() match {
-            case ute: UndeclaredThrowableException => // this java OutrageException should be unwrapped as well.
-              exceptions += ute.getCause()
-            case ex: Exception =>
-              exceptions += ex
-          }
-        case e: TimeoutException =>
-          exceptions += new ReplicatingShardTimeoutException(shardInfo, e)
         case e: Exception =>
-          exceptions += e
+          unwrapException(e) match {
+            case e: ShardBlackHoleException =>
+              // nothing.
+            case e: TimeoutException =>
+              exceptions += new ReplicatingShardTimeoutException(shardInfo.id, e)
+            case e =>
+              exceptions += e
+          }
       }
     }
     exceptions.map { throw _ }
+    if (results.size == 0) {
+      throw new ShardBlackHoleException(shardInfo.id)
+    }
     results.first
   }
 
   protected def fanoutWriteSerial[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
-    replicas.map { shard => method(shard) }.first
+    val results = replicas.flatMap { shard =>
+      try {
+        Some(method(shard))
+      } catch {
+        case e: ShardBlackHoleException =>
+          None
+      }
+    }
+    if (results.size == 0) {
+      throw new ShardBlackHoleException(shardInfo.id)
+    }
+    results.first
   }
 
   protected def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
@@ -80,12 +120,8 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
           f(shard)
         } catch {
           case e: ShardException =>
-            val shardInfo = shard.shardInfo
-            val shardId = shardInfo.hostname + "/" + shardInfo.tablePrefix
-            e match {
-              case _: ShardRejectedOperationException =>
-              case _ =>
-                log.warning(e, "Error on %s: %s", shardId, e)
+            if (!e.isInstanceOf[ShardRejectedOperationException]) {
+              log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             }
             failover(f, remainder)
         }
@@ -113,12 +149,8 @@ class ReplicatingShard[ConcreteShard <: Shard](val shardInfo: ShardInfo, val wei
           }
         } catch {
           case e: ShardException =>
-            val shardInfo = shard.shardInfo
-            val shardId = shardInfo.hostname + "/" + shardInfo.tablePrefix
-            e match {
-              case _: ShardRejectedOperationException =>
-              case _ =>
-                log.warning(e, "Error on %s: %s", shardId, e)
+            if (!e.isInstanceOf[ShardRejectedOperationException]) {
+              log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             }
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }

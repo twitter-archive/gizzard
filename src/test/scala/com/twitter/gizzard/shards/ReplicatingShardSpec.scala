@@ -6,10 +6,16 @@ import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.ostrich.W3CReporter
+import net.lag.configgy.ConfigMap
 
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
   "ReplicatingShard" should {
+    val config = mock[ConfigMap]
+    expect {
+      allowing(config).getInt("replication.future.write_timeout_ms", 6000) willReturn 6000
+    }
+    val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
@@ -17,9 +23,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future), 6.seconds))
+    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future), config))
 
-    "failover" in {
+    "read failover" in {
       "when shard1 throws an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
@@ -45,34 +51,82 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     }
 
     "writes happen to all shards" in {
-      "when they succeed" in {
-        expect {
-          one(shard1).put("name", "alice")
-          one(shard1).shardInfo
-          one(shard2).put("name", "alice")
-          one(shard2).shardInfo
+      "in parallel" in {
+        "when they succeed" in {
+          expect {
+            one(shard1).put("name", "alice")
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice")
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice")
         }
-        replicatingShard.put("name", "alice")
+
+        "when the first one fails" in {
+          expect {
+            one(shard1).put("name", "alice") willThrow new ShardException("o noes")
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice")
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice") must throwA[Exception]
+        }
+
+        "when one replica is black holed" in {
+          expect {
+            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice")
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice")
+        }
+
+        "when all replicas are black holed" in {
+          expect {
+            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            one(shard1).shardInfo
+            one(shard2).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).shardInfo
+          }
+          replicatingShard.put("name", "alice") must throwA[ShardBlackHoleException]
+        }
       }
 
-      "when the first one fails" in {
-        expect {
-          one(shard1).put("name", "alice").willThrow(new ShardException("o noes"))
-          one(shard1).shardInfo
-          one(shard2).put("name", "alice")
-          one(shard2).shardInfo
-        }
-        replicatingShard.put("name", "alice") must throwA[Exception]
-      }
+      "in series" in {
+        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None, config))
 
-      "even serially" in {
-        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None, 6.seconds))
-
-        expect {
-          one(shard1).put("name", "carol")
-          one(shard2).put("name", "carol")
+        "normal" in {
+          expect {
+            one(shard1).put("name", "carol")
+            one(shard2).put("name", "carol")
+          }
+          replicatingShard.put("name", "carol")
         }
-        replicatingShard.put("name", "carol")
+
+        "with an exception" in {
+          expect {
+            one(shard1).put("name", "carol")
+            one(shard2).put("name", "carol") willThrow new ShardException("o noes")
+          }
+          replicatingShard.put("name", "carol") must throwA[Exception]
+        }
+
+        "with a black hole" in {
+          expect {
+            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).put("name", "carol")
+          }
+          replicatingShard.put("name", "carol")
+        }
+
+        "with all black holes" in {
+          expect {
+            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+            one(shard2).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+          }
+          replicatingShard.put("name", "carol") must throwA[ShardBlackHoleException]
+        }
       }
     }
 
@@ -94,7 +148,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val mock2 = mock[EnufShard]
       val shards = List(mock1, mock2)
       val loadBalancer = () => shards
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future), 6.seconds)
+      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future), config)
 
       "first shard has data" in {
         expect {
