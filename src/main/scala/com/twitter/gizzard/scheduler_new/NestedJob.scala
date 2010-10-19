@@ -32,5 +32,5 @@ class NestedJob[J <: Job](val jobs: Iterable[J]) extends Job {
     }
   }
 
-  override def toString = "<NestedJob: tasks=%d>".format(taskQueue.size)
+  override def toString = "<NestedJob: tasks=%d: %s>".format(taskQueue.size, jobs)
 }
