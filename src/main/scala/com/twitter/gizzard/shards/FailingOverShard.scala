@@ -3,8 +3,6 @@ package com.twitter.gizzard.shards
 import com.twitter.xrayspecs.Duration
 import com.twitter.gizzard.nameserver.FailingOverLoadBalancer
 
-import net.lag.configgy.ConfigMap
-
 /*
  * The FailingOverLoadBalancer splits the shard list into online and offline shards.
  * Online shards are randomized according to the current weight-based formula. Offline
@@ -21,7 +19,7 @@ import net.lag.configgy.ConfigMap
 class FailingOverShardFactory[ConcreteShard <: Shard](
     readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
     future: Option[Future],
-    config: ConfigMap)
+    timeout: Duration)
   extends ShardFactory[ConcreteShard] {
 
   def instantiate(info: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
@@ -31,7 +29,7 @@ class FailingOverShardFactory[ConcreteShard <: Shard](
       replicas,
       new FailingOverLoadBalancer(replicas),
       future,
-      config
+      timeout
     ))
 
   def materialize(shardInfo: shards.ShardInfo) = ()
