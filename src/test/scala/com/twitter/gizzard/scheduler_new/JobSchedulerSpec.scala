@@ -5,7 +5,7 @@ import com.twitter.xrayspecs.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import net.lag.configgy.Config
-import shards.ShardRejectedOperationException
+import shards.{ShardId, ShardRejectedOperationException}
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
@@ -15,6 +15,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val job1 = mock[Job]
     val ticket1 = mock[Ticket[Job]]
     val codec = mock[Codec[Job]]
+    val shardId = ShardId("fake", "shard")
 
     var jobScheduler: JobScheduler[Job] = null
     val liveThreads = new AtomicInteger(0)
@@ -157,7 +158,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         expect {
           one(queue).get() willReturn Some(ticket1)
           one(ticket1).job willReturn job1
-          one(job1).apply() willThrow new ShardRejectedOperationException("darkmoded!")
+          one(job1).apply() willThrow new ShardRejectedOperationException("darkmoded!", shardId)
           one(ticket1).ack()
           one(errorQueue).put(job1)
         }
