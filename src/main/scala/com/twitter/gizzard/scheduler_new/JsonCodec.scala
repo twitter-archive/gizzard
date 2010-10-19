@@ -24,6 +24,8 @@ class JsonCodec[J <: JsonJob](unparsableJobHandler: Array[Byte] => Unit) extends
   def +=(item: (Regex, JsonJobParser[J])) = processors += item
   def +=(r: Regex, p: JsonJobParser[J]) = processors += ((r, p))
 
+  this += ("JsonNestedJob".r, new JsonNestedJobParser())
+
   def flatten(job: J): Array[Byte] = job.toJson.getBytes
 
   def inflate(data: Array[Byte]): J = {
@@ -43,9 +45,9 @@ class JsonCodec[J <: JsonJob](unparsableJobHandler: Array[Byte] => Unit) extends
 
   def inflate(json: Map[String, Any]): J = {
     val (jobType, attributes) = json.toList.first
-    val (_, processor) = processors.find { case (processorRegex, _) =>
+    val processor = processors.find { case (processorRegex, _) =>
       processorRegex.findFirstIn(jobType).isDefined
-    }.getOrElse {
+    }.map { case (_, processor) => processor }.getOrElse {
       throw new UnparsableJsonException("Can't find matching processor for '%s' in %s".format(jobType, processors), null)
     }
     try {

@@ -44,17 +44,19 @@ trait JsonJobParser[J <: JsonJob] {
     val errorCount = json.getOrElse("error_count", 0).asInstanceOf[Int]
     val errorMessage = json.getOrElse("error_message", "(none)").asInstanceOf[String]
 
-    val job = json.get("tasks").map { taskJsons =>
-      val tasks = taskJsons.asInstanceOf[Iterable[Map[String, Any]]].map { codec.inflate(_) }
-      new JsonNestedJob(tasks.asInstanceOf[Iterable[J]])
-    } getOrElse {
-      apply(codec, json)
-    }
-
+    val job = apply(codec, json)
     job.errorCount = errorCount
     job.errorMessage = errorMessage
     job
   }
 
   def apply(codec: JsonCodec[J], json: Map[String, Any]): J
+}
+
+class JsonNestedJobParser[J <: JsonJob] extends JsonJobParser[J] {
+  def apply(codec: JsonCodec[J], json: Map[String, Any]): J = {
+    val taskJsons = json("tasks").asInstanceOf[Iterable[Map[String, Any]]]
+    val tasks = taskJsons.map { codec.inflate(_) }
+    new JsonNestedJob(tasks.asInstanceOf[Iterable[J]]).asInstanceOf[J]
+  }
 }

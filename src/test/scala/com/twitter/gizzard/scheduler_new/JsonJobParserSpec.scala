@@ -32,7 +32,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
         }
 
         val nestedAttributes = Map("tasks" -> List(jobMap))
-        jobParser.parse(codec, nestedAttributes) mustEqual new JsonNestedJob(List(job))
+        new JsonNestedJobParser().parse(codec, nestedAttributes) mustEqual new JsonNestedJob(List(job))
       }
 
       "errors" in {
