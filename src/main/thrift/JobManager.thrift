@@ -15,5 +15,4 @@ service JobManager {
   void resume_writes_for(1: i32 priority) throws(1: JobException ex)
 
   bool is_writing(1: i32 priority) throws(1: JobException ex)
-  void inject_job(1: i32 priority, 2: string job) throws(1: JobException ex)
 }
