@@ -11,7 +11,6 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import net.lag.logging.Logger
 import com.twitter.xrayspecs.Duration
 import com.twitter.xrayspecs.TimeConversions._
-import net.lag.configgy.ConfigMap
 
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](

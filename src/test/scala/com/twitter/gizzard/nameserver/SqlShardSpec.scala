@@ -22,7 +22,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
 
-    val repo = new BasicShardRepository[fake.Shard](adapter, Some(future), config)
+    val repo = new BasicShardRepository[fake.Shard](adapter, Some(future))
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
