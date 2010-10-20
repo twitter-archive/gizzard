@@ -40,7 +40,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
       val replicationFuture = new Future("ReplicationFuture", 1, 1, new Duration(1), new Duration(1))
       val shard: shards.ReadWriteShard[nameserver.Shard] =
-        new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture), config)
+        new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture))
       val adapted = new nameserver.ReadWriteShardAdapter(shard)
       1 mustEqual 1
     }

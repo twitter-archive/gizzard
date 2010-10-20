@@ -48,7 +48,7 @@ object NameServer {
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicas)
     val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture, config))
+      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture))
 
     val mappingFunction: (Long => Long) = config.getString("mapping") match {
       case None =>
