@@ -5,15 +5,14 @@ import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
-import jobs.Copy
 import shards.{Busy, Shard}
-import scheduler.JobScheduler
+import scheduler.{CopyJob, CopyJobFactory, Job, JobScheduler}
 
 
 object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer = mock[nameserver.NameServer[Shard]]
-  val copier = mock[jobs.CopyFactory[Shard]]
-  val scheduler = mock[JobScheduler]
+  val copier = mock[CopyJobFactory[Shard]]
+  val scheduler = mock[JobScheduler[CopyJob[Shard]]]
   val manager = new thrift.ShardManagerService(nameServer, copier, scheduler)
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
@@ -37,14 +36,14 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       }
       manager.create_shard(thriftShardInfo1) must throwA[thrift.ShardException]
     }
-    
+
     "deliver messages for runtime exceptions" in {
       var woot = false
       expect {
         one(nameServer).createShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
       }
       try{
-        manager.create_shard(thriftShardInfo1) 
+        manager.create_shard(thriftShardInfo1)
       } catch {
         case e: thrift.ShardException => {
           e.getDescription mustEqual "Monkeys!"
@@ -53,7 +52,7 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       }
       woot mustEqual true
     }
-    
+
 
     "create_shard" in {
       expect {
@@ -108,11 +107,11 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
-      val copyJob = mock[Copy[Shard]]
+      val copyJob = mock[CopyJob[Shard]]
 
       expect {
         one(copier).apply(shardId1, shardId2) willReturn copyJob
-        one(scheduler).apply(copyJob)
+        one(scheduler).put(copyJob)
       }
 
       manager.copy_shard(shardId1.toThrift, shardId2.toThrift)

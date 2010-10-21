@@ -3,8 +3,7 @@ package com.twitter.gizzard.thrift
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.channels._
-import java.util.concurrent.{ConcurrentLinkedQueue, LinkedBlockingQueue, ThreadPoolExecutor,
-  TimeoutException, TimeUnit}
+import java.util.concurrent._
 import scala.collection.jcl
 import scala.collection.mutable
 import org.apache.thrift._
@@ -16,7 +15,6 @@ import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
-
 
 object TSelectorServer {
   val log = Logger.get(getClass.getName)
@@ -38,6 +36,8 @@ object TSelectorServer {
     val queue = new LinkedBlockingQueue[Runnable]
     val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
                                           queue, new NamedPoolThreadFactory(name))
+    Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.makeGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
     cache(name) = executor
     executor
   }
@@ -79,10 +79,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   val clientMap = new mutable.HashMap[SelectableChannel, Client]
   val registerQueue = new ConcurrentLinkedQueue[SocketChannel]
 
-
-  Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
   Stats.makeGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
-  Stats.makeGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
 
   def isRunning = running
 

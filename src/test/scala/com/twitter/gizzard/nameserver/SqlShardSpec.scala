@@ -1,5 +1,6 @@
 package com.twitter.gizzard.nameserver
 
+import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
 import com.twitter.gizzard.test.NameServerDatabase
@@ -20,8 +21,8 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     var shardRepository: ShardRepository[Shard] = null
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
-    
-    val repo = new BasicShardRepository[fake.Shard](adapter, future)
+
+    val repo = new BasicShardRepository[fake.Shard](adapter, Some(future), 6.seconds)
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
@@ -33,7 +34,17 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       reset(config.configMap("db"))
       shardRepository = mock[ShardRepository[Shard]]
     }
-    
+
+    "be wrappable while replicating" in {
+      val nameServerShards = Seq(nameServer)
+      val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
+      val replicationFuture = new Future("ReplicationFuture", 1, 1, new Duration(1), new Duration(1))
+      val shard: shards.ReadWriteShard[nameserver.Shard] =
+        new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture), 6.seconds)
+      val adapted = new nameserver.ReadWriteShardAdapter(shard)
+      1 mustEqual 1
+    }
+
     "be idempotent" in {
       "be creatable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
@@ -47,6 +58,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(shardInfo, repo)
         nameServer.deleteShard(shardInfo.id)
         nameServer.deleteShard(shardInfo.id)
+        nameServer.getShard(shardInfo.id) must throwA[Exception]
       }
 
       "be linkable and unlinkable" in {
@@ -66,6 +78,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(a, repo)
         nameServer.markShardBusy(a.id, shards.Busy.Busy)
         nameServer.markShardBusy(a.id, shards.Busy.Busy)
+        nameServer.getShard(a.id).busy mustEqual shards.Busy.Busy
       }
 
       "sets forwarding" in {
@@ -74,21 +87,22 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
         nameServer.setForwarding(Forwarding(0, 0, a.id))
         nameServer.setForwarding(Forwarding(0, 0, a.id))
+        nameServer.getForwardings.size mustEqual 1
       }
-      
+
       "removes forwarding" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         nameServer.createShard(a, repo)
 
         nameServer.setForwarding(Forwarding(0, 0, a.id))
-        
+
         nameServer.removeForwarding(Forwarding(0, 0, a.id))
         nameServer.removeForwarding(Forwarding(0, 0, a.id))
         nameServer.getForwardings.size mustEqual 0
       }
 
     }
-    
+
     "list hostnames" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       nameServer.createShard(a, repo)

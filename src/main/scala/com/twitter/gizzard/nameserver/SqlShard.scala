@@ -3,9 +3,7 @@ package com.twitter.gizzard.nameserver
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
-import scheduler.JobScheduler
 import shards._
-
 
 object SqlShard {
   val SHARDS_DDL = """
@@ -48,8 +46,7 @@ CREATE TABLE IF NOT EXISTS forwardings (
 """
 }
 
-
-class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
+class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
   val weight = 1 // hardcode for now
@@ -72,13 +69,12 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
       try {
-        transaction.selectOne("SELECT class_name, source_type, destination_type " +
-                              "FROM shards WHERE table_prefix = ? AND hostname = ?",
+        transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",
                               shardInfo.tablePrefix, shardInfo.hostname) { row =>
           if (row.getString("class_name") != shardInfo.className ||
               row.getString("source_type") != shardInfo.sourceType ||
               row.getString("destination_type") != shardInfo.destinationType) {
-            throw new InvalidShard("Invalid shard: %s doesn't match %s".format(row, shardInfo))
+            throw new InvalidShard("Invalid shard: %s doesn't match %s".format(rowToShardInfo(row), shardInfo))
           }
         } getOrElse {
           transaction.insert("INSERT INTO shards (hostname, table_prefix, class_name, " +
@@ -101,14 +97,14 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
       throw new NonExistentShard("Shard not found: %s".format(id))
     }
   }
-  
+
   def listHostnames() = {
     queryEvaluator.select("SELECT DISTINCT hostname FROM shards") { row =>
       row.getString("hostname")
     }
   }
-  
-  def removeForwarding(f: Forwarding) = {    
+
+  def removeForwarding(f: Forwarding) = {
     queryEvaluator.execute("DELETE FROM forwardings WHERE base_source_id = ? AND " +
                            "shard_hostname = ? AND shard_table_prefix = ? AND " +
                            "table_id = ? LIMIT 1",
@@ -211,7 +207,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends Shard {
 
   def reload() {
     try {
-      List("shards", "shard_children", "forwardings", "sequence").foreach { table =>
+      List("shards", "shard_children", "forwardings").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {

@@ -9,12 +9,12 @@ import org.specs.Specification
 
 
 trait IdServerDatabase extends Specification with Database {
-  def reset(config: ConfigMap) {
+  def materialize(config: ConfigMap) {
     try {
       config.getConfigMap("ids").foreach { id =>
-        val idQueryEvaluator = evaluator(id)
-        idQueryEvaluator.execute("DELETE FROM " + id("table"))
-        idQueryEvaluator.execute("INSERT INTO " + id("table") + " VALUES (0)")
+        val queryEvaluator = rootEvaluator(id)
+        queryEvaluator.execute("DROP DATABASE IF EXISTS " + id("database"))
+        queryEvaluator.execute("CREATE DATABASE " + id("database"))
       }
     } catch {
       case e =>
@@ -23,11 +23,12 @@ trait IdServerDatabase extends Specification with Database {
     }
   }
 
-  def materialize(config: ConfigMap) {
+  def reset(config: ConfigMap) {
     try {
       config.getConfigMap("ids").foreach { id =>
-        val queryEvaluator = rootEvaluator(id)
-        queryEvaluator.execute("CREATE DATABASE IF NOT EXISTS " + id("database"))
+        val idQueryEvaluator = evaluator(id)
+        idQueryEvaluator.execute("DELETE FROM " + id("table"))
+        idQueryEvaluator.execute("INSERT INTO " + id("table") + " VALUES (0)")
       }
     } catch {
       case e =>
@@ -45,7 +46,8 @@ trait NameServerDatabase extends Specification with Database {
         config.configMap("replicas." + key)
       } getOrElse(config)
       val evaluator = rootEvaluator(ns)
-      evaluator.execute("CREATE DATABASE IF NOT EXISTS " + ns("database"))
+      evaluator.execute("DROP DATABASE IF EXISTS " + ns("database"))
+      evaluator.execute("CREATE DATABASE " + ns("database"))
     } catch {
       case e =>
         e.printStackTrace()
