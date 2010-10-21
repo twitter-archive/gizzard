@@ -59,7 +59,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
       "JsonNestedJob" in {
         val nestedJob = new JsonNestedJob[JsonJob](List(job))
 
-        nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler.JsonNestedJob":{"tasks":[{"FakeJob":{"a":1}}],"error_count":0,"error_message":"(none)"}}"""
+        nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler.JsonNestedJob":{"error_count":0,"error_message":"(none)","tasks":[{"FakeJob":{"a":1}}]}}"""
       }
 
       "errors" in {
