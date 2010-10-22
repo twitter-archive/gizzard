@@ -3,7 +3,6 @@ package com.twitter.gizzard.scheduler
 import com.twitter.ostrich.{Stats, StatsProvider}
 import com.twitter.xrayspecs.Time
 import com.twitter.xrayspecs.TimeConversions._
-import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 

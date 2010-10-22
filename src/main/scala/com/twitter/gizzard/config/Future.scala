@@ -4,9 +4,9 @@ import com.twitter.util.Duration
 
 
 trait Future {
-  val poolSize: Int
-  val maxPoolSize: Int
-  val keepAlive: Duration
-  val timeout: Duration
+  def poolSize: Int
+  def maxPoolSize: Int
+  def keepAlive: Duration
+  def timeout: Duration
 }
 

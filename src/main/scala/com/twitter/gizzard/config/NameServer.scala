@@ -14,7 +14,9 @@ trait Mysql extends Replica with Connection
 object Memory extends Replica
 
 trait NameServer {
-  val mappingFunction: MappingFunction
-  val replicas: Seq[Replica]
-  val writeTimeout: Duration
+  def queryEvaluator: QueryEvaluator
+
+  def mappingFunction: MappingFunction
+  def replicas: Seq[Replica]
+  def writeTimeout: Duration
 }
