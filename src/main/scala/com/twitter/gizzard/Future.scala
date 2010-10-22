@@ -15,6 +15,9 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
          config("keep_alive_time_seconds").toInt.seconds,
          config("timeout_seconds").toInt.seconds)
 
+  def this(name: String, config: gizzard.config.Future) =
+    this(name, config.poolSize, config.maxPoolSize, config.keepAlive, config.timeout)
+
   var executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
     TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
 
