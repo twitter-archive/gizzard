@@ -3,7 +3,6 @@ package com.twitter.gizzard.nameserver
 import scala.collection.mutable
 import shards.{ShardInfo, ShardFactory}
 import com.twitter.xrayspecs.Duration
-import net.lag.configgy.ConfigMap
 
 class ShardRepository[S <: shards.Shard] {
   private val shardFactories = mutable.Map.empty[String, ShardFactory[S]]
@@ -38,8 +37,7 @@ class ShardRepository[S <: shards.Shard] {
  * shard types.
  */
 class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
-                                              replicationFuture: Option[Future],
-                                              config: ConfigMap)
+                                              replicationFuture: Option[Future])
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
@@ -52,8 +50,8 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
     this += (packageNameDot + "WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
     this += (packageNameDot + "BlackHoleShard"   -> new shards.BlackHoleShardFactory(constructor))
     this += (packageNameDot + "ReplicatingShard" ->
-             new shards.ReplicatingShardFactory(constructor, replicationFuture, config))
+             new shards.ReplicatingShardFactory(constructor, replicationFuture))
     this += (packageNameDot + "FailingOverShard" ->
-             new shards.FailingOverShardFactory(constructor, replicationFuture, config))
+             new shards.FailingOverShardFactory(constructor, replicationFuture))
   }
 }

@@ -20,8 +20,7 @@ import net.lag.configgy.ConfigMap
 
 class FailingOverShardFactory[ConcreteShard <: Shard](
     readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-    future: Option[Future],
-    config: ConfigMap)
+    future: Option[Future])
   extends ShardFactory[ConcreteShard] {
 
   def instantiate(info: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
@@ -30,8 +29,7 @@ class FailingOverShardFactory[ConcreteShard <: Shard](
       weight,
       replicas,
       new FailingOverLoadBalancer(replicas),
-      future,
-      config
+      future
     ))
 
   def materialize(shardInfo: shards.ShardInfo) = ()
