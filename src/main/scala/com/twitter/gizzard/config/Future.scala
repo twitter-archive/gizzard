@@ -8,5 +8,9 @@ trait Future {
   def maxPoolSize: Int
   def keepAlive: Duration
   def timeout: Duration
+
+  def apply(name: String) = {
+    new gizzard.Future(name, poolSize, maxPoolSize, keepAlive, timeout)
+  }
 }
 

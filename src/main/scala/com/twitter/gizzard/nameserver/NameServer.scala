@@ -61,32 +61,6 @@ object NameServer {
     }
     new NameServer(shard, shardRepository, mappingFunction)
   }
-
-
-  def apply[S <: shards.Shard](config: gizzard.config.NameServer,
-                               queryEvaluatorFactory: QueryEvaluatorFactory,
-                               shardRepository: ShardRepository[S],
-                               replicationFuture: Option[Future]): NameServer[S] = {
-    val replicas = config.replicas.map { replica =>
-      replica match {
-        case x: gizzard.config.Mysql => new SqlShard(queryEvaluatorFactory(x))
-        case gizzard.config.Memory => new MemoryShard
-      }
-    }
-
-    val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
-    val loadBalancer = new LoadBalancer(replicas)
-    val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture, config.writeTimeout))
-
-    val mappingFunction: (Long => Long) = config.mappingFunction match {
-      case gizzard.config.ByteSwapper => ByteSwapper
-      case gizzard.config.Identity => { n => n }
-      case gizzard.config.Fnv1a64 => FnvHasher
-    }
-
-    new NameServer(shard, shardRepository, mappingFunction)
-  }
 }
 
 class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],

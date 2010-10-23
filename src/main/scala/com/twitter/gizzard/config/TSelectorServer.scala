@@ -8,6 +8,10 @@ trait ThreadPool {
   def stopTimeout: Int = 60
   def minThreads: Int
   def maxThreads: Int = Math.MAX_INT
+
+  def apply() = {
+    thrift.TSelectorServer.makeThreadPoolExecutor(name, stopTimeout, minThreads, maxThreads)
+  }
 }
 
 trait TSelectorServer {

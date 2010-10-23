@@ -26,10 +26,6 @@ object TSelectorServer {
       config.getInt("max_threads", Math.MAX_INT))
   }
 
-  def makeThreadPoolExecutor(config: gizzard.config.ThreadPool): ThreadPoolExecutor = {
-    makeThreadPoolExecutor(config.name, config.stopTimeout, config.minThreads, config.maxThreads)
-  }
-
   def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int): ThreadPoolExecutor = {
     cache.get(name) foreach { executor =>
       if (!executor.isShutdown()) {
@@ -54,11 +50,6 @@ object TSelectorServer {
     socket.socket().bind(new InetSocketAddress(port), 8192)
     log.info("Starting %s (%s) on port %d", name, processor.getClass.getName, port)
     new TSelectorServer(name, processor, socket, executor, timeout, idleTimeout)
-  }
-
-  def apply(name: String, config: gizzard.config.TSelectorServer, processor: TProcessor): TSelectorServer = {
-    apply(name, config.port, processor, makeThreadPoolExecutor(config.threadPool),
-      config.clientTimeout, config.idleTimeout)
   }
 
   def apply(name: String, port: Int, config: ConfigMap, processor: TProcessor): TSelectorServer = {

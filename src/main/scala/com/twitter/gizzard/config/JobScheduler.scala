@@ -1,16 +1,43 @@
 package com.twitter.gizzard.config
 
+import com.twitter.util.Duration
 import net.lag.kestrel.config.PersistentQueue
+import gizzard.scheduler.{Job, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
+trait SchedulerType
+trait Kestrel extends SchedulerType with PersistentQueue {
+  val queuePath: String
+}
+trait Memory extends SchedulerType {
+  val sizeLimit: Int = 0
+}
 
 trait Scheduler {
-  val jobQueueName: String
-  val errorQueueName: String
-  val queue: PersistentQueue
+  def schedulerType: SchedulerType
+  def threads: Int
+  def replayInterval: Duration
+  def errorLimit: Int
+  def name: String
+  def jobQueueName: String = name
+  def errorQueueName: String = name + "_errors"
+
+  def apply[J <: Job](codec: Codec[J], badJobQueue: Option[JobConsumer[J]]): gizzard.scheduler.JobScheduler[J] = {
+    schedulerType match {
+      case kestrel: Kestrel =>
+        val persistentJobQueue = kestrel(kestrel.queuePath, jobQueueName)
+        val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
+        val persistentErrorQueue = kestrel(kestrel.queuePath, errorQueueName)
+        val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
+
+        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+      case memory: Memory =>
+        val jobQueue = new gizzard.scheduler.MemoryJobQueue[J](jobQueueName, memory.sizeLimit)
+        val errorQueue = new gizzard.scheduler.MemoryJobQueue[J](errorQueueName, memory.sizeLimit)
+        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+    }
+  }
 }
 
 trait JobScheduler {
-  val path: String
-  
-
+  def path: String = "/var/spool/kestrel"
 }
