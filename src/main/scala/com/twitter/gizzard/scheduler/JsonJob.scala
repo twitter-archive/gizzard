@@ -1,7 +1,10 @@
 package com.twitter.gizzard.scheduler
 
+import scala.reflect.Manifest
 import com.twitter.json.{Json, JsonException}
+import com.twitter.ostrich.{StatsProvider, W3CStats}
 import net.lag.logging.Logger
+import gizzard.proxy.LoggingProxy
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
 
@@ -33,6 +36,16 @@ class JsonNestedJob[J <: JsonJob](jobs: Iterable[J]) extends NestedJob[J](jobs) 
  */
 class JsonJobLogger[J <: JsonJob](logger: Logger) extends JobConsumer[J] {
   def put(job: J) = logger.error(job.toJson)
+}
+
+class LoggingJsonJobParser[J <: JsonJob](
+  jsonJobParser: JsonJobParser[J], stats: StatsProvider, logger: W3CStats)(implicit val manifest: Manifest[J])
+  extends JsonJobParser[J] {
+
+  def apply(codec: JsonCodec[J], json: Map[String, Any]): J = {
+    val job = jsonJobParser(codec, json)
+    LoggingProxy(stats, logger, job.loggingName, Set("apply"), job)
+  }
 }
 
 /**
