@@ -17,7 +17,9 @@ object LoggingProxy {
     Proxy(obj) { method =>
       if (methods.size == 0 || methods.contains(method.name)) {
         val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
-        stats.incr("operation-" + shortName + ":" + method.name)
+        if (method.name != "apply") {
+          stats.incr("operation-" + shortName + "-" + method.name + "-count")
+        }
         logger.transaction {
           logger.log("timestamp", Time.now.inMillis)
           logger.log("operation", name + ":" + method.name)
