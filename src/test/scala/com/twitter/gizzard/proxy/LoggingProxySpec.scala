@@ -32,6 +32,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     val w3cFields = Array("operation", "arguments", "action-timing", "result-count")
     val w3cStats = new W3CStats(logger, w3cFields)
     val bobProxy = LoggingProxy[Named](DevNullStats, w3cStats, "Bob", bob)
+    val filteredBobProxy = LoggingProxy[Named](DevNullStats, w3cStats, "Bob", Set("name"), bob)
     val robProxy = LoggingProxy[Namer](DevNullStats, w3cStats, "Rob", rob)
 
     "log stats on a proxied object" in {
@@ -96,6 +97,19 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 
       robProxy.setName("rob bob\nlob")
       line.captured must include("rob_bob_lob")
+    }
+
+    "only logs methods from the specified set" in {
+      val line = capturingParam[String]
+      expect {
+        one(logger).info(line.capture, any[Array[AnyRef]])
+      }
+
+      filteredBobProxy.name
+      filteredBobProxy.nameParts
+
+      line.captured must include("name")
+      line.captured mustNot include("nameParts")
     }
   }
 }
