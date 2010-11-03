@@ -17,11 +17,11 @@ object ShardExceptionSpec extends ConfiguredSpecification with JMocker {
           throw new ShardTimeoutException(100.milliseconds, ShardId("localhost", "table1"), null)
         } catch {
           case e =>
-            log.error(e, "Aie!")
+            log.error(e, "Aie! " + e)
         }
 
         handler.toString.split("\n").toList mustEqual
-          List("Aie!", "com.twitter.gizzard.shards.ShardTimeoutException: Timeout (100 msec): localhost/table1")
+          List("Aie! com.twitter.gizzard.shards.ShardTimeoutException: Timeout (100 msec): localhost/table1")
       }
 
       "with cause" in {
@@ -34,11 +34,11 @@ object ShardExceptionSpec extends ConfiguredSpecification with JMocker {
           }
         } catch {
           case e =>
-            log.error(e, "Aie!")
+            log.error(e, "Aie! " + e)
         }
 
         handler.toString.split("\n").toList mustEqual
-          List("Aie!", "com.twitter.gizzard.shards.ShardTimeoutException: Timeout (100 msec): localhost/table1")
+          List("Aie! com.twitter.gizzard.shards.ShardTimeoutException: Timeout (100 msec): localhost/table1")
       }
     }
   }
