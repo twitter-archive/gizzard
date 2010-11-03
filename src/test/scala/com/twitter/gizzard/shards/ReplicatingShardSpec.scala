@@ -18,7 +18,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future), 6.seconds))
+    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future)))
 
     "read failover" in {
       "when shard1 throws an exception" in {
@@ -89,7 +89,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       }
 
       "in series" in {
-        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None, 6.seconds))
+        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None))
 
         "normal" in {
           expect {
@@ -143,7 +143,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val mock2 = mock[EnufShard]
       val shards = List(mock1, mock2)
       val loadBalancer = () => shards
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future), 6.seconds)
+      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future))
 
       "first shard has data" in {
         expect {
