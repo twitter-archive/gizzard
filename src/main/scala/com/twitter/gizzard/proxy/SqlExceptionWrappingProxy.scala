@@ -15,7 +15,11 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
     case e: SqlDatabaseTimeoutException =>
       throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
     case e: SQLException =>
-      throw new shards.ShardException(e.toString, e)
+      if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
+        throw new shards.NormalShardException(e.toString, shardId, null)
+      } else {
+        throw new shards.ShardException(e.toString, e)
+      }
     case e: shards.ShardException =>
       throw e
   }
@@ -31,7 +35,11 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
       case e: SqlDatabaseTimeoutException =>
         throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
       case e: SQLException =>
-        throw new shards.ShardException(e.toString, e)
+        if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
+          throw new shards.NormalShardException(e.toString, shardId, null)
+        } else {
+          throw new shards.ShardException(e.toString, e)
+        }
       case e: shards.ShardException =>
         throw e
      }
