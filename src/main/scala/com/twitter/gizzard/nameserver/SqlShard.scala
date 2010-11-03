@@ -115,10 +115,12 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   def deleteShard(id: ShardId) = {
-    queryEvaluator.execute("DELETE FROM shard_children WHERE "+
-                           "(parent_hostname = ? AND parent_table_prefix = ?) OR " +
-                           "(child_hostname = ? AND child_table_prefix = ?)",
-                           id.hostname, id.tablePrefix, id.hostname, id.tablePrefix)
+    if (listUpwardLinks(id).length > 0) {
+      throw new ShardException("Shard still has links")
+    }
+    if (listDownwardLinks(id).length > 0) {
+      throw new ShardException("Shard still has links")
+    }
     queryEvaluator.execute("DELETE FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) == 0
   }
 
@@ -126,6 +128,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     if (upId == downId) {
       throw new ShardException("Can't link shard to itself")
     }
+    // Links to non-existant shards are a bad thing
+    getShard(upId)
+    getShard(downId)
     queryEvaluator.execute("INSERT INTO shard_children (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix, weight) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE weight=VALUES(weight)",
       upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix, weight)
     // XXX: todo - check loops
