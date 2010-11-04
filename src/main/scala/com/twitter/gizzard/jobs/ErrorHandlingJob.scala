@@ -35,7 +35,7 @@ class ErrorHandlingJob(job: Job, var errorCount: Int, var errorMessage: String,
         errorJobQueue.put(this)
       case e =>
         Stats.incr("job-error-count")
-        log.error(e, "Error in Job: " + e)
+        log.error(e, "Error in Job %s: %s", toJson, e)
         errorCount += 1
         errorMessage = e.toString
         if (errorCount > errorLimit) {
