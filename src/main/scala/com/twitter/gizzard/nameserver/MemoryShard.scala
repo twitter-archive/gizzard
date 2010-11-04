@@ -2,9 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import scala.collection.Map
 import scala.collection.mutable
-import scheduler.JobScheduler
 import shards._
-
 
 /**
  * NameServer implementation that doesn't actually store anything anywhere.

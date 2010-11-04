@@ -4,25 +4,23 @@ import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.Config
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import jobs.Schedulable
-
 
 object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "PrioritizingJobScheduler" should {
-    val low = mock[JobScheduler]
-    val medium = mock[JobScheduler]
-    val high = mock[JobScheduler]
+    val low = mock[JobScheduler[Job]]
+    val medium = mock[JobScheduler[Job]]
+    val high = mock[JobScheduler[Job]]
     val prioritizingScheduler = new PrioritizingJobScheduler(Map(3 -> low, 2 -> medium, 1 -> high))
 
     "apply" in {
-      val schedulable = mock[Schedulable]
+      val job = mock[Job]
 
-      expect { one(low).apply(schedulable) }
-      prioritizingScheduler(3, schedulable)
-      expect { one(medium).apply(schedulable) }
-      prioritizingScheduler(2, schedulable)
-      expect { one(high).apply(schedulable) }
-      prioritizingScheduler(1, schedulable)
+      expect { one(low).put(job) }
+      prioritizingScheduler.put(3, job)
+      expect { one(medium).put(job) }
+      prioritizingScheduler.put(2, job)
+      expect { one(high).put(job) }
+      prioritizingScheduler.put(1, job)
     }
 
     "retryErrors" in {
@@ -31,6 +29,7 @@ object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker
         one(medium).retryErrors()
         one(high).retryErrors()
       }
+
       prioritizingScheduler.retryErrors()
     }
 
@@ -40,6 +39,7 @@ object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker
         one(medium).pause()
         one(high).pause()
       }
+
       prioritizingScheduler.pause()
     }
 
@@ -49,6 +49,7 @@ object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker
         one(medium).shutdown()
         one(high).shutdown()
       }
+
       prioritizingScheduler.shutdown()
     }
 
@@ -58,6 +59,7 @@ object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker
         one(medium).resume()
         one(high).resume()
       }
+
       prioritizingScheduler.resume()
     }
   }

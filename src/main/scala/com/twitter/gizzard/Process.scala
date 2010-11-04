@@ -1,6 +1,5 @@
 package com.twitter.gizzard
 
-
 trait Process {
   def start()
   def pause()
