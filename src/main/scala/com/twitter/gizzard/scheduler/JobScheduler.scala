@@ -31,6 +31,8 @@ object JobScheduler {
 
     val errorHandlingConfig = ErrorHandlingConfig(schedulerConfig("replay_interval").toInt.seconds,
                                                   schedulerConfig("error_limit").toInt,
+                                                  schedulerConfig("per_flush_item_limit").toInt,
+                                                  schedulerConfig("jitter_rate").toFloat,
                                                   errorQueue, badJobQueue,
                                                   unparsableMessageQueue, jobParser)
     val errorHandlingJobQueue = new ErrorHandlingJobQueue(name, jobQueue, errorHandlingConfig)

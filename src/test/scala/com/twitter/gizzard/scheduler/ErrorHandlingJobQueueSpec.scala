@@ -15,7 +15,7 @@ object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker wi
     val normalQueue = mock[MessageQueue[String, String]]
     val errorQueue = mock[MessageQueue[String, String]]
     val unparsableMessageQueue = mock[MessageQueue[String, String]]
-    val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
+    val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5, 1, 0.01f,
                                                   errorQueue,
                                                   mock[MessageQueue[Schedulable, Job]],
                                                   mock[MessageQueue[String, String]],
@@ -24,7 +24,7 @@ object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker wi
 
     "retry" >> {
       expect {
-        one(errorQueue).writeTo(normalQueue)
+        one(errorQueue).writeTo(normalQueue, errorHandlingConfig.perFlushItemLimit)
       }
       errorHandlingJobQueue.retry()
     }
@@ -89,7 +89,7 @@ object ErrorHandlingJobQueueSpec extends ConfiguredSpecification with JMocker wi
         val attributes = Map("a" -> 1)
         val job = mock[Job]
         val normalQueue = mock[MessageQueue[String, String]]
-        val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
+        val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5, 10, 0.01f,
                                                       mock[MessageQueue[String, String]],
                                                       mock[MessageQueue[Schedulable, Job]],
                                                       unparsableMessageQueue,
