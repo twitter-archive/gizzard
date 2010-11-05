@@ -28,7 +28,7 @@ trait JsonJob extends Job {
  * A NestedJob that can be encoded in json.
  */
 class JsonNestedJob[J <: JsonJob](jobs: Iterable[J]) extends NestedJob[J](jobs) with JsonJob {
-  def toMap = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
+  def toMap: Map[String, Any] = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
 }
 
 /**

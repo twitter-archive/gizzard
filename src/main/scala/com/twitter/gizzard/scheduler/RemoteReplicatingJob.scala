@@ -1,9 +1,7 @@
 package com.twitter.gizzard.scheduler
 
 class RemoteReplicatingJob[J <: JsonJob](jobs: Iterable[J], var replicated: Boolean) extends JsonNestedJob(jobs) {
-  override def toMap = {
-    super.toMap ++ Map("replicated" -> replicated)
-  }
+  override def toMap: Map[String, Any] = Map("replicated" -> replicated :: super.toMap.toList: _*)
 
   override def apply() {
     // Forward job here
@@ -13,10 +11,10 @@ class RemoteReplicatingJob[J <: JsonJob](jobs: Iterable[J], var replicated: Bool
 }
 
 class RemoteReplicatingJobParser[J <: JsonJob](codec: JsonCodec[J]) extends JsonNestedJobParser(codec) {
-  def apply(json: Map[String, Any]) = {
+  override def apply(json: Map[String, Any]) = {
     val replicated = json("replicated").asInstanceOf[Boolean]
-    val nestedJob = super.apply(json)
+    val nestedJob = super.apply(json).asInstanceOf[JsonNestedJob[J]]
 
-    new RemoteReplicatingJob(nestedJob.jobs, replicated)
+    new RemoteReplicatingJob(nestedJob.jobs, replicated).asInstanceOf[J]
   }
 }
