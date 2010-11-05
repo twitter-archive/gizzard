@@ -14,7 +14,7 @@ object ErrorHandlingJobSpec extends ConfiguredSpecification with JMocker with Cl
     val shardId = ShardId("fake", "shard")
     val job = mock[Job]
     val errorQueue = mock[MessageQueue[Schedulable, Job]]
-    val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
+    val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5, 10, 0.01f,
                                                   mock[MessageQueue[String, String]],
                                                   mock[MessageQueue[Schedulable, Job]],
                                                   mock[MessageQueue[String, String]],

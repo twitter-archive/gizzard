@@ -4,10 +4,11 @@ import com.twitter.ostrich.BackgroundProcess
 import com.twitter.ostrich.StatsProvider
 import com.twitter.xrayspecs.Duration
 import net.lag.logging.Logger
+import java.util.Random
 import jobs.{Schedulable, Job, JobParser, ErrorHandlingJobParser, UnparsableJobException}
 
 
-case class ErrorHandlingConfig(retryInterval: Duration, errorLimit: Int,
+case class ErrorHandlingConfig(retryInterval: Duration, errorLimit: Int, perFlushItemLimit: Int, jitterRate: Float,
                                errorQueue: MessageQueue[String, String],
                                badJobQueue: Scheduler[Schedulable],
                                unparsableMessageQueue: Scheduler[String],
@@ -24,10 +25,12 @@ class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, 
   val errorJobQueue = new JobQueue(errorQueue, jobParser)
   val errorHandlingJobParser = new ErrorHandlingJobParser(config, errorJobQueue)
   val log = Logger.get(getClass.getName)
+  val perFlushLimit = config.perFlushItemLimit
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
-      Thread.sleep(retryInterval.inMillis)
+      val jitter = Math.round(retryInterval.inMillis * config.jitterRate * new Random().nextGaussian())
+      Thread.sleep(retryInterval.inMillis + jitter)
       try {
         retry()
       } catch {
@@ -39,7 +42,7 @@ class ErrorHandlingJobQueue(name: String, val normalQueue: MessageQueue[String, 
 
   def retry() {
     log.info("Replaying %s errors queue...", name)
-    errorQueue.writeTo(normalQueue)
+    errorQueue.writeTo(normalQueue, perFlushLimit)
   }
 
   def put(schedulable: Schedulable) = normalJobQueue.put(schedulable)

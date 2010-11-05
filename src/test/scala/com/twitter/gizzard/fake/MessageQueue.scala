@@ -37,5 +37,6 @@ class MessageQueue extends scheduler.MessageQueue[Schedulable, jobs.Job] {
   override def toString = "<WarbleGarble>"
 
   def writeTo[A](messageQueue: scheduler.MessageQueue[Schedulable, A]) = ()
+  def writeTo[A](messageQueue: scheduler.MessageQueue[Schedulable, A], i: Int) = ()
 }
   

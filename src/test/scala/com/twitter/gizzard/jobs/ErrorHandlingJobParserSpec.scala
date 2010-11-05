@@ -14,7 +14,7 @@ object ErrorHandlingJobParserSpec extends ConfiguredSpecification with JMocker w
     "register and increment errors" in {
       val job = mock[Job]
       val errorQueue = mock[MessageQueue[Schedulable, Job]]
-      val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5,
+      val errorHandlingConfig = ErrorHandlingConfig(1.minute, 5, 10, 0.01f,
                                                     mock[MessageQueue[String, String]],
                                                     mock[MessageQueue[Schedulable, Job]],
                                                     mock[MessageQueue[String, String]],
