@@ -24,12 +24,12 @@ class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocke
       codec += ("b".r, b)
 
       expect {
-        one(a).parse(codec, aJson("a")) willReturn job
+        one(a).parse(aJson("a")) willReturn job
       }
       codec.inflate(aJson) mustEqual job
 
       expect {
-        one(b).parse(codec, bJson("b")) willReturn job
+        one(b).parse(bJson("b")) willReturn job
       }
       codec.inflate(bJson) mustEqual job
     }

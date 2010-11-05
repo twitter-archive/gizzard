@@ -42,8 +42,8 @@ class LoggingJsonJobParser[J <: JsonJob](
   jsonJobParser: JsonJobParser[J], stats: StatsProvider, logger: W3CStats)(implicit val manifest: Manifest[J])
   extends JsonJobParser[J] {
 
-  def apply(codec: JsonCodec[J], json: Map[String, Any]): J = {
-    val job = jsonJobParser(codec, json)
+  def apply(json: Map[String, Any]): J = {
+    val job = jsonJobParser(json)
     LoggingProxy(stats, logger, job.loggingName, Set("apply"), job)
   }
 }
@@ -53,21 +53,21 @@ class LoggingJsonJobParser[J <: JsonJob](
  * JsonCodec.
  */
 trait JsonJobParser[J <: JsonJob] {
-  def parse(codec: JsonCodec[J], json: Map[String, Any]): JsonJob = {
+  def parse(json: Map[String, Any]): JsonJob = {
     val errorCount = json.getOrElse("error_count", 0).asInstanceOf[Int]
     val errorMessage = json.getOrElse("error_message", "(none)").asInstanceOf[String]
 
-    val job = apply(codec, json)
+    val job = apply(json)
     job.errorCount = errorCount
     job.errorMessage = errorMessage
     job
   }
 
-  def apply(codec: JsonCodec[J], json: Map[String, Any]): J
+  def apply(json: Map[String, Any]): J
 }
 
-class JsonNestedJobParser[J <: JsonJob] extends JsonJobParser[J] {
-  def apply(codec: JsonCodec[J], json: Map[String, Any]): J = {
+class JsonNestedJobParser[J <: JsonJob](codec: JsonCodec[J]) extends JsonJobParser[J] {
+  def apply(json: Map[String, Any]): J = {
     val taskJsons = json("tasks").asInstanceOf[Iterable[Map[String, Any]]]
     val tasks = taskJsons.map { codec.inflate(_) }
     new JsonNestedJob(tasks.asInstanceOf[Iterable[J]]).asInstanceOf[J]
