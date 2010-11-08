@@ -8,19 +8,25 @@ import net.lag.logging.Logger
 import org.apache.thrift.{TProcessor, TProcessorFactory}
 import org.apache.thrift.protocol.{TBinaryProtocol, TProtocol, TProtocolFactory}
 import org.apache.thrift.server.TServer
-import org.apache.thrift.transport.{TServerTransport, TSocket, TTransport, TTransportException, TTransportFactory}
+import org.apache.thrift.transport._
 
 object TThreadServer {
   private val MIN_THREADS = 5
 
   def apply(name: String, port: Int, idleTimeout: Int, executor: ExecutorService,
-            processor: TProcessor): TThreadServer = {
+            processor: TProcessor, framed: Boolean): TThreadServer = {
     new TThreadServer(name, port, idleTimeout, executor, new TProcessorFactory(processor),
-                      new TTransportFactory(), new TBinaryProtocol.Factory())
+                      if (framed) new TFramedTransport.Factory else new TTransportFactory(),
+                      new TBinaryProtocol.Factory())
+  }
+
+  def apply(name: String, port: Int, idleTimeout: Int, executor: ExecutorService,
+            processor: TProcessor): TThreadServer = {
+    TThreadServer(name, port, idleTimeout, executor, processor, false)
   }
 
   def apply(name: String, port: Int, idleTimeout: Int, processor: TProcessor): TThreadServer = {
-    TThreadServer(name, port, idleTimeout, makeThreadPool(name, MIN_THREADS), processor)
+    TThreadServer(name, port, idleTimeout, makeThreadPool(name, MIN_THREADS), processor, false)
   }
 
   def makeThreadPool(name: String, minThreads: Int): ExecutorService = {
