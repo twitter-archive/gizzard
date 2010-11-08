@@ -38,8 +38,7 @@ class ShardRepository[S <: shards.Shard] {
  * shard types.
  */
 class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard[S] => S,
-                                              replicationFuture: Option[Future],
-                                              writeTimeout: Duration)
+                                              replicationFuture: Option[Future])
       extends ShardRepository[S] {
 
   setupPackage("com.twitter.gizzard.shards")
@@ -52,8 +51,8 @@ class BasicShardRepository[S <: shards.Shard](constructor: shards.ReadWriteShard
     this += (packageNameDot + "WriteOnlyShard"   -> new shards.WriteOnlyShardFactory(constructor))
     this += (packageNameDot + "BlackHoleShard"   -> new shards.BlackHoleShardFactory(constructor))
     this += (packageNameDot + "ReplicatingShard" ->
-             new shards.ReplicatingShardFactory(constructor, replicationFuture, writeTimeout))
+             new shards.ReplicatingShardFactory(constructor, replicationFuture))
     this += (packageNameDot + "FailingOverShard" ->
-             new shards.FailingOverShardFactory(constructor, replicationFuture, writeTimeout))
+             new shards.FailingOverShardFactory(constructor, replicationFuture))
   }
 }

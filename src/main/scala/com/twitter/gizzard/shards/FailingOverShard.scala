@@ -18,8 +18,7 @@ import com.twitter.gizzard.nameserver.FailingOverLoadBalancer
 
 class FailingOverShardFactory[ConcreteShard <: Shard](
     readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-    future: Option[Future],
-    timeout: Duration)
+    future: Option[Future])
   extends ShardFactory[ConcreteShard] {
 
   def instantiate(info: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
@@ -28,8 +27,7 @@ class FailingOverShardFactory[ConcreteShard <: Shard](
       weight,
       replicas,
       new FailingOverLoadBalancer(replicas),
-      future,
-      timeout
+      future
     ))
 
   def materialize(shardInfo: shards.ShardInfo) = ()
