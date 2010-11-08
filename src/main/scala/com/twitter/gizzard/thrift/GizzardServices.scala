@@ -20,7 +20,7 @@ class GizzardServices[S <: Shard, J <: JsonJob](config: ConfigMap,
 
   val shardServer = new ShardManagerService(nameServer, copyFactory, copyScheduler)
   val shardProcessor = new ShardManager.Processor(shardServer)
-  val shardThriftServer = TThreadServer("shards", shardServerPort, idleTimeout, gizzardThreadPool, shardProcessor, true)
+  val shardThriftServer = TThreadServer("shards", shardServerPort, idleTimeout, gizzardThreadPool, shardProcessor, false)
 
   val jobServer = new JobManagerService(scheduler)
   val jobProcessor = new JobManager.Processor(jobServer)
