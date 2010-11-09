@@ -22,6 +22,6 @@ service JobManager {
   bool is_writing(1: i32 priority) throws(1: JobException ex)
 }
 
-service JobInjectionService {
+service JobInjector {
   void inject_jobs(1: list<Job> jobs) throws(1: JobException ex)
 }
