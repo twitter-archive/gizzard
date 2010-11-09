@@ -8,7 +8,8 @@ import java.util.Random
 import jobs.{Schedulable, Job, JobParser, ErrorHandlingJobParser, UnparsableJobException}
 
 
-case class ErrorHandlingConfig(retryInterval: Duration, errorLimit: Int, perFlushItemLimit: Int, jitterRate: Float,
+case class ErrorHandlingConfig(retryInterval: Duration, errorLimit: Int,
+                               perFlushItemLimit: Int, jitterRate: Float,
                                errorQueue: MessageQueue[String, String],
                                badJobQueue: Scheduler[Schedulable],
                                unparsableMessageQueue: Scheduler[String],

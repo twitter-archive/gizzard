@@ -48,7 +48,7 @@ object KestrelMessageQueueSpec extends ConfiguredSpecification with JMocker with
 
       expect {
         allowing(queue).isClosed willReturn false
-        one(queue).length willReturn 2
+        allowing(queue).length willReturn 2
         one(queue).removeReceive(0, true).willReturn(items(0)) then
           one(queue).removeReceive(0, true).willReturn(items(1))
         one(queue).confirmRemove(items(0).get.xid)

@@ -59,11 +59,13 @@ class KestrelMessageQueue(queueName: String, queue: PersistentQueue)
       new String(item.data)
     }
   }
+
   override def writeTo[A](messageQueue: MessageQueue[String, A]) {
     writeTo(messageQueue, size)
   }
+
   override def writeTo[A](messageQueue: MessageQueue[String, A], limit: Int) {
-    var bound = limit
+    var bound = limit min size
     while (bound > 0) {
       poll() match {
         case None =>
