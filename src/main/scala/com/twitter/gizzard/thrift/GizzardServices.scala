@@ -4,7 +4,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 import nameserver.NameServer
-import scheduler.{CopyJob, CopyJobFactory, Job, JobScheduler, JsonJob, PrioritizingJobScheduler}
+import scheduler.{CopyJob, CopyJobFactory, JobScheduler, JsonJob, PrioritizingJobScheduler}
 import shards.Shard
 
 class GizzardServices[S <: Shard, J <: JsonJob](shardServerPort: Int,
