@@ -11,6 +11,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val thrift    = "thrift" % "libthrift" % "0.2.0-twitter-1"
   val json      = "com.twitter" % "json" % "1.1.7"
   val util      = "com.twitter" % "util" % "1.1.1"
+  val rpcclient = "com.twitter" %% "rpcclient" % "1.1.2-SNAPSHOT"
 
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1" % "test"
   val objenesis = "org.objenesis" % "objenesis" % "1.1" % "test"
