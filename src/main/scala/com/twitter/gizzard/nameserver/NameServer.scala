@@ -67,6 +67,8 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
                                     val mappingFunction: Long => Long)
   extends Shard {
 
+  private val log = Logger.get(getClass.getName)
+
   val children = List()
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
@@ -88,6 +90,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   }
 
   def reload() {
+    log.info("Loading forwarding table...")
     nameServerShard.reload()
 
     val newShardInfos = mutable.Map.empty[ShardId, ShardInfo]
@@ -110,6 +113,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
     shardInfos = newShardInfos
     familyTree = newFamilyTree
     forwardings = newForwardings
+    log.info("Loading forwarding table is done.")
   }
 
   def findShardById(id: ShardId, weight: Int): S = {
