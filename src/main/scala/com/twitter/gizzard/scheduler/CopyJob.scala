@@ -25,7 +25,7 @@ trait CopyJobParser[S <: Shard] extends JsonJobParser[JsonJob] {
   def deserialize(attributes: Map[String, Any], sourceId: ShardId,
                   destinationId: ShardId, count: Int): CopyJob[S]
 
-  def apply(codec: JsonCodec[JsonJob], attributes: Map[String, Any]): JsonJob = {
+  def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
                 ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
                 ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString),
