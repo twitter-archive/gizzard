@@ -8,20 +8,18 @@ import thrift.conversions.Sequences._
 import java.util.{LinkedList => JLinkedList}
 
 
-class ReplicatingJobInjector(hosts: Seq[String], port: Int, priority: Int) {
+class ReplicatingJobInjector(hosts: Seq[String], port: Int, priority: Int) extends (Iterable[JsonJob] => Unit) {
   val client = new LoadBalancingChannel(hosts.map { new JobInjectorClient(_, port, true, 1.second) } )
 
-  def apply(jobs: List[JsonJob]) {
+  def apply(jobs: Iterable[JsonJob]) {
     val jobList = new JLinkedList[thrift.Job]()
 
     for (j <- jobs) jobList.add(new thrift.Job(priority, j.toJson.getBytes("UTF-8")))
     client.proxy.inject_jobs(jobList)
   }
-
-  def apply(job: JsonJob) { apply(List(job)) }
 }
 
-class ReplicatingJsonCodec(injector: JsonJob => Unit, unparsable: Array[Byte] => Unit)
+class ReplicatingJsonCodec(injector: Iterable[JsonJob] => Unit, unparsable: Array[Byte] => Unit)
 extends JsonCodec[JsonJob](unparsable) {
   this += ("RemoteReplicatingJob".r -> new RemoteReplicatingJobParser(this, injector))
 
@@ -37,9 +35,9 @@ extends JsonCodec[JsonJob](unparsable) {
   }
 }
 
-class RemoteReplicatingJob[J <: JsonJob](injector: JsonJob => Unit, jobs: Iterable[J], var _shouldReplicate: Boolean)
+class RemoteReplicatingJob[J <: JsonJob](injector: Iterable[JsonJob] => Unit, jobs: Iterable[J], var _shouldReplicate: Boolean)
 extends JsonNestedJob(jobs) {
-  def this(injector: JsonJob => Unit, jobs: Iterable[J]) = this(injector, jobs, true)
+  def this(injector: Iterable[JsonJob] => Unit, jobs: Iterable[J]) = this(injector, jobs, true)
 
   override def shouldReplicate = _shouldReplicate
   def shouldReplicate_=(v: Boolean) = _shouldReplicate = v
@@ -52,7 +50,7 @@ extends JsonNestedJob(jobs) {
 
     if (shouldReplicate) try {
       shouldReplicate = false
-      injector(this)
+      injector(List(this))
     } catch {
       case e: Throwable => {
         shouldReplicate = true
@@ -62,7 +60,7 @@ extends JsonNestedJob(jobs) {
   }
 }
 
-class RemoteReplicatingJobParser[J <: JsonJob](codec: JsonCodec[J], injector: JsonJob => Unit)
+class RemoteReplicatingJobParser[J <: JsonJob](codec: JsonCodec[J], injector: Iterable[JsonJob] => Unit)
 extends JsonNestedJobParser(codec) {
 
   override def apply(json: Map[String, Any]) = {

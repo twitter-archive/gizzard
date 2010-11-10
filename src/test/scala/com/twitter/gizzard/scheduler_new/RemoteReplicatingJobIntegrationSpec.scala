@@ -18,7 +18,8 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
     val processor = new JobInjector.Processor(service)
     val server = TThreadServer("injector", port, 2, TThreadServer.makeThreadPool("injector", 0), processor)
 
-    val parser = new RemoteReplicatingJobParser[JsonJob](codec, Seq("localhost"), port, 1)
+    val injector = new ReplicatingJobInjector(List("localhost"), port, 1)
+    val parser = new RemoteReplicatingJobParser[JsonJob](codec, injector)
 
     doBefore {
       server.start()
