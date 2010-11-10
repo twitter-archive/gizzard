@@ -8,7 +8,7 @@ import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, Job, JobScheduler, JsonJob}
+import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JobScheduler, JsonJob}
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 
