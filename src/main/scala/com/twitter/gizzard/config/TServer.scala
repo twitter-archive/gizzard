@@ -7,7 +7,7 @@ trait ThreadPool {
   def name: String
   def stopTimeout: Int = 60
   def minThreads: Int
-  def maxThreads: Int = Math.MAX_INT
+  def maxThreads: Int = minThreads
 
   def apply() = {
     gizzard.thrift.TSelectorServer.makeThreadPoolExecutor(name, stopTimeout, minThreads, maxThreads)
@@ -35,13 +35,7 @@ trait TThreadServer extends TServer {
   def name: String
 
   def apply(processor: thrift.TProcessor) = {
-    new gizzard.thrift.ThreadServer(
-      name, port, idleTimeout,
-      threadPool(),
-      new thrift.TProcessorFactory(processor),
-      new thrift.transport.TTransportFactory(),
-      new thrift.protocol.TBinaryProtocol.Factory()
-    )
+    gizzard.thrift.TThreadServer(name, port, idleTimeout.inMillis.toInt, threadPool(), processor)
   }
 }
 
