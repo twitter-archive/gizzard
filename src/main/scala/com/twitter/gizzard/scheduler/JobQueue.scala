@@ -22,7 +22,7 @@ trait Ticket[J <: Job] {
  */
 trait JobQueue[J <: Job] extends JobConsumer[J] with Process {
   def get(): Option[Ticket[J]]
-  def drainTo(queue: JobQueue[J])
+  def drainTo(queue: JobQueue[J], limit: Int)
   def size: Int
 }
 

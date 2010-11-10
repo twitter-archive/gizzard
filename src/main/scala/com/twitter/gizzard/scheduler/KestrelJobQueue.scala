@@ -68,8 +68,8 @@ class KestrelJobQueue[J <: Job](queueName: String, queue: PersistentQueue, codec
     }
   }
 
-  def drainTo(outQueue: JobQueue[J]) {
-    var bound = size
+  def drainTo(outQueue: JobQueue[J], limit: Int) {
+    var bound = size min limit
     while (bound > 0 && !queue.isClosed) {
       queue.removeReceive(0, true) match {
         case None =>

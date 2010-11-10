@@ -141,7 +141,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
           one(destinationQueue).put(job2)
         }
 
-        kestrelJobQueue.drainTo(destinationQueue)
+        kestrelJobQueue.drainTo(destinationQueue, 10)
       }
 
       "after shutdown" in {
@@ -150,7 +150,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
           one(queue).isClosed willReturn true
         }
 
-        kestrelJobQueue.drainTo(destinationQueue)
+        kestrelJobQueue.drainTo(destinationQueue, 10)
       }
     }
   }
