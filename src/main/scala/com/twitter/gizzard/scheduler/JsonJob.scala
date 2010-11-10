@@ -16,6 +16,7 @@ class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, 
 trait JsonJob extends Job {
   def toMap: Map[String, Any]
 
+  def shouldReplicate = true
   def className = getClass.getName
 
   def toJson = {

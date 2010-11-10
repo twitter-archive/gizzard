@@ -50,6 +50,8 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
+  override def shouldReplicate = false
+
   def toMap = {
     Map("source_shard_hostname" -> sourceId.hostname,
         "source_shard_table_prefix" -> sourceId.tablePrefix,
