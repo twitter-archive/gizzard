@@ -79,6 +79,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     "start & shutdown" in {
       expect {
         one(queue).start()
+        one(errorQueue).start()
         one(queue).isShutdown willReturn false
       }
 
@@ -92,6 +93,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
       expect {
         one(queue).shutdown()
+        one(errorQueue).shutdown()
         one(queue).isShutdown willReturn true
       }
 
@@ -105,12 +107,14 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     "pause & resume" in {
       expect {
         one(queue).start()
+        one(errorQueue).start()
       }
 
       jobScheduler.start()
 
       expect {
         one(queue).pause()
+        one(errorQueue).pause()
       }
 
       jobScheduler.pause()
@@ -120,6 +124,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
       expect {
         one(queue).resume()
+        one(errorQueue).resume()
       }
 
       jobScheduler.resume()
@@ -129,6 +134,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
       expect {
         one(queue).shutdown()
+        one(errorQueue).shutdown()
       }
 
       jobScheduler.shutdown()

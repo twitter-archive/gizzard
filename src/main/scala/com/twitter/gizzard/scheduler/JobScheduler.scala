@@ -101,6 +101,7 @@ class JobScheduler[J <: Job](val name: String,
   def start() = {
     if (!running) {
       queue.start()
+      errorQueue.start()
       running = true
       log.info("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
@@ -112,6 +113,7 @@ class JobScheduler[J <: Job](val name: String,
   def pause() {
     log.info("Pausing work in JobScheduler: %s", queue)
     queue.pause()
+    errorQueue.pause()
     workerThreads.foreach { _.shutdown() }
     workerThreads = Nil
   }
@@ -119,6 +121,7 @@ class JobScheduler[J <: Job](val name: String,
   def resume() = {
     log.info("Resuming work in JobScheduler: %s", queue)
     queue.resume()
+    errorQueue.resume()
     workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
     workerThreads.foreach { _.start() }
   }
@@ -126,6 +129,7 @@ class JobScheduler[J <: Job](val name: String,
   def shutdown() {
     log.info("Shutting down JobScheduler: %s", queue)
     queue.shutdown()
+    errorQueue.shutdown()
     workerThreads.foreach { _.shutdown() }
     workerThreads = Nil
     retryTask.shutdown()
