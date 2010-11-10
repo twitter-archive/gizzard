@@ -57,10 +57,6 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
   @volatile var running = true
   private val deathSwitch = new CountDownLatch(1)
 
-  private val serverSocket = new ServerSocket(port)
-  serverSocket.setReuseAddress(true)
-  serverSocket.setSoTimeout(ACCEPT_TIMEOUT)
-
   def start() {
     new Thread(name) {
       override def run() {
@@ -71,6 +67,10 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
 
   def serve() {
     log.info("Starting thrift service %s on port %d.", name, port)
+
+    val serverSocket = new ServerSocket(port)
+    serverSocket.setReuseAddress(true)
+    serverSocket.setSoTimeout(ACCEPT_TIMEOUT)
 
     while (running) {
       try {
