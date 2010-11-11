@@ -6,10 +6,10 @@ import gizzard.scheduler.{Job, Codec, MemoryJobQueue, KestrelJobQueue, JobConsum
 
 trait SchedulerType
 trait Kestrel extends SchedulerType with PersistentQueue {
-  val queuePath: String
+  def queuePath: String
 }
 trait Memory extends SchedulerType {
-  val sizeLimit: Int = 0
+  def sizeLimit: Int = 0
 }
 
 trait Scheduler {

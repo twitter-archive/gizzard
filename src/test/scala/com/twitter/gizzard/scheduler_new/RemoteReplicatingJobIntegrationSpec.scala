@@ -29,18 +29,21 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
     }
     codec += ("TestJob".r -> testJobParser)
 
-    val scheduler = PrioritizingJobScheduler(CConfig.fromString("""
-      path = "/tmp"
-      test {
-        threads              = 3
-        replay_interval      = 3600
-        error_limit          = 10
-        job_queue            = "tbird_test_q"
-        error_queue          = "tbird_test_q_errors"
-        per_flush_item_limit = 100
-        jitter_rate          = 0
+    val schedulerConfig = new gizzard.config.Scheduler {
+      def schedulerType = new gizzard.config.Kestrel {
+        val queuePath = "/tmp"
       }
-    """), codec, Map(1 -> "test"), None)
+      def threads = 3
+      def replayInterval = 1.hour
+      def errorLimit = 10
+      def name = "tbird_test_q"
+      def perFlushItemLimit = 100
+      def jitterRate = 0
+    }
+
+    val scheduler = new PrioritizingJobScheduler(Map(
+      1 -> schedulerConfig(codec, None)
+    ))
 
     val service   = new JobInjectorService[JsonJob](codec, scheduler)
     val processor = new JobInjector.Processor(service)
