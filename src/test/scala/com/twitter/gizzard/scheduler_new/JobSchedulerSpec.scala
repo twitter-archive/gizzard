@@ -21,9 +21,12 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val liveThreads = new AtomicInteger(0)
 
     val MAX_ERRORS = 100
+    val ITEM_LIMIT = 1000
+    val JITTER_RATE = 0.01f
 
     doBefore {
-      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, queue, errorQueue, Some(badJobQueue)) {
+      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, ITEM_LIMIT, JITTER_RATE,
+                                      queue, errorQueue, Some(badJobQueue)) {
         override def processWork() {
           liveThreads.incrementAndGet()
           try {
@@ -39,12 +42,16 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       "kestrel queue" in {
         val config = Config.fromMap(Map("path" -> "/tmp", "write.job_queue" -> "write1",
                                         "write.error_queue" -> "error1", "write.threads" -> "100",
+                                        "write.per_flush_item_limit" -> "1000",
+                                        "write.jitter_rate" -> "0.05",
                                         "write.replay_interval" -> "60", "write.error_limit" -> "5"))
         val scheduler = JobScheduler("write", config, codec, Some(badJobQueue))
         scheduler.name mustEqual "write"
         scheduler.threadCount mustEqual 100
         scheduler.retryInterval mustEqual 60.seconds
         scheduler.errorLimit mustEqual 5
+        scheduler.perFlushItemLimit mustEqual 1000
+        scheduler.jitterRate mustEqual 0.05f
         scheduler.queue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "write1"
         scheduler.errorQueue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "error1"
         scheduler.badJobQueue mustEqual Some(badJobQueue)
@@ -53,12 +60,16 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       "memory queue" in {
         val config = Config.fromMap(Map("write.type" -> "memory", "write.job_queue" -> "write1",
                                         "write.error_queue" -> "error1", "write.threads" -> "100",
+                                        "write.per_flush_item_limit" -> "1000",
+                                        "write.jitter_rate" -> "0.05",
                                         "write.replay_interval" -> "60", "write.error_limit" -> "5"))
         val scheduler = JobScheduler("write", config, codec, Some(badJobQueue))
         scheduler.name mustEqual "write"
         scheduler.threadCount mustEqual 100
         scheduler.retryInterval mustEqual 60.seconds
         scheduler.errorLimit mustEqual 5
+        scheduler.perFlushItemLimit mustEqual 1000
+        scheduler.jitterRate mustEqual 0.05f
         scheduler.queue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "write1"
         scheduler.errorQueue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "error1"
         scheduler.badJobQueue mustEqual Some(badJobQueue)
@@ -68,6 +79,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     "start & shutdown" in {
       expect {
         one(queue).start()
+        one(errorQueue).start()
         one(queue).isShutdown willReturn false
       }
 
@@ -81,6 +93,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
       expect {
         one(queue).shutdown()
+        one(errorQueue).shutdown()
         one(queue).isShutdown willReturn true
       }
 
@@ -94,12 +107,14 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     "pause & resume" in {
       expect {
         one(queue).start()
+        one(errorQueue).start()
       }
 
       jobScheduler.start()
 
       expect {
         one(queue).pause()
+        one(errorQueue).pause()
       }
 
       jobScheduler.pause()
@@ -109,6 +124,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
       expect {
         one(queue).resume()
+        one(errorQueue).resume()
       }
 
       jobScheduler.resume()
@@ -118,6 +134,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
       expect {
         one(queue).shutdown()
+        one(errorQueue).shutdown()
       }
 
       jobScheduler.shutdown()
@@ -128,7 +145,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
     "retryErrors" in {
       expect {
-        one(errorQueue).drainTo(queue)
+        one(errorQueue).drainTo(queue, ITEM_LIMIT)
       }
 
       jobScheduler.retryErrors()

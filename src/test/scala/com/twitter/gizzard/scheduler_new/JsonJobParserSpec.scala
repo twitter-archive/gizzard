@@ -29,6 +29,8 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
       "nested job" in {
         expect {
           one(codec).inflate(jobMap) willReturn job
+          allowing(job).className willReturn "ugh"
+          allowing(job).toMap willReturn Map.empty[String, String]
         }
 
         val nestedAttributes = Map("tasks" -> List(jobMap))

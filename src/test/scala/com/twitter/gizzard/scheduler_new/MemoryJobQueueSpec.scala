@@ -73,7 +73,7 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
 
       queue.put(job1)
       queue.put(job2)
-      queue.drainTo(destinationQueue)
+      queue.drainTo(destinationQueue, 10)
     }
   }
 }

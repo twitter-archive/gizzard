@@ -22,7 +22,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
 
-    val repo = new BasicShardRepository[fake.Shard](adapter, Some(future), 6.seconds)
+    val repo = new BasicShardRepository[fake.Shard](adapter, Some(future))
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
@@ -40,7 +40,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
       val replicationFuture = new Future("ReplicationFuture", 1, 1, new Duration(1), new Duration(1))
       val shard: shards.ReadWriteShard[nameserver.Shard] =
-        new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture), 6.seconds)
+        new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture))
       val adapted = new nameserver.ReadWriteShardAdapter(shard)
       1 mustEqual 1
     }
@@ -179,6 +179,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       def link = linkInfo(1, _: Int, _: Int)
 
       "add & find" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"), repo)
         nameServer.addLink(shard(1), shard(100), 2)
         nameServer.addLink(shard(1), shard(200), 2)
         nameServer.addLink(shard(1), shard(300), 1)
@@ -187,6 +191,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
 
       "remove" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"), repo)
         nameServer.addLink(shard(1), shard(100), 2)
         nameServer.addLink(shard(1), shard(200), 2)
         nameServer.addLink(shard(1), shard(300), 1)
@@ -195,12 +203,41 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
 
       "add & remove, retaining order" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "150", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"), repo)
         nameServer.addLink(shard(1), shard(100), 5)
         nameServer.addLink(shard(1), shard(200), 2)
         nameServer.addLink(shard(1), shard(300), 1)
         nameServer.removeLink(shard(1), shard(200))
         nameServer.addLink(shard(1), shard(150), 8)
         nameServer.listDownwardLinks(shard(1)) mustEqual List(link(150, 8), link(100, 5), link(300, 1))
+      }
+
+      "link from non-existant shard" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
+        nameServer.addLink(shard(23), shard(1), 1) must throwA[Exception]
+      }
+
+      "link to non-existant shard" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "23", "host"), repo)
+        nameServer.addLink(shard(23), shard(1), 1) must throwA[Exception]
+      }
+
+      "remove shard with downlinks" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
+        nameServer.addLink(shard(1), shard(100), 5)
+        nameServer.deleteShard(shard(1)) must throwA[Exception]
+      }
+
+      "remove shard with uplinks" >> {
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
+        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
+        nameServer.addLink(shard(1), shard(100), 5)
+        nameServer.deleteShard(shard(100)) must throwA[Exception]
       }
     }
 

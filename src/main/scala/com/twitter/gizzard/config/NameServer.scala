@@ -19,7 +19,6 @@ object Memory extends Replica
 trait NameServer {
   def mappingFunction: MappingFunction
   def replicas: Seq[Replica]
-  def writeTimeout: Duration
 
   protected def getMappingFunction: (Long => Long) = {
     mappingFunction match {
@@ -42,7 +41,7 @@ trait NameServer {
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicaShards)
     val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, replicationFuture, writeTimeout))
+      new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, replicationFuture))
 
     new nameserver.NameServer(shard, shardRepository, getMappingFunction)
   }

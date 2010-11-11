@@ -32,11 +32,13 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
     val scheduler = PrioritizingJobScheduler(CConfig.fromString("""
       path = "/tmp"
       test {
-        threads         = 3
-        replay_interval = 3600
-        error_limit     = 10
-        job_queue       = "tbird_test_q"
-        error_queue     = "tbird_test_q_errors"
+        threads              = 3
+        replay_interval      = 3600
+        error_limit          = 10
+        job_queue            = "tbird_test_q"
+        error_queue          = "tbird_test_q_errors"
+        per_flush_item_limit = 100
+        jitter_rate          = 0
       }
     """), codec, Map(1 -> "test"), None)
 

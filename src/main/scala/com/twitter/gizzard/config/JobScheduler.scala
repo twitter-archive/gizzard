@@ -16,6 +16,8 @@ trait Scheduler {
   def schedulerType: SchedulerType
   def threads: Int
   def replayInterval: Duration
+  def perFlushItemLimit: Int
+  def jitterRate: Float
   def errorLimit: Int
   def name: String
   def jobQueueName: String = name
@@ -29,11 +31,11 @@ trait Scheduler {
         val persistentErrorQueue = kestrel(kestrel.queuePath, errorQueueName)
         val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
 
-        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, perFlushItemLimit, jitterRate, jobQueue, errorQueue, badJobQueue)
       case memory: Memory =>
         val jobQueue = new gizzard.scheduler.MemoryJobQueue[J](jobQueueName, memory.sizeLimit)
         val errorQueue = new gizzard.scheduler.MemoryJobQueue[J](errorQueueName, memory.sizeLimit)
-        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, perFlushItemLimit, jitterRate, jobQueue, errorQueue, badJobQueue)
     }
   }
 }

@@ -14,8 +14,7 @@ import net.lag.logging.Logger
 
 class ReplicatingShardFactory[ConcreteShard <: Shard](
       readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-      future: Option[Future],
-      timeout: Duration)
+      future: Option[Future])
   extends shards.ShardFactory[ConcreteShard] {
 
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
@@ -24,8 +23,7 @@ class ReplicatingShardFactory[ConcreteShard <: Shard](
       weight,
       replicas,
       new LoadBalancer(replicas),
-      future,
-      timeout
+      future
     ))
 
   def materialize(shardInfo: shards.ShardInfo) = ()
@@ -36,8 +34,7 @@ class ReplicatingShard[ConcreteShard <: Shard](
       val weight: Int,
       val children: Seq[ConcreteShard],
       val loadBalancer: (() => Seq[ConcreteShard]),
-      val future: Option[Future],
-      val futureTimeout: Duration)
+      val future: Option[Future])
   extends ReadWriteShard[ConcreteShard] {
 
   def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
@@ -63,9 +60,9 @@ class ReplicatingShard[ConcreteShard <: Shard](
     val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
-    replicas.map { replica => (replica.shardInfo, future(method(replica))) }.map { case (shardInfo, future) =>
+    replicas.map { replica => (replica.shardInfo, future(method(replica))) }.map { case (shardInfo, futureTask) =>
       try {
-        results += future.get(futureTimeout.inMillis, TimeUnit.MILLISECONDS)
+        results += futureTask.get(future.timeout.inMillis, TimeUnit.MILLISECONDS)
       } catch {
         case e: Exception =>
           unwrapException(e) match {

@@ -1,5 +1,6 @@
 package com.twitter.gizzard.scheduler
 
+import java.util.Random
 import com.twitter.ostrich.{BackgroundProcess, Stats}
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
@@ -22,6 +23,8 @@ object JobScheduler {
     val retryInterval = schedulerConfig("replay_interval").toInt.seconds
     val errorLimit = schedulerConfig("error_limit").toInt
     val sizeLimit = schedulerConfig.getInt("size_limit", 0)
+    val perFlushItemLimit = schedulerConfig("per_flush_item_limit").toInt
+    val jitterRate = schedulerConfig("jitter_rate").toFloat
 
     val jobQueueName = schedulerConfig("job_queue")
     val errorQueueName = schedulerConfig("error_queue")
@@ -34,12 +37,14 @@ object JobScheduler {
         val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
         val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
 
-        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, perFlushItemLimit,
+                            jitterRate, jobQueue, errorQueue, badJobQueue)
 
       case "memory" =>
         val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
         val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
-        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, jobQueue, errorQueue, badJobQueue)
+        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, perFlushItemLimit,
+                            jitterRate, jobQueue, errorQueue, badJobQueue)
 
       case x =>
         throw new Exception("Unknown queue type " + x)
@@ -64,6 +69,8 @@ class JobScheduler[J <: Job](val name: String,
                              val threadCount: Int,
                              val retryInterval: Duration,
                              val errorLimit: Int,
+                             val perFlushItemLimit: Int,
+                             val jitterRate: Float,
                              val queue: JobQueue[J],
                              val errorQueue: JobQueue[J],
                              val badJobQueue: Option[JobConsumer[J]])
@@ -75,7 +82,8 @@ class JobScheduler[J <: Job](val name: String,
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
-      Thread.sleep(retryInterval.inMillis)
+      val jitter = Math.round(retryInterval.inMillis * jitterRate * new Random().nextGaussian())
+      Thread.sleep(retryInterval.inMillis + jitter)
       try {
         retryErrors()
       } catch {
@@ -87,12 +95,13 @@ class JobScheduler[J <: Job](val name: String,
 
   def retryErrors() {
     log.info("Replaying %s errors queue...", name)
-    errorQueue.drainTo(queue)
+    errorQueue.drainTo(queue, perFlushItemLimit)
   }
 
   def start() = {
     if (!running) {
       queue.start()
+      errorQueue.start()
       running = true
       log.info("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
@@ -104,6 +113,7 @@ class JobScheduler[J <: Job](val name: String,
   def pause() {
     log.info("Pausing work in JobScheduler: %s", queue)
     queue.pause()
+    errorQueue.pause()
     workerThreads.foreach { _.shutdown() }
     workerThreads = Nil
   }
@@ -111,6 +121,7 @@ class JobScheduler[J <: Job](val name: String,
   def resume() = {
     log.info("Resuming work in JobScheduler: %s", queue)
     queue.resume()
+    errorQueue.resume()
     workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
     workerThreads.foreach { _.start() }
   }
@@ -118,6 +129,7 @@ class JobScheduler[J <: Job](val name: String,
   def shutdown() {
     log.info("Shutting down JobScheduler: %s", queue)
     queue.shutdown()
+    errorQueue.shutdown()
     workerThreads.foreach { _.shutdown() }
     workerThreads = Nil
     retryTask.shutdown()

@@ -7,6 +7,7 @@ import thrift.{JobInjector, JobInjectorClient}
 import thrift.conversions.Sequences._
 
 import java.util.{LinkedList => JLinkedList}
+import java.nio.ByteBuffer
 
 
 class ReplicatingJobInjector(
@@ -21,7 +22,7 @@ extends (Iterable[JsonJob] => Unit) {
   def apply(jobs: Iterable[JsonJob]) {
     val jobList = new JLinkedList[thrift.Job]()
 
-    for (j <- jobs) jobList.add(new thrift.Job(priority, j.toJson.getBytes("UTF-8")))
+    for (j <- jobs) jobList.add(new thrift.Job(priority, ByteBuffer.wrap(j.toJson.getBytes("UTF-8"))))
     client.proxy.inject_jobs(jobList)
   }
 }
