@@ -51,10 +51,10 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
     }
   }
 
-  def drainTo(otherQueue: JobQueue[J]) {
+  def drainTo(otherQueue: JobQueue[J], limit: Int) {
     if (running && !paused) {
       val collection = new JArrayList[J]
-      queue.drainTo(collection)
+      queue.drainTo(collection, limit)
       jcl.Buffer(collection).foreach { otherQueue.put(_) }
     }
   }

@@ -3,10 +3,10 @@ package com.twitter.gizzard.proxy
 import java.sql.SQLException
 import shards.ShardId
 import scala.reflect.Manifest
+import com.mysql.jdbc.exceptions.MySQLTransientException
 import com.twitter.querulous.database.SqlDatabaseTimeoutException
 import com.twitter.querulous.query.SqlQueryTimeoutException
 import com.twitter.querulous.evaluator.{QueryEvaluator, QueryEvaluatorProxy}
-
 
 class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy({e =>
   e match {
@@ -14,6 +14,8 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
       throw new shards.ShardTimeoutException(e.timeout, shardId, e)
     case e: SqlDatabaseTimeoutException =>
       throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
+    case e: MySQLTransientException =>
+      throw new shards.NormalShardException(e.toString, shardId, null)
     case e: SQLException =>
       if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
         throw new shards.NormalShardException(e.toString, shardId, null)
@@ -34,6 +36,8 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
         throw new shards.ShardTimeoutException(e.timeout, shardId, e)
       case e: SqlDatabaseTimeoutException =>
         throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
+      case e: MySQLTransientException =>
+        throw new shards.NormalShardException(e.toString, shardId, null)
       case e: SQLException =>
         if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
           throw new shards.NormalShardException(e.toString, shardId, null)

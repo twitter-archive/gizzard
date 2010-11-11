@@ -2,12 +2,12 @@ import sbt._
 import com.twitter.sbt._
 
 class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher {
+  val configgy  = "net.lag" % "configgy" % "1.6.8"
   val kestrel   = "net.lag" % "kestrel" % "1.2.4-config-SNAPSHOT"
   val ostrich   = "com.twitter" % "ostrich" % "1.2.9"
+  val querulous = "com.twitter" %% "querulous" % "1.4.0-config-SNAPSHOT"
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
   val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
-  val configgy  = "net.lag" % "configgy" % "1.6.7"
-  val querulous = "com.twitter" %% "querulous" % "1.3.7-config-SNAPSHOT"
   val thrift    = "thrift" % "libthrift" % "0.5.0"
   val json      = "com.twitter" % "json" % "1.1.7"
   val util      = "com.twitter" % "util" % "1.1.1"

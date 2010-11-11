@@ -22,6 +22,8 @@ trait JsonJob extends Job {
     def json = toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage)
     Json.build(Map(className -> json)).toString
   }
+
+  override def toString = toJson
 }
 
 /**
@@ -29,6 +31,7 @@ trait JsonJob extends Job {
  */
 class JsonNestedJob[J <: JsonJob](jobs: Iterable[J]) extends NestedJob[J](jobs) with JsonJob {
   def toMap = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
+  override def toString = toJson
 }
 
 /**
