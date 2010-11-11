@@ -1,5 +1,6 @@
 package com.twitter.gizzard.scheduler
 
+import scala.util.matching.Regex
 import com.twitter.rpcclient.LoadBalancingChannel
 import com.twitter.util.Duration
 import thrift.{JobInjector, JobInjectorClient}
@@ -27,15 +28,23 @@ extends (Iterable[JsonJob] => Unit) {
 
 class ReplicatingJsonCodec(injector: Iterable[JsonJob] => Unit, unparsable: Array[Byte] => Unit)
 extends JsonCodec[JsonJob](unparsable) {
-  this += ("RemoteReplicatingJob".r -> new RemoteReplicatingJobParser(this, injector))
+  lazy val innerCodec = {
+    val c = new JsonCodec[JsonJob](unparsable)
+    c += ("RemoteReplicatingJob".r -> new RemoteReplicatingJobParser(c, injector))
+    c
+  }
+
+  override def +=(item: (Regex, JsonJobParser[JsonJob])) = innerCodec += item
+  override def +=(r: Regex, p: JsonJobParser[JsonJob])   = innerCodec += ((r, p))
+
 
   override def inflate(json: Map[String, Any]): JsonJob = {
-    super.inflate(json) match {
+    innerCodec.inflate(json) match {
       case j: RemoteReplicatingJob[_] => j
-      case job => if (job.shouldReplicate) {
-        new RemoteReplicatingJob(injector, List(job))
+      case j => if (j.shouldReplicate) {
+        new RemoteReplicatingJob(injector, List(j))
       } else {
-        job
+        j
       }
     }
   }
@@ -52,27 +61,23 @@ extends JsonNestedJob(jobs) {
 
   // XXX: do all this work in parallel in a future pool.
   override def apply() {
-    super.apply()
-
-    if (shouldReplicate) try {
+    if (shouldReplicate) {
+      injector(List(new RemoteReplicatingJob[J](injector, jobs, false)))
       shouldReplicate = false
-      injector(List(this))
-    } catch {
-      case e: Throwable => {
-        shouldReplicate = true
-        throw e
-      }
     }
+
+    super.apply()
   }
 }
 
 class RemoteReplicatingJobParser[J <: JsonJob](codec: JsonCodec[J], injector: Iterable[JsonJob] => Unit)
-extends JsonNestedJobParser(codec) {
+extends JsonJobParser[J] {
 
   override def apply(json: Map[String, Any]) = {
     val shouldReplicate = json("should_replicate").asInstanceOf[Boolean]
-    val nestedJob       = super.apply(json).asInstanceOf[JsonNestedJob[J]]
+    val taskJsons = json("tasks").asInstanceOf[Iterable[Map[String, Any]]]
+    val tasks = taskJsons.map { codec.inflate(_) }
 
-    new RemoteReplicatingJob(injector, nestedJob.jobs, shouldReplicate).asInstanceOf[J]
+    new RemoteReplicatingJob(injector, tasks, shouldReplicate).asInstanceOf[J]
   }
 }

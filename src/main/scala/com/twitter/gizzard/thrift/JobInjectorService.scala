@@ -29,7 +29,6 @@ class JobInjectorService[J <: JsonJob](codec: JsonCodec[J], scheduler: Prioritiz
 
   def inject_jobs(jobs: JList[thrift.Job]) {
     jobs.toSeq.foreach { j =>
-      println(new String(j.contents, "UTF-8"))
       scheduler.put(j.priority, new InjectedJsonJob(j.contents).asInstanceOf[J])
     }
   }

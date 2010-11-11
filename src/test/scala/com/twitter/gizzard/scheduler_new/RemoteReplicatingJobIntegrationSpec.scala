@@ -23,7 +23,7 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
     val testJobParser = new JsonJobParser[JsonJob] {
       def apply(json: Map[String, Any]) = new JsonJob {
         override def className = "TestJob"
-        def apply() { println("applied"); jobsApplied.incrementAndGet }
+        def apply() { jobsApplied.incrementAndGet }
         def toMap = json
       }
     }
@@ -50,7 +50,7 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
     }
 
     doAfter {
-      //server.stop()
+      server.stop()
       scheduler.shutdown()
       new File("/tmp/tbird_test_q").delete()
       new File("/tmp/tbird_test_q_errors").delete()
@@ -60,9 +60,7 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
       val testJob = testJobParser(Map("dummy" -> 1, "job" -> true, "blah" -> "blop"))
       scheduler.put(1, testJob)
 
-      Thread.sleep(500)
-
-      println(jobsApplied.get)
+      jobsApplied.get must eventually(be_==(2))
     }
   }
 }
