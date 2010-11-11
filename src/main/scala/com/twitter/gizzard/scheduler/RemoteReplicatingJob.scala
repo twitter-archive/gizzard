@@ -1,17 +1,24 @@
 package com.twitter.gizzard.scheduler
 
 import com.twitter.rpcclient.LoadBalancingChannel
-import com.twitter.util.TimeConversions._
+import com.twitter.util.Duration
 import thrift.{JobInjector, JobInjectorClient}
 import thrift.conversions.Sequences._
 
 import java.util.{LinkedList => JLinkedList}
 
 
-class ReplicatingJobInjector(hosts: Seq[String], port: Int, priority: Int) extends (Iterable[JsonJob] => Unit) {
-  val client = new LoadBalancingChannel(hosts.map { new JobInjectorClient(_, port, true, 1.second) } )
+class ReplicatingJobInjector(
+  hosts: Seq[String],
+  port: Int,
+  priority: Int,
+  framed: Boolean,
+  timeout: Duration)
+extends (Iterable[JsonJob] => Unit) {
+  val client = new LoadBalancingChannel(hosts.map(new JobInjectorClient(_, port, framed, timeout)))
 
   def apply(jobs: Iterable[JsonJob]) {
+    println("injecting")
     val jobList = new JLinkedList[thrift.Job]()
 
     for (j <- jobs) jobList.add(new thrift.Job(priority, j.toJson.getBytes("UTF-8")))
@@ -24,6 +31,7 @@ extends JsonCodec[JsonJob](unparsable) {
   this += ("RemoteReplicatingJob".r -> new RemoteReplicatingJobParser(this, injector))
 
   override def inflate(json: Map[String, Any]): JsonJob = {
+    println("inflating")
     super.inflate(json) match {
       case j: RemoteReplicatingJob[_] => j
       case job => if (job.shouldReplicate) {
@@ -46,6 +54,8 @@ extends JsonNestedJob(jobs) {
 
   // XXX: do all this work in parallel in a future pool.
   override def apply() {
+    println("here")
+    println(shouldReplicate)
     super.apply()
 
     if (shouldReplicate) try {
@@ -54,9 +64,13 @@ extends JsonNestedJob(jobs) {
     } catch {
       case e: Throwable => {
         shouldReplicate = true
+        println("failed")
+        println(e)
+        e.printStackTrace
         throw e
       }
     }
+    println(shouldReplicate)
   }
 }
 
