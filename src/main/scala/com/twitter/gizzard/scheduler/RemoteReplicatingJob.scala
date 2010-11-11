@@ -18,7 +18,6 @@ extends (Iterable[JsonJob] => Unit) {
   val client = new LoadBalancingChannel(hosts.map(new JobInjectorClient(_, port, framed, timeout)))
 
   def apply(jobs: Iterable[JsonJob]) {
-    println("injecting")
     val jobList = new JLinkedList[thrift.Job]()
 
     for (j <- jobs) jobList.add(new thrift.Job(priority, j.toJson.getBytes("UTF-8")))
@@ -31,7 +30,6 @@ extends JsonCodec[JsonJob](unparsable) {
   this += ("RemoteReplicatingJob".r -> new RemoteReplicatingJobParser(this, injector))
 
   override def inflate(json: Map[String, Any]): JsonJob = {
-    println("inflating")
     super.inflate(json) match {
       case j: RemoteReplicatingJob[_] => j
       case job => if (job.shouldReplicate) {
@@ -54,8 +52,6 @@ extends JsonNestedJob(jobs) {
 
   // XXX: do all this work in parallel in a future pool.
   override def apply() {
-    println("here")
-    println(shouldReplicate)
     super.apply()
 
     if (shouldReplicate) try {
@@ -64,13 +60,9 @@ extends JsonNestedJob(jobs) {
     } catch {
       case e: Throwable => {
         shouldReplicate = true
-        println("failed")
-        println(e)
-        e.printStackTrace
         throw e
       }
     }
-    println(shouldReplicate)
   }
 }
 
