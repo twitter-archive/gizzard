@@ -22,6 +22,7 @@ object JobScheduler {
     val threadCount = schedulerConfig("threads").toInt
     val strobeInterval = schedulerConfig("strobe_interval").toInt.milliseconds
     val errorLimit = schedulerConfig("error_limit").toInt
+    val flushLimit = schedulerConfig("flush_limit").toInt
     val errorDelay = schedulerConfig("error_delay").toInt.seconds
     val sizeLimit = schedulerConfig.getInt("size_limit", 0)
     val jitterRate = schedulerConfig("jitter_rate").toFloat
@@ -38,14 +39,14 @@ object JobScheduler {
         val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
         errorQueue.drainTo(jobQueue, errorDelay)
 
-        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit,
+        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
                             jitterRate, jobQueue, errorQueue, badJobQueue)
 
       case "memory" =>
         val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
         val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
         errorQueue.drainTo(jobQueue, errorDelay)
-        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit,
+        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
                             jitterRate, jobQueue, errorQueue, badJobQueue)
 
       case x =>
@@ -71,6 +72,7 @@ class JobScheduler[J <: Job](val name: String,
                              val threadCount: Int,
                              val strobeInterval: Duration,
                              val errorLimit: Int,
+                             val flushLimit: Int,
                              val jitterRate: Float,
                              val queue: JobQueue[J],
                              val errorQueue: JobQueue[J],
@@ -95,7 +97,7 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def retryErrors() {
-    errorQueue.checkExpiration()
+    errorQueue.checkExpiration(flushLimit)
   }
 
   def start() = {

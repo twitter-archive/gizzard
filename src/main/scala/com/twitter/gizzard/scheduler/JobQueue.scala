@@ -25,7 +25,7 @@ trait Ticket[J <: Job] {
 trait JobQueue[J <: Job] extends JobConsumer[J] with Process {
   def get(): Option[Ticket[J]]
   def drainTo(queue: JobQueue[J], delay: Duration)
-  def checkExpiration()
+  def checkExpiration(flushLimit: Int)
   def size: Int
 }
 

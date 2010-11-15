@@ -67,12 +67,12 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
     expireDuration = delay
   }
 
-  def checkExpiration() {
+  def checkExpiration(flushLimit: Int) {
     val now = Time.now
     var finished = false
     var count = 0
 
-    while (running && !paused && !finished) {
+    while (running && !paused && !finished && count < flushLimit) {
       val qitem = queue.peek()
       if (qitem eq null) {
         finished = true
