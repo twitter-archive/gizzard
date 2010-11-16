@@ -44,6 +44,17 @@ CREATE TABLE IF NOT EXISTS forwardings (
     UNIQUE unique_shard (shard_hostname, shard_table_prefix)
 ) ENGINE=INNODB;
 """
+  val HOSTS_DDL = """
+CREATE TABLE IF NOT EXISTS hosts (
+    hostname                VARCHAR(125) NOT NULL,
+    port                    INT          NOT NULL,
+    cluster                 VARCHAR(125) NOT NULL,
+    status                  INT          NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (hostname, port),
+    INDEX cluster (cluster, status)
+) ENGINE=INNODB;
+"""
 }
 
 class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
@@ -65,6 +76,14 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
              ShardId(row.getString("child_hostname"), row.getString("child_table_prefix")),
              row.getInt("weight"))
   }
+
+  private def rowToHost(row: ResultSet) = {
+    Host(row.getString("hostname"),
+         row.getInt("port"),
+         row.getString("cluster"),
+         HostStatus(row.getInt("status")))
+  }
+
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
@@ -204,15 +223,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     queryEvaluator.select("SELECT * FROM shards where busy != 0") { row => rowToShardInfo(row) }.toList
   }
 
-  def getChildShardsOfClass(parentId: ShardId, className: String) = {
-    val links = listDownwardLinks(parentId)
-    links.map { link => getShard(link.downId) }.filter { _.className == className }.toList ++
-      links.flatMap { link => getChildShardsOfClass(link.downId, className) }
-  }
-
   def reload() {
     try {
-      List("shards", "shard_children", "forwardings").foreach { table =>
+      List("shards", "shard_children", "forwardings", "hosts").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {
@@ -226,5 +239,47 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     queryEvaluator.execute(SqlShard.SHARDS_DDL)
     queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
     queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
+    queryEvaluator.execute(SqlShard.HOSTS_DDL)
   }
+
+
+  // Remote Host Cluster Management
+
+  def addRemoteHost(h: Host) {
+    val sql = "INSERT INTO hosts (hostname, port, cluster, status) VALUES (?,?,?,?)" +
+              "ON DUPLICATE KEY UPDATE cluster=VALUES(cluster), status=VALUES(status)"
+    queryEvaluator.execute(sql, h.hostname, h.port, h.cluster, h.status.id)
+  }
+
+  def removeRemoteHost(hostname: String, port: Int) {
+    val sql = "DELETE FROM hosts WHERE hostname = ? AND port = ?"
+    queryEvaluator.execute(sql, hostname, port)
+  }
+
+  def setRemoteHostStatus(hostname: String, port: Int, status: HostStatus.Value) {
+    val sql = "UPDATE hosts SET status = ? WHERE hostname = ? AND port = ?"
+    queryEvaluator.execute(sql, status.id, hostname, port)
+  }
+
+  def setRemoteClusterStatus(cluster: String, status: HostStatus.Value) {
+    val sql = "UPDATE hosts SET status = ? WHERE cluster = ?"
+    queryEvaluator.execute(sql, status.id, cluster)
+  }
+
+
+  def getRemoteHost(host: String, port: Int) = {
+    val sql = "SELECT * FROM hosts WHERE host = ? AND port = ?"
+    queryEvaluator.selectOne(sql, host, port)(rowToHost) getOrElse {
+      throw new ShardException("No such remote host")
+    }
+  }
+
+  def listRemoteClusters() =
+    queryEvaluator.select("SELECT DISTINCT cluster FROM hosts")(_.getString("cluster")).toList
+
+  def listRemoteHosts() =
+    queryEvaluator.select("SELECT * FROM hosts")(rowToHost).toList
+
+  def listRemoteHostsInCluster(c: String) =
+    queryEvaluator.select("SELECT * FROM hosts WHERE cluster = ?", c)(rowToHost).toList
 }

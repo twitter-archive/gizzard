@@ -16,6 +16,7 @@ class MemoryShard extends Shard {
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
+  val hostTable = new mutable.ListBuffer[Host]()
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
     shardTable.find { x =>
@@ -88,8 +89,8 @@ class MemoryShard extends Shard {
     removeForwarding(forwarding)
     forwardingTable += forwarding
   }
-  
-  def removeForwarding(forwarding: Forwarding) = {    
+
+  def removeForwarding(forwarding: Forwarding) = {
     forwardingTable.find { x =>
       x.baseId == forwarding.baseId && x.tableId == forwarding.tableId
     }.foreach { forwardingTable -= _ }
@@ -119,7 +120,7 @@ class MemoryShard extends Shard {
   def getForwardings(): Seq[Forwarding] = {
     forwardingTable.toList
   }
-  
+
   def listHostnames(): Seq[String] = {
     (Set() ++ shardTable.map { x => x.hostname }).toList
   }
@@ -149,4 +150,40 @@ class MemoryShard extends Shard {
   def rebuildSchema() { }
 
   def reload() { }
+
+
+  // Remote Host Cluster Management
+
+  private def findHost(hostname: String, port: Int) =
+    hostTable.find(h => h.hostname == hostname && h.port == port)
+
+  def addRemoteHost(host: Host) {
+    removeRemoteHost(host.hostname, host.port)
+    hostTable += host
+  }
+
+  def removeRemoteHost(hostname: String, port: Int) {
+    findHost(hostname, port).foreach(hostTable -= _)
+  }
+
+  private def setHostsStatus(hosts: Iterable[Host], status: HostStatus.Value) {
+    hosts.foreach { h =>
+      hostTable -= h
+      addRemoteHost(new Host(h.hostname, h.port, h.cluster, status))
+    }
+  }
+
+  def setRemoteHostStatus(hostname: String, port: Int, status: HostStatus.Value) =
+    setHostsStatus(List(getRemoteHost(hostname, port)), status)
+
+  def setRemoteClusterStatus(cluster: String, status: HostStatus.Value) =
+    setHostsStatus(hostTable.filter(_.cluster == cluster), status)
+
+
+  def getRemoteHost(hostname: String, port: Int) =
+    findHost(hostname, port).getOrElse(throw new ShardException("No such remote host"))
+
+  def listRemoteClusters()                = (Set() ++ hostTable.map(_.cluster)).toList
+  def listRemoteHosts()                   = hostTable.toList
+  def listRemoteHostsInCluster(c: String) = hostTable.filter(_.cluster == c).toList
 }

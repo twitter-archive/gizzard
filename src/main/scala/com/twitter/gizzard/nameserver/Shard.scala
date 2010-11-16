@@ -22,9 +22,21 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def listShards(): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def listLinks(): Seq[LinkInfo]
   @throws(classOf[shards.ShardException]) def getBusyShards(): Seq[ShardInfo]
-  @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def rebuildSchema()
   @throws(classOf[shards.ShardException]) def reload()
   @throws(classOf[shards.ShardException]) def listHostnames(): Seq[String]
   @throws(classOf[shards.ShardException]) def removeForwarding(forwarding: Forwarding)
+
+
+  // Remote Host Cluster Management
+
+  @throws(classOf[shards.ShardException]) def addRemoteHost(h: Host)
+  @throws(classOf[shards.ShardException]) def removeRemoteHost(h: String, p: Int)
+  @throws(classOf[shards.ShardException]) def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value)
+  @throws(classOf[shards.ShardException]) def setRemoteClusterStatus(c: String, s: HostStatus.Value)
+
+  @throws(classOf[shards.ShardException]) def getRemoteHost(h: String, p: Int): Host
+  @throws(classOf[shards.ShardException]) def listRemoteClusters(): Seq[String]
+  @throws(classOf[shards.ShardException]) def listRemoteHosts(): Seq[Host]
+  @throws(classOf[shards.ShardException]) def listRemoteHostsInCluster(c: String): Seq[Host]
 }

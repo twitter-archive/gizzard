@@ -7,8 +7,7 @@ import nameserver.NameServer
 import scheduler.{CopyJob, CopyJobFactory, JobScheduler, JsonJob, PrioritizingJobScheduler}
 import shards.Shard
 
-class GizzardServices[S <: Shard, J <: JsonJob](shardServerPort: Int,
-                                                jobServerPort: Int,
+class GizzardServices[S <: Shard, J <: JsonJob](managerServerPort: Int,
                                                 idleTimeout: Duration,
                                                 nameServer: NameServer[S],
                                                 copyFactory: CopyJobFactory[S],
@@ -21,8 +20,7 @@ class GizzardServices[S <: Shard, J <: JsonJob](shardServerPort: Int,
            copyFactory: CopyJobFactory[S],
            scheduler: PrioritizingJobScheduler[J],
            copyScheduler: JobScheduler[J]) =
-    this(config.shardServerPort,
-         config.jobServerPort,
+    this(config.managerServerPort,
          config.timeout,
          nameServer,
          copyFactory,
@@ -34,8 +32,7 @@ class GizzardServices[S <: Shard, J <: JsonJob](shardServerPort: Int,
            copyFactory: CopyJobFactory[S],
            scheduler: PrioritizingJobScheduler[J],
            copyScheduler: JobScheduler[J]) =
-    this(config("shard_server_port").toInt,
-         config("job_server_port").toInt,
+    this(config("manager_server_port").toInt,
          config("idle_timeout_sec").toInt.seconds,
          nameServer,
          copyFactory,
@@ -44,21 +41,15 @@ class GizzardServices[S <: Shard, J <: JsonJob](shardServerPort: Int,
 
   val gizzardThreadPool = TThreadServer.makeThreadPool("gizzard", 0)
 
-  val shardServer = new ShardManagerService(nameServer, copyFactory, copyScheduler)
-  val shardProcessor = new ShardManager.Processor(shardServer)
-  val shardThriftServer = TThreadServer("shards", shardServerPort, idleTimeout.inMillis.toInt, gizzardThreadPool, shardProcessor, false)
-
-  val jobServer = new JobManagerService(scheduler)
-  val jobProcessor = new JobManager.Processor(jobServer)
-  val jobThriftServer = TThreadServer("jobs", jobServerPort, idleTimeout.inMillis.toInt, gizzardThreadPool, jobProcessor, false)
+  val managerServer = new ManagerService(nameServer, copyFactory, scheduler, copyScheduler)
+  val managerProcessor = new Manager.Processor(managerServer)
+  val managerThriftServer = TThreadServer("gizzardManager", managerServerPort, idleTimeout.inMillis.toInt, gizzardThreadPool, managerProcessor, false)
 
   def start() {
-    shardThriftServer.start()
-    jobThriftServer.start()
+    managerThriftServer.start()
   }
 
   def shutdown() {
-    shardThriftServer.stop()
-    jobThriftServer.stop()
+    managerThriftServer.stop()
   }
 }

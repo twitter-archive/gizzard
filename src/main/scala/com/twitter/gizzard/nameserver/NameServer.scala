@@ -159,8 +159,21 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @throws(classOf[shards.ShardException]) def shardsForHostname(hostname: String) = nameServerShard.shardsForHostname(hostname)
   @throws(classOf[shards.ShardException]) def listShards() = nameServerShard.listShards()
   @throws(classOf[shards.ShardException]) def getBusyShards() = nameServerShard.getBusyShards()
-  @throws(classOf[shards.ShardException]) def getChildShardsOfClass(parentId: ShardId, className: String) = nameServerShard.getChildShardsOfClass(parentId, className)
   @throws(classOf[shards.ShardException]) def rebuildSchema() = nameServerShard.rebuildSchema()
   @throws(classOf[shards.ShardException]) def removeForwarding(f: Forwarding) = nameServerShard.removeForwarding(f)
   @throws(classOf[shards.ShardException]) def listHostnames() = nameServerShard.listHostnames()
+
+
+  // Remote Host Management
+
+  @throws(classOf[shards.ShardException]) def addRemoteHost(h: Host) = nameServerShard.addRemoteHost(h)
+  @throws(classOf[shards.ShardException]) def removeRemoteHost(h: String, p: Int) = nameServerShard.removeRemoteHost(h, p)
+  @throws(classOf[shards.ShardException]) def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value) = nameServerShard.setRemoteHostStatus(h, p, s)
+  @throws(classOf[shards.ShardException]) def setRemoteClusterStatus(c: String, s: HostStatus.Value) = nameServerShard.setRemoteClusterStatus(c, s)
+
+  @throws(classOf[shards.ShardException]) def getRemoteHost(h: String, p: Int) = nameServerShard.getRemoteHost(h, p)
+  @throws(classOf[shards.ShardException]) def listRemoteClusters() = nameServerShard.listRemoteClusters()
+  @throws(classOf[shards.ShardException]) def listRemoteHosts() = nameServerShard.listRemoteHosts()
+  @throws(classOf[shards.ShardException]) def listRemoteHostsInCluster(c: String) = nameServerShard.listRemoteHostsInCluster(c)
+
 }

@@ -320,10 +320,6 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.listUpwardLinks(shard2.id) mustEqual List(LinkInfo(shard1.id, shard2.id, 10))
         nameServer.listUpwardLinks(shard1.id) mustEqual List()
       }
-
-      "getChildShardsOfClass" in {
-        nameServer.getChildShardsOfClass(shard1.id, SQL_SHARD).map { _.id } mustEqual List(shard2.id, shard3.id)
-      }
     }
   }
 }
