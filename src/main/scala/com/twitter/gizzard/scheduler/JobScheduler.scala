@@ -171,7 +171,7 @@ class JobScheduler[J <: Job](val name: String,
           errorQueue.put(job)
         case e =>
           Stats.incr("job-error-count")
-          log.error(e, "Error in Job: " + e)
+          log.error(e, "Error in Job: %s - %s", job, e)
           job.errorCount += 1
           job.errorMessage = e.toString
           if (job.errorCount > errorLimit) {
