@@ -7,19 +7,19 @@ import nameserver.NameServer
 import scheduler.{CopyJob, CopyJobFactory, JobScheduler, JsonJob, PrioritizingJobScheduler}
 import shards.Shard
 
-class GizzardServices[S <: Shard, J <: JsonJob](managerServerPort: Int,
+class GizzardServices[S <: Shard, J <: JsonJob, C <: CopyJob[S]](managerServerPort: Int,
                                                 idleTimeout: Duration,
                                                 nameServer: NameServer[S],
                                                 copyFactory: CopyJobFactory[S],
                                                 scheduler: PrioritizingJobScheduler[J],
-                                                copyScheduler: JobScheduler[J]) {
+                                                copyScheduler: JobScheduler[C]) {
 
 
   def this(config: gizzard.config.GizzardServices,
            nameServer: NameServer[S],
            copyFactory: CopyJobFactory[S],
            scheduler: PrioritizingJobScheduler[J],
-           copyScheduler: JobScheduler[J]) =
+           copyScheduler: JobScheduler[C]) =
     this(config.managerServerPort,
          config.timeout,
          nameServer,
@@ -31,7 +31,7 @@ class GizzardServices[S <: Shard, J <: JsonJob](managerServerPort: Int,
            nameServer: NameServer[S],
            copyFactory: CopyJobFactory[S],
            scheduler: PrioritizingJobScheduler[J],
-           copyScheduler: JobScheduler[J]) =
+           copyScheduler: JobScheduler[C]) =
     this(config("manager_server_port").toInt,
          config("idle_timeout_sec").toInt.seconds,
          nameServer,

@@ -258,7 +258,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   def setRemoteHostStatus(hostname: String, port: Int, status: HostStatus.Value) {
     val sql = "UPDATE hosts SET status = ? WHERE hostname = ? AND port = ?"
-    queryEvaluator.execute(sql, status.id, hostname, port)
+    if (queryEvaluator.execute(sql, status.id, hostname, port) == 0) {
+      throw new ShardException("No such remote host")
+    }
   }
 
   def setRemoteClusterStatus(cluster: String, status: HostStatus.Value) {
@@ -268,7 +270,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
 
   def getRemoteHost(host: String, port: Int) = {
-    val sql = "SELECT * FROM hosts WHERE host = ? AND port = ?"
+    val sql = "SELECT * FROM hosts WHERE hostname = ? AND port = ?"
     queryEvaluator.selectOne(sql, host, port)(rowToHost) getOrElse {
       throw new ShardException("No such remote host")
     }

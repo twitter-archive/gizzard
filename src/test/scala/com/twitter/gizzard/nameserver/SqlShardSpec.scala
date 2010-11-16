@@ -321,5 +321,63 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.listUpwardLinks(shard1.id) mustEqual List()
       }
     }
+
+    "remote host config management" in {
+      val host1 = new Host("remoteapp1", 7777, "c1", HostStatus.Normal)
+      val host2 = new Host("remoteapp2", 7777, "c1", HostStatus.Normal)
+      val host3 = new Host("remoteapp3", 7777, "c2", HostStatus.Normal)
+      val host4 = new Host("remoteapp4", 7777, "c2", HostStatus.Normal)
+
+      doBefore { List(host1, host2, host3, host4).foreach(nameServer.addRemoteHost) }
+
+      "addRemoteHost" in {
+        val h   = new Host("new_host", 7777, "c3", HostStatus.Normal)
+        val sql = "SELECT * FROM hosts WHERE hostname = 'new_host' AND port = 7777"
+
+        nameServer.addRemoteHost(h)
+        queryEvaluator.selectOne(sql)(r => true).getOrElse(false) mustEqual true
+
+        nameServer.addRemoteHost(h)
+        nameServer.listRemoteHosts().length mustEqual 5
+      }
+
+      "removeRemoteHost" in {
+        nameServer.getRemoteHost(host1.hostname, host1.port) mustEqual host1
+
+        nameServer.removeRemoteHost(host1.hostname, host1.port)
+        nameServer.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
+      }
+
+      def reloadedHost(h: Host) = nameServer.getRemoteHost(h.hostname, h.port)
+
+      "setRemoteHostStatus" in {
+        nameServer.setRemoteHostStatus(host1.hostname, host1.port, HostStatus.Blocked)
+
+        reloadedHost(host1).status mustEqual HostStatus.Blocked
+        (Set() ++ List(host2, host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
+      }
+
+      "setRemoteClusterStatus" in {
+        nameServer.setRemoteClusterStatus("c2", HostStatus.Offline)
+        (Set() ++ List(host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Offline)
+        (Set() ++ List(host1, host2).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
+      }
+
+      "getRemoteHost" in {
+        nameServer.getRemoteHost(host1.hostname, host1.port) mustEqual host1
+      }
+
+      "listRemoteClusters" in {
+        nameServer.listRemoteClusters mustEqual List("c1", "c2")
+      }
+
+      "listRemoteHosts" in {
+        nameServer.listRemoteHosts mustEqual List(host1, host2, host3, host4)
+      }
+
+      "listRemoteHostsInCluster" in {
+        nameServer.listRemoteHostsInCluster("c1") mustEqual List(host1, host2)
+      }
+    }
   }
 }

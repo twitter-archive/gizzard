@@ -6,14 +6,18 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import shards.{Busy, Shard}
-import scheduler.{CopyJob, CopyJobFactory, JobScheduler}
+import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
 
 
-object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val nameServer = mock[nameserver.NameServer[Shard]]
-  val copier = mock[CopyJobFactory[Shard]]
-  val scheduler = mock[JobScheduler[CopyJob[Shard]]]
-  val manager = new thrift.ShardManagerService(nameServer, copier, scheduler)
+
+object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
+  val nameServer    = mock[nameserver.NameServer[Shard]]
+  val copier        = mock[CopyJobFactory[Shard]]
+  val scheduler     = mock[PrioritizingJobScheduler[JsonJob]]
+  val subScheduler  = mock[JobScheduler[JsonJob]]
+  val copyScheduler = mock[JobScheduler[CopyJob[Shard]]]
+  val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler)
+
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
     "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id)
@@ -29,12 +33,12 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
   val forwarding = new nameserver.Forwarding(tableId, 0, shardInfo1.id)
   val thriftForwarding = new thrift.Forwarding(tableId, 0, thriftShardInfo1.id)
 
-  "ShardManagerService" should {
+  "ManagerService" should {
     "explode" in {
       expect {
         one(nameServer).createShard(shardInfo1) willThrow new shards.ShardException("blarg!")
       }
-      manager.create_shard(thriftShardInfo1) must throwA[thrift.ShardException]
+      manager.create_shard(thriftShardInfo1) must throwA[thrift.GizzardException]
     }
 
     "deliver messages for runtime exceptions" in {
@@ -45,7 +49,7 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       try{
         manager.create_shard(thriftShardInfo1)
       } catch {
-        case e: thrift.ShardException => {
+        case e: thrift.GizzardException => {
           e.getDescription mustEqual "Monkeys!"
           woot = true
         }
@@ -111,7 +115,7 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
 
       expect {
         one(copier).apply(shardId1, shardId2) willReturn copyJob
-        one(scheduler).put(copyJob)
+        one(copyScheduler).put(copyJob)
       }
 
       manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
@@ -152,11 +156,11 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       manager.get_forwardings() mustEqual List(thriftForwarding).toJavaList
     }
 
-    "reload_forwardings" in {
+    "reload_config" in {
       expect {
         one(nameServer).reload()
       }
-      manager.reload_forwardings()
+      manager.reload_config()
     }
 
     "find_current_forwarding" in {
@@ -188,11 +192,69 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       manager.list_upward_links(thriftShardInfo1.id) mustEqual List(new thrift.LinkInfo(thriftShardInfo2.id, thriftShardInfo1.id, 1)).toJavaList
     }
 
-    "get_child_shards_of_class" in {
+
+
+    // job management
+
+    "retry_errors" in {
       expect {
-        one(nameServer).getChildShardsOfClass(shardInfo1.id, classname) willReturn List(shardInfo2)
+        one(scheduler).retryErrors()
       }
-      manager.get_child_shards_of_class(thriftShardInfo1.id, classname) mustEqual List(thriftShardInfo2).toJavaList
+
+      manager.retry_errors()
     }
+
+    "stop_writes" in {
+      expect {
+        one(scheduler).pause()
+      }
+
+      manager.stop_writes()
+    }
+
+    "resume_writes" in {
+      expect {
+        one(scheduler).resume()
+      }
+
+      manager.resume_writes()
+    }
+
+    "retry_errors_for" in {
+      expect {
+        one(scheduler).apply(3) willReturn subScheduler
+        one(subScheduler).retryErrors()
+      }
+
+      manager.retry_errors_for(3)
+    }
+
+    "stop_writes_for" in {
+      expect {
+        one(scheduler).apply(3) willReturn subScheduler
+        one(subScheduler).pause()
+      }
+
+      manager.stop_writes_for(3)
+    }
+
+    "resume_writes_for" in {
+      expect {
+        one(scheduler).apply(3) willReturn subScheduler
+        one(subScheduler).resume()
+      }
+
+      manager.resume_writes_for(3)
+    }
+
+    "is_writing" in {
+      expect {
+        one(scheduler).apply(3) willReturn subScheduler
+        one(subScheduler).isShutdown willReturn false
+      }
+
+      manager.is_writing(3) mustEqual true
+    }
+
   }
 }

@@ -141,12 +141,6 @@ class MemoryShard extends Shard {
     shardTable.filter { _.busy.id > 0 }.toList
   }
 
-  def getChildShardsOfClass(parentShardId: ShardId, className: String): List[ShardInfo] = {
-    val childIds = listDownwardLinks(parentShardId).map { _.downId }
-    childIds.map { child => getShard(child) }.filter { _.className == className }.toList ++
-      childIds.flatMap { child => getChildShardsOfClass(child, className) }
-  }
-
   def rebuildSchema() { }
 
   def reload() { }
