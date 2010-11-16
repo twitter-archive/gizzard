@@ -20,10 +20,11 @@ object JobScheduler {
     val schedulerConfig = queueConfig.configMap(name)
 
     val threadCount = schedulerConfig("threads").toInt
-    val retryInterval = schedulerConfig("replay_interval").toInt.seconds
+    val strobeInterval = schedulerConfig("strobe_interval").toInt.milliseconds
     val errorLimit = schedulerConfig("error_limit").toInt
+    val flushLimit = schedulerConfig("flush_limit").toInt
+    val errorDelay = schedulerConfig("error_delay").toInt.seconds
     val sizeLimit = schedulerConfig.getInt("size_limit", 0)
-    val perFlushItemLimit = schedulerConfig("per_flush_item_limit").toInt
     val jitterRate = schedulerConfig("jitter_rate").toFloat
 
     val jobQueueName = schedulerConfig("job_queue")
@@ -36,14 +37,16 @@ object JobScheduler {
 
         val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
         val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
+        errorQueue.drainTo(jobQueue, errorDelay)
 
-        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, perFlushItemLimit,
+        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
                             jitterRate, jobQueue, errorQueue, badJobQueue)
 
       case "memory" =>
         val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
         val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
-        new JobScheduler[J](name, threadCount, retryInterval, errorLimit, perFlushItemLimit,
+        errorQueue.drainTo(jobQueue, errorDelay)
+        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
                             jitterRate, jobQueue, errorQueue, badJobQueue)
 
       case x =>
@@ -67,9 +70,9 @@ object JobScheduler {
  */
 class JobScheduler[J <: Job](val name: String,
                              val threadCount: Int,
-                             val retryInterval: Duration,
+                             val strobeInterval: Duration,
                              val errorLimit: Int,
-                             val perFlushItemLimit: Int,
+                             val flushLimit: Int,
                              val jitterRate: Float,
                              val queue: JobQueue[J],
                              val errorQueue: JobQueue[J],
@@ -82,8 +85,8 @@ class JobScheduler[J <: Job](val name: String,
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
-      val jitter = Math.round(retryInterval.inMillis * jitterRate * new Random().nextGaussian())
-      Thread.sleep(retryInterval.inMillis + jitter)
+      val jitter = Math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
+      Thread.sleep(strobeInterval.inMillis + jitter)
       try {
         retryErrors()
       } catch {
@@ -94,8 +97,7 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def retryErrors() {
-    log.info("Replaying %s errors queue...", name)
-    errorQueue.drainTo(queue, perFlushItemLimit)
+    errorQueue.checkExpiration(flushLimit)
   }
 
   def start() = {
