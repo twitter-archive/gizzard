@@ -20,6 +20,10 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val linksList = List(new shards.LinkInfo(shardInfos(2).id, shardInfos(3).id, 1))
     val shardForwardings = List(new Forwarding(1, 1, shardInfos(0).id), new Forwarding(1, 2, shardInfos(1).id),
                                 new Forwarding(1, 3, shardInfos(2).id), new Forwarding(2, 1, shardInfos(3).id))
+    val remoteHosts = List(new Host("host1", 7777, "c1", HostStatus.Normal),
+                           new Host("host2", 7777, "c1", HostStatus.Normal),
+                           new Host("host3", 7777, "c2", HostStatus.Normal))
+
     var shard = mock[shards.Shard]
 
     doBefore {
@@ -28,6 +32,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).listShards() willReturn shardInfos
         one(nameServerShard).listLinks() willReturn linksList
         one(nameServerShard).getForwardings() willReturn shardForwardings
+        one(nameServerShard).listRemoteHosts() willReturn remoteHosts
       }
 
       nameServer = new NameServer[gizzard.shards.Shard](nameServerShard, shardRepository, mappingFunction)

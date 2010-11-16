@@ -77,6 +77,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
+  @volatile private var remoteClusters: scala.collection.Map[String, Seq[Host]] = null
 
   @throws(classOf[shards.ShardException])
   def createShard(shardInfo: ShardInfo) {
@@ -90,7 +91,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   }
 
   def reload() {
-    log.info("Loading forwarding table...")
+    log.info("Loading name server configuration...")
     nameServerShard.reload()
 
     val newShardInfos = mutable.Map.empty[ShardId, ShardInfo]
@@ -110,10 +111,16 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
       treeMap.put(forwarding.baseId, newShardInfos.getOrElse(forwarding.shardId, throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))))
     }
 
-    shardInfos = newShardInfos
-    familyTree = newFamilyTree
-    forwardings = newForwardings
-    log.info("Loading forwarding table is done.")
+    val newRemoteClusters = new mutable.HashMap[String, List[Host]]
+    nameServerShard.listRemoteHosts.foreach { h =>
+      newRemoteClusters += h.cluster -> (h :: newRemoteClusters.getOrElse(h.cluster, List()))
+    }
+
+    shardInfos     = newShardInfos
+    familyTree     = newFamilyTree
+    forwardings    = newForwardings
+    remoteClusters = newRemoteClusters
+    log.info("Loading name server configuration is done.")
   }
 
   def findShardById(id: ShardId, weight: Int): S = {
