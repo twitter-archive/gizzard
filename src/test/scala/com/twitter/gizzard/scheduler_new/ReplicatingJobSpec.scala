@@ -8,13 +8,13 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker {
   "RemoteReplicatingJob" should {
-    val injector = mock[Iterable[JsonJob] => Unit]
+    val injector = Map("c1" -> mock[Iterable[JsonJob] => Unit])
     val testJsonJobClass = "com.twitter.gizzard.scheduler.TestJsonJob"
 
     val job1 = mock[JsonJob]
 
     val job = new RemoteReplicatingJob[JsonJob](injector, Seq(job1))
-    val replicatedJob = new RemoteReplicatingJob[JsonJob](injector, Seq(job1), false)
+    val replicatedJob = new RemoteReplicatingJob[JsonJob](injector, Seq(job1), List())
 
     "toMap" >> {
       expect {
@@ -22,23 +22,23 @@ class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker {
         one(job1).toMap willReturn Map[String, Any]()
       }
       val map = job.toMap
-      map("should_replicate") mustEqual true
+      map("dest_clusters") mustEqual List("c1")
       val tasks = map("tasks").asInstanceOf[Seq[Map[String, Any]]]
       val taskMap = tasks(0)
       taskMap mustEqual Map(testJsonJobClass -> Map())
     }
 
-    "replicate when shouldReplicate is true" in {
+    "replicate when list of clusters is present" in {
       expect {
         //one(job1).toJson willReturn """{"some":"1","json":"2"}"""
         one(job1).apply()
-        one(injector).apply(List(job))
+        one(injector("c1")).apply(List(job))
       }
 
       job.apply()
     }
 
-    "not replicate when shouldReplicate is false" in {
+    "not replicate when list of clusters is empty" in {
       expect {
         one(job1).apply()
       }

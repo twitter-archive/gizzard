@@ -1,5 +1,6 @@
 package com.twitter.gizzard.scheduler
 
+import scala.collection.mutable.Queue
 import scala.util.matching.Regex
 import com.twitter.rpcclient.LoadBalancingChannel
 import com.twitter.util.Duration
@@ -27,7 +28,7 @@ extends (Iterable[JsonJob] => Unit) {
   }
 }
 
-class ReplicatingJsonCodec(injector: Iterable[JsonJob] => Unit, unparsable: Array[Byte] => Unit)
+class ReplicatingJsonCodec(injector: Map[String, Iterable[JsonJob] => Unit], unparsable: Array[Byte] => Unit)
 extends JsonCodec[JsonJob](unparsable) {
   lazy val innerCodec = {
     val c = new JsonCodec[JsonJob](unparsable)
@@ -51,34 +52,46 @@ extends JsonCodec[JsonJob](unparsable) {
   }
 }
 
-class RemoteReplicatingJob[J <: JsonJob](injector: Iterable[JsonJob] => Unit, jobs: Iterable[J], var _shouldReplicate: Boolean)
+class RemoteReplicatingJob[J <: JsonJob](
+  injector: Map[String, Iterable[JsonJob] => Unit],
+  jobs: Iterable[J],
+  destClusters: Iterable[String])
 extends JsonNestedJob(jobs) {
-  def this(injector: Iterable[JsonJob] => Unit, jobs: Iterable[J]) = this(injector, jobs, true)
+  def this(injector: Map[String, Iterable[JsonJob] => Unit], jobs: Iterable[J]) =
+    this(injector, jobs, injector.keySet)
 
-  override def shouldReplicate = _shouldReplicate
-  def shouldReplicate_=(v: Boolean) = _shouldReplicate = v
+  val clustersQueue = {
+    val q = new Queue[String]
+    q ++= destClusters
+    q
+  }
 
-  override def toMap: Map[String, Any] = Map("should_replicate" -> shouldReplicate :: super.toMap.toList: _*)
+  override def toMap: Map[String, Any] =
+    Map("dest_clusters" -> clustersQueue.toList :: super.toMap.toList: _*)
 
   // XXX: do all this work in parallel in a future pool.
   override def apply() {
-    if (shouldReplicate) {
-      injector(List(new RemoteReplicatingJob[J](injector, jobs, false)))
-      shouldReplicate = false
+    while (!clustersQueue.isEmpty) {
+      val c = clustersQueue.dequeue()
+      try { injector(c)(List(this)) } catch {
+        case e: Throwable => clustersQueue += c; throw e
+      }
     }
 
     super.apply()
   }
 }
 
-class RemoteReplicatingJobParser[J <: JsonJob](codec: JsonCodec[J], injector: Iterable[JsonJob] => Unit)
+class RemoteReplicatingJobParser[J <: JsonJob](
+  codec: JsonCodec[J],
+  injector: Map[String, Iterable[JsonJob] => Unit])
 extends JsonJobParser[J] {
 
   override def apply(json: Map[String, Any]) = {
-    val shouldReplicate = json("should_replicate").asInstanceOf[Boolean]
+    val destClusters = json("dest_clusters").asInstanceOf[List[String]]
     val taskJsons = json("tasks").asInstanceOf[Iterable[Map[String, Any]]]
     val tasks = taskJsons.map { codec.inflate(_) }
 
-    new RemoteReplicatingJob(injector, tasks, shouldReplicate).asInstanceOf[J]
+    new RemoteReplicatingJob(injector, tasks, destClusters).asInstanceOf[J]
   }
 }

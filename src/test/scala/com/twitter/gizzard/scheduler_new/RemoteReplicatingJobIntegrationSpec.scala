@@ -12,7 +12,7 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
   "RemoteReplicatingJobIntegration" should {
     // TODO: make configurable
     val port     = 12313
-    val injector = new ReplicatingJobInjector(List("localhost"), port, 1, false, 1.second)
+    val injector = Map("c1" -> new ReplicatingJobInjector(List("localhost"), port, 1, false, 1.second))
 
     val codec = new ReplicatingJsonCodec(injector, { badJob =>
       println(new String(badJob, "UTF-8"))
