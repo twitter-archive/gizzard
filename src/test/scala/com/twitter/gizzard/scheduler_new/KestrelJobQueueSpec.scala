@@ -41,6 +41,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
 
     "start, pause, resume, shutdown" in {
       expect {
+        one(queue).maxExpireSweep_=(0)
         one(queue).setup()
       }
 
