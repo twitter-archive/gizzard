@@ -1,20 +1,19 @@
 package com.twitter.gizzard.scheduler
 
-import com.twitter.rpcclient.Client
-import thrift.JobInjectorClient
-import thrift.JobInjector
 import org.specs.mock.{ClassMocker, JMocker}
+import nameserver.{JobRelay, JobRelayCluster}
 
 
-class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker {
+class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "RemoteReplicatingJob" should {
-    val injector = Map("c1" -> mock[Iterable[JsonJob] => Unit])
+    val relay = mock[JobRelay]
+    val relayClient = mock[JobRelayCluster]
     val testJsonJobClass = "com.twitter.gizzard.scheduler.TestJsonJob"
 
     val job1 = mock[JsonJob]
 
-    val job = new RemoteReplicatingJob[JsonJob](injector, Seq(job1))
-    val replicatedJob = new RemoteReplicatingJob[JsonJob](injector, Seq(job1), List())
+    val job = new RemoteReplicatingJob[JsonJob](relay, Seq(job1), List("c1"))
+    val replicatedJob = new RemoteReplicatingJob[JsonJob](relay, Seq(job1), List())
 
     "toMap" >> {
       expect {
@@ -30,9 +29,10 @@ class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker {
 
     "replicate when list of clusters is present" in {
       expect {
-        //one(job1).toJson willReturn """{"some":"1","json":"2"}"""
         one(job1).apply()
-        one(injector("c1")).apply(List(job))
+        //one(relay).clusters willReturn List("c1")
+        one(relayClient).apply(List(job))
+        one(relay).apply("c1") willReturn relayClient
       }
 
       job.apply()

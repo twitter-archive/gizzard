@@ -1,20 +1,19 @@
 package com.twitter.gizzard.scheduler
 
+import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs.mock.{ClassMocker, JMocker}
 import net.lag.configgy.{Config => CConfig}
 import com.twitter.util.TimeConversions._
 import thrift.{JobInjectorService, TThreadServer, JobInjector}
-import java.io.File
-
+import nameserver.JobRelay
 
 object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker{
   "RemoteReplicatingJobIntegration" should {
     // TODO: make configurable
-    val port     = 12313
-    val injector = Map("c1" -> new ReplicatingJobInjector(List("localhost"), port, 1, false, 1.second))
-
-    val codec = new ReplicatingJsonCodec(injector, { badJob =>
+    val port  = 12313
+    val relay = new JobRelay(Map("c1" -> List("localhost")), port, 1, false, 1.second)
+    val codec = new ReplicatingJsonCodec(relay, { badJob =>
       println(new String(badJob, "UTF-8"))
     })
 
@@ -27,7 +26,7 @@ object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with 
         def toMap = json
       }
     }
-    codec += ("TestJob".r -> testJobParser)
+    codec += "TestJob".r -> testJobParser
 
     val schedulerConfig = new gizzard.config.Scheduler {
       def schedulerType = new gizzard.config.Kestrel {
