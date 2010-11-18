@@ -9,18 +9,16 @@ import thrift.{JobInjector, JobInjectorClient}
 
 
 class JobRelayFactory(
-  port: Int,
   priority: Int,
   framed: Boolean,
   timeout: Duration)
-extends (Map[String, Seq[String]] => JobRelay) {
-  def apply(hostMap: Map[String, Seq[String]]) =
-    new JobRelay(hostMap, port, priority, framed, timeout)
+extends (Map[String, Seq[Host]] => JobRelay) {
+  def apply(hostMap: Map[String, Seq[Host]]) =
+    new JobRelay(hostMap, priority, framed, timeout)
 }
 
 class JobRelay(
-  hostMap: Map[String, Seq[String]],
-  port: Int,
+  hostMap: Map[String, Seq[Host]],
   priority: Int,
   framed: Boolean,
   timeout: Duration)
@@ -29,20 +27,19 @@ extends (String => Iterable[JsonJob] => Unit) {
   val clusters = hostMap.keySet
 
   private val clients = Map(hostMap.map { case (c, hs) =>
-    c -> new JobRelayCluster(hs, port, priority, framed, timeout)
+    c -> new JobRelayCluster(hs, priority, framed, timeout)
   }.toSeq: _*)
 
   def apply(cluster: String) = clients(cluster)
 }
 
 class JobRelayCluster(
-  hosts: Seq[String],
-  port: Int,
+  hosts: Seq[Host],
   priority: Int,
   framed: Boolean,
   timeout: Duration)
 extends (Iterable[JsonJob] => Unit) {
-  val client = new LoadBalancingChannel(hosts.map(new JobInjectorClient(_, port, framed, timeout)))
+  val client = new LoadBalancingChannel(hosts.map(h => new JobInjectorClient(h.hostname, h.port, framed, timeout)))
 
   def apply(jobs: Iterable[JsonJob]) {
     val jobList = new JLinkedList[thrift.Job]()
@@ -52,3 +49,8 @@ extends (Iterable[JsonJob] => Unit) {
   }
 }
 
+object NullJobRelayFactory extends JobRelayFactory(0, false, new Duration(0)) {
+  override def apply(h: Map[String, Seq[Host]]) = NullJobRelay
+}
+
+object NullJobRelay extends JobRelay(Map(), 0, false, new Duration(0))

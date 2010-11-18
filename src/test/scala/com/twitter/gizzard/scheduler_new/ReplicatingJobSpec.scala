@@ -1,7 +1,7 @@
 package com.twitter.gizzard.scheduler
 
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{JobRelay, JobRelayCluster}
+import nameserver.{JobRelay, JobRelayCluster, Host}
 
 
 class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {

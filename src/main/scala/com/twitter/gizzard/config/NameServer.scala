@@ -16,9 +16,18 @@ trait Replica
 trait Mysql extends Replica with Connection
 object Memory extends Replica
 
+trait JobRelay {
+  def priority: Int
+  def framed: Boolean
+  def timeout: Duration
+
+  def apply() = new nameserver.JobRelayFactory(priority, framed, timeout)
+}
+
 trait NameServer {
   def mappingFunction: MappingFunction
   def replicas: Seq[Replica]
+  def jobRelay: Option[JobRelay]
 
   protected def getMappingFunction: (Long => Long) = {
     mappingFunction match {
@@ -26,6 +35,11 @@ trait NameServer {
       case gizzard.config.Identity => { n => n }
       case gizzard.config.Fnv1a64 => nameserver.FnvHasher
     }
+  }
+
+  protected def getJobRelay = jobRelay match {
+    case Some(relay) => relay()
+    case None        => NullJobRelayFactory
   }
 
   def apply[S <: shards.Shard](queryEvaluatorFactory: QueryEvaluatorFactory,
@@ -38,11 +52,12 @@ trait NameServer {
       }
     }
 
+
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicaShards)
     val shard = new ReadWriteShardAdapter(
       new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, replicationFuture))
 
-    new nameserver.NameServer(shard, shardRepository, getMappingFunction)
+    new nameserver.NameServer(shard, shardRepository, getJobRelay, getMappingFunction)
   }
 }

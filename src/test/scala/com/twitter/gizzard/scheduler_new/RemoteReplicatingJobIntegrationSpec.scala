@@ -6,13 +6,14 @@ import org.specs.mock.{ClassMocker, JMocker}
 import net.lag.configgy.{Config => CConfig}
 import com.twitter.util.TimeConversions._
 import thrift.{JobInjectorService, TThreadServer, JobInjector}
-import nameserver.JobRelay
+import nameserver.{Host, HostStatus, JobRelay}
 
 object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker{
   "RemoteReplicatingJobIntegration" should {
     // TODO: make configurable
     val port  = 12313
-    val relay = new JobRelay(Map("c1" -> List("localhost")), port, 1, false, 1.second)
+    val host  = Host("localhost", port, "c1", HostStatus.Normal)
+    val relay = new JobRelay(Map("c1" -> List(host)), 1, false, 1.second)
     val codec = new ReplicatingJsonCodec(relay, { badJob =>
       println(new String(badJob, "UTF-8"))
     })

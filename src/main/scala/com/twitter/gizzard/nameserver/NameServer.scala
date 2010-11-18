@@ -33,8 +33,16 @@ object NameServer {
    */
   def apply[S <: shards.Shard](config: ConfigMap, stats: Option[StatsCollector],
                                shardRepository: ShardRepository[S],
+                               jobRelayFactory: JobRelayFactory,
                                replicationFuture: Option[Future]): NameServer[S] = {
     val queryEvaluatorFactory = QueryEvaluatorFactory.fromConfig(config, stats)
+
+    val jobRelayFactory = config.getConfigMap("job_relay").map { relayConfig =>
+      new JobRelayFactory(
+        config.getInt("priority").get,
+        config.getBool("framed_transport", false),
+        config.getInt("timeout_msec", 1000).millis)
+    } getOrElse NullJobRelayFactory
 
     val writeTimeout = config.getInt("write_timeout", 6000).millis
     val replicaConfig = config.configMap("replicas")
@@ -59,13 +67,16 @@ object NameServer {
       case "fnv1a-64" =>
         FnvHasher
     }
-    new NameServer(shard, shardRepository, mappingFunction)
+    new NameServer(shard, shardRepository, jobRelayFactory, mappingFunction)
   }
 }
 
-class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: ShardRepository[S],
-                                    val mappingFunction: Long => Long)
-  extends Shard {
+class NameServer[S <: shards.Shard](
+  nameServerShard: Shard,
+  shardRepository: ShardRepository[S],
+  jobRelayFactory: JobRelayFactory,
+  val mappingFunction: Long => Long)
+extends Shard {
 
   private val log = Logger.get(getClass.getName)
 
@@ -77,7 +88,7 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
   @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
-  @volatile private var remoteClusters: scala.collection.Map[String, Seq[Host]] = null
+  @volatile private var jobRelay: JobRelay = null
 
   @throws(classOf[shards.ShardException])
   def createShard(shardInfo: ShardInfo) {
@@ -116,10 +127,10 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
       newRemoteClusters += h.cluster -> (h :: newRemoteClusters.getOrElse(h.cluster, List()))
     }
 
-    shardInfos     = newShardInfos
-    familyTree     = newFamilyTree
-    forwardings    = newForwardings
-    remoteClusters = newRemoteClusters
+    shardInfos  = newShardInfos
+    familyTree  = newFamilyTree
+    forwardings = newForwardings
+    jobRelay    = jobRelayFactory(Map(newRemoteClusters.toSeq: _*))
     log.info("Loading name server configuration is done.")
   }
 
