@@ -88,7 +88,7 @@ extends Shard {
   @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
-  @volatile private var jobRelay: JobRelay = null
+  @volatile var jobRelay: JobRelay = null
 
   @throws(classOf[shards.ShardException])
   def createShard(shardInfo: ShardInfo) {
