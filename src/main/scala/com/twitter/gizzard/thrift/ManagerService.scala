@@ -15,7 +15,7 @@ import net.lag.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard, C <: CopyJob[S]](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[_], copyScheduler: JobScheduler[C]) extends Manager.Iface {
+class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) extends Manager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -83,7 +83,7 @@ class ManagerService[S <: shards.Shard, C <: CopyJob[S]](nameServer: NameServer[
   def mark_shard_busy(id: ShardId, busy: Int) =
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   def copy_shard(sourceId: ShardId, destinationId: ShardId) =
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift).asInstanceOf[C]))
+    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
 
 
   // Job Scheduler Management
