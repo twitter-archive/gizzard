@@ -9,6 +9,7 @@ import com.twitter.util.Duration
 import thrift.{JobInjector, JobInjectorClient}
 import thrift.conversions.Sequences._
 import nameserver.JobRelay
+import net.lag.logging.Logger
 
 
 class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
@@ -54,8 +55,12 @@ extends JsonNestedJob(jobs) {
   override def apply() {
     while (!clustersQueue.isEmpty) {
       val c = clustersQueue.dequeue()
-      try { relay(c)(List(this)) } catch {
-        case e: Throwable => clustersQueue += c; throw e
+      try {
+        relay(c)(List(this)) } catch {
+        case e: Throwable => {
+          clustersQueue += c
+          throw e
+        }
       }
     }
 
