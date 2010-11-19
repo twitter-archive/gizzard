@@ -4,6 +4,7 @@ import scala.collection.Map
 import scala.collection.mutable
 import net.lag.configgy.ConfigMap
 
+
 object PrioritizingJobScheduler {
   def apply[J <: Job](config: ConfigMap, codec: Codec[J], queueNames: Map[Int, String],
                       badJobQueue: Option[JobConsumer[J]]) = {

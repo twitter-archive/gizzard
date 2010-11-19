@@ -1,20 +1,21 @@
 package com.twitter.gizzard.config
 
+import java.util.concurrent.ThreadPoolExecutor
 import com.twitter.util.Duration
 import org.apache.thrift
 
-trait ThreadPool {
+trait ThreadPool extends (() => ThreadPoolExecutor) {
   def name: String
   def stopTimeout: Int = 60
   def minThreads: Int
   def maxThreads: Int = minThreads
 
-  def apply() = {
+  def apply(): ThreadPoolExecutor = {
     gizzard.thrift.TSelectorServer.makeThreadPoolExecutor(name, stopTimeout, minThreads, maxThreads)
   }
 }
 
-trait TServer {
+trait TServer extends (thrift.TProcessor => thrift.server.TServer) {
   def port: Int
   def timeout: Duration
   def idleTimeout: Duration
