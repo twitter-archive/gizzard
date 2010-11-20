@@ -27,7 +27,7 @@ trait JobRelay {
 trait NameServer {
   def mappingFunction: MappingFunction
   def replicas: Seq[Replica]
-  val jobRelay: Option[JobRelay] = None
+  def jobRelay: Option[JobRelay]
 
   protected def getMappingFunction: (Long => Long) = {
     mappingFunction match {

@@ -74,8 +74,12 @@ object config {
           val database = "gizzard_test_" + name
         }
         val nameServer = new gizzard.config.NameServer {
-          override val jobRelay = None
-          val mappingFunction   = Identity
+          val jobRelay = Some(new JobRelay {
+            val priority = Priority.Low.id
+            val framed   = true
+            val timeout  = 200.milliseconds
+          })
+          val mappingFunction = Identity
           val replicas = Seq(new Mysql with TestDBConnection {
             val database = "gizzard_test_" + name + "_ns"
           })
