@@ -63,8 +63,9 @@ object config {
     val jitterRate        = 0.0f
   }
 
-  object TestServer {
-    def apply(name: String, sPort: Int, iPort: Int, mPort: Int) =
+  object TestServerConfig {
+    def apply(name: String, sPort: Int, iPort: Int, mPort: Int) = {
+      val queueBase = "gizzard_test_"+name
       new TestServer {
         val server           = new TestTHsHaServer { val port = sPort }
         val jobInjector      = new JobInjector with TestTHsHaServer { override val port = iPort }
@@ -80,8 +81,8 @@ object config {
           })
         }
         val jobQueues = Map(
-          Priority.High.id -> new TestJobScheduler { val name = "gizzard_test_high_queue" },
-          Priority.Low.id  -> new TestJobScheduler { val name = "gizzard_test_low_queue" }
+          Priority.High.id -> new TestJobScheduler { val name = queueBase+"_high" },
+          Priority.Low.id  -> new TestJobScheduler { val name = queueBase+"_low" }
         )
         override val manager = new Manager with TThreadServer {
           override val port = mPort
@@ -92,6 +93,9 @@ object config {
           }
         }
       }
+    }
+
+    def apply(name: String, port: Int): TestServer = apply(name, port, port + 1, port + 2)
   }
 }
 
@@ -107,10 +111,10 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJ
 
   // job wiring
 
-  val copyFactory   = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
-  val badJobQueue   = None
   val jobPriorities = List(Priority.High.id, Priority.Low.id)
   val copyPriority  = Priority.Low.id
+  val copyFactory   = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
+  val badJobQueue   = None
   def logUnparsableJob(j: Array[Byte]) {
     //log.error("Unparsable job: %s", j.map(b => "%02x".format(b.toInt & 0xff)).mkString(", "))
   }
@@ -144,6 +148,8 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJ
     testThriftServer.stop()
     shutdownGizzard(quiesce)
   }
+
+  def shutdown() { shutdown(false) }
 }
 
 
@@ -151,11 +157,15 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJ
 
 class TestServerIFace(forwarding: Long => TestShard, scheduler: PrioritizingJobScheduler[JsonJob])
 extends thrift.TestServer.Iface {
+  import com.twitter.gizzard.thrift.conversions.Sequences._
+
   def put(key: Int, value: String) {
     scheduler.put(Priority.High.id, new PutJob(key, value, forwarding))
   }
 
-  def get(key: Int) = forwarding(key).get(key).map(_._2) getOrElse null
+  def get(key: Int) = forwarding(key).get(key).map(asTestResult).map(List(_).toJavaList) getOrElse List[thrift.TestResult]().toJavaList
+
+  private def asTestResult(t: (Int, String, Int)) = new thrift.TestResult(t._1, t._2, t._3)
 }
 
 
@@ -164,8 +174,8 @@ extends thrift.TestServer.Iface {
 trait TestShard extends shards.Shard {
   def put(key: Int, value: String): Unit
   def putAll(kvs: Seq[(Int, String)]): Unit
-  def get(key: Int): Option[(Int, String)]
-  def getAll(key: Int, count: Int): Seq[(Int, String)]
+  def get(key: Int): Option[(Int, String, Int)]
+  def getAll(key: Int, count: Int): Seq[(Int, String, Int)]
 }
 
 class TestReadWriteAdapter(s: shards.ReadWriteShard[TestShard])
@@ -186,6 +196,7 @@ extends shards.ShardFactory[TestShard] {
       """create table if not exists %s (
            id int(11) not null,
            value varchar(255) not null,
+           count int(11) not null default 1,
            primary key (id)
          ) engine=innodb default charset=utf8"""
     try {
@@ -207,20 +218,20 @@ class SqlShard(
 extends TestShard {
   private val table = shardInfo.tablePrefix
 
-  private val putSql    = """insert into " + table + " (id, value) values (?,?)
-                             on duplicate key update value = values(value)"""
-  private val getSql    = "select value from " + table + " where id in (?)"
-  private val getAllSql = "select value from " + table + " where id > ? limit ?"
+  private val putSql = """insert into %s (id, value, count) values (?,?,1) on duplicate key
+                          update value = values(value), count = count+1""".format(table)
+  private val getSql    = "select * from " + table + " where id = ?"
+  private val getAllSql = "select * from " + table + " where id > ? limit ?"
 
-  private def asPair(r: ResultSet) = r.getInt("id") -> r.getString("value")
+  private def asResult(r: ResultSet) = (r.getInt("id"), r.getString("value"), r.getInt("count"))
 
   def put(key: Int, value: String) { evaluator.execute(putSql, key, value) }
   def putAll(kvs: Seq[(Int, String)]) {
     evaluator.executeBatch(putSql) { b => for ((k,v) <- kvs) b(k,v) }
   }
 
-  def get(key: Int) = evaluator.selectOne(getSql, key)(asPair)
-  def getAll(key: Int, count: Int) = evaluator.select(getSql, key, count)(asPair)
+  def get(key: Int) = evaluator.selectOne(getSql, key)(asResult)
+  def getAll(key: Int, count: Int) = evaluator.select(getSql, key, count)(asResult)
 }
 
 
@@ -255,7 +266,7 @@ class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
                ns: NameServer[TestShard], s: JobScheduler[JsonJob])
 extends CopyJob[TestShard](srcId, destId, count, ns, s) {
   def copyPage(src: TestShard, dest: TestShard, count: Int) = {
-    val rows = src.getAll(cursor, count)
+    val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
 
     dest.putAll(rows)
 

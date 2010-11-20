@@ -33,7 +33,6 @@ object NameServer {
    */
   def apply[S <: shards.Shard](config: ConfigMap, stats: Option[StatsCollector],
                                shardRepository: ShardRepository[S],
-                               jobRelayFactory: JobRelayFactory,
                                replicationFuture: Option[Future]): NameServer[S] = {
     val queryEvaluatorFactory = QueryEvaluatorFactory.fromConfig(config, stats)
 
