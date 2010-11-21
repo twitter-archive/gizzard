@@ -64,6 +64,7 @@ object config {
     val replayInterval    = 900.seconds
     val perFlushItemLimit = 1000
     val jitterRate        = 0.0f
+    val badJobQueue       = None
   }
 
   class TestNameServer(name: String) extends gizzard.config.NameServer {
@@ -113,28 +114,18 @@ object Priority extends Enumeration {
 
 class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJob](conf) {
 
-  //protected val log = Logger.get(getClass.getName)
+  // shard/nameserver/scheduler wiring
 
-  // job wiring
+  val readWriteShardAdapter = new TestReadWriteAdapter(_)
+  val jobPriorities         = List(Priority.High.id, Priority.Low.id)
+  val copyPriority          = Priority.Low.id
+  val copyFactory           = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
-  val jobPriorities = List(Priority.High.id, Priority.Low.id)
-  val copyPriority  = Priority.Low.id
-  val copyFactory   = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
-  val badJobQueue   = None
-  def logUnparsableJob(j: Array[Byte]) {
-    //log.error("Unparsable job: %s", j.map(b => "%02x".format(b.toInt & 0xff)).mkString(", "))
-  }
+  shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
 
   jobCodec += ("Put".r  -> new PutParser(nameServer.findCurrentForwarding(0, _)))
   jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
 
-
-  // shard/nameserver wiring
-
-  val readWriteShardAdapter = new TestReadWriteAdapter(_)
-  val replicationFuture     = None
-
-  shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
 
   // service listener
 
@@ -154,8 +145,6 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJ
     testThriftServer.stop()
     shutdownGizzard(quiesce)
   }
-
-  def shutdown() { shutdown(false) }
 }
 
 
