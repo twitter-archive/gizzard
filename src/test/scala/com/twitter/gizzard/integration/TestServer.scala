@@ -29,6 +29,8 @@ object config {
       val statsCollector = None
       val timeout        = None
       val pool = Some(new ApachePoolingDatabase {
+        override val sizeMin = 1
+        override val sizeMax = 3
         val testIdleMsec = 1.seconds
       })
     }
@@ -49,6 +51,7 @@ object config {
     def server: TServer
     def databaseConnection: Connection
     val queryEvaluator = TestQueryEvaluator
+    val nsQueryEvaluator = TestQueryEvaluator
   }
 
   trait TestJobScheduler extends Scheduler {
@@ -63,27 +66,27 @@ object config {
     val jitterRate        = 0.0f
   }
 
+  class TestNameServer(name: String) extends gizzard.config.NameServer {
+    val jobRelay = Some(new JobRelay {
+      val priority = Priority.Low.id
+      val framed   = true
+      val timeout  = 200.milliseconds
+    })
+    val mappingFunction = Identity
+    val replicas = Seq(new Mysql with TestDBConnection {
+      val database = "gizzard_test_" + name + "_ns"
+    })
+  }
+
   object TestServerConfig {
     def apply(name: String, sPort: Int, iPort: Int, mPort: Int) = {
-      val queueBase = "gizzard_test_"+name
+      val queueBase = "gizzard_test_" + name
+
       new TestServer {
         val server           = new TestTHsHaServer { val port = sPort }
         val jobInjector      = new JobInjector with TestTHsHaServer { override val port = iPort }
-        val nsQueryEvaluator = TestQueryEvaluator
-        val databaseConnection = new TestDBConnection {
-          val database = "gizzard_test_" + name
-        }
-        val nameServer = new gizzard.config.NameServer {
-          val jobRelay = Some(new JobRelay {
-            val priority = Priority.Low.id
-            val framed   = true
-            val timeout  = 200.milliseconds
-          })
-          val mappingFunction = Identity
-          val replicas = Seq(new Mysql with TestDBConnection {
-            val database = "gizzard_test_" + name + "_ns"
-          })
-        }
+        val databaseConnection = new TestDBConnection { val database = "gizzard_test_" + name }
+        val nameServer = new TestNameServer(name)
         val jobQueues = Map(
           Priority.High.id -> new TestJobScheduler { val name = queueBase+"_high" },
           Priority.Low.id  -> new TestJobScheduler { val name = queueBase+"_low" }
@@ -102,7 +105,6 @@ object config {
     def apply(name: String, port: Int): TestServer = apply(name, port, port + 1, port + 2)
   }
 }
-
 
 
 object Priority extends Enumeration {

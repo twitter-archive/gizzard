@@ -1,105 +1,72 @@
 package com.twitter.gizzard.integration
 
-import org.specs.Specification
-import com.twitter.querulous.evaluator.QueryEvaluator
-import com.twitter.rpcclient.{PooledClient, ThriftConnection}
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import testserver.{Priority, TestServer}
-import testserver.config.TestServerConfig
 import testserver.thrift.TestResult
 
-class GizzardIntegrationSpec extends Specification {
+class ReplicationSpec extends IntegrationSpecification {
+  "Replication" should {
+    val servers = List(1, 2, 3).map(testServer)
+    val clients = servers.map(testServerClient)
 
-  val evaluator = QueryEvaluator("localhost", "", "root", "", Map[String,String]())
+    val server1 :: server2 :: server3 :: _ = servers
+    val client1 :: client2 :: client3 :: _ = clients
 
-  trait TestServerFacts {
-    def enum: Int; def nsDatabaseName: String; def databaseName: String
-    def basePort: Int; def injectorPort: Int; def managerPort: Int
-    def sqlShardInfo: shards.ShardInfo; def forwarding: nameserver.Forwarding
-    def kestrelQueues: Seq[String]
-  }
-
-  def testServer(i: Int) = {
-    val port = 8000 + (i - 1) * 3
-    val name = "testserver" + i
-    new TestServer(TestServerConfig(name, port)) with TestServerFacts {
-      val enum = i
-      val nsDatabaseName = "gizzard_test_"+name+"_ns"
-      val databaseName   = "gizzard_test_"+name
-      val basePort       = port
-      val injectorPort   = port + 1
-      val managerPort    = port + 2
-      val sqlShardInfo = shards.ShardInfo(shards.ShardId("localhost", "t0_0"),
-                                          "TestShard", "int", "int", shards.Busy.Normal)
-      val forwarding = nameserver.Forwarding(0, 0, sqlShardInfo.id)
-      val kestrelQueues = Seq("gizzard_test_"+name+"_high_queue",
-                              "gizzard_test_"+name+"_high_queue_errors",
-                              "gizzard_test_"+name+"_low_queue",
-                              "gizzard_test_"+name+"_low_queue_errors")
+    val hostFor1 :: hostFor2 :: hostFor3 :: _ = List(server1, server2, server3).map { s =>
+      nameserver.Host("localhost", s.injectorPort, "c" + s.enum, nameserver.HostStatus.Normal)
     }
-  }
 
-  def setupServer(server: TestServer with TestServerFacts) {
-    createTestServerDBs(server.enum)
-    server.nameServer.rebuildSchema()
-    server.nameServer.setForwarding(server.forwarding)
-    server.nameServer.createShard(server.sqlShardInfo)
-    server.nameServer.reload()
-  }
-
-  def testServerDBs(i: Int) = List("gizzard_test_testserver" + i + "_ns", "gizzard_test_testserver" + i)
-  def dropTestServerDBs(i: Int) = testServerDBs(i).foreach { db =>
-    evaluator.execute("drop database if exists " + db)
-  }
-  def createTestServerDBs(i: Int) = testServerDBs(i).foreach { db =>
-    evaluator.execute("create database if not exists " + db)
-  }
-  def resetTestServerDBs(i: Int) { dropTestServerDBs(i); createTestServerDBs(i) }
-
-  def testServerClient(i: Int) = {
-    val port = 8000 + (i - 1) * 3
-    new PooledClient[testserver.thrift.TestServer.Iface] {
-      val name = "testclient" + i
-      def createConnection =
-        new ThriftConnection[testserver.thrift.TestServer.Client]("localhost", port, true)
-    }
-  }
-
-  "TestServer" should {
-    var server1 = testServer(1)
-    var server2 = testServer(2)
-    val client1 = testServerClient(1).proxy
-    val client2 = testServerClient(2).proxy
-    val host    = nameserver.Host("localhost", server2.injectorPort, "c2", nameserver.HostStatus.Normal)
     doBefore {
-      Seq(server1, server2).foreach { s => resetTestServerDBs(s.enum); setupServer(s) }
-      server1.nameServer.addRemoteHost(host)
-      server1.nameServer.reload()
+      resetTestServerDBs(servers: _*)
+      setupServers(servers: _*)
+      List(server1, server2).foreach(_.nameServer.addRemoteHost(hostFor3))
+      List(server1, server3).foreach(_.nameServer.addRemoteHost(hostFor2))
+      List(server2, server3).foreach(_.nameServer.addRemoteHost(hostFor1))
+
+      servers.foreach(_.nameServer.reload())
     }
 
-    doAfter { server1.shutdown(); server2.shutdown(); Thread.sleep(100) }
+    doAfter { stopServers(servers: _*) }
 
     "relay replicated jobs" in {
-      server1.start()
-      server2.start()
-      Thread.sleep(100)
+      startServers(servers: _*)
 
       client1.put(1, "foo")
+
       client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
       client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+
+      client2.put(2, "bar")
+
+      client1.get(2) must eventually(be_==(List(new TestResult(2, "bar", 1)).toJavaList))
+      client2.get(2) must eventually(be_==(List(new TestResult(2, "bar", 1)).toJavaList))
+      client3.get(2) must eventually(be_==(List(new TestResult(2, "bar", 1)).toJavaList))
+
+      client3.put(3, "baz")
+
+      client1.get(3) must eventually(be_==(List(new TestResult(3, "baz", 1)).toJavaList))
+      client2.get(3) must eventually(be_==(List(new TestResult(3, "baz", 1)).toJavaList))
+      client3.get(3) must eventually(be_==(List(new TestResult(3, "baz", 1)).toJavaList))
     }
 
     "retry replication errors" in {
-      server1.start()
-      Thread.sleep(100)
+      startServers(server1)
 
       client1.put(1, "foo")
       client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
 
-      server2.start()
-      Thread.sleep(100)
+      startServers(server2)
       server1.jobScheduler.retryErrors()
+
       client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+
+      startServers(server3)
+      server1.jobScheduler.retryErrors()
+
+      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
     }
   }
 }
