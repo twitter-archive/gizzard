@@ -44,7 +44,12 @@ extends (Iterable[String] => Unit) {
   def apply(jobs: Iterable[String]) {
     val jobList = new JLinkedList[thrift.Job]()
 
-    for (j <- jobs) jobList.add(new thrift.Job(priority, ByteBuffer.wrap(j.getBytes("UTF-8"))))
+    jobs.foreach { j =>
+      val tj = new thrift.Job(priority, ByteBuffer.wrap(j.getBytes("UTF-8")))
+      tj.setIs_replicated(true)
+      jobList.add(tj)
+    }
+
     client.proxy.inject_jobs(jobList)
   }
 }

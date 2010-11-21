@@ -17,6 +17,7 @@ extends JsonCodec[JsonJob](unparsable) {
   lazy val innerCodec = {
     val c = new JsonCodec[JsonJob](unparsable)
     c += ("ReplicatingJob".r -> new ReplicatingJobParser(c, relay))
+    c += ("ReplicatedJob".r -> new ReplicatedJobParser(c))
     c
   }
 
@@ -35,29 +36,33 @@ extends JsonCodec[JsonJob](unparsable) {
   }
 }
 
+class ReplicatedJob[J <: JsonJob](jobs: Iterable[J]) extends JsonNestedJob(jobs) {
+  override val shouldReplicate = false
+}
+
+class ReplicatedJobParser[J <: JsonJob](codec: JsonCodec[J]) extends JsonJobParser[J] {
+  type Tasks = Iterable[Map[String, Any]]
+
+  override def apply(json: Map[String, Any]) = {
+    val tasks = json("tasks").asInstanceOf[Tasks].map(codec.inflate)
+    new ReplicatedJob(tasks).asInstanceOf[J]
+  }
+}
+
 class ReplicatingJob[J <: JsonJob](
   relay: JobRelay,
   jobs: Iterable[J],
   clusters: Iterable[String],
-  private var serialized: String)
+  serialized: Iterable[String])
 extends JsonNestedJob(jobs) {
 
   def this(relay: JobRelay, jobs: Iterable[J], clusters: Iterable[String]) =
-    this(relay, jobs, clusters, null)
+    this(relay, jobs, clusters, jobs.map(_.toJson))
 
   def this(relay: JobRelay, jobs: Iterable[J]) = this(relay, jobs, relay.clusters)
 
-  if (serialized eq null) {
-    serialized =
-      if (clusters.isEmpty) ""
-      else new ReplicatingJob(relay, jobs, Nil).toJson
-  }
-
-  private val clustersQueue = {
-    val q = new Queue[String]
-    q ++= clusters
-    q
-  }
+  private val clustersQueue = new Queue[String]
+  clustersQueue ++= clusters
 
   override def toMap: Map[String, Any] = {
     var attrs = super.toMap.toList
@@ -90,13 +95,14 @@ class ReplicatingJobParser[J <: JsonJob](
   codec: JsonCodec[J],
   relay: => JobRelay)
 extends JsonJobParser[J] {
-  type TaskJsons = Iterable[Map[String, Any]]
+  type Tasks = Iterable[Map[String, Any]]
 
   override def apply(json: Map[String, Any]) = {
     val clusters   = json.get("dest_clusters").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
-    val serialized = json.get("serialized").map(_.asInstanceOf[String]) getOrElse ""
-    val tasks      = json("tasks").asInstanceOf[TaskJsons].map(codec.inflate)
+    val serialized = json.get("serialized").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
+    val tasks      = json("tasks").asInstanceOf[Tasks].map(codec.inflate)
 
     new ReplicatingJob(relay, tasks, clusters, serialized).asInstanceOf[J]
   }
 }
+
