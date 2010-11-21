@@ -82,12 +82,19 @@ extends JsonNestedJob(jobs) {
   }
 
   private def replicateToClusters() {
-    while (!clustersQueue.isEmpty) {
+    val badClusters = new Queue[String]
+    var ex: Throwable = null
+
+    while (!clustersQueue.isEmpty && !serialized.isEmpty) {
       val c = clustersQueue.dequeue()
-      try { relay(c)(List(serialized)) } catch {
-        case e: Throwable => { clustersQueue += c; throw e }
+      try { relay(c)(serialized) } catch {
+        case e: Throwable => { badClusters += c; ex = e }
       }
     }
+
+    clustersQueue ++= badClusters
+
+    if (ex ne null) throw ex
   }
 }
 
