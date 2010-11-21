@@ -4,8 +4,8 @@ import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.{JobRelay, JobRelayCluster, Host}
 
 
-class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  "RemoteReplicatingJob" should {
+class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
+  "ReplicatingJob" should {
     val relay = mock[JobRelay]
     val testJsonJobClass = "com.twitter.gizzard.scheduler.TestJsonJob"
 
@@ -17,7 +17,7 @@ class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker with
         atLeast(1).of(job1).toMap     willReturn Map[String, Any]()
       }
 
-      val job = new RemoteReplicatingJob[JsonJob](relay, Seq(job1), List("c1"))
+      val job = new ReplicatingJob[JsonJob](relay, Seq(job1), List("c1"))
       val map = job.toMap
       map("dest_clusters") mustEqual List("c1")
 
@@ -32,8 +32,8 @@ class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker with
         atLeast(1).of(job1).toMap     willReturn Map[String, Any]()
       }
 
-      val job     = new RemoteReplicatingJob[JsonJob](relay, Seq(job1), List("c1"))
-      val payload = new RemoteReplicatingJob[JsonJob](relay, Seq(job1), Nil).toJson
+      val job     = new ReplicatingJob[JsonJob](relay, Seq(job1), List("c1"))
+      val payload = new ReplicatingJob[JsonJob](relay, Seq(job1), Nil).toJson
 
       expect {
         one(job1).apply()
@@ -50,7 +50,7 @@ class RemoteReplicatingJobSpec extends ConfiguredSpecification with JMocker with
         one(job1).apply()
       }
 
-      val replicatedJob = new RemoteReplicatingJob[JsonJob](relay, Seq(job1), Nil)
+      val replicatedJob = new ReplicatingJob[JsonJob](relay, Seq(job1), Nil)
 
       replicatedJob.apply()
     }

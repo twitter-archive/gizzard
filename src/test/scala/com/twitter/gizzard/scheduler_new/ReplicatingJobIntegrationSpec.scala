@@ -8,8 +8,8 @@ import com.twitter.util.TimeConversions._
 import thrift.{JobInjectorService, TThreadServer, JobInjector}
 import nameserver.{Host, HostStatus, JobRelay}
 
-object RemoteReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker{
-  "RemoteReplicatingJobIntegration" should {
+object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker{
+  "ReplicatingJobIntegration" should {
     // TODO: make configurable
     val port  = 12313
     val host  = Host("localhost", port, "c1", HostStatus.Normal)

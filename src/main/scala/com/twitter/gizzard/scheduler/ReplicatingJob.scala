@@ -16,7 +16,7 @@ class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
 extends JsonCodec[JsonJob](unparsable) {
   lazy val innerCodec = {
     val c = new JsonCodec[JsonJob](unparsable)
-    c += ("RemoteReplicatingJob".r -> new RemoteReplicatingJobParser(c, relay))
+    c += ("ReplicatingJob".r -> new ReplicatingJobParser(c, relay))
     c
   }
 
@@ -25,9 +25,9 @@ extends JsonCodec[JsonJob](unparsable) {
 
   override def inflate(json: Map[String, Any]): JsonJob = {
     innerCodec.inflate(json) match {
-      case j: RemoteReplicatingJob[_] => j
+      case j: ReplicatingJob[_] => j
       case j => if (j.shouldReplicate) {
-        new RemoteReplicatingJob(relay, List(j))
+        new ReplicatingJob(relay, List(j))
       } else {
         j
       }
@@ -35,7 +35,7 @@ extends JsonCodec[JsonJob](unparsable) {
   }
 }
 
-class RemoteReplicatingJob[J <: JsonJob](
+class ReplicatingJob[J <: JsonJob](
   relay: JobRelay,
   jobs: Iterable[J],
   clusters: Iterable[String],
@@ -50,7 +50,7 @@ extends JsonNestedJob(jobs) {
   if (serialized eq null) {
     serialized =
       if (clusters.isEmpty) ""
-      else new RemoteReplicatingJob(relay, jobs, Nil).toJson
+      else new ReplicatingJob(relay, jobs, Nil).toJson
   }
 
   private val clustersQueue = {
@@ -86,7 +86,7 @@ extends JsonNestedJob(jobs) {
   }
 }
 
-class RemoteReplicatingJobParser[J <: JsonJob](
+class ReplicatingJobParser[J <: JsonJob](
   codec: JsonCodec[J],
   relay: => JobRelay)
 extends JsonJobParser[J] {
@@ -97,6 +97,6 @@ extends JsonJobParser[J] {
     val serialized = json.get("serialized").map(_.asInstanceOf[String]) getOrElse ""
     val tasks      = json("tasks").asInstanceOf[TaskJsons].map(codec.inflate)
 
-    new RemoteReplicatingJob(relay, tasks, clusters, serialized).asInstanceOf[J]
+    new ReplicatingJob(relay, tasks, clusters, serialized).asInstanceOf[J]
   }
 }
