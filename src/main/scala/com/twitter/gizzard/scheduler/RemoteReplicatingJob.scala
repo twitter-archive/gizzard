@@ -38,33 +38,51 @@ extends JsonCodec[JsonJob](unparsable) {
 class RemoteReplicatingJob[J <: JsonJob](
   relay: JobRelay,
   jobs: Iterable[J],
-  destClusters: Iterable[String])
+  clusters: Iterable[String],
+  private var serialized: String)
 extends JsonNestedJob(jobs) {
+
+  def this(relay: JobRelay, jobs: Iterable[J], clusters: Iterable[String]) =
+    this(relay, jobs, clusters, null)
+
   def this(relay: JobRelay, jobs: Iterable[J]) = this(relay, jobs, relay.clusters)
 
-  val clustersQueue = {
+  if (serialized eq null) {
+    serialized =
+      if (clusters.isEmpty) ""
+      else new RemoteReplicatingJob(relay, jobs, Nil).toJson
+  }
+
+  private val clustersQueue = {
     val q = new Queue[String]
-    q ++= destClusters
+    q ++= clusters
     q
   }
 
-  override def toMap: Map[String, Any] =
-    Map("dest_clusters" -> clustersQueue.toList :: super.toMap.toList: _*)
+  override def toMap: Map[String, Any] = {
+    var attrs = super.toMap.toList
+    if (!clustersQueue.isEmpty) attrs = "dest_clusters" -> clustersQueue.toList :: attrs
+    if (!serialized.isEmpty)    attrs = "serialized" -> serialized :: attrs
+    Map(attrs: _*)
+  }
 
-  // XXX: do all this work in parallel in a future pool.
+  // XXX: do this work in parallel in a future pool.
   override def apply() {
+    var ex: Throwable = null
+
+    try { replicateToClusters() } catch { case e: Throwable => ex = e }
+    super.apply()
+
+    if (ex ne null) throw ex
+  }
+
+  private def replicateToClusters() {
     while (!clustersQueue.isEmpty) {
       val c = clustersQueue.dequeue()
-      try {
-        relay(c)(List(this)) } catch {
-        case e: Throwable => {
-          clustersQueue += c
-          throw e
-        }
+      try { relay(c)(List(serialized)) } catch {
+        case e: Throwable => { clustersQueue += c; throw e }
       }
     }
-
-    super.apply()
   }
 }
 
@@ -75,9 +93,10 @@ extends JsonJobParser[J] {
   type TaskJsons = Iterable[Map[String, Any]]
 
   override def apply(json: Map[String, Any]) = {
-    val destClusters = json("dest_clusters").asInstanceOf[List[String]]
-    val tasks = json("tasks").asInstanceOf[TaskJsons].map(codec.inflate)
+    val clusters   = json.get("dest_clusters").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
+    val serialized = json.get("serialized").map(_.asInstanceOf[String]) getOrElse ""
+    val tasks      = json("tasks").asInstanceOf[TaskJsons].map(codec.inflate)
 
-    new RemoteReplicatingJob(relay, tasks, destClusters).asInstanceOf[J]
+    new RemoteReplicatingJob(relay, tasks, clusters, serialized).asInstanceOf[J]
   }
 }

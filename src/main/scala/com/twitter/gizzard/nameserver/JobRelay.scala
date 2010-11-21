@@ -22,7 +22,7 @@ class JobRelay(
   priority: Int,
   framed: Boolean,
   timeout: Duration)
-extends (String => Iterable[JsonJob] => Unit) {
+extends (String => JobRelayCluster) {
 
   val clusters = hostMap.keySet
 
@@ -38,13 +38,13 @@ class JobRelayCluster(
   priority: Int,
   framed: Boolean,
   timeout: Duration)
-extends (Iterable[JsonJob] => Unit) {
+extends (Iterable[String] => Unit) {
   val client = new LoadBalancingChannel(hosts.map(h => new JobInjectorClient(h.hostname, h.port, framed, timeout)))
 
-  def apply(jobs: Iterable[JsonJob]) {
+  def apply(jobs: Iterable[String]) {
     val jobList = new JLinkedList[thrift.Job]()
 
-    for (j <- jobs) jobList.add(new thrift.Job(priority, ByteBuffer.wrap(j.toJson.getBytes("UTF-8"))))
+    for (j <- jobs) jobList.add(new thrift.Job(priority, ByteBuffer.wrap(j.getBytes("UTF-8"))))
     client.proxy.inject_jobs(jobList)
   }
 }

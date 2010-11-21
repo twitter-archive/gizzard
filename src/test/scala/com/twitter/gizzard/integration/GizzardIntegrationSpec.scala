@@ -70,21 +70,35 @@ class GizzardIntegrationSpec extends Specification {
     var server2 = testServer(2)
     val client1 = testServerClient(1).proxy
     val client2 = testServerClient(2).proxy
-
+    val host    = nameserver.Host("localhost", server2.injectorPort, "c2", nameserver.HostStatus.Normal)
     doBefore {
       Seq(server1, server2).foreach { s => resetTestServerDBs(s.enum); setupServer(s) }
-      server1.nameServer.addRemoteHost(nameserver.Host("localhost", server2.injectorPort, "c2", nameserver.HostStatus.Normal))
+      server1.nameServer.addRemoteHost(host)
       server1.nameServer.reload()
+    }
+
+    doAfter { server1.shutdown(); server2.shutdown(); Thread.sleep(100) }
+
+    "relay replicated jobs" in {
       server1.start()
       server2.start()
       Thread.sleep(100)
-    }
 
-    doAfter { server1.shutdown(); server2.shutdown() }
-
-    "relay replicated jobs" in {
       client1.put(1, "foo")
       client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+    }
+
+    "retry replication errors" in {
+      server1.start()
+      Thread.sleep(100)
+
+      client1.put(1, "foo")
+      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+
+      server2.start()
+      Thread.sleep(100)
+      server1.jobScheduler.retryErrors()
       client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
     }
   }
