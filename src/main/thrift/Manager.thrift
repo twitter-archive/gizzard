@@ -36,9 +36,9 @@ struct Forwarding {
 // Remote Host Structs
 
 enum HostStatus {
-  Normal  = 0
-  Offline = 1
-  Blocked = 2
+  Normal     = 0
+  Blackholed = 1
+  Blocked    = 2
 }
 
 struct Host {

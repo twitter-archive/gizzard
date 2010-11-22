@@ -237,8 +237,8 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
 
       "setRemoteClusterStatus" in {
-        nameServer.setRemoteClusterStatus("c2", HostStatus.Offline)
-        (Set() ++ List(host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Offline)
+        nameServer.setRemoteClusterStatus("c2", HostStatus.Blackholed)
+        (Set() ++ List(host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Blackholed)
         (Set() ++ List(host1, host2).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
       }
 
