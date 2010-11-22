@@ -7,6 +7,10 @@ import com.twitter.util.Duration
 import scheduler.JsonJob
 import thrift.{JobInjector, JobInjectorClient}
 
+class ClusterBlockedException(cluster: String, cause: Throwable)
+extends Exception("Job replication to cluster '" + cluster + "' is blocked.", cause) {
+  def this(cluster: String) = this(cluster, null)
+}
 
 class JobRelayFactory(
   priority: Int,
@@ -27,10 +31,21 @@ extends (String => JobRelayCluster) {
   val clusters = hostMap.keySet
 
   private val clients = Map(hostMap.map { case (c, hs) =>
-    c -> new JobRelayCluster(hs, priority, framed, timeout)
+    var blocked = false
+    val onlineHosts = hs.filter(_.status match {
+      case HostStatus.Normal     => true
+      case HostStatus.Blocked    => { blocked = true; false }
+      case HostStatus.Blackholed => false
+    })
+
+    c -> (if (onlineHosts.isEmpty) {
+      if (blocked) new BlockedJobRelayCluster(c) else NullJobRelayCluster
+    } else {
+      new JobRelayCluster(onlineHosts, priority, framed, timeout)
+    })
   }.toSeq: _*)
 
-  def apply(cluster: String) = clients(cluster)
+  def apply(cluster: String) = clients.get(cluster) getOrElse NullJobRelayCluster
 }
 
 class JobRelayCluster(
@@ -59,3 +74,13 @@ object NullJobRelayFactory extends JobRelayFactory(0, false, new Duration(0)) {
 }
 
 object NullJobRelay extends JobRelay(Map(), 0, false, new Duration(0))
+
+object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, new Duration(0)) {
+  override val client = null
+  override def apply(jobs: Iterable[String]) = ()
+}
+
+class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, new Duration(0)) {
+  override val client = null
+  override def apply(jobs: Iterable[String]) { throw new ClusterBlockedException(cluster) }
+}
