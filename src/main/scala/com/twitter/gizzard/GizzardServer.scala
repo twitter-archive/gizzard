@@ -22,7 +22,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
 
   // nameserver/shard wiring
 
-  val replicationFuture = None
+  val replicationFuture: Option[Future] = None
   lazy val shardRepo    = new BasicShardRepository[S](readWriteShardAdapter, replicationFuture)
   lazy val nameServer   = config.nameServer(config.nsQueryEvaluator(), shardRepo, None)
   // XXX: move nsQueryEvaluator config into NameServer config trait
