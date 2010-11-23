@@ -28,9 +28,7 @@ class JobRelay(
   timeout: Duration)
 extends (String => JobRelayCluster) {
 
-  val clusters = hostMap.keySet
-
-  private val clients = Map(hostMap.map { case (c, hs) =>
+  private val clients = Map(hostMap.flatMap { case (c, hs) =>
     var blocked = false
     val onlineHosts = hs.filter(_.status match {
       case HostStatus.Normal     => true
@@ -38,12 +36,14 @@ extends (String => JobRelayCluster) {
       case HostStatus.Blackholed => false
     })
 
-    c -> (if (onlineHosts.isEmpty) {
-      if (blocked) new BlockedJobRelayCluster(c) else NullJobRelayCluster
+    if (onlineHosts.isEmpty) {
+      if (blocked) Seq(c -> new BlockedJobRelayCluster(c)) else Seq()
     } else {
-      new JobRelayCluster(onlineHosts, priority, framed, timeout)
-    })
+      Seq(c -> new JobRelayCluster(onlineHosts, priority, framed, timeout))
+    }
   }.toSeq: _*)
+
+  val clusters = clients.keySet
 
   def apply(cluster: String) = clients.get(cluster) getOrElse NullJobRelayCluster
 }
