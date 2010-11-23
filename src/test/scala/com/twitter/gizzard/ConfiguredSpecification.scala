@@ -2,7 +2,6 @@ package com.twitter.gizzard
 
 import org.specs.Specification
 import net.lag.configgy.Configgy
-import net.lag.logging.{Logger, Level => LogLevel}
 import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.rpcclient.{PooledClient, ThriftConnection}
 import testserver.{Priority, TestServer}
@@ -13,9 +12,7 @@ abstract class ConfiguredSpecification extends Specification {
   val config = Configgy.config
 }
 
-abstract class IntegrationSpecification extends ConfiguredSpecification {
-  def enableDebugLog() { Logger.get("").setLevel(LogLevel.ALL) }
-
+abstract class IntegrationSpecification extends Specification {
   val evaluator = QueryEvaluator("localhost", "", "root", "", Map[String,String]())
 
   trait TestServerFacts {

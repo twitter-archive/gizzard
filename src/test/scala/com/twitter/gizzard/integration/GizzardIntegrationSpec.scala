@@ -3,7 +3,7 @@ package com.twitter.gizzard.integration
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import testserver.thrift.TestResult
 
-class ReplicationSpec extends IntegrationSpecification {
+class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecification {
   "Replication" should {
     val servers = List(1, 2, 3).map(testServer)
     val clients = servers.map(testServerClient)
@@ -67,6 +67,46 @@ class ReplicationSpec extends IntegrationSpecification {
       client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
       client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
       client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+    }
+
+    "retry unblocked clusters" in {
+      startServers(servers: _*)
+
+      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Blocked)
+      server1.nameServer.reload()
+
+      client1.put(1, "foo")
+      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+
+      client2.get(1) mustEqual List[TestResult]().toJavaList
+
+      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.nameServer.reload()
+      server1.jobScheduler.retryErrors()
+
+      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+    }
+
+    "drop blackholed clusters" in {
+      startServers(servers: _*)
+
+      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Blackholed)
+      server1.nameServer.reload()
+
+      client1.put(1, "foo")
+      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+
+      client2.get(1) mustEqual List[TestResult]().toJavaList
+
+      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.nameServer.reload()
+      server1.jobScheduler.retryErrors()
+
+      Thread.sleep(200)
+
+      client2.get(1) mustEqual List[TestResult]().toJavaList
     }
   }
 }
