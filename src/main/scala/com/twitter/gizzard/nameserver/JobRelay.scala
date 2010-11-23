@@ -45,7 +45,7 @@ extends (String => JobRelayCluster) {
 
   val clusters = clients.keySet
 
-  def apply(cluster: String) = clients.get(cluster) getOrElse NullJobRelayCluster
+  def apply(cluster: String) = clients.getOrElse(cluster, NullJobRelayCluster)
 }
 
 class JobRelayCluster(
