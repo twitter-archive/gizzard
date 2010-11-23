@@ -7,12 +7,12 @@ import com.twitter.rpcclient.{PooledClient, ThriftConnection}
 import testserver.{Priority, TestServer}
 import testserver.config.TestServerConfig
 
-abstract class ConfiguredSpecification extends Specification {
+trait ConfiguredSpecification extends Specification {
   Configgy.configure("config/test.conf")
   val config = Configgy.config
 }
 
-abstract class IntegrationSpecification extends Specification {
+trait IntegrationSpecification extends Specification {
   val evaluator = QueryEvaluator("localhost", "", "root", "", Map[String,String]())
 
   trait TestServerFacts {
