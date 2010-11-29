@@ -2,6 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 import com.twitter.xrayspecs.Time
+import com.twitter.xrayspecs.TimeConversions._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -11,7 +12,7 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
     val job1 = mock[Job]
     val job2 = mock[Job]
     val job3 = mock[Job]
-    val destinationQueue = mock[JobQueue[Job]]
+    val destinationQueue = mock[MemoryJobQueue[Job]]
 
     var queue: MemoryJobQueue[Job] = null
 
@@ -71,9 +72,11 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
         one(destinationQueue).put(job2)
       }
 
+      queue.drainTo(destinationQueue, 1.millisecond)
       queue.put(job1)
       queue.put(job2)
-      queue.drainTo(destinationQueue, 10)
+      Time.advance(2.milliseconds)
+      queue.checkExpiration(10)
     }
   }
 }

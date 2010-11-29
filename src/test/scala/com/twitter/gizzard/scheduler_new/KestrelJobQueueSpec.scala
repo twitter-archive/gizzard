@@ -2,7 +2,8 @@ package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 import com.twitter.xrayspecs.Time
-import net.lag.kestrel.{PersistentQueue, QItem}
+import com.twitter.xrayspecs.TimeConversions._
+import net.lag.kestrel.{OverlaySetting, PersistentQueue, QItem}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
@@ -10,10 +11,11 @@ import org.specs.mock.{ClassMocker, JMocker}
 object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "KestrelJobQueue" should {
     val queue = mock[PersistentQueue]
+    val queue2 = mock[PersistentQueue]
     val codec = mock[Codec[Job]]
     val job1 = mock[Job]
     val job2 = mock[Job]
-    val destinationQueue = mock[JobQueue[Job]]
+    val destinationQueue = mock[KestrelJobQueue[Job]]
 
     var kestrelJobQueue: KestrelJobQueue[Job] = null
 
@@ -39,6 +41,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
 
     "start, pause, resume, shutdown" in {
       expect {
+        one(queue).maxExpireSweep_=(0)
         one(queue).setup()
       }
 
@@ -123,35 +126,18 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     }
 
     "drainTo" in {
-      "normal" in {
-        val message1 = "message1".getBytes
-        val message2 = "message2".getBytes
-        val items = List(message1, message2).map { x => Some(QItem(0, 0, x, x.hashCode)) }.toList
+      val setting1 = mock[OverlaySetting[Option[PersistentQueue]]]
+      val setting2 = mock[OverlaySetting[Int]]
 
-        expect {
-          allowing(queue).isClosed willReturn false
-          one(queue).length willReturn 2
-          one(queue).removeReceive(0, true).willReturn(items(0)) then
-            one(queue).removeReceive(0, true).willReturn(items(1))
-          one(queue).confirmRemove(items(0).get.xid)
-          one(queue).confirmRemove(items(1).get.xid)
-          one(codec).inflate(items(0).get.data) willReturn job1
-          one(codec).inflate(items(1).get.data) willReturn job2
-          one(destinationQueue).put(job1)
-          one(destinationQueue).put(job2)
-        }
-
-        kestrelJobQueue.drainTo(destinationQueue, 10)
+      expect {
+        one(destinationQueue).queue willReturn queue2
+        one(queue).expiredQueue willReturn setting1
+        one(setting1).set(Some(Some(queue2)))
+        one(queue).maxAge willReturn setting2
+        one(setting2).set(Some(1))
       }
 
-      "after shutdown" in {
-        expect {
-          one(queue).length willReturn 12
-          one(queue).isClosed willReturn true
-        }
-
-        kestrelJobQueue.drainTo(destinationQueue, 10)
-      }
+      kestrelJobQueue.drainTo(destinationQueue, 1.millisecond)
     }
   }
 }
