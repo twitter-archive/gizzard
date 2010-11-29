@@ -1,6 +1,6 @@
 package com.twitter.gizzard.scheduler
 
-import com.twitter.xrayspecs.Duration
+import com.twitter.util.Duration
 
 /**
  * Anything that can receive jobs.

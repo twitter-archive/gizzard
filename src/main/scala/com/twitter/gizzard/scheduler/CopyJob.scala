@@ -1,7 +1,7 @@
 package com.twitter.gizzard.scheduler
 
 import com.twitter.ostrich.Stats
-import com.twitter.xrayspecs.TimeConversions._
+import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
