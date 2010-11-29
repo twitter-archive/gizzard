@@ -15,6 +15,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
   def copyFactory: CopyJobFactory[S]
   def jobPriorities: Seq[Int]
   def copyPriority: Int
+  def start(): Unit
   def shutdown(quiesce: Boolean): Unit
   def shutdown() { shutdown(false) }
 
