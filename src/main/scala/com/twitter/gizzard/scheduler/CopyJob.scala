@@ -29,7 +29,7 @@ trait CopyJobParser[S <: Shard] extends JsonJobParser[JsonJob] {
     deserialize(attributes,
                 ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
                 ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString),
-                attributes("count").asInstanceOf[AnyVal].toInt)
+                attributes("count").asInstanceOf[{def toInt: Int}].toInt)
   }
 }
 
