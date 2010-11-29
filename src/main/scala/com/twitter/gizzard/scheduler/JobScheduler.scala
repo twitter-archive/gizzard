@@ -88,7 +88,7 @@ class JobScheduler[J <: Job](val name: String,
       val jitter = Math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
       Thread.sleep(strobeInterval.inMillis + jitter)
       try {
-        retryErrors()
+        checkExpiredJobs()
       } catch {
         case e: Throwable =>
           log.error(e, "Error replaying %s errors!", name)
@@ -97,6 +97,20 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def retryErrors() {
+    var bound = errorQueue.size
+    while (bound > 0) {
+      errorQueue.get() match {
+        case None    => bound = 0
+        case Some(t) => {
+          queue.put(t.job)
+          t.ack()
+          bound -= 1
+        }
+      }
+    }
+  }
+
+  def checkExpiredJobs() {
     errorQueue.checkExpiration(flushLimit)
   }
 

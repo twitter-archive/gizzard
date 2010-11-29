@@ -147,10 +147,23 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
     "retryErrors" in {
       expect {
-        one(errorQueue).checkExpiration(10)
+        one(errorQueue).size  willReturn 2
+        one(errorQueue).get() willReturn Some(ticket1)
+        one(ticket1).job      willReturn job1
+        one(queue).put(job1)
+        one(ticket1).ack()
+        one(errorQueue).get() willReturn None
       }
 
       jobScheduler.retryErrors()
+    }
+
+    "checkExpiredJobs" in {
+      expect {
+        one(errorQueue).checkExpiration(10)
+      }
+
+      jobScheduler.checkExpiredJobs()
     }
 
     "put" in {
