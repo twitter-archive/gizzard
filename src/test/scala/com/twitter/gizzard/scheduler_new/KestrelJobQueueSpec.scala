@@ -3,7 +3,7 @@ package com.twitter.gizzard.scheduler
 import scala.collection.mutable
 import com.twitter.util.Time
 import com.twitter.util.TimeConversions._
-import net.lag.kestrel.{OverlaySetting, PersistentQueue, QItem}
+import net.lag.kestrel.{PersistentQueue, QItem}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
@@ -126,15 +126,10 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     }
 
     "drainTo" in {
-      val setting1 = mock[OverlaySetting[Option[PersistentQueue]]]
-      val setting2 = mock[OverlaySetting[Int]]
-
       expect {
         one(destinationQueue).queue willReturn queue2
-        one(queue).expiredQueue willReturn setting1
-        one(setting1).set(Some(Some(queue2)))
-        one(queue).maxAge willReturn setting2
-        one(setting2).set(Some(1))
+        one(queue).expiredQueue_=(Some(queue2))
+        one(queue).maxAge_=(1)
       }
 
       kestrelJobQueue.drainTo(destinationQueue, 1.millisecond)

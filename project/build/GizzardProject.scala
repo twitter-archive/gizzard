@@ -5,7 +5,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val querulous = "com.twitter" %% "querulous" % "1.4.2-config-SNAPSHOT"
   val rpcclient = "com.twitter" %% "rpcclient" % "1.1.2-SNAPSHOT"
   val configgy  = "net.lag" % "configgy" % "1.6.8"
-  val kestrel   = "net.lag" % "kestrel" % "1.2.4-config-SNAPSHOT"
+  val kestrel   = "net.lag" % "kestrel" % "1.3-config-SNAPSHOT"
   val ostrich   = "com.twitter" % "ostrich" % "1.2.10"
 
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
