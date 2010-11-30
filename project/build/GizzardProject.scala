@@ -2,7 +2,8 @@ import sbt._
 import com.twitter.sbt._
 
 class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher {
-  val querulous = "com.twitter" %% "querulous" % "1.4.2-config-SNAPSHOT"
+
+  val querulous = "com.twitter" %% "querulous" % "1.4.3-config-SNAPSHOT"
   val rpcclient = "com.twitter" %% "rpcclient" % "1.1.2-SNAPSHOT"
   val configgy  = "net.lag" % "configgy" % "1.6.8"
   val kestrel   = "net.lag" % "kestrel" % "1.3-config-SNAPSHOT"
