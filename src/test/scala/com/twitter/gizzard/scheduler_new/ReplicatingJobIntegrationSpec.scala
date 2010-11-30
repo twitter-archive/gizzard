@@ -34,7 +34,8 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
         val queuePath = "/tmp"
       }
       val threads = 3
-      val replayInterval = 1.hour
+      val errorRetryDelay = 1.hour
+      val errorStrobeInterval = 15.seconds
       val errorLimit = 10
       val name = "tbird_test_q"
       val perFlushItemLimit = 100

@@ -29,7 +29,8 @@ trait JsonJobLogger extends BadJobConsumer {
 trait Scheduler {
   def schedulerType: SchedulerType
   def threads: Int
-  def replayInterval: Duration
+  def errorStrobeInterval: Duration
+  def errorRetryDelay: Duration
   def perFlushItemLimit: Int
   def jitterRate: Float
   def errorLimit: Int
@@ -39,19 +40,37 @@ trait Scheduler {
   def badJobQueue : Option[BadJobConsumer]
 
   def apply[J <: Job](codec: Codec[J]): gizzard.scheduler.JobScheduler[J] = {
-    schedulerType match {
-      case kestrel: Kestrel =>
+    val (jobQueue, errorQueue) = schedulerType match {
+      case kestrel: Kestrel => {
         val persistentJobQueue = kestrel(kestrel.queuePath, jobQueueName)
         val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
         val persistentErrorQueue = kestrel(kestrel.queuePath, errorQueueName)
         val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
 
-        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, perFlushItemLimit, jitterRate, jobQueue, errorQueue, badJobQueue.map(_.apply()))
-      case memory: Memory =>
+        (jobQueue, errorQueue)
+      }
+
+      case memory: Memory => {
         val jobQueue = new gizzard.scheduler.MemoryJobQueue[J](jobQueueName, memory.sizeLimit)
         val errorQueue = new gizzard.scheduler.MemoryJobQueue[J](errorQueueName, memory.sizeLimit)
-        new gizzard.scheduler.JobScheduler[J](name, threads, replayInterval, errorLimit, perFlushItemLimit, jitterRate, jobQueue, errorQueue, badJobQueue.map(_.apply()))
+
+        (jobQueue, errorQueue)
+      }
     }
+
+    errorQueue.drainTo(jobQueue, errorRetryDelay)
+
+    new gizzard.scheduler.JobScheduler[J](
+      name,
+      threads,
+      errorStrobeInterval,
+      errorLimit,
+      perFlushItemLimit,
+      jitterRate,
+      jobQueue,
+      errorQueue,
+      badJobQueue.map(_.apply())
+    )
   }
 }
 

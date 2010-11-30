@@ -30,28 +30,31 @@ object JobScheduler {
     val jobQueueName = schedulerConfig("job_queue")
     val errorQueueName = schedulerConfig("error_queue")
 
-    schedulerConfig.getString("type", "kestrel") match {
-      case "kestrel" =>
+    val (jobQueue, errorQueue) = schedulerConfig.getString("type", "kestrel") match {
+      case "kestrel" => {
         val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
         val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
 
         val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
         val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
-        errorQueue.drainTo(jobQueue, errorDelay)
 
-        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
-                            jitterRate, jobQueue, errorQueue, badJobQueue)
+        (jobQueue, errorQueue)
+      }
 
-      case "memory" =>
+      case "memory" => {
         val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
         val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
-        errorQueue.drainTo(jobQueue, errorDelay)
-        new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
-                            jitterRate, jobQueue, errorQueue, badJobQueue)
 
-      case x =>
-        throw new Exception("Unknown queue type " + x)
+        (jobQueue, errorQueue)
+      }
+
+      case x => throw new Exception("Unknown queue type " + x)
     }
+
+    errorQueue.drainTo(jobQueue, errorDelay)
+
+    new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
+                        jitterRate, jobQueue, errorQueue, badJobQueue)
   }
 }
 

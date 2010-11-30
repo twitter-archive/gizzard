@@ -59,12 +59,13 @@ object config {
       val queuePath = "/tmp"
       override val keepJournal = false
     }
-    val threads           = 1
-    val errorLimit        = 25
-    val replayInterval    = 900.seconds
-    val perFlushItemLimit = 1000
-    val jitterRate        = 0.0f
-    val badJobQueue       = None
+    val threads             = 1
+    val errorLimit          = 25
+    val errorRetryDelay     = 900.seconds
+    val errorStrobeInterval = 15.seconds
+    val perFlushItemLimit   = 1000
+    val jitterRate          = 0.0f
+    val badJobQueue         = None
   }
 
   class TestNameServer(name: String) extends gizzard.config.NameServer {
