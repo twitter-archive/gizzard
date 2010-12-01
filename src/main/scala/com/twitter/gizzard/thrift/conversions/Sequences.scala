@@ -44,12 +44,12 @@ object Sequences {
     def toJavaList = new JavaListAdapter(seq)(_.asInstanceOf[java.lang.Integer])
     def double = for (i <- seq) yield (i, i)
 
-    def pack: Array[Byte] = {
+    def pack: ByteBuffer = {
       val buffer = new Array[Byte](seq.size * 4)
       val byteBuffer = ByteBuffer.wrap(buffer)
       byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
       seq.foreach { item => byteBuffer.putInt(item) }
-      buffer
+      byteBuffer
     }
   }
   implicit def seqToRichIntSeq(seq: Seq[Int]) = new RichIntSeq(seq)
@@ -59,12 +59,12 @@ object Sequences {
     def toJavaList = new JavaListAdapter(seq)(_.asInstanceOf[java.lang.Long])
     def double = for (i <- seq) yield (i, i)
 
-    def pack: Array[Byte] = {
+    def pack: ByteBuffer = {
       val buffer = new Array[Byte](seq.size * 8)
       val byteBuffer = ByteBuffer.wrap(buffer)
       byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
       seq.foreach { item => byteBuffer.putLong(item) }
-      buffer
+      byteBuffer
     }
   }
   implicit def seqToRichLongSeq(seq: Seq[Long]) = new RichLongSeq(seq)
@@ -87,9 +87,8 @@ object Sequences {
   }
   implicit def javaLongListToRichSeq(list: JList[java.lang.Long]) = new RichJavaLongList(list)
 
-  class RichByteArray(byteArray: Array[Byte]) {
+  class RichByteBuffer(buffer: ByteBuffer) {
     def toIntArray = {
-      val buffer = ByteBuffer.wrap(byteArray)
       buffer.order(ByteOrder.LITTLE_ENDIAN)
       val ints = buffer.asIntBuffer
       val results = new Array[Int](ints.limit)
@@ -98,7 +97,6 @@ object Sequences {
     }
 
     def toLongArray = {
-      val buffer = ByteBuffer.wrap(byteArray)
       buffer.order(ByteOrder.LITTLE_ENDIAN)
       val longs = buffer.asLongBuffer
       val results = new Array[Long](longs.limit)
@@ -106,5 +104,6 @@ object Sequences {
       results
     }
   }
-  implicit def richByteArray(byteArray: Array[Byte]) = new RichByteArray(byteArray)
+
+  implicit def bufferToRichByteBuffer(buffer: ByteBuffer) = new RichByteBuffer(buffer)
 }
