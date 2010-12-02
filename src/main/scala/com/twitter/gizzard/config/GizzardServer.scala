@@ -7,7 +7,6 @@ import com.twitter.util.TimeConversions._
 trait GizzardServer {
   def jobQueues: Map[Int, Scheduler]
   def nameServer: NameServer
-  def nsQueryEvaluator: QueryEvaluator
 
   val manager = new Manager with TThreadServer {
     val threadPool   = new ThreadPool {

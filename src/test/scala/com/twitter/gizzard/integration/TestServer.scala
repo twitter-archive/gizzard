@@ -51,7 +51,6 @@ object config {
     def server: TServer
     def databaseConnection: Connection
     val queryEvaluator = TestQueryEvaluator
-    val nsQueryEvaluator = TestQueryEvaluator
   }
 
   trait TestJobScheduler extends Scheduler {
@@ -75,8 +74,11 @@ object config {
       val timeout  = 200.milliseconds
     })
     val mappingFunction = Identity
-    val replicas = Seq(new Mysql with TestDBConnection {
-      val database = "gizzard_test_" + name + "_ns"
+    val replicas = Seq(new Mysql {
+      val queryEvaluator = TestQueryEvaluator
+      val connection = new TestDBConnection {
+        val database = "gizzard_test_" + name + "_ns"
+      }
     })
   }
 

@@ -1,7 +1,7 @@
 package com.twitter.gizzard.config
 
 import com.twitter.util.Duration
-import com.twitter.querulous.config.Connection
+import com.twitter.querulous.config.{Connection, QueryEvaluator}
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import nameserver._
 import shards.{ReplicatingShard, ShardInfo}
@@ -12,9 +12,21 @@ object ByteSwapper extends MappingFunction
 object Identity extends MappingFunction
 object Fnv1a64 extends MappingFunction
 
-trait Replica
-trait Mysql extends Replica with Connection
-object Memory extends Replica
+trait Replica {
+  def apply(): nameserver.Shard
+}
+
+trait Mysql extends Replica {
+  def connection: Connection
+  def queryEvaluator: QueryEvaluator
+
+  def apply() = new SqlShard(queryEvaluator()(connection))
+}
+
+object Memory extends Replica {
+  def apply() = new MemoryShard
+}
+
 
 trait JobRelay {
   def priority: Int
@@ -42,20 +54,13 @@ trait NameServer {
     case None        => NullJobRelayFactory
   }
 
-  def apply[S <: shards.Shard](queryEvaluatorFactory: QueryEvaluatorFactory,
-                               shardRepository: ShardRepository[S],
+  def apply[S <: shards.Shard](shardRepository: ShardRepository[S],
                                replicationFuture: Option[gizzard.Future]) = {
-    val replicaShards = replicas.map { replica =>
-      replica match {
-        case x: gizzard.config.Mysql => new SqlShard(queryEvaluatorFactory(x))
-        case gizzard.config.Memory => new MemoryShard
-      }
-    }
 
-
-    val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
-    val loadBalancer = new LoadBalancer(replicaShards)
-    val shard = new ReadWriteShardAdapter(
+    val replicaShards = replicas.map(_.apply())
+    val shardInfo     = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
+    val loadBalancer  = new LoadBalancer(replicaShards)
+    val shard  = new ReadWriteShardAdapter(
       new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, replicationFuture))
 
     new nameserver.NameServer(shard, shardRepository, getJobRelay, getMappingFunction)
