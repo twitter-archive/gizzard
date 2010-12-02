@@ -2,9 +2,10 @@ package com.twitter.gizzard.test
 
 import com.twitter.querulous.database.{SingleConnectionDatabaseFactory, MemoizingDatabaseFactory}
 import com.twitter.querulous.evaluator.{QueryEvaluator, StandardQueryEvaluatorFactory}
+import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.util.TimeConversions._
-import net.lag.configgy.{ConfigMap, Configgy}
+
 
 
 trait Database {
@@ -25,20 +26,14 @@ trait Database {
       throw e
   }
 
-  def evaluator(configMap: ConfigMap) = try {
-    queryEvaluatorFactory(configMap("hostname"), configMap("database"), configMap("username"), configMap("password"))
+  def evaluator(config: Connection) = try {
+    queryEvaluatorFactory(config.hostnames, config.database, config.username, config.password)
   } catch {
     case e =>
       e.printStackTrace()
       throw e
   }
 
-  def rootEvaluator(configMap: ConfigMap) = try {
-    queryEvaluatorFactory(configMap("hostname"), null, configMap("username"), configMap("password"))
-  } catch {
-    case e =>
-      e.printStackTrace()
-      throw e
-  }
+  def rootEvaluator(config: Connection) = evaluator(config.withoutDatabase)
 }
 
