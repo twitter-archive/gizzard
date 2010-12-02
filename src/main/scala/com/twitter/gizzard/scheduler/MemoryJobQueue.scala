@@ -4,6 +4,8 @@ import java.util.{ArrayList => JArrayList}
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import scala.collection.jcl
 import com.twitter.ostrich.Stats
+import com.twitter.xrayspecs.{Duration, Time}
+import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
 
 /**
@@ -20,42 +22,73 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
   Stats.makeGauge(queueName + "_items") { size }
 
   val queue = if (maxSize > 0) {
-    new LinkedBlockingQueue[J](maxSize)
+    new LinkedBlockingQueue[(J, Time)](maxSize)
   } else {
-    new LinkedBlockingQueue[J]
+    new LinkedBlockingQueue[(J, Time)]
   }
 
   @volatile var paused = true
   @volatile var running = false
 
+  var expireTo: Option[MemoryJobQueue[J]] = None
+  var expireDuration = 0.seconds
+
   def put(job: J) {
-    while (!queue.offer(job)) {
+    while (!queue.offer((job, Time.now + expireDuration))) {
       queue.poll(TIMEOUT, TimeUnit.MILLISECONDS)
       Stats.incr(queueName + "_discarded")
     }
   }
 
-  def get() = {
-    var item: J = null.asInstanceOf[J]
-    while (running && !paused && (item eq null)) {
-      item = queue.poll(TIMEOUT, TimeUnit.MILLISECONDS)
+  def innerGet() = {
+    var qitem: (J, Time) = null
+    while (running && !paused && (qitem eq null)) {
+      qitem = queue.poll(TIMEOUT, TimeUnit.MILLISECONDS)
     }
-    if (item eq null) {
+    if (qitem eq null) {
       None
     } else {
-      // no need to ack to the in-memory queue. if the server dies, it's gone.
-      Some(new Ticket[J] {
-        def job = item
-        def ack() { }
-      })
+      Some(qitem)
     }
   }
 
-  def drainTo(otherQueue: JobQueue[J]) {
-    if (running && !paused) {
-      val collection = new JArrayList[J]
-      queue.drainTo(collection)
-      jcl.Buffer(collection).foreach { otherQueue.put(_) }
+  def get() = {
+    innerGet().map { case (item, time) =>
+      // no need to ack to the in-memory queue. if the server dies, it's gone.
+      new Ticket[J] {
+        def job = item
+        def ack() { }
+      }
+    }
+  }
+
+  def drainTo(otherQueue: JobQueue[J], delay: Duration) {
+    expireTo = Some(otherQueue.asInstanceOf[MemoryJobQueue[J]])
+    expireDuration = delay
+  }
+
+  def checkExpiration(flushLimit: Int) {
+    val now = Time.now
+    var finished = false
+    var count = 0
+
+    while (running && !paused && !finished && count < flushLimit) {
+      val qitem = queue.peek()
+      if (qitem eq null) {
+        finished = true
+      } else {
+        val (item, time) = qitem
+        if (time > now) {
+          finished = true
+        } else {
+          queue.poll()
+          expireTo.foreach { _.put(item) }
+          count += 1
+        }
+      }
+    }
+    if (count > 0) {
+      log.info("Replaying %d error jobs.", count)
     }
   }
 

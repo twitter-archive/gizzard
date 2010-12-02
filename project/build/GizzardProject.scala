@@ -1,16 +1,17 @@
 import sbt._
 import com.twitter.sbt._
 
-class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher {
-  val configgy  = "net.lag" % "configgy" % "1.6.7"
-  val kestrel   = "net.lag" % "kestrel" % "1.2.3"
-  val ostrich   = "com.twitter" % "ostrich" % "1.2.9"
-  val querulous = "com.twitter" %% "querulous" % "1.3.6"
+class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher with InlineDependencies {
+  inline("net.lag" % "configgy" % "1.6.8"      )
+  inline("net.lag" % "kestrel" % "1.2.6"       )
+  inline("com.twitter" % "ostrich" % "1.2.10"  )
+  inline("com.twitter" %% "querulous" % "1.4.3")
+  inline("com.twitter" % "json" % "1.1.7"      )
+  val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
+
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
   val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
   val thrift    = "thrift" % "libthrift" % "0.5.0"
-  val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
-  val json      = "com.twitter" % "json" % "1.1.7"
 
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1" % "test"
   val objenesis = "org.objenesis" % "objenesis" % "1.1" % "test"

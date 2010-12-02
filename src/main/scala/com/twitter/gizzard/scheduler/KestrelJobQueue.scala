@@ -1,7 +1,7 @@
 package com.twitter.gizzard.scheduler
 
 import com.twitter.ostrich.{Stats, StatsProvider}
-import com.twitter.xrayspecs.Time
+import com.twitter.xrayspecs.{Duration, Time}
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.{Config, ConfigMap}
 import net.lag.kestrel.{PersistentQueue, QItem}
@@ -13,7 +13,7 @@ import net.lag.logging.Logger
  * ticket's 'ack' method is called, so if a job is half-complete when the server dies, it will be
  * back in the queue when the server restarts.
  */
-class KestrelJobQueue[J <: Job](queueName: String, queue: PersistentQueue, codec: Codec[J])
+class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, codec: Codec[J])
       extends JobQueue[J] {
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
@@ -28,6 +28,8 @@ class KestrelJobQueue[J <: Job](queueName: String, queue: PersistentQueue, codec
   def age = queue.currentAge / 1000.0
 
   def start() {
+    // don't expire items except when we explicitly call 'discardExpired'.
+    queue.maxExpireSweep = 0
     queue.setup()
   }
 
@@ -68,19 +70,15 @@ class KestrelJobQueue[J <: Job](queueName: String, queue: PersistentQueue, codec
     }
   }
 
-  def drainTo(outQueue: JobQueue[J]) {
-    var bound = size
-    while (bound > 0 && !queue.isClosed) {
-      queue.removeReceive(0, true) match {
-        case None =>
-          bound = 0
-        case Some(qitem) =>
-          bound -= 1
-          val job = codec.inflate(qitem.data)
-          log.info("Replaying error job: %s", job)
-          outQueue.put(job)
-          queue.confirmRemove(qitem.xid)
-      }
+  def drainTo(otherQueue: JobQueue[J], delay: Duration) {
+    queue.expiredQueue.set(Some(Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue)))
+    queue.maxAge.set(Some(delay.inMilliseconds.toInt))
+  }
+
+  def checkExpiration(flushLimit: Int) {
+    val count = queue.discardExpired(flushLimit)
+    if (count > 0) {
+      log.info("Replaying %d error jobs.", count)
     }
   }
 

@@ -25,6 +25,8 @@ class JsonCodec[J <: JsonJob](unparsableJobHandler: Array[Byte] => Unit) extends
   def +=(r: Regex, p: JsonJobParser[J]) = processors += ((r, p))
 
   this += ("JsonNestedJob".r, new JsonNestedJobParser())
+  // for backward compat:
+  this += ("JobWithTasks".r, new JsonNestedJobParser())
 
   def flatten(job: J): Array[Byte] = job.toJson.getBytes
 

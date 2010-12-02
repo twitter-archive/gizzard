@@ -1,5 +1,7 @@
 package com.twitter.gizzard.scheduler
 
+import com.twitter.xrayspecs.Duration
+
 /**
  * Anything that can receive jobs.
  */
@@ -22,7 +24,8 @@ trait Ticket[J <: Job] {
  */
 trait JobQueue[J <: Job] extends JobConsumer[J] with Process {
   def get(): Option[Ticket[J]]
-  def drainTo(queue: JobQueue[J])
+  def drainTo(queue: JobQueue[J], delay: Duration)
+  def checkExpiration(flushLimit: Int)
   def size: Int
 }
 
