@@ -26,8 +26,8 @@ trait Database {
       throw e
   }
 
-  def evaluator(config: Connection) = try {
-    queryEvaluatorFactory(config.hostnames, config.database, config.username, config.password)
+  def evaluator(connection: Connection) = try {
+    queryEvaluatorFactory(connection)
   } catch {
     case e =>
       e.printStackTrace()

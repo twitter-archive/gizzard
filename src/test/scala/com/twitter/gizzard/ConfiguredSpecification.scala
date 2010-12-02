@@ -6,10 +6,12 @@ import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.rpcclient.{PooledClient, ThriftConnection}
 import testserver.{Priority, TestServer}
 import testserver.config.TestServerConfig
+import com.twitter.util.Eval
 
 trait ConfiguredSpecification extends Specification {
   Configgy.configure("config/test.conf")
-  val config = Configgy.config
+
+  val config  = Eval[gizzard.config.GizzardServer]("config/test.scala")
 }
 
 trait IntegrationSpecification extends Specification {
