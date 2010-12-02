@@ -1,13 +1,15 @@
 package com.twitter.gizzard.scheduler
 
+import java.lang.reflect.UndeclaredThrowableException
 import java.util.Random
+import java.util.concurrent.ExecutionException
 import com.twitter.ostrich.{BackgroundProcess, Stats}
 import com.twitter.xrayspecs.Duration
 import com.twitter.xrayspecs.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.kestrel.PersistentQueue
 import net.lag.logging.Logger
-import shards.ShardRejectedOperationException
+import shards.{NormalShardException, ShardRejectedOperationException}
 
 object JobScheduler {
   /**
@@ -154,6 +156,18 @@ class JobScheduler[J <: Job](val name: String,
     }
   }
 
+  private def unwrapException(exception: Throwable): Throwable = {
+    exception match {
+      case e: ExecutionException =>
+        unwrapException(e.getCause)
+      case e: UndeclaredThrowableException =>
+        // fondly known as JavaOutrageException
+        unwrapException(e.getCause)
+      case e =>
+        e
+    }
+  }
+
   // hook to let unit tests stub out threads.
   protected def processWork() {
     process()
@@ -166,18 +180,24 @@ class JobScheduler[J <: Job](val name: String,
         job()
         Stats.incr("job-success-count")
       } catch {
-        case e: ShardRejectedOperationException =>
-          Stats.incr("job-darkmoded-count")
-          errorQueue.put(job)
-        case e =>
-          Stats.incr("job-error-count")
-          log.error(e, "Error in Job: %s - %s", job, e)
-          job.errorCount += 1
-          job.errorMessage = e.toString
-          if (job.errorCount > errorLimit) {
-            badJobQueue.foreach { _.put(job) }
-          } else {
-            errorQueue.put(job)
+        case e: Throwable =>
+          unwrapException(e) match {
+            case e: ShardRejectedOperationException =>
+              Stats.incr("job-darkmoded-count")
+              errorQueue.put(job)
+            case e: NormalShardException =>
+              Stats.incr("job-error-count")
+              log.error("Error in Job: %s - %s", job, e)
+            case e =>
+              Stats.incr("job-error-count")
+              log.error(e, "Error in Job: %s - %s", job, e)
+              job.errorCount += 1
+              job.errorMessage = e.toString
+              if (job.errorCount > errorLimit) {
+                badJobQueue.foreach { _.put(job) }
+              } else {
+                errorQueue.put(job)
+              }
           }
       }
       ticket.ack()
