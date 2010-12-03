@@ -49,6 +49,7 @@ object Sequences {
       val byteBuffer = ByteBuffer.wrap(buffer)
       byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
       seq.foreach { item => byteBuffer.putInt(item) }
+      byteBuffer.rewind
       byteBuffer
     }
   }
@@ -64,6 +65,7 @@ object Sequences {
       val byteBuffer = ByteBuffer.wrap(buffer)
       byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
       seq.foreach { item => byteBuffer.putLong(item) }
+      byteBuffer.rewind
       byteBuffer
     }
   }
