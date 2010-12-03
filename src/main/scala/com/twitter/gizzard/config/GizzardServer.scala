@@ -5,6 +5,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 
 trait GizzardServer {
+  def logging = NoLogging
   def jobQueues: Map[Int, Scheduler]
   def nameServer: NameServer
 
