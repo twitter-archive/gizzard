@@ -50,7 +50,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         val jobRelay        = None
       }
 
-      val ns = config(shardRepository, None)
+      val ns = config(shardRepository)
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L
@@ -61,8 +61,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       config("mapping") = "fnv1a-64"
       config("replicas.ns1.type") = "memory"
 
-
-      val ns = new gizzard.config.ConfiggyNameServer(config)(shardRepository, None)
+      val ns = new gizzard.config.ConfiggyNameServer(config)(shardRepository)
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L

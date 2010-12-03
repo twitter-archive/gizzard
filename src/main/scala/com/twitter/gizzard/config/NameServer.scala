@@ -57,14 +57,13 @@ trait NameServer {
     case None        => NullJobRelayFactory
   }
 
-  def apply[S <: shards.Shard](shardRepository: ShardRepository[S],
-                               replicationFuture: Option[gizzard.Future]) = {
+  def apply[S <: shards.Shard](shardRepository: ShardRepository[S]) = {
 
     val replicaShards = replicas.map(_.apply())
     val shardInfo     = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer  = new LoadBalancer(replicaShards)
     val shard  = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, replicationFuture))
+      new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, None))
 
     new nameserver.NameServer(shard, shardRepository, getJobRelay, getMappingFunction)
   }
