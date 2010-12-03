@@ -11,11 +11,10 @@ import nameserver.{IdGenerator, NameServer, SqlShard, ShardRepository, NullJobRe
 
 
 object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
-  val poolConfig = config.configMap("db.connection_pool")
   val shardInfo1 = new ShardInfo("com.example.UserShard", "table1", "localhost")
   val shardInfo2 = new ShardInfo("com.example.UserShard", "table2", "localhost")
-  val queryEvaluator = evaluator(config.configMap("db"))
-  materialize(config.configMap("db"))
+  val queryEvaluator = evaluator(config.nameServer)
+  materialize(config.nameServer)
 
   class UserShard(val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard]) extends Shard {
     val data = new mutable.HashMap[Int, String]
