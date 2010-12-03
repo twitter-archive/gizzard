@@ -43,13 +43,25 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       nameServer.reload()
     }
 
-    "construct from config" in {
+    "construct from config struct" in {
+      val config = new gizzard.config.NameServer {
+        val mappingFunction = gizzard.config.Fnv1a64
+        val replicas        = List(gizzard.config.Memory)
+      }
+
+      val ns = config(shardRepository, None)
+
+      // mapping function should be FNV1A-64:
+      ns.mappingFunction(0) mustEqual 632747166973704645L
+    }
+
+    "construct from configgy" in {
       val config = new Config()
       config("mapping") = "fnv1a-64"
       config("replicas.ns1.type") = "memory"
-      val future = mock[Future]
-      val ns = NameServer[gizzard.shards.Shard](
-        config, None, shardRepository, Some(future))
+
+
+      val ns = new gizzard.config.ConfiggyNameServer(config)(shardRepository, None)
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L
