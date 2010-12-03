@@ -6,69 +6,12 @@ import com.twitter.util.Time
 import com.twitter.util.TimeConversions._
 import com.twitter.querulous.StatsCollector
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
-import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
 import shards._
 
 
 class NonExistentShard(message: String) extends ShardException(message: String)
 class InvalidShard(message: String) extends ShardException(message: String)
-
-object NameServer {
-  /**
-   * nameserver (inherit="db") {
-   *   mapping = "byte_swapper"
-   *   replicas {
-   *     ns1 (inherit="db") {
-   *       type = "mysql"
-   *       hostname = "nameserver1"
-   *       database = "shards"
-   *     }
-   *     ns2 (inherit="db") {
-   *       hostname = "nameserver2"
-   *       database = "shards"
-   *     }
-   *   }
-   * }
-   */
-  def apply[S <: shards.Shard](config: ConfigMap, stats: Option[StatsCollector],
-                               shardRepository: ShardRepository[S],
-                               replicationFuture: Option[Future]): NameServer[S] = {
-    val queryEvaluatorFactory = QueryEvaluatorFactory.fromConfig(config, stats)
-
-    val jobRelayFactory = config.getConfigMap("job_relay").map { relayConfig =>
-      new JobRelayFactory(
-        config.getInt("priority").get,
-        config.getBool("framed_transport", false),
-        config.getInt("timeout_msec", 1000).millis)
-    } getOrElse NullJobRelayFactory
-
-    val writeTimeout = config.getInt("write_timeout", 6000).millis
-    val replicaConfig = config.configMap("replicas")
-    val replicas = replicaConfig.keys.map { key =>
-      val shardConfig = replicaConfig.configMap(key)
-      shardConfig.getString("type", "mysql") match {
-        case "mysql" => new SqlShard(queryEvaluatorFactory(shardConfig))
-        case "memory" => new MemoryShard()
-      }
-    }.collect
-
-    val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
-    val loadBalancer = new LoadBalancer(replicas)
-    val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture))
-
-    val mappingFunction: (Long => Long) = config.getString("mapping", "identity") match {
-      case "identity" =>
-        { n => n }
-      case "byte_swapper" =>
-        ByteSwapper
-      case "fnv1a-64" =>
-        FnvHasher
-    }
-    new NameServer(shard, shardRepository, jobRelayFactory, mappingFunction)
-  }
-}
 
 class NameServer[S <: shards.Shard](
   nameServerShard: Shard,

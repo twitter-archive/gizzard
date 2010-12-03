@@ -2,7 +2,6 @@ package com.twitter.gizzard
 
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
-import net.lag.configgy.ConfigMap
 import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
 import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec}

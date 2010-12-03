@@ -1,10 +1,12 @@
 package com.twitter.gizzard.config
 
 import com.twitter.util.Duration
-import com.twitter.querulous.config.{Connection, QueryEvaluator}
+import com.twitter.util.TimeConversions._
+import com.twitter.querulous.config.{Connection, QueryEvaluator, ConfiggyConnection, ConfiggyQueryEvaluator}
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import nameserver._
 import shards.{ReplicatingShard, ShardInfo}
+import net.lag.configgy.ConfigMap
 
 
 trait MappingFunction
@@ -36,6 +38,7 @@ trait JobRelay {
   def apply() = new nameserver.JobRelayFactory(priority, framed, timeout)
 }
 
+
 trait NameServer {
   def mappingFunction: MappingFunction
   def replicas: Seq[Replica]
@@ -65,4 +68,53 @@ trait NameServer {
 
     new nameserver.NameServer(shard, shardRepository, getJobRelay, getMappingFunction)
   }
+}
+
+
+/**
+ * nameserver (inherit="db") {
+ *   mapping = "byte_swapper"
+ *   replicas {
+ *     ns1 (inherit="db") {
+ *       type = "mysql"
+ *       hostname = "nameserver1"
+ *       database = "shards"
+ *     }
+ *     ns2 (inherit="db") {
+ *       hostname = "nameserver2"
+ *       database = "shards"
+ *     }
+ *   }
+ * }
+ */
+
+class ConfiggyNameServer(config: ConfigMap) extends NameServer {
+  val mappingFunction = config.getString("mapping", "identity") match {
+    case "identity"     => Identity
+    case "byte_swapper" => ByteSwapper
+    case "fnv1a-64"     => Fnv1a64
+  }
+
+  val jobRelay = config.getConfigMap("job_relay").map { relayConfig =>
+    new JobRelay {
+      val priority = relayConfig.getInt("priority").get
+      val framed   = relayConfig.getBool("framed_transport", false)
+      val timeout  = relayConfig.getInt("timeout_msec", 1000).millis
+    }
+  }
+
+  val replicas = {
+    val replicaConfig = config.configMap("replicas")
+
+    replicaConfig.keys.map { key =>
+      val shardConfig = replicaConfig.configMap(key)
+      shardConfig.getString("type", "mysql") match {
+        case "memory" => Memory
+        case "mysql"  => new Mysql {
+          val queryEvaluator = new ConfiggyQueryEvaluator(config)
+          val connection     = new ConfiggyConnection(shardConfig)
+        }
+      }
+    }
+  }.collect
 }
