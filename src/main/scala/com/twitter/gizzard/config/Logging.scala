@@ -22,6 +22,6 @@ class LogConfigString(s: String) extends ConfiggyLogging {
   def configMap = configgy.Config.fromString(s)
 }
 
-object NoLogging extends Logging {
+object NoLoggingConfig extends Logging {
   def apply() = ()
 }

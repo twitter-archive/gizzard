@@ -18,6 +18,9 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
   def shutdown(quiesce: Boolean): Unit
   def shutdown() { shutdown(false) }
 
+  // setup logging
+
+  config.logging()
   protected val log = Logger.get(getClass.getName)
 
   // nameserver/shard wiring
