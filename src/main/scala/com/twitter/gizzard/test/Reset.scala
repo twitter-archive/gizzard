@@ -22,7 +22,7 @@ import org.specs.Specification
 //         throw e
 //     }
 //   }
-// 
+//
 //   def reset(config: ConfigMap) {
 //     try {
 //       config.getConfigMap("ids").foreach { id =>
@@ -41,7 +41,7 @@ import org.specs.Specification
 trait NameServerDatabase extends Specification with Database {
   def materialize(cfg: config.NameServer) {
     try {
-      cfg.replicas.map { 
+      cfg.replicas.map {
         case mysql: config.Mysql => {
           val conn = mysql.connection
           val evaluator = rootEvaluator(conn)
@@ -57,9 +57,18 @@ trait NameServerDatabase extends Specification with Database {
     }
   }
 
+  def evaluator(cfg: config.NameServer): QueryEvaluator = {
+    val connectionConfig = cfg.replicas.flatMap({
+      case m: config.Mysql => List(m)
+      case _ => Nil
+    }).first.connection
+
+    evaluator(connectionConfig)
+  }
+
   def reset(cfg: config.NameServer) {
     try {
-      cfg.replicas.map { 
+      cfg.replicas.map {
         case mysql: config.Mysql => {
           reset(evaluator(mysql.connection))
         }

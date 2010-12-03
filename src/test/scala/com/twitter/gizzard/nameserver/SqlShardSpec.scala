@@ -9,15 +9,14 @@ import org.specs.mock.{ClassMocker, JMocker}
 import net.lag.logging.Logger
 
 class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
-  lazy val poolConfig = config.configMap("db.connection_pool")
 
   "SqlShard" should {
-    materialize(config.configMap("db"))
-    val queryEvaluator = evaluator(config.configMap("db"))
+    materialize(config.nameServer)
+    val queryEvaluator = evaluator(config.nameServer)
 
     val SQL_SHARD = "com.example.SqlShard"
 
-    var nameServer: SqlShard = null
+    var nameServer: nameserver.SqlShard = null
     var shardRepository: ShardRepository[Shard] = null
     val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
@@ -31,7 +30,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     doBefore {
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
-      reset(config.configMap("db"))
+      reset(config.nameServer)
       shardRepository = mock[ShardRepository[Shard]]
     }
 
