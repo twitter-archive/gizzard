@@ -82,7 +82,7 @@ trait NameServerDatabase extends Specification with Database {
   }
 
   def reset(queryEvaluator: QueryEvaluator) {
-    List("forwardings", "shard_children", "shards").foreach { tableName =>
+    List("forwardings", "shard_children", "shards", "hosts").foreach { tableName =>
       try {
         queryEvaluator.execute("DELETE FROM " + tableName)
       } catch {
