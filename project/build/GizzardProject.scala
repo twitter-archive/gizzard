@@ -2,6 +2,8 @@ import sbt._
 import com.twitter.sbt._
 
 class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher with InlineDependencies {
+  override def filterScalaJars = false
+  val scalaTools = "org.scala-lang" % "scala-compiler" % "2.7.7"
 
   inline("com.twitter" %% "querulous" % "1.4.3-config-SNAPSHOT")
   inline("net.lag" % "configgy" % "1.6.8")

@@ -1,5 +1,6 @@
 package com.twitter.gizzard
 
+import java.io.File
 import org.specs.Specification
 import net.lag.configgy.Configgy
 import com.twitter.querulous.evaluator.QueryEvaluator
@@ -8,10 +9,11 @@ import testserver.{Priority, TestServer}
 import testserver.config.TestServerConfig
 import com.twitter.util.Eval
 
+
 trait ConfiguredSpecification extends Specification {
   Configgy.configure("config/test.conf")
 
-  val config  = Eval[gizzard.config.GizzardServer]("config/test.scala")
+  val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
 }
 
 trait IntegrationSpecification extends Specification {
