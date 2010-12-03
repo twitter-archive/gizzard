@@ -32,8 +32,7 @@ object NameServer {
    * }
    */
   def apply[S <: shards.Shard](config: ConfigMap, stats: Option[StatsCollector],
-                               shardRepository: ShardRepository[S],
-                               replicationFuture: Option[Future]): NameServer[S] = {
+                               shardRepository: ShardRepository[S]): NameServer[S] = {
     val queryEvaluatorFactory = QueryEvaluatorFactory.fromConfig(config, stats)
 
     val writeTimeout = config.getInt("write_timeout", 6000).millis
@@ -49,7 +48,7 @@ object NameServer {
     val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer = new LoadBalancer(replicas)
     val shard = new ReadWriteShardAdapter(
-      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, replicationFuture))
+      new ReplicatingShard(shardInfo, 0, replicas, loadBalancer, None, writeTimeout))
 
     val mappingFunction: (Long => Long) = config.getString("mapping", "identity") match {
       case "identity" =>
