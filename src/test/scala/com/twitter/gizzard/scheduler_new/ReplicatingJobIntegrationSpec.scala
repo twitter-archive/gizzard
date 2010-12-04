@@ -30,17 +30,12 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     codec += "TestJob".r -> testJobParser
 
     val schedulerConfig = new gizzard.config.Scheduler {
-      val schedulerType = new gizzard.config.Kestrel {
+      val name = "tbird_test_q"
+      val schedulerType = new gizzard.config.KestrelScheduler {
         val queuePath = "/tmp"
       }
-      val threads = 3
-      val errorRetryDelay = 1.hour
-      val errorStrobeInterval = 15.seconds
-      val errorLimit = 10
-      val name = "tbird_test_q"
-      val perFlushItemLimit = 100
-      val jitterRate = 0.0f
-      val badJobQueue = None
+
+      errorLimit = 10
     }
 
     val scheduler = new PrioritizingJobScheduler(Map(

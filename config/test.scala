@@ -17,25 +17,6 @@ object GizzardMemoization {
 }
 
 object TestQueryEvaluator extends QueryEvaluator {
-  val debug = true
-  val autoDisable = None
-  val timeout = None
-
-  val database = new Database {
-    val timeout = None
-    val pool = Some(new ApachePoolingDatabase {
-      override val sizeMin = 1
-      override val sizeMax = 1
-      override val maxWait = 1.second
-      override val minEvictableIdle = 60.seconds
-      val testIdleMsec = 1.seconds
-      override val testOnBorrow = false
-    })
-
-  }
-
-  val query = new Query {}
-
   override def apply() = {
     if (GizzardMemoization.nsQueryEvaluator == null) {
       GizzardMemoization.nsQueryEvaluator = super.apply()
@@ -46,34 +27,23 @@ object TestQueryEvaluator extends QueryEvaluator {
 }
 
 class TestScheduler(val name: String) extends Scheduler {
-  val schedulerType = new Kestrel {
+  val schedulerType = new KestrelScheduler {
     val queuePath = "/tmp"
     override val keepJournal = false
   }
-  val threads = 1
-  val errorLimit = 25
-  val errorRetryDelay = 900.seconds
-  val errorStrobeInterval = 30.seconds
-  val perFlushItemLimit = 1000
-  val jitterRate = 0.0f
-  val badJobQueue = Some(new JsonJobLogger { val name = "bad_jobs" })
+  errorLimit = 25
+  badJobQueue = new JsonJobLogger { name = "bad_jobs" }
 }
 
 new GizzardServer {
   val nameServer = new NameServer {
-    val mappingFunction = Identity
+    jobRelay.priority = Priority.High.id
+
     val replicas = Seq(new Mysql {
       val connection = new Connection with Credentials {
         val hostnames = Seq("localhost")
-        val database = "gizzard_test"
+        val database  = "gizzard_test"
       }
-      val queryEvaluator = TestQueryEvaluator
-    })
-
-    val jobRelay = Some(new JobRelay {
-      val priority = Priority.High.id
-      val framed   = true
-      val timeout  = 1000.millis
     })
   }
 
@@ -83,18 +53,8 @@ new GizzardServer {
     Priority.Low.id    -> new TestScheduler("low")
   )
 
-  val jobInjector = new JobInjector with THsHaServer {
-    val timeout = 100.milliseconds
-    val idleTimeout = 60.seconds
 
-    val threadPool = new ThreadPool {
-      val name = "JobInjectorThreadPool"
-      val minThreads = 1
-    }
-  }
-
-
-  override val logging = new LogConfigString("""
+  logging = new LogConfigString("""
 level = "debug"
 filename = "test.log"
 throttle_period_msec = 60000

@@ -2,41 +2,46 @@ package com.twitter.gizzard.config
 
 import java.util.concurrent.ThreadPoolExecutor
 import com.twitter.util.Duration
+import com.twitter.util.TimeConversions._
 import org.apache.thrift
 
-trait ThreadPool extends (() => ThreadPoolExecutor) {
-  def name: String
-  def stopTimeout: Int = 60
-  def minThreads: Int
-  def maxThreads: Int = minThreads
+class ThreadPool extends (String => ThreadPoolExecutor) {
+  var stopTimeout = 60
+  var minThreads = 1
+  var maxThreads = 1
 
-  def apply(): ThreadPoolExecutor = {
-    gizzard.thrift.TSelectorServer.makeThreadPoolExecutor(name, stopTimeout, minThreads, maxThreads)
+  def apply(name: String): ThreadPoolExecutor = {
+    if (maxThreads < minThreads) maxThreads = minThreads
+
+    gizzard.thrift.TSelectorServer.makeThreadPoolExecutor(
+      name,
+      stopTimeout,
+      minThreads,
+      maxThreads)
   }
 }
 
 trait TServer extends (thrift.TProcessor => thrift.server.TServer) {
+  def name: String
   def port: Int
-  def timeout: Duration
-  def idleTimeout: Duration
-  def threadPool: ThreadPool
+  var timeout     = 100.milliseconds
+  var idleTimeout = 60.seconds
+  var threadPool  = new ThreadPool
+
+  def getPool = threadPool(name + " ThreadPool")
 
   def apply(processor: thrift.TProcessor): thrift.server.TServer
 }
 
 trait TSelectorServer extends TServer {
-  def name: String
-
   def apply(processor: thrift.TProcessor) = {
-    gizzard.thrift.TSelectorServer(name, port, processor, threadPool(), timeout, idleTimeout)
+    gizzard.thrift.TSelectorServer(name, port, processor, getPool, timeout, idleTimeout)
   }
 }
 
 trait TThreadServer extends TServer {
-  def name: String
-
   def apply(processor: thrift.TProcessor) = {
-    gizzard.thrift.TThreadServer(name, port, idleTimeout.inMillis.toInt, threadPool(), processor)
+    gizzard.thrift.TThreadServer(name, port, idleTimeout.inMillis.toInt, getPool, processor)
   }
 }
 
@@ -50,7 +55,7 @@ trait THsHaServer extends TServer {
       new thrift.transport.TFramedTransport.Factory(),
       new thrift.protocol.TBinaryProtocol.Factory(),
       new thrift.protocol.TBinaryProtocol.Factory(),
-      threadPool(),
+      getPool,
       options)
   }
 }

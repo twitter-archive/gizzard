@@ -20,7 +20,7 @@ trait Replica {
 
 trait Mysql extends Replica {
   def connection: Connection
-  def queryEvaluator: QueryEvaluator
+  var queryEvaluator: QueryEvaluator = new QueryEvaluator
 
   def apply() = new SqlShard(queryEvaluator()(connection))
 }
@@ -30,19 +30,23 @@ object Memory extends Replica {
 }
 
 
-trait JobRelay {
-  def priority: Int
-  def framed: Boolean
-  def timeout: Duration
+class JobRelay {
+  var priority: Int     = 0
+  var framed: Boolean   = true
+  var timeout: Duration = 1.seconds
 
-  def apply() = new nameserver.JobRelayFactory(priority, framed, timeout)
+  def apply() = new JobRelayFactory(priority, framed, timeout)
+}
+
+object NoJobRelay extends JobRelay {
+  override def apply() = NullJobRelayFactory
 }
 
 
 trait NameServer {
-  def mappingFunction: MappingFunction
+  var mappingFunction: MappingFunction = Identity
   def replicas: Seq[Replica]
-  def jobRelay: Option[JobRelay]
+  var jobRelay: JobRelay = new JobRelay
 
   protected def getMappingFunction: (Long => Long) = {
     mappingFunction match {
@@ -52,20 +56,14 @@ trait NameServer {
     }
   }
 
-  protected def getJobRelay = jobRelay match {
-    case Some(relay) => relay()
-    case None        => NullJobRelayFactory
-  }
-
   def apply[S <: shards.Shard](shardRepository: ShardRepository[S]) = {
-
     val replicaShards = replicas.map(_.apply())
     val shardInfo     = new ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer  = new LoadBalancer(replicaShards)
     val shard  = new ReadWriteShardAdapter(
       new ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, None))
 
-    new nameserver.NameServer(shard, shardRepository, getJobRelay, getMappingFunction)
+    new nameserver.NameServer(shard, shardRepository, jobRelay(), getMappingFunction)
   }
 }
 
@@ -88,19 +86,19 @@ trait NameServer {
  */
 
 class ConfiggyNameServer(config: ConfigMap) extends NameServer {
-  val mappingFunction = config.getString("mapping", "identity") match {
+  mappingFunction = config.getString("mapping", "identity") match {
     case "identity"     => Identity
     case "byte_swapper" => ByteSwapper
     case "fnv1a-64"     => Fnv1a64
   }
 
-  val jobRelay = config.getConfigMap("job_relay").map { relayConfig =>
+  jobRelay = config.getConfigMap("job_relay").map { relayConfig =>
     new JobRelay {
-      val priority = relayConfig.getInt("priority").get
-      val framed   = relayConfig.getBool("framed_transport", false)
-      val timeout  = relayConfig.getInt("timeout_msec", 1000).millis
+      priority = relayConfig.getInt("priority").get
+      framed   = relayConfig.getBool("framed_transport", false)
+      timeout  = relayConfig.getInt("timeout_msec", 1000).millis
     }
-  }
+  } getOrElse NoJobRelay
 
   val replicas = {
     val replicaConfig = config.configMap("replicas")
@@ -110,8 +108,8 @@ class ConfiggyNameServer(config: ConfigMap) extends NameServer {
       shardConfig.getString("type", "mysql") match {
         case "memory" => Memory
         case "mysql"  => new Mysql {
-          val queryEvaluator = new ConfiggyQueryEvaluator(config)
-          val connection     = new ConfiggyConnection(shardConfig)
+          queryEvaluator = new ConfiggyQueryEvaluator(config)
+          val connection = new ConfiggyConnection(shardConfig)
         }
       }
     }

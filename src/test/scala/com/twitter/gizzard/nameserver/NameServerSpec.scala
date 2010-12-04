@@ -45,9 +45,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "construct from config struct" in {
       val config = new gizzard.config.NameServer {
-        val mappingFunction = gizzard.config.Fnv1a64
-        val replicas        = List(gizzard.config.Memory)
-        val jobRelay        = None
+        mappingFunction = gizzard.config.Fnv1a64
+        val replicas    = List(gizzard.config.Memory)
       }
 
       val ns = config(shardRepository)
