@@ -7,7 +7,7 @@ import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.kestrel.PersistentQueue
 import net.lag.logging.Logger
-import shards.ShardRejectedOperationException
+import shards.{ShardBlackHoleException, ShardRejectedOperationException}
 
 object JobScheduler {
   /**
@@ -183,6 +183,8 @@ class JobScheduler[J <: Job](val name: String,
         job()
         Stats.incr("job-success-count")
       } catch {
+        case e: ShardBlackHoleException =>
+          Stats.incr("job-blackholed-count")
         case e: ShardRejectedOperationException =>
           Stats.incr("job-darkmoded-count")
           errorQueue.put(job)
