@@ -38,13 +38,13 @@ import org.specs.Specification
 //   }
 // }
 
-trait NameServerDatabase extends Specification with Database {
+trait NameServerDatabase extends Specification {
   def materialize(cfg: config.NameServer) {
     try {
       cfg.replicas.map {
         case mysql: config.Mysql => {
           val conn = mysql.connection
-          val evaluator = rootEvaluator(conn)
+          val evaluator = mysql.queryEvaluator()(conn.withoutDatabase)
           evaluator.execute("DROP DATABASE IF EXISTS " + conn.database)
           evaluator.execute("CREATE DATABASE " + conn.database)
         }
@@ -58,22 +58,15 @@ trait NameServerDatabase extends Specification with Database {
   }
 
   def evaluator(cfg: config.NameServer): QueryEvaluator = {
-    val connectionConfig = cfg.replicas.flatMap({
-      case m: config.Mysql => List(m)
+    cfg.replicas.flatMap({
+      case m: config.Mysql => Seq(m.queryEvaluator()(m.connection))
       case _ => Nil
-    }).first.connection
-
-    evaluator(connectionConfig)
+    }).first
   }
 
   def reset(cfg: config.NameServer) {
     try {
-      cfg.replicas.map {
-        case mysql: config.Mysql => {
-          reset(evaluator(mysql.connection))
-        }
-        case _ => ()
-      }
+      reset(evaluator(cfg))
     } catch {
       case e =>
         e.printStackTrace()
