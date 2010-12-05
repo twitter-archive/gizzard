@@ -18,7 +18,7 @@ trait BadJobConsumer {
   def apply[J <: Job](): JobConsumer[J]
 }
 
-trait JsonJobLogger extends BadJobConsumer {
+class JsonJobLogger extends BadJobConsumer {
   var name = "bad_jobs"
 
   // XXX: this method is not type safe. we need to remove
