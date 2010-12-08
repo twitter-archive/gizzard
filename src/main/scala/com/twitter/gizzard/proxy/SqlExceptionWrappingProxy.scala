@@ -1,6 +1,6 @@
 package com.twitter.gizzard.proxy
 
-import java.sql.SQLException
+import java.sql.{SQLException, SQLTransactionRollbackException}
 import shards.ShardId
 import scala.reflect.Manifest
 import com.mysql.jdbc.exceptions.MySQLTransientException
@@ -18,6 +18,8 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
     case e: MySQLTransientException =>
       throw new shards.NormalShardException(e.toString, shardId, null)
     case e: MySQLTransientException4 =>
+      throw new shards.NormalShardException(e.toString, shardId, null)
+    case e: SQLTransactionRollbackException =>
       throw new shards.NormalShardException(e.toString, shardId, null)
     case e: SQLException =>
       if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
@@ -42,6 +44,8 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
       case e: MySQLTransientException =>
         throw new shards.NormalShardException(e.toString, shardId, null)
       case e: MySQLTransientException4 =>
+        throw new shards.NormalShardException(e.toString, shardId, null)
+      case e: SQLTransactionRollbackException =>
         throw new shards.NormalShardException(e.toString, shardId, null)
       case e: SQLException =>
         if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
