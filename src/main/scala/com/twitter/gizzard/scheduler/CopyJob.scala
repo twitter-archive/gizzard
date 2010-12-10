@@ -21,7 +21,7 @@ trait CopyJobFactory[S <: Shard] extends ((ShardId, ShardId) => CopyJob[S])
  * shard ID, and count) are parsed out first, and the remaining attributes are passed to
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
-trait CopyJobParser[S <: Shard] extends JsonJobParser[JsonJob] {
+trait CopyJobParser[S <: Shard] extends JsonJobParser {
   def deserialize(attributes: Map[String, Any], sourceId: ShardId,
                   destinationId: ShardId, count: Int): CopyJob[S]
 

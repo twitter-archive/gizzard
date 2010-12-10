@@ -20,7 +20,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
 
     var jobsApplied = new AtomicInteger
 
-    val testJobParser = new JsonJobParser[JsonJob] {
+    val testJobParser = new JsonJobParser {
       def apply(json: Map[String, Any]) = new JsonJob {
         override def className = "TestJob"
         def apply() { jobsApplied.incrementAndGet }
@@ -42,7 +42,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
       1 -> schedulerConfig(codec)
     ))
 
-    val service   = new JobInjectorService[JsonJob](codec, scheduler)
+    val service   = new JobInjectorService(codec, scheduler)
     val processor = new JobInjector.Processor(service)
     val server    = TThreadServer("injector", port, 500, TThreadServer.makeThreadPool("injector", 5), processor)
 

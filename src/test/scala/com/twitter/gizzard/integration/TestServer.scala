@@ -204,7 +204,7 @@ extends TestShard {
 
 // Jobs
 
-class PutParser(forwarding: Long => TestShard) extends JsonJobParser[JsonJob] {
+class PutParser(forwarding: Long => TestShard) extends JsonJobParser {
   def apply(map: Map[String, Any]): JsonJob = {
     new PutJob(map("key").asInstanceOf[Int], map("value").asInstanceOf[String], forwarding)
   }
