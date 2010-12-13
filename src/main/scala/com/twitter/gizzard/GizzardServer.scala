@@ -25,7 +25,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
 
   // nameserver/shard wiring
 
-  val replicationFuture: Option[Future] = None
+  def replicationFuture: Option[Future] = None
   lazy val shardRepo    = new BasicShardRepository[S](readWriteShardAdapter, replicationFuture)
   lazy val nameServer   = config.nameServer(shardRepo)
 
