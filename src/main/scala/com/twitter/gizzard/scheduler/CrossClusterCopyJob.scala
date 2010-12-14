@@ -4,88 +4,91 @@ import com.twitter.ostrich.Stats
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
-import shards.{Shard, CopyableShard, CopyPage, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards._
 
 
-case class RemoteShardId(id: ShardId, cluster: String)
-
-class CrossClusterCopyJobFactory[S <: CopyableShard[_]](
+class CrossClusterCopyJobFactory[S <: Shard](
   ns: NameServer[S],
   s: JobScheduler[JsonJob],
-  count: Int)
-extends ((ShardId, RemoteShardId) => CrossClusterCopyJob[S]) {
-  def apply(sourceId: ShardId, destId: RemoteShardId) = {
-    new CrossClusterCopyReadJob(sourceId, destId, None, count, ns, s)
-  }
-}
+  count: Int,
+  shardReader: ((S, Option[Map[String,Any]], Int) => (Map[String,Any], Option[Map[String,Any]])),
+  shardWriter: ((S, Map[String,Any]) => Unit))
+{
+  private def writeJobFactory(sourceId: ShardId, destId: RemoteShardId, data: Map[String,Any], nextCursor: Option[Map[String,Any]], count: Int) = {
+    new CrossClusterCopyWriteJob(sourceId, destId, data, nextCursor, count, ns, s, shardWriter)
 
-abstract class CrossClusterCopyJobParser[S <: CopyableShard[_]] extends JsonJobParser {
+  }
+
+  private def readJobFactory(sourceId: ShardId, destId: RemoteShardId, cursor: Option[Map[String,Any]], count: Int) = {
+    new CrossClusterCopyReadJob(sourceId, destId, cursor, count, ns, s, shardReader, shardWriter)
+  }
+
+  def apply(sourceId: ShardId, destId: RemoteShardId) = {
+    readJobFactory(sourceId, destId, None, count)
+  }
+
   protected def cursorFromMap(m: Map[String,Any], key: String) = {
     m.get(key).map(_.asInstanceOf[Map[String,Any]])
   }
 
+  protected case class BaseData(
+    sourceId: ShardId,
+    destId: RemoteShardId,
+    count: Int,
+    cursor: Option[Map[String,Any]],
+    nextCursor: Option[Map[String,Any]]
+  )
+
   protected def baseDataFromMap(m: Map[String,Any]) = {
-    val sourceId = ShardId(m("source_shard_hostname").toString, m("source_shard_table_prefix").toString)
-    val destId   = RemoteShardId(
+    val count      = m("count").asInstanceOf[{def toInt: Int}].toInt
+    val cursor     = cursorFromMap(m, "cursor")
+    val nextCursor = cursorFromMap(m, "next_cursor")
+    val sourceId   = ShardId(m("source_shard_hostname").toString, m("source_shard_table_prefix").toString)
+    val destId     = RemoteShardId(
       ShardId(m("destination_shard_hostname").toString, m("destination_shard_table_prefix").toString),
       m("destination_cluster").toString)
-    val count    = m("count").asInstanceOf[{def toInt: Int}].toInt
 
-    (sourceId, destId, count)
+    BaseData(sourceId, destId, count, cursor, nextCursor)
   }
 
-  def apply(attrs: Map[String,Any]): CrossClusterCopyJob[S]
-}
+  lazy val writeParser = new JsonJobParser {
+    def apply(attrs: Map[String,Any]) = {
+      val data     = baseDataFromMap(attrs)
+      val pageData = attrs("data").asInstanceOf[Map[String,Any]]
 
-
-class CrossClusterCopyReadJobParser[S <: CopyableShard[_]](
-  ns: NameServer[S],
-  s: JobScheduler[JsonJob])
-extends CrossClusterCopyJobParser[S] {
-  private lazy val writeJobParser = new CrossClusterCopyWriteJobParser(ns,s)
-
-  def apply(attrs: Map[String,Any]) = {
-    val (sourceId, destId, count) = baseDataFromMap(attrs)
-
-    val cursor = cursorFromMap(attrs, "cursor")
-    val job    = new CrossClusterCopyReadJob[S](sourceId, destId, cursor, count, ns, s)
-
-    job.nextCursorOpt = cursorFromMap(attrs, "next_cursor")
-    job.writeJobOpt   = attrs.get("write_job").map(_.asInstanceOf[Map[String,Any]]).map(writeJobParser.parse).map(_.asInstanceOf[CrossClusterCopyWriteJob[S]])
-
-    job
+      writeJobFactory(data.sourceId, data.destId, pageData, data.nextCursor, data.count)
+    }
   }
-}
 
-class CrossClusterCopyWriteJobParser[S <: CopyableShard[_]](
-  ns: NameServer[S],
-  s: JobScheduler[JsonJob])
-extends CrossClusterCopyJobParser[S] {
+  lazy val readParser = new JsonJobParser {
+    def apply(attrs: Map[String,Any]) = {
+      val data   = baseDataFromMap(attrs)
+      val cursor = data.cursor.get
+      val job    = readJobFactory(data.sourceId, data.destId, Some(cursor), data.count)
 
-  def apply(attrs: Map[String,Any]) = {
-    val (sourceId, destId, count) = baseDataFromMap(attrs)
+      job.nextCursorOpt = data.nextCursor
+      job.writeJobOpt   = attrs.get("write_job").map(_.asInstanceOf[Map[String,Any]]).map(writeParser.parse).map(_.asInstanceOf[CrossClusterCopyWriteJob[S]])
 
-    val pageData   = attrs("data").asInstanceOf[Map[String,Any]]
-    val nextCursor = cursorFromMap(attrs, "next_cursor")
-
-    new CrossClusterCopyWriteJob(sourceId, destId, count, pageData, nextCursor, ns, s)
+      job
+    }
   }
 }
 
 
-abstract class CrossClusterCopyJob[S <: CopyableShard[_]](
+abstract class CrossClusterCopyJob[S <: Shard](
   sourceId: ShardId,
   destId: RemoteShardId,
   count: Int,
   nameServer: NameServer[S],
   scheduler: JobScheduler[JsonJob])
 extends JsonJob {
-  protected val log = Logger.get(getClass.getName)
-
-  override def shouldReplicate = false
 
   protected def phase: String
   protected def applyPage(): Unit
+
+  protected val log = Logger.get(getClass.getName)
+
+  override def shouldReplicate = false
 
   protected def optMap[A](pairs: (String, Option[A])*) = Map(pairs flatMap {
     case (key, opt) => opt.map(key -> _).toList
@@ -106,7 +109,7 @@ extends JsonJob {
     Stats.clearGauge(gaugeName)
   }
 
-  protected def gaugeName = List("x-cross-cluster", phase, sourceId, destId).mkString("-")
+  protected def gaugeName = Array("x-cross-cluster", phase, sourceId, destId).mkString("-")
 
   protected def incrGauge = {
     Stats.setGauge(gaugeName, Stats.getGauge(gaugeName).getOrElse(0.0) + count)
@@ -132,57 +135,46 @@ extends JsonJob {
   }
 }
 
-class CrossClusterCopyWriteJob[S <: CopyableShard[_]](
-  sourceId: ShardId,
-  destId: RemoteShardId,
-  count: Int,
-  pageData: Map[String,Any],
-  nextCursor: Option[Map[String,Any]],
-  ns: NameServer[S],
-  s: JobScheduler[JsonJob])
-extends CrossClusterCopyJob[S](sourceId, destId, count, ns, s) {
-
-  protected def phase = "write"
-
-  def toMap = baseMap ++ Map("data" -> pageData) ++ optMap("next_cursor" -> nextCursor)
-
-  def applyPage() {
-    val dest = ns.findShardById(destId.id)
-    dest.writeSerializedPage(pageData)
-
-    if (nextCursor.isEmpty) finish()
-  }
-}
-
-
-class CrossClusterCopyReadJob[S <: CopyableShard[_]](
+class CrossClusterCopyReadJob[S <: Shard](
   sourceId: ShardId,
   destId: RemoteShardId,
   cursor: Option[Map[String,Any]],
   var count: Int,
   nameServer: NameServer[S],
-  scheduler: JobScheduler[JsonJob])
+  scheduler: JobScheduler[JsonJob],
+  readData: ((S, Option[Map[String,Any]], Int) => (Map[String,Any], Option[Map[String,Any]])),
+  writeData: ((S, Map[String,Any]) => Unit))
 extends CrossClusterCopyJob[S](sourceId, destId, count, nameServer, scheduler) {
 
   protected def phase = "read"
 
-  type Cursor = Map[String,Any]
-  type SerializedPage = Map[String,Any]
+  private def newWriteJob(data: Map[String,Any], nextCursor: Option[Map[String,Any]]) = {
+    new CrossClusterCopyWriteJob(sourceId, destId, data, nextCursor, count, nameServer, scheduler, writeData)
+  }
+
+  private def newReadJob(cursor: Map[String,Any]): CrossClusterCopyReadJob[S] = {
+    new CrossClusterCopyReadJob(sourceId, destId, Some(cursor), count, nameServer, scheduler, readData, writeData)
+  }
 
   var writeJobOpt: Option[CrossClusterCopyWriteJob[S]] = None
-  var nextCursorOpt: Option[Cursor] = None
+  var nextCursorOpt: Option[Map[String,Any]] = None
 
   def writeJob = {
     writeJobOpt getOrElse {
       val source                 = nameServer.findShardById(sourceId)
-      val (pageData, nextCursor) = source.readSerializedPage(cursor, count)
+      val (pageData, nextCursor) = readData(source, cursor, count)
 
-      val job = new CrossClusterCopyWriteJob(sourceId, destId, count, pageData, nextCursor, nameServer, scheduler)
+      val job = newWriteJob(pageData, nextCursor)
 
       nextCursorOpt = nextCursor
       writeJobOpt   = Some(job)
       job
     }
+  }
+
+  def nextCursor = {
+    if (nextCursorOpt.isEmpty) writeJob
+    nextCursorOpt
   }
 
   def applyPage() {
@@ -198,15 +190,10 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, nameServer, scheduler) {
     nextCursor match {
       case Some(c) =>
         incrGauge
-        scheduler.put(new CrossClusterCopyReadJob(sourceId, destId, Some(c), count, nameServer, scheduler))
+        scheduler.put(newReadJob(c))
       case None =>
         finish()
     }
-  }
-
-  def nextCursor = {
-    if (nextCursorOpt.isEmpty) writeJob
-    nextCursorOpt
   }
 
   def toMap = {
@@ -215,7 +202,47 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, nameServer, scheduler) {
       "write_job"   -> writeJobOpt.map(_.toMap),
       "next_cursor" -> nextCursorOpt)
   }
-
-
 }
+
+
+class CrossClusterCopyWriteJob[S <: Shard](
+  sourceId: ShardId,
+  destId: RemoteShardId,
+  pageData: Map[String,Any],
+  nextCursor: Option[Map[String,Any]],
+  count: Int,
+  ns: NameServer[S],
+  s: JobScheduler[JsonJob],
+  writeData: ((S, Map[String,Any]) => Unit))
+extends CrossClusterCopyJob[S](sourceId, destId, count, ns, s) {
+
+  protected def phase = "write"
+  def toMap = baseMap ++ Map("data" -> pageData) ++ optMap("next_cursor" -> nextCursor)
+
+  protected def applyPage() {
+    val dest = ns.findShardById(destId.id)
+    writeData(dest, pageData)
+
+    if (nextCursor.isEmpty) finish()
+  }
+}
+
+
+
+
+
+/*
+ * Concrete cross-cluster copy support for copyable shards
+ */
+
+class BasicCrossClusterCopy[S <: CopyableShard[_]] {
+  def shardReader(shard: S, cursor: Option[Map[String,Any]], count: Int) = {
+    shard.readSerializedPage(cursor, count)
+  }
+
+  def shardWriter(shard: S, data: Map[String,Any]) {
+    shard.writeSerializedPage(data)
+  }
+}
+
 

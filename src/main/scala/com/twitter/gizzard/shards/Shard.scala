@@ -12,10 +12,8 @@ trait CopyPage {
 }
 
 trait CopyableShard[P <: CopyPage] extends Shard {
-  type Cursor = Map[String,Any]
-
-  def readPage(cursor: Option[Cursor], count: Int): (P, Option[Cursor])
-  def readSerializedPage(cursor: Option[Cursor], count: Int): (Map[String,Any], Option[Cursor]) = {
+  def readPage(cursor: Option[Map[String,Any]], count: Int): (P, Option[Map[String,Any]])
+  def readSerializedPage(cursor: Option[Map[String,Any]], count: Int): (Map[String,Any], Option[Map[String,Any]]) = {
     val (page, nextCursor) = readPage(cursor, count)
     (page.deflate, nextCursor)
   }
@@ -23,7 +21,7 @@ trait CopyableShard[P <: CopyPage] extends Shard {
   def writePage(page: P): Unit
   def writeSerializedPage(page: Map[String,Any])
 
-  def copyPage(dest: CopyableShard[P], cursor: Option[Cursor], count: Int) = {
+  def copyPage(dest: CopyableShard[P], cursor: Option[Map[String,Any]], count: Int) = {
     val (page, nextCursor) = readPage(cursor, count)
     dest.writePage(page)
     nextCursor

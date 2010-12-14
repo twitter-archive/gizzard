@@ -1,5 +1,9 @@
 package com.twitter.gizzard.shards
 
+case class RemoteShardId(id: ShardId, cluster: String) {
+  override def toString = cluster + "/" + id.toString
+}
+
 case class ShardId(val hostname: String, val tablePrefix: String) {
   validateTablePrefix()
 
