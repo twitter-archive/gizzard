@@ -4,7 +4,7 @@ import com.twitter.ostrich.Stats
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
-import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards.{Shard, CopyableShard, CopyPage, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 object CopyJob {
   val MIN_COPY = 500
@@ -42,12 +42,13 @@ trait CopyJobParser[S <: Shard] extends JsonJobParser {
  * 'copyPage' is called to do the actual data copying. It should return a new CopyJob representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class CopyJob[S <: Shard](sourceId: ShardId,
-                                        destinationId: ShardId,
-                                        var count: Int,
-                                        nameServer: NameServer[S],
-                                        scheduler: JobScheduler[JsonJob])
-         extends JsonJob {
+abstract case class CopyJob[S <: Shard](
+  sourceId: ShardId,
+  destinationId: ShardId,
+  var count: Int,
+  nameServer: NameServer[S],
+  scheduler: JobScheduler[JsonJob])
+extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
   override def shouldReplicate = false
@@ -112,4 +113,42 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
   def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[CopyJob[S]]
 
   def serialize: Map[String, Any]
+}
+
+
+class BasicCopyJobFactory[P <: CopyPage, S <: CopyableShard[P]](
+  ns: NameServer[S],
+  s: JobScheduler[JsonJob],
+  count: Int)
+extends CopyJobFactory[S] {
+  def apply(sourceId: ShardId, destId: ShardId) = {
+    new BasicCopyJob[P,S](sourceId, destId, None, count, ns, s)
+  }
+}
+
+class BasicCopyJobParser[P <: CopyPage, S <: CopyableShard[P]](
+  ns: NameServer[S],
+  s: JobScheduler[JsonJob])
+extends CopyJobParser[S] {
+  def deserialize(attrs: Map[String, Any], sourceId: ShardId, destId: ShardId, count: Int) = {
+    val cursor = attrs("cursor").asInstanceOf[Map[String,Any]]
+    new BasicCopyJob[P,S](sourceId, destId, Some(cursor), count, ns, s)
+  }
+}
+
+class BasicCopyJob[P <: CopyPage, S <: CopyableShard[P]](
+  sourceId: ShardId,
+  destId: ShardId,
+  cursor: Option[Map[String, Any]],
+  count: Int,
+  nameServer: NameServer[S],
+  scheduler: JobScheduler[JsonJob])
+extends CopyJob[S](sourceId, destId, count, nameServer, scheduler) {
+
+  def serialize = Map("cursor" -> cursor)
+
+  def copyPage(source: S, dest: S, count: Int) = {
+    val nextCursor = source.copyPage(dest, cursor, count)
+    nextCursor.map(c => new BasicCopyJob[P,S](sourceId, destId, Some(c), count, nameServer, scheduler))
+  }
 }
