@@ -9,13 +9,20 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler}
+import com.twitter.gizzard.scheduler._
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) extends Manager.Iface {
+class ManagerService[S <: shards.Shard, J <: JsonJob](
+  nameServer: NameServer[S],
+  copier: CopyJobFactory[S],
+  remoteCopier: Option[CrossClusterCopyJobFactory[S]],
+  scheduler: PrioritizingJobScheduler[J],
+  copyScheduler: JobScheduler[JsonJob])
+ extends Manager.Iface {
+
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -97,6 +104,16 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   }
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
     wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
+  }
+  def copy_shard_to_cluster(sourceId: ShardId, destinationId: ShardId, cluster: String) = {
+    wrapEx {
+      val destRemoteId = RemoteShardId(destinationId.fromThrift, cluster)
+
+      remoteCopier match {
+        case Some(c) => copyScheduler.put(c(sourceId.fromThrift, destRemoteId))
+        case None    => error("Cross-cluster copying not configured.")
+      }
+    }
   }
 
 

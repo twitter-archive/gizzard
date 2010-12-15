@@ -83,6 +83,7 @@ service Manager {
 
   void mark_shard_busy(1: ShardId id, 2: i32 busy) throws(1: GizzardException ex)
   void copy_shard(1: ShardId source_id, 2: ShardId destination_id) throws(1: GizzardException ex)
+  void copy_shard_to_cluster(1: ShardId source_id, 2: ShardId destination_id, 3: string cluster) throws(1: GizzardException ex)
 
 
   // job scheduler management

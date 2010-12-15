@@ -4,11 +4,31 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
-import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec}
-import shards.{Shard, ReadWriteShard}
+import scheduler._
+import shards.{Shard, CopyableShard, ReadWriteShard}
 
 
-abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.GizzardServer) {
+abstract class GizzardServer[S <: CopyableShard[_,S]](config: gizzard.config.GizzardServer)
+extends BaseGizzardServer[S, JsonJob](config) {
+  def defaultCopyCount = 10000
+
+  lazy val copyFactory = new BasicCopyJobFactory(
+    nameServer,
+    jobScheduler(copyPriority),
+    defaultCopyCount
+  )
+
+  override lazy val remoteCopyFactory = Some(new CrossClusterCopyJobFactory(
+    nameServer,
+    jobScheduler(copyPriority),
+    defaultCopyCount,
+    new CopyableShardReader[S],
+    new CopyableShardWriter[S]
+  ))
+
+}
+
+abstract class BaseGizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.GizzardServer) {
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
@@ -17,6 +37,8 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
   def start(): Unit
   def shutdown(quiesce: Boolean): Unit
   def shutdown() { shutdown(false) }
+
+  def remoteCopyFactory: Option[CrossClusterCopyJobFactory[S]] = None
 
   // setup logging
 
@@ -45,7 +67,11 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, copyFactory, jobScheduler, copyScheduler)
+  lazy val managerServer = new thrift.ManagerService(nameServer,
+                                                     copyFactory,
+                                                     remoteCopyFactory,
+                                                     jobScheduler,
+                                                     copyScheduler)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)

@@ -11,20 +11,20 @@ class CrossClusterCopyJobFactory[S <: Shard](
   ns: NameServer[S],
   s: JobScheduler[JsonJob],
   count: Int,
-  shardReader: ((S, Option[Map[String,Any]], Int) => (Map[String,Any], Option[Map[String,Any]])),
-  shardWriter: ((S, Map[String,Any]) => Unit))
-{
+  shardReader: (S, Option[Map[String,Any]], Int) => (Map[String,Any], Option[Map[String,Any]]),
+  shardWriter: (S, Map[String,Any]) => Unit)
+extends ((ShardId, RemoteShardId) => JsonJob) {
+
+  def apply(sourceId: ShardId, destId: RemoteShardId) = {
+    readJobFactory(sourceId, destId, None, count)
+  }
+
   private def writeJobFactory(sourceId: ShardId, destId: RemoteShardId, data: Map[String,Any], nextCursor: Option[Map[String,Any]], count: Int) = {
     new CrossClusterCopyWriteJob(sourceId, destId, data, nextCursor, count, ns, s, shardWriter)
-
   }
 
   private def readJobFactory(sourceId: ShardId, destId: RemoteShardId, cursor: Option[Map[String,Any]], count: Int) = {
     new CrossClusterCopyReadJob(sourceId, destId, cursor, count, ns, s, shardReader, shardWriter)
-  }
-
-  def apply(sourceId: ShardId, destId: RemoteShardId) = {
-    readJobFactory(sourceId, destId, None, count)
   }
 
   protected def cursorFromMap(m: Map[String,Any], key: String) = {
@@ -67,7 +67,10 @@ class CrossClusterCopyJobFactory[S <: Shard](
       val job    = readJobFactory(data.sourceId, data.destId, Some(cursor), data.count)
 
       job.nextCursorOpt = data.nextCursor
-      job.writeJobOpt   = attrs.get("write_job").map(_.asInstanceOf[Map[String,Any]]).map(writeParser.parse).map(_.asInstanceOf[CrossClusterCopyWriteJob[S]])
+      job.writeJobOpt   = attrs.get("write_job").map { m =>
+        val j = writeParser.parse(m.asInstanceOf[Map[String,Any]])
+        j.asInstanceOf[CrossClusterCopyWriteJob[S]]
+      }
 
       job
     }
@@ -235,12 +238,15 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, ns, s) {
  * Concrete cross-cluster copy support for copyable shards
  */
 
-class BasicCrossClusterCopy[S <: CopyableShard[_]] {
-  def shardReader(shard: S, cursor: Option[Map[String,Any]], count: Int) = {
+class CopyableShardReader[S <: CopyableShard[_,_]]
+extends((S, Option[Map[String,Any]], Int) => (Map[String,Any], Option[Map[String,Any]])) {
+  def apply(shard: S, cursor: Option[Map[String,Any]], count: Int) = {
     shard.readSerializedPage(cursor, count)
   }
+}
 
-  def shardWriter(shard: S, data: Map[String,Any]) {
+class CopyableShardWriter[S <: CopyableShard[_,_]] extends ((S, Map[String,Any]) => Unit) {
+  def apply(shard: S, data: Map[String,Any]) {
     shard.writeSerializedPage(data)
   }
 }

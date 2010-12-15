@@ -116,27 +116,27 @@ extends JsonJob {
 }
 
 
-class BasicCopyJobFactory[P <: CopyPage, S <: CopyableShard[P]](
+class BasicCopyJobFactory[S <: CopyableShard[_,S]](
   ns: NameServer[S],
   s: JobScheduler[JsonJob],
   count: Int)
 extends CopyJobFactory[S] {
   def apply(sourceId: ShardId, destId: ShardId) = {
-    new BasicCopyJob[P,S](sourceId, destId, None, count, ns, s)
+    new BasicCopyJob[S](sourceId, destId, None, count, ns, s)
   }
 }
 
-class BasicCopyJobParser[P <: CopyPage, S <: CopyableShard[P]](
+class BasicCopyJobParser[S <: CopyableShard[_,S]](
   ns: NameServer[S],
   s: JobScheduler[JsonJob])
 extends CopyJobParser[S] {
   def deserialize(attrs: Map[String, Any], sourceId: ShardId, destId: ShardId, count: Int) = {
     val cursor = attrs("cursor").asInstanceOf[Map[String,Any]]
-    new BasicCopyJob[P,S](sourceId, destId, Some(cursor), count, ns, s)
+    new BasicCopyJob[S](sourceId, destId, Some(cursor), count, ns, s)
   }
 }
 
-class BasicCopyJob[P <: CopyPage, S <: CopyableShard[P]](
+class BasicCopyJob[S <: CopyableShard[_,S]](
   sourceId: ShardId,
   destId: ShardId,
   cursor: Option[Map[String, Any]],
@@ -149,6 +149,6 @@ extends CopyJob[S](sourceId, destId, count, nameServer, scheduler) {
 
   def copyPage(source: S, dest: S, count: Int) = {
     val nextCursor = source.copyPage(dest, cursor, count)
-    nextCursor.map(c => new BasicCopyJob[P,S](sourceId, destId, Some(c), count, nameServer, scheduler))
+    nextCursor.map(c => new BasicCopyJob[S](sourceId, destId, Some(c), count, nameServer, scheduler))
   }
 }
