@@ -220,7 +220,6 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, ns, s) {
   def toMap = baseMap ++ Map("data" -> pageData) ++ optMap("next_cursor" -> nextCursor)
 
   protected def applyPage() {
-    println("write job applied")
     val dest = ns.findShardById(destId.id)
     writeData(dest, pageData)
 
