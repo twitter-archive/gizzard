@@ -108,5 +108,30 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       client2.get(1) mustEqual List[TestResult]().toJavaList
     }
+
+    "remote copy shard data" in {
+      startServers(servers: _*)
+
+      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Blackholed)
+      server1.nameServer.reload()
+
+      client1.put(1, "foo")
+      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+
+      client2.get(1) mustEqual List[TestResult]().toJavaList
+
+      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.nameServer.reload()
+
+      // FIXME: integration harness should expose the management interface
+      //        so that job wiring is not needed to be done directly.
+      val sourceId = server1.sqlShardInfo.id
+      val destId   = server2.sqlShardInfo.id
+      val job      = server1.remoteCopyFactory.get(sourceId, shards.RemoteShardId(destId, "c2"))
+      server1.jobScheduler(server1.copyPriority).put(job)
+
+      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+    }
   }
 }
