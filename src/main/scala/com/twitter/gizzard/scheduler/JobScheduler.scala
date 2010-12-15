@@ -210,6 +210,7 @@ class JobScheduler[J <: Job](val name: String,
             case e: NormalShardException =>
               Stats.incr("job-error-count")
               log.error("Error in Job: %s - %s", job, e)
+              errorQueue.put(job)
             case e =>
               Stats.incr("job-error-count")
               log.error(e, "Error in Job: %s - %s", job, e)
