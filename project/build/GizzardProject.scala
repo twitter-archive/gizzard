@@ -4,7 +4,7 @@ import com.twitter.sbt._
 class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher with InlineDependencies {
   inline("net.lag" % "configgy" % "1.6.8"      )
   inline("net.lag" % "kestrel" % "1.2.6"       )
-  inline("com.twitter" % "ostrich" % "1.2.12"  )
+  inline("com.twitter" % "ostrich" % "1.2.14"  )
   inline("com.twitter" %% "querulous" % "1.4.3")
   inline("com.twitter" % "json" % "1.1.7"      )
   val xrayspecs = "com.twitter" % "xrayspecs" % "1.0.7"
