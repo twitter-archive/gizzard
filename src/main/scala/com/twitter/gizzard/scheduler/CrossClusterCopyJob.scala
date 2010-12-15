@@ -62,9 +62,8 @@ extends ((ShardId, RemoteShardId) => JsonJob) {
 
   lazy val readParser = new JsonJobParser {
     def apply(attrs: Map[String,Any]) = {
-      val data   = baseDataFromMap(attrs)
-      val cursor = data.cursor.get
-      val job    = readJobFactory(data.sourceId, data.destId, Some(cursor), data.count)
+      val data = baseDataFromMap(attrs)
+      val job  = readJobFactory(data.sourceId, data.destId, data.cursor, data.count)
 
       job.nextCursorOpt = data.nextCursor
       job.writeJobOpt   = attrs.get("write_job").map { m =>
