@@ -232,11 +232,13 @@ extends TestShard {
 
   def put(key: Int, value: String) { evaluator.execute(putSql, key, value) }
   def putAll(kvs: Seq[(Int, String)]) {
-    evaluator.executeBatch(putSql) { b => for ((k,v) <- kvs) b(k,v) }
+    if (!kvs.isEmpty) {
+      evaluator.executeBatch(putSql) { b => for ((k,v) <- kvs) b(k,v) }
+    }
   }
 
   def get(key: Int) = evaluator.selectOne(getSql, key)(asResult)
-  def getAll(key: Int, count: Int) = evaluator.select(getSql, key, count)(asResult)
+  def getAll(key: Int, count: Int) = evaluator.select(getAllSql, key, count)(asResult)
 }
 
 
