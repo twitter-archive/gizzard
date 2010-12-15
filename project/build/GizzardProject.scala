@@ -2,7 +2,7 @@ import sbt._
 import com.twitter.sbt._
 
 class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher with InlineDependencies {
-  inline("net.lag" % "configgy" % "1.6.8"      )
+  inline("net.lag" % "configgy" % "1.6.9"      )
   inline("net.lag" % "kestrel" % "1.2.6"       )
   inline("com.twitter" % "ostrich" % "1.2.14"  )
   inline("com.twitter" %% "querulous" % "1.4.3")
