@@ -12,12 +12,12 @@ import com.twitter.util.Duration
 import net.lag.logging.Logger
 
 
-class ReplicatingShardFactory[ConcreteShard <: Shard](
-      readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
+class ReplicatingShardFactory[S <: Shard](
+      readWriteShardAdapter: ReadWriteShard[S] => S,
       future: Option[Future])
-  extends shards.ShardFactory[ConcreteShard] {
+  extends shards.ShardFactory[S] {
 
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[S]) =
     readWriteShardAdapter(new ReplicatingShard(
       shardInfo,
       weight,
@@ -29,17 +29,17 @@ class ReplicatingShardFactory[ConcreteShard <: Shard](
   def materialize(shardInfo: shards.ShardInfo) = ()
 }
 
-class ReplicatingShard[ConcreteShard <: Shard](
+class ReplicatingShard[S <: Shard](
       val shardInfo: ShardInfo,
       val weight: Int,
-      val children: Seq[ConcreteShard],
-      val loadBalancer: (() => Seq[ConcreteShard]),
+      val children: Seq[S],
+      val loadBalancer: (() => Seq[S]),
       val future: Option[Future])
-  extends ReadWriteShard[ConcreteShard] {
+  extends ReadWriteShard[S] {
 
-  def readOperation[A](method: (ConcreteShard => A)) = failover(method(_), loadBalancer())
-  def writeOperation[A](method: (ConcreteShard => A)) = fanoutWrite(method, children)
-  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
+  def readOperation[A](method: (S => A)) = failover(method(_), loadBalancer())
+  def writeOperation[A](method: (S => A)) = fanoutWrite(method, children)
+  def rebuildableReadOperation[A](method: (S => Option[A]))(rebuild: (S, S) => Unit) =
     rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
 
   lazy val log = Logger.get
@@ -56,7 +56,7 @@ class ReplicatingShard[ConcreteShard <: Shard](
     }
   }
 
-  protected def fanoutWriteFuture[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard], future: Future): A = {
+  protected def fanoutWriteFuture[A](method: (S => A), replicas: Seq[S], future: Future): A = {
     val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
@@ -82,7 +82,7 @@ class ReplicatingShard[ConcreteShard <: Shard](
     results.first
   }
 
-  protected def fanoutWriteSerial[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
+  protected def fanoutWriteSerial[A](method: (S => A), replicas: Seq[S]): A = {
     val results = replicas.flatMap { shard =>
       try {
         Some(method(shard))
@@ -97,14 +97,14 @@ class ReplicatingShard[ConcreteShard <: Shard](
     results.first
   }
 
-  protected def fanoutWrite[A](method: (ConcreteShard => A), replicas: Seq[ConcreteShard]): A = {
+  protected def fanoutWrite[A](method: (S => A), replicas: Seq[S]): A = {
     future match {
       case None => fanoutWriteSerial(method, replicas)
       case Some(f) => fanoutWriteFuture(method, replicas, f)
     }
   }
 
-  protected def failover[A](f: ConcreteShard => A, replicas: Seq[ConcreteShard]): A = {
+  protected def failover[A](f: S => A, replicas: Seq[S]): A = {
     replicas match {
       case Seq() =>
         throw new ShardOfflineException(shardInfo.id)
@@ -121,8 +121,8 @@ class ReplicatingShard[ConcreteShard <: Shard](
       }
   }
 
-  protected def rebuildableFailover[A](f: ConcreteShard => Option[A], rebuild: (ConcreteShard, ConcreteShard) => Unit,
-                                       replicas: Seq[ConcreteShard], toRebuild: List[ConcreteShard],
+  protected def rebuildableFailover[A](f: S => Option[A], rebuild: (S, S) => Unit,
+                                       replicas: Seq[S], toRebuild: List[S],
                                        everSuccessful: Boolean): Option[A] = {
     replicas match {
       case Seq() =>
