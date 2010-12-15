@@ -12,7 +12,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     val client1 :: client2 :: client3 :: _ = clients
 
     val hostFor1 :: hostFor2 :: hostFor3 :: _ = List(server1, server2, server3).map { s =>
-      nameserver.Host("localhost", s.injectorPort, "c" + s.enum, nameserver.HostStatus.Normal)
+      nameserver.Host("localhost", s.injectorPort, s.cluster, nameserver.HostStatus.Normal)
     }
 
     doBefore {

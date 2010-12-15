@@ -5,27 +5,43 @@ import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
 import scheduler._
-import shards.{Shard, CopyableShard, ReadWriteShard}
+import shards.{Shard, ShardCopyAdapter, ReadWriteShard}
 
 
-abstract class GizzardServer[S <: CopyableShard[_,S]](config: gizzard.config.GizzardServer)
+abstract class GizzardServer[S <: Shard](config: gizzard.config.GizzardServer)
 extends BaseGizzardServer[S, JsonJob](config) {
+
+  def copyAdapter: ShardCopyAdapter[S]
+
   def defaultCopyCount = 10000
 
-  lazy val copyFactory = new BasicCopyJobFactory(
-    nameServer,
-    jobScheduler(copyPriority),
-    defaultCopyCount
-  )
+  lazy val copyFactory = {
+    val factory = new BasicCopyJobFactory(
+      defaultCopyCount,
+      nameServer,
+      jobScheduler(copyPriority),
+      copyAdapter.copyPage
+    )
 
-  override lazy val remoteCopyFactory = Some(new CrossClusterCopyJobFactory(
-    nameServer,
-    jobScheduler(copyPriority),
-    defaultCopyCount,
-    new CopyableShardReader[S],
-    new CopyableShardWriter[S]
-  ))
+    jobCodec += ("BasicCopyJob".r -> factory.parser)
 
+    factory
+  }
+
+  override lazy val remoteCopyFactory = {
+    val factory = new CrossClusterCopyJobFactory(
+      nameServer,
+      jobScheduler(copyPriority),
+      defaultCopyCount,
+      copyAdapter.readPage,
+      copyAdapter.writePage
+    )
+
+    jobCodec += ("CrossClusterCopyWriteJob".r -> factory.writeParser)
+    jobCodec += ("CrossClusterCopyReadJob".r -> factory.readParser)
+
+    Some(factory)
+  }
 }
 
 abstract class BaseGizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.GizzardServer) {

@@ -4,7 +4,7 @@ import com.twitter.ostrich.Stats
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
-import shards.{Shard, CopyableShard, CopyPage, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards._
 
 object CopyJob {
   val MIN_COPY = 500
@@ -116,39 +116,40 @@ extends JsonJob {
 }
 
 
-class BasicCopyJobFactory[S <: CopyableShard[_,S]](
+class BasicCopyJobFactory[S <: Shard](
+  defaultCount: Int,
   ns: NameServer[S],
   s: JobScheduler[JsonJob],
-  count: Int)
+  copyAdapter: (S, S, Option[Map[String,Any]], Int) => Option[Map[String,Any]])
 extends CopyJobFactory[S] {
+
   def apply(sourceId: ShardId, destId: ShardId) = {
-    new BasicCopyJob[S](sourceId, destId, None, count, ns, s)
+    new BasicCopyJob(sourceId, destId, None, defaultCount, ns, s, copyAdapter)
+  }
+
+  def parser = new CopyJobParser[S] {
+    def deserialize(attrs: Map[String, Any], sourceId: ShardId, destId: ShardId, count: Int) = {
+      val cursor = attrs("cursor").asInstanceOf[Map[String,Any]]
+      new BasicCopyJob(sourceId, destId, Some(cursor), count, ns, s, copyAdapter)
+    }
   }
 }
 
-class BasicCopyJobParser[S <: CopyableShard[_,S]](
-  ns: NameServer[S],
-  s: JobScheduler[JsonJob])
-extends CopyJobParser[S] {
-  def deserialize(attrs: Map[String, Any], sourceId: ShardId, destId: ShardId, count: Int) = {
-    val cursor = attrs("cursor").asInstanceOf[Map[String,Any]]
-    new BasicCopyJob[S](sourceId, destId, Some(cursor), count, ns, s)
-  }
-}
-
-class BasicCopyJob[S <: CopyableShard[_,S]](
+class BasicCopyJob[S <: Shard](
   sourceId: ShardId,
   destId: ShardId,
   cursor: Option[Map[String, Any]],
   count: Int,
   nameServer: NameServer[S],
-  scheduler: JobScheduler[JsonJob])
+  scheduler: JobScheduler[JsonJob],
+  copyAdapter: (S, S, Option[Map[String,Any]], Int) => Option[Map[String,Any]])
 extends CopyJob[S](sourceId, destId, count, nameServer, scheduler) {
 
   def serialize = Map("cursor" -> cursor)
 
   def copyPage(source: S, dest: S, count: Int) = {
-    val nextCursor = source.copyPage(dest, cursor, count)
-    nextCursor.map(c => new BasicCopyJob[S](sourceId, destId, Some(c), count, nameServer, scheduler))
+    copyAdapter(source, dest, cursor, count).map { nextCursor =>
+      new BasicCopyJob(sourceId, destId, Some(nextCursor), count, nameServer, scheduler, copyAdapter)
+    }
   }
 }

@@ -162,17 +162,15 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, nameServer, scheduler) {
   var writeJobOpt: Option[CrossClusterCopyWriteJob[S]] = None
   var nextCursorOpt: Option[Map[String,Any]] = None
 
-  def writeJob = {
-    writeJobOpt getOrElse {
-      val source                 = nameServer.findShardById(sourceId)
-      val (pageData, nextCursor) = readData(source, cursor, count)
+  def writeJob = writeJobOpt getOrElse {
+    val source                 = nameServer.findShardById(sourceId)
+    val (pageData, nextCursor) = readData(source, cursor, count)
 
-      val job = newWriteJob(pageData, nextCursor)
+    val job = newWriteJob(pageData, nextCursor)
 
-      nextCursorOpt = nextCursor
-      writeJobOpt   = Some(job)
-      job
-    }
+    nextCursorOpt = nextCursor
+    writeJobOpt   = Some(job)
+    job
   }
 
   def nextCursor = {
@@ -199,12 +197,11 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, nameServer, scheduler) {
     }
   }
 
-  def toMap = {
-    baseMap ++ optMap(
-      "cursor"      -> cursor,
-      "write_job"   -> writeJobOpt.map(_.toMap),
-      "next_cursor" -> nextCursorOpt)
-  }
+  def toMap = baseMap ++ optMap(
+    "cursor"      -> cursor,
+    "write_job"   -> writeJobOpt.map(_.toMap),
+    "next_cursor" -> nextCursorOpt
+  )
 }
 
 
@@ -223,32 +220,10 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, ns, s) {
   def toMap = baseMap ++ Map("data" -> pageData) ++ optMap("next_cursor" -> nextCursor)
 
   protected def applyPage() {
+    println("write job applied")
     val dest = ns.findShardById(destId.id)
     writeData(dest, pageData)
 
     if (nextCursor.isEmpty) finish()
   }
 }
-
-
-
-
-
-/*
- * Concrete cross-cluster copy support for copyable shards
- */
-
-class CopyableShardReader[S <: CopyableShard[_,_]]
-extends((S, Option[Map[String,Any]], Int) => (Map[String,Any], Option[Map[String,Any]])) {
-  def apply(shard: S, cursor: Option[Map[String,Any]], count: Int) = {
-    shard.readSerializedPage(cursor, count)
-  }
-}
-
-class CopyableShardWriter[S <: CopyableShard[_,_]] extends ((S, Map[String,Any]) => Unit) {
-  def apply(shard: S, data: Map[String,Any]) {
-    shard.writeSerializedPage(data)
-  }
-}
-
-

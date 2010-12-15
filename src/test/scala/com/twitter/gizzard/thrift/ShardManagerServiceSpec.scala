@@ -6,17 +6,18 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import shards.{Busy, Shard}
-import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
+import scheduler._
 
 
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer    = mock[nameserver.NameServer[Shard]]
   val copier        = mock[CopyJobFactory[Shard]]
+  val remoteCopier  = Some(mock[CrossClusterCopyJobFactory[Shard]])
   val scheduler     = mock[PrioritizingJobScheduler[JsonJob]]
   val subScheduler  = mock[JobScheduler[JsonJob]]
   val copyScheduler = mock[JobScheduler[JsonJob]]
-  val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler)
+  val manager       = new ManagerService(nameServer, copier, remoteCopier, scheduler, copyScheduler)
 
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),

@@ -20,9 +20,10 @@ trait IntegrationSpecification extends Specification {
   val evaluator = QueryEvaluator("localhost", "", "root", "", Map[String,String]())
 
   trait TestServerFacts {
-    def enum: Int; def nsDatabaseName: String; def databaseName: String
+    def enum: Int; def cluster: String; def nsDatabaseName: String; def databaseName: String
     def basePort: Int; def injectorPort: Int; def managerPort: Int
     def sqlShardInfo: shards.ShardInfo; def forwarding: nameserver.Forwarding
+    def sqlShardId: shards.ShardId; def remoteShardId: shards.RemoteShardId
     def kestrelQueues: Seq[String]
   }
 
@@ -31,18 +32,21 @@ trait IntegrationSpecification extends Specification {
     val name = "testserver" + i
     new TestServer(TestServerConfig(name, port)) with TestServerFacts {
       val enum = i
+      val cluster = "c" + enum
       val nsDatabaseName = "gizzard_test_"+name+"_ns"
       val databaseName   = "gizzard_test_"+name
       val basePort       = port
       val injectorPort   = port + 1
       val managerPort    = port + 2
-      val sqlShardInfo = shards.ShardInfo(shards.ShardId("localhost", "t0_0"),
-                                          "TestShard", "int", "int", shards.Busy.Normal)
-      val forwarding = nameserver.Forwarding(0, 0, sqlShardInfo.id)
-      val kestrelQueues = Seq("gizzard_test_"+name+"_high_queue",
-                              "gizzard_test_"+name+"_high_queue_errors",
-                              "gizzard_test_"+name+"_low_queue",
-                              "gizzard_test_"+name+"_low_queue_errors")
+      val sqlShardInfo   = shards.ShardInfo(shards.ShardId("localhost", "t0_0"),
+                                            "TestShard", "int", "int", shards.Busy.Normal)
+      val sqlShardId     = sqlShardInfo.id
+      val remoteShardId  = shards.RemoteShardId(sqlShardId, cluster)
+      val forwarding     = nameserver.Forwarding(0, 0, sqlShardInfo.id)
+      val kestrelQueues  = Seq("gizzard_test_"+name+"_high_queue",
+                               "gizzard_test_"+name+"_high_queue_errors",
+                               "gizzard_test_"+name+"_low_queue",
+                               "gizzard_test_"+name+"_low_queue_errors")
     }
   }
 
