@@ -55,7 +55,7 @@ new GizzardServer {
 
 
   logging = new LogConfigString("""
-level = "fatal"
+level = "error"
 throttle_period_msec = 60000
 truncate_stack_traces = 0
 throttle_rate = 10
