@@ -33,6 +33,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
       val name = "tbird_test_q"
       val schedulerType = new gizzard.config.KestrelScheduler {
         val queuePath = "/tmp"
+        override val keepJournal = false
       }
 
       errorLimit = 10
@@ -42,6 +43,8 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
       1 -> schedulerConfig(codec)
     ))
 
+    val queue = scheduler(1).queue.asInstanceOf[KestrelJobQueue[JsonJob]].queue
+
     val service   = new JobInjectorService[JsonJob](codec, scheduler)
     val processor = new JobInjector.Processor(service)
     val server    = TThreadServer("injector", port, 500, TThreadServer.makeThreadPool("injector", 5), processor)
@@ -49,13 +52,12 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     doBefore {
       server.start()
       scheduler.start()
+      queue.flush()
     }
 
     doAfter {
       server.stop()
       scheduler.shutdown()
-      new File("/tmp/tbird_test_q").delete()
-      new File("/tmp/tbird_test_q_errors").delete()
     }
 
     "replicate and replay jobs" in {
@@ -63,6 +65,16 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
       scheduler.put(1, testJob)
 
       jobsApplied.get must eventually(be_==(2))
+    }
+
+    "replicate and replay nested jobs" in {
+      val jobs = Seq(
+        Map("asdf" -> 1, "bleep" -> "bloop"),
+        Map("this" -> 4, "is" -> true, "a test job" -> "teh"))
+      val nestedJsonJob = new JsonNestedJob(jobs.map(testJobParser(_)))
+
+      scheduler.put(1, nestedJsonJob)
+      jobsApplied.get must eventually(be_==(4))
     }
   }
 }

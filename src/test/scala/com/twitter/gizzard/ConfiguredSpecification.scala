@@ -11,9 +11,8 @@ import com.twitter.util.Eval
 
 
 trait ConfiguredSpecification extends Specification {
-  Configgy.configure("config/test.conf")
-
   val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
+  config.logging()
 }
 
 trait IntegrationSpecification extends Specification {

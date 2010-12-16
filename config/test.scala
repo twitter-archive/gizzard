@@ -55,15 +55,13 @@ new GizzardServer {
 
 
   logging = new LogConfigString("""
-level = "debug"
-filename = "test.log"
+level = "fatal"
 throttle_period_msec = 60000
 truncate_stack_traces = 0
 throttle_rate = 10
 roll = "never"
 
 exception {
-  filename = "exception.log"
   roll = "never"
   format = "exception_json"
 }
@@ -71,7 +69,6 @@ exception {
 w3c {
   node = "w3c"
   use_parents = false
-  filename = "test_w3c.log"
   level = "debug"
   roll = "never"
   format = "bare"
@@ -80,7 +77,6 @@ w3c {
 bad_jobs {
   node = "bad_jobs"
   use_parents = false
-  filename = "test_bad_jobs.log"
   level = "info"
   roll = "never"
 }
