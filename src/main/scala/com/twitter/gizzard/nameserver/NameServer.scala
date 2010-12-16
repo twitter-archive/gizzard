@@ -87,8 +87,6 @@ class NameServer[S <: shards.Shard](nameServerShard: Shard, shardRepository: Sha
     familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
   }
 
-  def dumpStructure() = nameServerShard.dumpStructure()
-
   def reload() {
     log.info("Loading forwarding table...")
     nameServerShard.reload()

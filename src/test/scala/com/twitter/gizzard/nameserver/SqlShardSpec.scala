@@ -45,21 +45,6 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       1 mustEqual 1
     }
 
-    "be able to dump nameserver structure" in {
-      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
-      val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
-      nameServer.createShard(a, repo)
-      nameServer.createShard(b, repo)
-      nameServer.setForwarding(Forwarding(0, 0, a.id))
-      nameServer.addLink(a.id, b.id, 2)
-
-      val structure = nameServer.dumpStructure
-
-      structure.shards.length mustEqual 2
-      structure.forwardings.length mustEqual 1
-      structure.links.length mustEqual 1
-    }
-
     "be idempotent" in {
       "be creatable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")

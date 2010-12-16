@@ -33,16 +33,20 @@ class ShardManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServe
     nameServer.listHostnames.toJavaList
   }
 
+  def list_shards() = wrapWithThriftExceptions {
+    nameServer.listShards.map(_.toThrift).toJavaList
+  }
+
+  def list_links() = wrapWithThriftExceptions {
+    nameServer.listLinks.map(_.toThrift).toJavaList
+  }
+
   def remove_forwarding(forwarding: Forwarding) = wrapWithThriftExceptions {
     nameServer.removeForwarding(forwarding.fromThrift)
   }
 
   def get_shard(id: ShardId): ShardInfo = wrapWithThriftExceptions {
     nameServer.getShard(id.fromThrift).toThrift
-  }
-
-  def dump_nameserver(): NameserverState = wrapWithThriftExceptions {
-    nameServer.dumpStructure().toThrift
   }
 
   def delete_shard(id: ShardId) = wrapWithThriftExceptions {
