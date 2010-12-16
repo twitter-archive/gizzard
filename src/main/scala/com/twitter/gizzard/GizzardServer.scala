@@ -17,10 +17,10 @@ extends BaseGizzardServer[S, JsonJob](config) {
 
   lazy val copyFactory = {
     val factory = new BasicCopyJobFactory(
-      defaultCopyCount,
       nameServer,
       jobScheduler(copyPriority),
-      copyAdapter.copyPage
+      copyAdapter,
+      defaultCopyCount
     )
 
     jobCodec += ("BasicCopyJob".r -> factory.parser)
@@ -32,9 +32,8 @@ extends BaseGizzardServer[S, JsonJob](config) {
     val factory = new CrossClusterCopyJobFactory(
       nameServer,
       jobScheduler(copyPriority),
-      defaultCopyCount,
-      copyAdapter.readPage,
-      copyAdapter.writePage
+      copyAdapter,
+      defaultCopyCount
     )
 
     jobCodec += ("CrossClusterCopyWriteJob".r -> factory.writeParser)

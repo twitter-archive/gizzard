@@ -117,10 +117,10 @@ extends JsonJob {
 
 
 class BasicCopyJobFactory[S <: Shard](
-  defaultCount: Int,
   ns: NameServer[S],
   s: JobScheduler[JsonJob],
-  copyAdapter: (S, S, Option[Map[String,Any]], Int) => Option[Map[String,Any]])
+  copyAdapter: ShardCopyAdapter[S],
+  defaultCount: Int)
 extends CopyJobFactory[S] {
 
   def apply(sourceId: ShardId, destId: ShardId) = {
@@ -142,13 +142,13 @@ class BasicCopyJob[S <: Shard](
   count: Int,
   nameServer: NameServer[S],
   scheduler: JobScheduler[JsonJob],
-  copyAdapter: (S, S, Option[Map[String,Any]], Int) => Option[Map[String,Any]])
+  copyAdapter: ShardCopyAdapter[S])
 extends CopyJob[S](sourceId, destId, count, nameServer, scheduler) {
 
   def serialize = Map("cursor" -> cursor)
 
   def copyPage(source: S, dest: S, count: Int) = {
-    copyAdapter(source, dest, cursor, count).map { nextCursor =>
+    copyAdapter.copyPage(source, dest, cursor, count).map { nextCursor =>
       new BasicCopyJob(sourceId, destId, Some(nextCursor), count, nameServer, scheduler, copyAdapter)
     }
   }
