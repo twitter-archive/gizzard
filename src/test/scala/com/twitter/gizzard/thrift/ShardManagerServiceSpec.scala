@@ -60,6 +60,13 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       manager.create_shard(thriftShardInfo1)
     }
 
+    "dump_nameserver" in {
+      expect {
+        one(nameServer).dumpStructure()
+      }
+      manager.dump_nameserver()
+    }
+
     "get_shard" in {
       expect {
         one(nameServer).getShard(shardInfo1.id) willReturn shardInfo1
