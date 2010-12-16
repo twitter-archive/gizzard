@@ -53,7 +53,6 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       woot mustEqual true
     }
 
-
     "create_shard" in {
       expect {
         one(nameServer).createShard(shardInfo1)

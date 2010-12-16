@@ -30,6 +30,12 @@ struct Forwarding {
   3: ShardId shard_id
 }
 
+struct NameserverState {
+  1: list<ShardInfo> shards
+  2: list<LinkInfo> links
+  3: list<Forwarding> forwardings
+}
+
 service ShardManager {
   void create_shard(1: ShardInfo shard) throws(1: ShardException ex)
   void delete_shard(1: ShardId id) throws(1: ShardException ex)
@@ -52,8 +58,10 @@ service ShardManager {
   Forwarding get_forwarding_for_shard(1: ShardId id) throws(1: ShardException ex)
   list<Forwarding> get_forwardings() throws(1: ShardException ex)
   void reload_forwardings() throws(1: ShardException ex)
-  
+
   void remove_forwarding(1: Forwarding forwarding) throws(1: ShardException ex)
+
+  NameserverState dump_nameserver() throws(1: ShardException ex)
 
   list<ShardInfo> shards_for_hostname(1: string hostname) throws(1: ShardException ex)
   list<string> list_hostnames() throws(1: ShardException ex)

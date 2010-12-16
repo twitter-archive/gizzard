@@ -41,6 +41,10 @@ class ShardManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServe
     nameServer.getShard(id.fromThrift).toThrift
   }
 
+  def dump_nameserver(): NameserverState = wrapWithThriftExceptions {
+    nameServer.dumpStructure().toThrift
+  }
+
   def delete_shard(id: ShardId) = wrapWithThriftExceptions {
     nameServer.deleteShard(id.fromThrift)
   }

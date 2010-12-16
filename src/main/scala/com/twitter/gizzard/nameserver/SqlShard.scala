@@ -66,6 +66,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
              row.getInt("weight"))
   }
 
+  def dumpStructure = {
+    val shards = queryEvaluator.select("SELECT * FROM shards") { row => rowToShardInfo(row) }
+    NameserverState(shards.toList, listLinks(), getForwardings())
+  }
+
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
       try {

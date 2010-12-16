@@ -23,6 +23,10 @@ class MemoryShard extends Shard {
     }
   }
 
+  def dumpStructure = {
+    NameserverState(shardTable.toList, parentTable.toList, forwardingTable.toList)
+  }
+
   private def find(shardId: ShardId): Option[ShardInfo] = {
     shardTable.find { _.id == shardId }
   }
@@ -88,8 +92,8 @@ class MemoryShard extends Shard {
     removeForwarding(forwarding)
     forwardingTable += forwarding
   }
-  
-  def removeForwarding(forwarding: Forwarding) = {    
+
+  def removeForwarding(forwarding: Forwarding) = {
     forwardingTable.find { x =>
       x.baseId == forwarding.baseId && x.tableId == forwarding.tableId
     }.foreach { forwardingTable -= _ }
@@ -119,7 +123,7 @@ class MemoryShard extends Shard {
   def getForwardings(): Seq[Forwarding] = {
     forwardingTable.toList
   }
-  
+
   def listHostnames(): Seq[String] = {
     (Set() ++ shardTable.map { x => x.hostname }).toList
   }
