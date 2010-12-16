@@ -18,15 +18,17 @@ import net.lag.logging.Logger
  * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
  */
 class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob] {
-  private val log = Logger.get(getClass.getName)
-  private val processors = mutable.Map.empty[Regex, JsonJobParser]
+  protected val log = Logger.get(getClass.getName)
+  protected val processors = {
+    val p = mutable.Map.empty[Regex, JsonJobParser]
+    p += (("JsonNestedJob".r, new JsonNestedJobParser(this)))
+    // for backward compat:
+    p += (("JobWithTasks".r, new JsonNestedJobParser(this)))
+    p
+  }
 
   def +=(item: (Regex, JsonJobParser)) = processors += item
   def +=(r: Regex, p: JsonJobParser) = processors += ((r, p))
-
-  this += ("JsonNestedJob".r, new JsonNestedJobParser(this))
-  // for backward compat:
-  this += ("JobWithTasks".r, new JsonNestedJobParser(this))
 
   def flatten(job: JsonJob): Array[Byte] = job.toJson.getBytes
 

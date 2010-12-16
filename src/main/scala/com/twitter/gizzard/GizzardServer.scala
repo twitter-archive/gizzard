@@ -71,7 +71,7 @@ abstract class BaseGizzardServer[S <: Shard, J <: JsonJob](config: gizzard.confi
   // job wiring
 
   def logUnparsableJob(j: Array[Byte]) {
-    log.error("Unparsable job: %s", j.map(b => "%02x".format(b.toInt & 0xff)).mkString(", "))
+    log.error("Unparsable job: %s", new String(j) )
   }
 
   lazy val jobCodec     = new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob)

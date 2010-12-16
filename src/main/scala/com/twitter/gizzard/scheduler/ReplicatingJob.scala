@@ -14,6 +14,8 @@ import net.lag.logging.Logger
 
 class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
 extends JsonCodec(unparsable) {
+  processors.clear()
+
   lazy val innerCodec = {
     val c = new JsonCodec(unparsable)
     c += ("ReplicatingJob".r -> new ReplicatingJobParser(c, relay))
