@@ -8,9 +8,9 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
   "JsonJobParser" should {
     val attributes = Map("a" -> 1)
     val jobMap = Map("Job" -> attributes)
-    val codec = mock[JsonCodec[JsonJob]]
+    val codec = mock[JsonCodec]
     val job = mock[JsonJob]
-    val jobParser = new JsonJobParser[JsonJob] {
+    val jobParser = new JsonJobParser {
       def apply(json: Map[String, Any]) = {
         job
       }
@@ -59,7 +59,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
       }
 
       "JsonNestedJob" in {
-        val nestedJob = new JsonNestedJob[JsonJob](List(job))
+        val nestedJob = new JsonNestedJob(List(job))
 
         nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler.JsonNestedJob":{"error_count":0,"error_message":"(none)","tasks":[{"FakeJob":{"a":1}}]}}"""
       }

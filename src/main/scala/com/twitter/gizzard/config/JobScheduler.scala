@@ -4,7 +4,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import net.lag.kestrel.config.PersistentQueue
-import gizzard.scheduler.{Job, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
+import gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
 trait SchedulerType
 trait KestrelScheduler extends SchedulerType with PersistentQueue {
@@ -15,16 +15,13 @@ class MemoryScheduler extends SchedulerType {
 }
 
 trait BadJobConsumer {
-  def apply[J <: Job](): JobConsumer[J]
+  def apply(): JobConsumer[JsonJob]
 }
 
 class JsonJobLogger extends BadJobConsumer {
   var name = "bad_jobs"
 
-  // XXX: this method is not type safe. we need to remove
-  //      the type parameter on all of these job related things
-  def apply[J <: Job](): JobConsumer[J] =
-    new scheduler.JsonJobLogger[scheduler.JsonJob](Logger.get(name)).asInstanceOf[JobConsumer[J]]
+  def apply(): JobConsumer[JsonJob] = new scheduler.JsonJobLogger(Logger.get(name))
 }
 
 trait Scheduler {
@@ -46,20 +43,20 @@ trait Scheduler {
   var badJobQueue: Option[BadJobConsumer] = None
   def badJobQueue_=(c: BadJobConsumer) { badJobQueue = Some(c) }
 
-  def apply[J <: Job](codec: Codec[J]): gizzard.scheduler.JobScheduler[J] = {
+  def apply(codec: Codec[JsonJob]): gizzard.scheduler.JobScheduler[JsonJob] = {
     val (jobQueue, errorQueue) = schedulerType match {
       case kestrel: KestrelScheduler => {
         val persistentJobQueue = kestrel(kestrel.queuePath, jobQueueName)
-        val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
+        val jobQueue = new KestrelJobQueue[JsonJob](jobQueueName, persistentJobQueue, codec)
         val persistentErrorQueue = kestrel(kestrel.queuePath, errorQueueName)
-        val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
+        val errorQueue = new KestrelJobQueue[JsonJob](errorQueueName, persistentErrorQueue, codec)
 
         (jobQueue, errorQueue)
       }
 
       case memory: MemoryScheduler => {
-        val jobQueue = new gizzard.scheduler.MemoryJobQueue[J](jobQueueName, memory.sizeLimit)
-        val errorQueue = new gizzard.scheduler.MemoryJobQueue[J](errorQueueName, memory.sizeLimit)
+        val jobQueue = new gizzard.scheduler.MemoryJobQueue[JsonJob](jobQueueName, memory.sizeLimit)
+        val errorQueue = new gizzard.scheduler.MemoryJobQueue[JsonJob](errorQueueName, memory.sizeLimit)
 
         (jobQueue, errorQueue)
       }
@@ -67,7 +64,7 @@ trait Scheduler {
 
     errorQueue.drainTo(jobQueue, errorRetryDelay)
 
-    new gizzard.scheduler.JobScheduler[J](
+    new gizzard.scheduler.JobScheduler[JsonJob](
       name,
       threads,
       errorStrobeInterval,

@@ -1,6 +1,5 @@
 package com.twitter.gizzard.scheduler
 
-import scala.reflect.Manifest
 import com.twitter.json.{Json, JsonException}
 import com.twitter.ostrich.{StatsProvider, W3CStats}
 import net.lag.logging.Logger
@@ -30,7 +29,7 @@ trait JsonJob extends Job {
 /**
  * A NestedJob that can be encoded in json.
  */
-class JsonNestedJob[J <: JsonJob](jobs: Iterable[J]) extends NestedJob[J](jobs) with JsonJob {
+class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob[JsonJob](jobs) with JsonJob {
   def toMap: Map[String, Any] = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
   override def toString = toJson
 }
@@ -38,15 +37,15 @@ class JsonNestedJob[J <: JsonJob](jobs: Iterable[J]) extends NestedJob[J](jobs) 
 /**
  * A JobConsumer that encodes JsonJobs into a string and logs them at error level.
  */
-class JsonJobLogger[J <: JsonJob](logger: Logger) extends JobConsumer[J] {
-  def put(job: J) = logger.error(job.toJson)
+class JsonJobLogger(logger: Logger) extends JobConsumer[JsonJob] {
+  def put(job: JsonJob) = logger.error(job.toJson)
 }
 
-class LoggingJsonJobParser[J <: JsonJob](
-  jsonJobParser: JsonJobParser[J], stats: StatsProvider, logger: W3CStats)(implicit val manifest: Manifest[J])
-  extends JsonJobParser[J] {
+class LoggingJsonJobParser(
+  jsonJobParser: JsonJobParser, stats: StatsProvider, logger: W3CStats)
+  extends JsonJobParser {
 
-  def apply(json: Map[String, Any]): J = {
+  def apply(json: Map[String, Any]): JsonJob = {
     val job = jsonJobParser(json)
     LoggingProxy(stats, logger, job.loggingName, Set("apply"), job)
   }
@@ -56,24 +55,23 @@ class LoggingJsonJobParser[J <: JsonJob](
  * A parser that can reconstitute a JsonJob from a map of key/values. Usually registered with a
  * JsonCodec.
  */
-trait JsonJobParser[J <: JsonJob] {
+trait JsonJobParser {
   def parse(json: Map[String, Any]): JsonJob = {
     val errorCount = json.getOrElse("error_count", 0).asInstanceOf[Int]
     val errorMessage = json.getOrElse("error_message", "(none)").asInstanceOf[String]
 
     val job = apply(json)
-    job.errorCount = errorCount
+    job.errorCount   = errorCount
     job.errorMessage = errorMessage
     job
   }
 
-  def apply(json: Map[String, Any]): J
+  def apply(json: Map[String, Any]): JsonJob
 }
 
-class JsonNestedJobParser[J <: JsonJob](codec: JsonCodec[J]) extends JsonJobParser[J] {
-  def apply(json: Map[String, Any]): J = {
+class JsonNestedJobParser(codec: JsonCodec) extends JsonJobParser {
+  def apply(json: Map[String, Any]): JsonJob = {
     val taskJsons = json("tasks").asInstanceOf[Iterable[Map[String, Any]]]
-    val tasks = taskJsons.map { codec.inflate(_) }
-    new JsonNestedJob(tasks.asInstanceOf[Iterable[J]]).asInstanceOf[J]
+    new JsonNestedJob(taskJsons.map(codec.inflate))
   }
 }

@@ -18,7 +18,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
         one(job1).toMap     willReturn Map[String, Any]()
       }
 
-      val job = new ReplicatingJob[JsonJob](relay, Array(job1), List("c1"))
+      val job = new ReplicatingJob(relay, Array(job1), List("c1"))
       val map = job.toMap
       map("dest_clusters") mustEqual List("c1")
 
@@ -34,7 +34,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
         one(job1).toJson willReturn json
       }
 
-      val job = new ReplicatingJob[JsonJob](relay, List(job1), List("c1"))
+      val job = new ReplicatingJob(relay, List(job1), List("c1"))
 
       expect {
         one(job1).apply()
@@ -52,7 +52,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
         one(job1).apply()
       }
 
-      val replicatedJob = new ReplicatingJob[JsonJob](relay, Array(job1), Nil)
+      val replicatedJob = new ReplicatingJob(relay, Array(job1), Nil)
 
       replicatedJob.apply()
     }
@@ -62,7 +62,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
         one(job1).apply()
       }
 
-      val replicatedJob = new ReplicatingJob[JsonJob](relay, Array(job1), List("c1"), Nil)
+      val replicatedJob = new ReplicatingJob(relay, Array(job1), List("c1"), Nil)
 
       replicatedJob.apply()
     }

@@ -13,22 +13,22 @@ import net.lag.logging.Logger
 
 
 class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
-extends JsonCodec[JsonJob](unparsable) {
+extends JsonCodec(unparsable) {
   processors.clear()
 
   lazy val innerCodec = {
-    val c = new JsonCodec[JsonJob](unparsable)
+    val c = new JsonCodec(unparsable)
     c += ("ReplicatingJob".r -> new ReplicatingJobParser(c, relay))
     c += ("ReplicatedJob".r -> new ReplicatedJobParser(c))
     c
   }
 
-  override def +=(item: (Regex, JsonJobParser[JsonJob])) = innerCodec += item
-  override def +=(r: Regex, p: JsonJobParser[JsonJob])   = innerCodec += ((r, p))
+  override def +=(item: (Regex, JsonJobParser)) = innerCodec += item
+  override def +=(r: Regex, p: JsonJobParser)   = innerCodec += ((r, p))
 
   override def inflate(json: Map[String, Any]): JsonJob = {
     innerCodec.inflate(json) match {
-      case j: ReplicatingJob[_] => j
+      case j: ReplicatingJob => j
       case j => if (j.shouldReplicate) {
         new ReplicatingJob(relay, List(j))
       } else {
@@ -38,30 +38,30 @@ extends JsonCodec[JsonJob](unparsable) {
   }
 }
 
-class ReplicatedJob[J <: JsonJob](jobs: Iterable[J]) extends JsonNestedJob(jobs) {
+class ReplicatedJob(jobs: Iterable[JsonJob]) extends JsonNestedJob(jobs) {
   override val shouldReplicate = false
 }
 
-class ReplicatedJobParser[J <: JsonJob](codec: JsonCodec[J]) extends JsonJobParser[J] {
+class ReplicatedJobParser(codec: JsonCodec) extends JsonJobParser {
   type Tasks = Iterable[Map[String, Any]]
 
   override def apply(json: Map[String, Any]) = {
     val tasks = json("tasks").asInstanceOf[Tasks].map(codec.inflate)
-    new ReplicatedJob(tasks).asInstanceOf[J]
+    new ReplicatedJob(tasks)
   }
 }
 
-class ReplicatingJob[J <: JsonJob](
+class ReplicatingJob(
   relay: JobRelay,
-  jobs: Iterable[J],
+  jobs: Iterable[JsonJob],
   clusters: Iterable[String],
   serialized: Iterable[String])
 extends JsonNestedJob(jobs) {
 
-  def this(relay: JobRelay, jobs: Iterable[J], clusters: Iterable[String]) =
+  def this(relay: JobRelay, jobs: Iterable[JsonJob], clusters: Iterable[String]) =
     this(relay, jobs, clusters, jobs.map(_.toJson))
 
-  def this(relay: JobRelay, jobs: Iterable[J]) = this(relay, jobs, relay.clusters)
+  def this(relay: JobRelay, jobs: Iterable[JsonJob]) = this(relay, jobs, relay.clusters)
 
   private val clustersQueue = new Queue[String]
   clustersQueue ++= clusters
@@ -100,18 +100,18 @@ extends JsonNestedJob(jobs) {
   }
 }
 
-class ReplicatingJobParser[J <: JsonJob](
-  codec: JsonCodec[J],
+class ReplicatingJobParser(
+  codec: JsonCodec,
   relay: => JobRelay)
-extends JsonJobParser[J] {
+extends JsonJobParser {
   type Tasks = Iterable[Map[String, Any]]
 
-  override def apply(json: Map[String, Any]) = {
+  override def apply(json: Map[String, Any]): JsonJob = {
     val clusters   = json.get("dest_clusters").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
     val serialized = json.get("serialized").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
     val tasks      = json("tasks").asInstanceOf[Tasks].map(codec.inflate)
 
-    new ReplicatingJob(relay, tasks, clusters, serialized).asInstanceOf[J]
+    new ReplicatingJob(relay, tasks, clusters, serialized)
   }
 }
 
