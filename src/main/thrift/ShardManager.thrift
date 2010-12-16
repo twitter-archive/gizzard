@@ -41,8 +41,9 @@ service ShardManager {
   list<LinkInfo> list_upward_links(1: ShardId id) throws(1: ShardException ex)
   list<LinkInfo> list_downward_links(1: ShardId id) throws(1: ShardException ex)
 
-  list<LinkInfo> list_links() throws(1: ShardException ex)
-  list<ShardInfo> list_shards() throws(1: ShardException ex)
+  list<LinkInfo> list_all_links() throws(1: ShardException ex)
+  list<ShardInfo> list_all_shards() throws(1: ShardException ex)
+  list<Forwarding> list_all_forwardings() throws(1: ShardException ex)
 
   list<ShardInfo> get_child_shards_of_class(1: ShardId parent_id, 2: string class_name) throws(1: ShardException ex)
 

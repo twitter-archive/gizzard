@@ -33,11 +33,11 @@ class ShardManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServe
     nameServer.listHostnames.toJavaList
   }
 
-  def list_shards() = wrapWithThriftExceptions {
+  def list_all_shards() = wrapWithThriftExceptions {
     nameServer.listShards.map(_.toThrift).toJavaList
   }
 
-  def list_links() = wrapWithThriftExceptions {
+  def list_all_links() = wrapWithThriftExceptions {
     nameServer.listLinks.map(_.toThrift).toJavaList
   }
 
@@ -96,6 +96,7 @@ class ShardManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServe
   def get_forwardings(): java.util.List[Forwarding] = wrapWithThriftExceptions {
     nameServer.getForwardings().map(_.toThrift).toJavaList
   }
+  def list_all_forwardings = get_forwardings
 
   def reload_forwardings() = wrapWithThriftExceptions {
     log.info("Reloading forwardings...")

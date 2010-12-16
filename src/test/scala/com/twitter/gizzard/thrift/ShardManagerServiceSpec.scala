@@ -60,18 +60,25 @@ object ShardManagerServiceSpec extends ConfiguredSpecification with JMocker with
       manager.create_shard(thriftShardInfo1)
     }
 
-    "list_links" in {
+    "list_all_links" in {
       expect {
         one(nameServer).listLinks() willReturn List(shards.LinkInfo(shardInfo1.id, shardInfo2.id, 1))
        }
-       manager.list_links() mustEqual List(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1)).toJavaList
+       manager.list_all_links() mustEqual List(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1)).toJavaList
     }
 
-    "list_shards" in {
+    "list_all_shards" in {
       expect {
         one(nameServer).listShards() willReturn List(shardInfo1)
       }
-      manager.list_shards mustEqual List(thriftShardInfo1).toJavaList
+      manager.list_all_shards() mustEqual List(thriftShardInfo1).toJavaList
+    }
+
+    "list_all_forwardings" in {
+      expect {
+        one(nameServer).getForwardings() willReturn List(forwarding)
+      }
+      manager.list_all_forwardings() mustEqual List(thriftForwarding).toJavaList
     }
 
     "get_shard" in {
