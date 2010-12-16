@@ -43,6 +43,8 @@ extends Shard {
     familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
   }
 
+  def dumpStructure() = nameServerShard.dumpStructure()
+
   def reload() {
     log.info("Loading name server configuration...")
     nameServerShard.reload()
