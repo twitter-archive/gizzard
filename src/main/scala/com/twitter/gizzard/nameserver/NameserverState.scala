@@ -11,13 +11,13 @@ class NameserverState(initialShards: List[gizzard.shards.ShardInfo],
                       initialLinks: List[gizzard.shards.LinkInfo],
                       initialForwardings: List[Forwarding], tableId: Int) {
                              
-  private val shardsById    = initialShards.foldLeft(Map.empty[gizzard.shards.ShardId, gizzard.shards.ShardInfo]) { (map, shard) => map + Tuple2(shard.id, shard) }
+  private val shardsById    = initialShards.foldLeft(Map.empty[gizzard.shards.ShardId, gizzard.shards.ShardInfo]) { (map, shard) => map + ((shard.id, shard)) }
   
   private val linksByParent = initialLinks.foldLeft(Map[gizzard.shards.ShardId, List[gizzard.shards.LinkInfo]]()) { (map, link) => 
     val key = link.upId
     val entry = map.getOrElse(key, List[gizzard.shards.LinkInfo]())
     
-    map + Tuple2(key, entry + link) 
+    map + ((key, entry + link))
   }
   
   val forwardings = initialForwardings.filter(_.tableId == tableId)
