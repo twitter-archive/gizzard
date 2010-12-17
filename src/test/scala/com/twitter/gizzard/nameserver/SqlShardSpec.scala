@@ -3,6 +3,7 @@ package com.twitter.gizzard.nameserver
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
+import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -47,16 +48,27 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "be able to dump nameserver structure" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
+      val c = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "c", "localhost")
+      val d = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "d", "localhost")
+      
       nameServer.createShard(a, repo)
       nameServer.createShard(b, repo)
       nameServer.setForwarding(Forwarding(0, 0, a.id))
       nameServer.addLink(a.id, b.id, 2)
+      
+      // please don't exist in dump
+      nameServer.setForwarding(Forwarding(1, 0, c.id)) 
+      nameServer.createShard(c, repo)
+      nameServer.createShard(d, repo)
+      nameServer.addLink(c.id, d.id, 2)
 
-      val structure = nameServer.dumpStructure
+      val structure = nameServer.dumpStructure(0)
 
-      structure.shards.length mustEqual 2
       structure.forwardings.length mustEqual 1
       structure.links.length mustEqual 1
+      structure.shards.length mustEqual 2
+      
+      structure.shards.first mustEqual a
     }
 
     "be idempotent" in {

@@ -85,9 +85,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
 
-  def dumpStructure = {
+  def dumpStructure(tableId: Int) = {
     val shards = queryEvaluator.select("SELECT * FROM shards") { row => rowToShardInfo(row) }
-    NameserverState(shards.toList, listLinks(), getForwardings())
+    new NameserverState(shards.toList, listLinks(), getForwardings(), tableId)
   }
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
