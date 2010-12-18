@@ -38,7 +38,7 @@ class NameserverState(initialShards: List[gizzard.shards.ShardInfo],
     
   }
 
-  forwardings.foreach{ forwarding => computeSubtree(forwarding.shardId) }
+  forwardings.foreach { forwarding => computeSubtree(forwarding.shardId) }
                                
   def toThrift = {
     val thriftForwardings = forwardings.map(_.toThrift).toJavaList
