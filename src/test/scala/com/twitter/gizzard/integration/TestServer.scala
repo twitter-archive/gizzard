@@ -5,6 +5,7 @@ import com.twitter.querulous.evaluator.{QueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
 import gizzard.GizzardServer
+import com.twitter.gizzard.scheduler.{CopyDestination, CopyDestinationShard}
 import nameserver.NameServer
 import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException}
 import scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
@@ -217,28 +218,28 @@ class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends Jso
 
 class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
 extends CopyJobFactory[TestShard] {
-  def apply(src: ShardId, dest: ShardId) = new TestCopy(src, dest, 0, 500, ns, s)
+  def apply(src: ShardId, dests: List[CopyDestination]) = new TestCopy(src, dests, 0, 500, ns, s)
 }
 
 class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
 extends CopyJobParser[TestShard] {
-  def deserialize(m: Map[String, Any], src: ShardId, dest: ShardId, count: Int) = {
+  def deserialize(m: Map[String, Any], src: ShardId, dests: List[CopyDestination], count: Int) = {
     val cursor = m("cursor").asInstanceOf[Int]
     val count  = m("count").asInstanceOf[Int]
-    new TestCopy(src, dest, cursor, count, ns, s)
+    new TestCopy(src, dests, cursor, count, ns, s)
   }
 }
 
-class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
+class TestCopy(srcId: ShardId, destinations: List[CopyDestination], cursor: Int, count: Int,
                ns: NameServer[TestShard], s: JobScheduler[JsonJob])
-extends CopyJob[TestShard](srcId, destId, count, ns, s) {
-  def copyPage(src: TestShard, dest: TestShard, count: Int) = {
+extends CopyJob[TestShard](srcId, destinations, count, ns, s) {
+  def copyPage(src: TestShard, dests: List[CopyDestinationShard[TestShard]], count: Int) = {
     val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
 
-    dest.putAll(rows)
+    dests.foreach(_.shard.putAll(rows))
 
     if (rows.isEmpty) None
-    else Some(new TestCopy(srcId, destId, rows.last._1, count, ns, s))
+    else Some(new TestCopy(srcId, destinations, rows.last._1, count, ns, s))
   }
 
   def serialize = Map("cursor" -> cursor)

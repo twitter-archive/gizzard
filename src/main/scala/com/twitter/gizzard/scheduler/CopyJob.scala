@@ -120,10 +120,11 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
 
       // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
       destinations.foreach { dest =>
-        nameServer.markShardBusy(dest.shardId, shards.Busy.Normal)
+        nameServer.markShardBusy(dest.shardId, shards.Busy.Busy)
       }
-
+      
       val nextJob = copyPage(sourceShard, destinationShards, count)
+      
       nextJob match {
         case Some(job) =>
           incrGauge
