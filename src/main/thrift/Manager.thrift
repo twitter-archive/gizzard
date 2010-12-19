@@ -12,6 +12,11 @@ struct ShardId {
   2: string table_prefix
 }
 
+struct CopyDestination {
+  1: ShardId shard_id
+  2: optional i64 base_id
+}
+
 struct ShardInfo {
   1: ShardId id
   2: string class_name
@@ -89,6 +94,8 @@ service Manager {
 
   void mark_shard_busy(1: ShardId id, 2: i32 busy) throws(1: GizzardException ex)
   void copy_shard(1: ShardId source_id, 2: ShardId destination_id) throws(1: GizzardException ex)
+
+  void multicopy_shard(1: string factoryName, 2: ShardId source_id, 3: list<CopyDestination> destinations) throws(1: GizzardException ex)
 
   NameserverState dump_nameserver(1: i32 table_id) throws(1: GizzardException ex)
 

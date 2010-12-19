@@ -5,8 +5,10 @@ import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
+import com.twitter.gizzard.thrift.conversions.CopyDestination._
 import shards.{Busy, Shard}
-import scheduler.{CopyJob, CopyDestination, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
+import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
+import scheduler.{CopyDestination => SCopyDestination}
 
 
 
@@ -110,7 +112,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
-      val dests = List(CopyDestination(shardId2, None))
+      val dests = List(SCopyDestination(shardId2, None))
       val copyJob = mock[CopyJob[Shard]]
 
       expect {
@@ -120,6 +122,23 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
 
       manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
     }
+
+    "multicopy_shard" in {
+      val shardId1 = new shards.ShardId("hostname1", "table1")
+      val shardId2a = new shards.ShardId("hostname2", "table2a")
+      val shardId2b = new shards.ShardId("hostname2", "table2b")
+      val dests = List(SCopyDestination(shardId2a, Some(0)), SCopyDestination(shardId2b, Some(100)))
+      val copyJob = mock[CopyJob[Shard]]
+
+      expect {
+        one(copier).apply(shardId1, dests) willReturn copyJob
+        one(copyScheduler).put(copyJob)
+      }
+
+      manager.addCopyFactory("fake.job.Name", copier)
+      manager.multicopy_shard("fake.job.Name", shardId1.toThrift, dests.map(_.toThrift).toJavaList)
+    }
+
 
     "set_forwarding" in {
       expect {
