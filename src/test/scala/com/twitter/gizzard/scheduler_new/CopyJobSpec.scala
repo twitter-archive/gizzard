@@ -81,17 +81,17 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
 
       "with a database connection timeout" in {
-         val copy = makeCopy(throw new shards.ShardDatabaseTimeoutException(100.milliseconds, sourceShardId))
-         expect {
-           one(nameServer).findShardById(sourceShardId) willReturn shard1
-           one(nameServer).findShardById(destinationShardId) willReturn shard2
-           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
-           one(jobScheduler).put(copy)
-         }
-
-         copy.apply()
-         copy.toMap("count") mustEqual (count * 0.9).toInt
-       }
+        val copy = makeCopy(throw new shards.ShardDatabaseTimeoutException(100.milliseconds, sourceShardId))
+        expect {
+          one(nameServer).findShardById(sourceShardId) willReturn shard1
+          one(nameServer).findShardById(destinationShardId) willReturn shard2
+          one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+          one(jobScheduler).put(copy)
+        }
+      
+        copy.apply()
+        copy.toMap("count") mustEqual (count * 0.9).toInt
+      }
 
       "with a random exception" in {
         val copy = makeCopy(throw new Exception("boo"))
