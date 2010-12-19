@@ -9,7 +9,7 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler}
+import com.twitter.gizzard.scheduler.{CopyDestination, CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler}
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 import java.util.{List => JList}
@@ -95,9 +95,9 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   }
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
+    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, List(CopyDestination(destinationId.fromThrift, None)))))
   }
-  
+
   def dump_nameserver(tableId: Int) = wrapEx(nameServer.dumpStructure(tableId).toThrift)
 
 
