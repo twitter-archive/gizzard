@@ -17,7 +17,7 @@ class FakeCopy(val sourceShardId: shards.ShardId, val dests: List[CopyDestinatio
 
   override def equals(that: Any) = that match {
     case that: FakeCopy =>
-      this.sourceShardId == that.sourceShardId 
+      this.sourceShardId == that.sourceShardId
     case _ => false
   }
 }
@@ -69,17 +69,17 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
         copy.apply()
       }
-      
+
       "no shard" in {
         val copy = makeCopy(Some(nextCopy))
         expect {
           one(nameServer).findShardById(sourceShardId) willThrow new nameserver.NonExistentShard("foo")
           never(jobScheduler).put(nextCopy)
         }
-      
+
         copy.apply()
       }
-      
+
       "with a database connection timeout" in {
          val copy = makeCopy(throw new shards.ShardDatabaseTimeoutException(100.milliseconds, sourceShardId))
          expect {
@@ -88,61 +88,61 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
            one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
            one(jobScheduler).put(copy)
          }
-       
+
          copy.apply()
          copy.toMap("count") mustEqual (count * 0.9).toInt
        }
-       
-       "with a random exception" in {
-         val copy = makeCopy(throw new Exception("boo"))
-         expect {
-           one(nameServer).findShardById(sourceShardId) willReturn shard1
-           one(nameServer).findShardById(destinationShardId) willReturn shard2
-           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
-           never(jobScheduler).put(nextCopy)
-         }
-       
-         copy.apply() must throwA[Exception]
-       }
-       
-       "with a shard timeout" in {
-         "early on" in {
-           val copy = makeCopy(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
-           expect {
-             one(nameServer).findShardById(sourceShardId) willReturn shard1
-             one(nameServer).findShardById(destinationShardId) willReturn shard2
-             one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
-             one(jobScheduler).put(copy)
-           }
-       
-           copy.apply()
-         }
-       
-         "after too many retries" in {
-           val count = CopyJob.MIN_COPY - 1
-           val copy = new FakeCopy(sourceShardId, destinations, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
-       
-           expect {
-             one(nameServer).findShardById(sourceShardId) willReturn shard1
-             one(nameServer).findShardById(destinationShardId) willReturn shard2
-             one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
-             never(jobScheduler).put(nextCopy)
-           }
-       
-           copy.apply() must throwA[Exception]
-         }
-       }
-      
+
+      "with a random exception" in {
+        val copy = makeCopy(throw new Exception("boo"))
+        expect {
+          one(nameServer).findShardById(sourceShardId) willReturn shard1
+          one(nameServer).findShardById(destinationShardId) willReturn shard2
+          one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+          never(jobScheduler).put(nextCopy)
+        }
+
+        copy.apply() must throwA[Exception]
+      }
+
+      "with a shard timeout" in {
+        "early on" in {
+          val copy = makeCopy(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
+          expect {
+            one(nameServer).findShardById(sourceShardId) willReturn shard1
+            one(nameServer).findShardById(destinationShardId) willReturn shard2
+            one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+            one(jobScheduler).put(copy)
+          }
+
+          copy.apply()
+        }
+
+        "after too many retries" in {
+          val count = CopyJob.MIN_COPY - 1
+          val copy = new FakeCopy(sourceShardId, destinations, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
+
+          expect {
+            one(nameServer).findShardById(sourceShardId) willReturn shard1
+            one(nameServer).findShardById(destinationShardId) willReturn shard2
+            one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+            never(jobScheduler).put(nextCopy)
+          }
+
+          copy.apply() must throwA[Exception]
+        }
+      }
+
       "when finished" in {
         val copy = makeCopy(None)
-      
+
         expect {
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Normal)
         }
-      
+
         copy.apply()
       }
     }
