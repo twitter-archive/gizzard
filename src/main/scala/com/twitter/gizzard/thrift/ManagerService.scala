@@ -89,7 +89,6 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(nameServer.getForwardings().map(_.toThrift).toJavaList)
   }
 
-
   def list_hostnames() = wrapEx(nameServer.listHostnames.toJavaList)
 
   def mark_shard_busy(id: ShardId, busy: Int) = {
@@ -98,6 +97,8 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
     wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
   }
+  
+  def dump_nameserver(tableId: Int) = wrapEx(nameServer.dumpStructure(tableId).toThrift)
 
 
   // Job Scheduler Management
