@@ -35,18 +35,19 @@ object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker 
     }
 
     "timeout a stuffed-up queue" in {
-      future.executor.shutdown()
-      future.executor.setRejectedExecutionHandler(new RejectedExecutionHandler() {
-        def rejectedExecution(r: Runnable, executor: ThreadPoolExecutor) {
-          // do nothing.
-        }
-      })
-      future.executor.awaitTermination(1, TimeUnit.MINUTES)
-      Time.freeze
-      val f = future { 3 * 4 }
-      Time.advance(23.seconds)
-      f.run()
-      f.get(1, TimeUnit.MILLISECONDS) must throwA[Exception]
+      Time.withCurrentTimeFrozen { time =>
+        future.executor.shutdown()
+        future.executor.setRejectedExecutionHandler(new RejectedExecutionHandler() {
+          def rejectedExecution(r: Runnable, executor: ThreadPoolExecutor) {
+            // do nothing.
+          }
+        })
+        future.executor.awaitTermination(1, TimeUnit.MINUTES)
+        val f = future { 3 * 4 }
+        time.advance(23.seconds)
+        f.run()
+        f.get(1, TimeUnit.MILLISECONDS) must throwA[Exception]
+      }
     }
 
     "run sequences in parallel" in {

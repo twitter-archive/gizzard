@@ -5,11 +5,11 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.7.7"
 
-  inline("com.twitter" %% "querulous" % "1.4.3-config-SNAPSHOT")
+  inline("com.twitter" %% "querulous" % "1.5.0")
   inline("net.lag" % "configgy" % "1.6.8")
   inline("net.lag" % "kestrel" % "1.3-config-SNAPSHOT")
   inline("com.twitter" % "ostrich" % "1.2.10")
-  inline("com.twitter" % "util" % "1.1.2-SNAPSHOT")
+  inline("com.twitter" % "util" % "1.1.2")
 
   val rpcclient = "com.twitter" %% "rpcclient" % "1.1.2-SNAPSHOT"
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
