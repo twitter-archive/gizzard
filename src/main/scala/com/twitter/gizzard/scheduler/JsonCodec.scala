@@ -29,6 +29,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
     p += (("JsonNestedJob".r, new JsonNestedJobParser(this)))
     // for backward compat:
     p += (("JobWithTasks".r, new JsonNestedJobParser(this)))
+    p += (("SchedulableWithTasks".r, new JsonNestedJobParser(this)))
     p
   }
 
