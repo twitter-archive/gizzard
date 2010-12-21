@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS shards (
     destination_type        VARCHAR(125),
     busy                    TINYINT      NOT NULL DEFAULT 0,
 
-   PRIMARY KEY primary_key_table_prefix_hostname (hostname, table_prefix)
+   PRIMARY KEY (hostname, table_prefix)
 ) ENGINE=INNODB
 """
 
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS shard_children (
     child_table_prefix      VARCHAR(125) NOT NULL,
     weight                  INT NOT NULL DEFAULT 1,
 
-    PRIMARY KEY primary_key_family (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
+    PRIMARY KEY (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
     INDEX child (child_hostname, child_table_prefix)
 ) ENGINE=INNODB
 """
