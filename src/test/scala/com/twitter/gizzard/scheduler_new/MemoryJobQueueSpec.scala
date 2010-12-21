@@ -72,11 +72,13 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
         one(destinationQueue).put(job2)
       }
 
-      queue.drainTo(destinationQueue, 1.millisecond)
-      queue.put(job1)
-      queue.put(job2)
-      Time.advance(2.milliseconds)
-      queue.checkExpiration(10)
+      Time.withCurrentTimeFrozen { time =>
+        queue.drainTo(destinationQueue, 1.millisecond)
+        queue.put(job1)
+        queue.put(job2)
+        time.advance(2.milliseconds)
+        queue.checkExpiration(10)
+      }
     }
   }
 }
