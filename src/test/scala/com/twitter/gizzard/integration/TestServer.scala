@@ -40,8 +40,8 @@ object config {
 
   trait TestJobScheduler extends Scheduler {
     val schedulerType = new KestrelScheduler {
-      val queuePath = "/tmp"
-      override val keepJournal = false
+      path = "/tmp"
+      keepJournal = false
     }
     errorLimit = 25
   }

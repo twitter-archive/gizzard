@@ -32,8 +32,8 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     val schedulerConfig = new gizzard.config.Scheduler {
       val name = "tbird_test_q"
       val schedulerType = new gizzard.config.KestrelScheduler {
-        val queuePath = "/tmp"
-        override val keepJournal = false
+        path = "/tmp"
+        keepJournal = false
       }
 
       errorLimit = 10

@@ -7,7 +7,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
 
   inline("com.twitter" %% "querulous" % "1.5.0")
   inline("net.lag" % "configgy" % "1.6.8")
-  inline("net.lag" % "kestrel" % "1.3-config-SNAPSHOT")
+  inline("net.lag" % "kestrel" % "1.2.7")
   inline("com.twitter" % "ostrich" % "1.2.10")
   inline("com.twitter" % "util" % "1.1.2")
 

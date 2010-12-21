@@ -3,12 +3,19 @@ package com.twitter.gizzard.config
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
-import net.lag.kestrel.config.PersistentQueue
+import net.lag.kestrel.{PersistentQueue, PersistentQueueConfig}
 import gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
 trait SchedulerType
-trait KestrelScheduler extends SchedulerType with PersistentQueue {
-  def queuePath: String
+trait KestrelScheduler extends PersistentQueueConfig with SchedulerType with Cloneable {
+  def apply(newName: String): PersistentQueue = {
+    // ugh
+    val oldName = name
+    name = newName
+    val q = apply()
+    name = oldName
+    q
+  }
 }
 class MemoryScheduler extends SchedulerType {
   var sizeLimit = 0
@@ -46,9 +53,9 @@ trait Scheduler {
   def apply(codec: Codec[JsonJob]): gizzard.scheduler.JobScheduler[JsonJob] = {
     val (jobQueue, errorQueue) = schedulerType match {
       case kestrel: KestrelScheduler => {
-        val persistentJobQueue = kestrel(kestrel.queuePath, jobQueueName)
+        val persistentJobQueue = kestrel(jobQueueName)
         val jobQueue = new KestrelJobQueue[JsonJob](jobQueueName, persistentJobQueue, codec)
-        val persistentErrorQueue = kestrel(kestrel.queuePath, errorQueueName)
+        val persistentErrorQueue = kestrel(errorQueueName)
         val errorQueue = new KestrelJobQueue[JsonJob](errorQueueName, persistentErrorQueue, codec)
 
         (jobQueue, errorQueue)
