@@ -10,6 +10,21 @@ class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocke
     var unparsed = new mutable.ListBuffer[String]
     val codec = new JsonCodec({ (unparsable: Array[Byte]) => unparsed += new String(unparsable) })
 
+    "parse some json" in {
+      val jsonMap = Map("has" -> "to", "be" -> "a", "map" -> List(3, Map("like" -> "so")))
+
+      val job = mock[JsonJob]
+      val parser = mock[JsonJobParser]
+
+      codec += ("this".r, parser)
+      expect {
+        one(parser).parse(jsonMap) willReturn job
+      }
+
+      val json = """{"this":{"has":"to","be":"a","map":[3, {"like":"so"}]}}"""
+      codec.inflate(json.getBytes()) mustEqual job
+    }
+
     "fail gracefully" in {
       codec.inflate("gobbledygook".getBytes) must throwA[UnparsableJsonException]
     }

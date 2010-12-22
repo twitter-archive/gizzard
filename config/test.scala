@@ -28,8 +28,8 @@ object TestQueryEvaluator extends QueryEvaluator {
 
 class TestScheduler(val name: String) extends Scheduler {
   val schedulerType = new KestrelScheduler {
-    val queuePath = "/tmp"
-    override val keepJournal = false
+    path = "/tmp"
+    keepJournal = false
   }
   errorLimit = 25
   badJobQueue = new JsonJobLogger { name = "bad_jobs" }

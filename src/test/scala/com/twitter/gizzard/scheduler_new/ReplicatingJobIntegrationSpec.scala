@@ -13,7 +13,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     // TODO: make configurable
     val port  = 12313
     val host  = Host("localhost", port, "c1", HostStatus.Normal)
-    val relay = new JobRelay(Map("c1" -> List(host)), 1, false, 1.second)
+    val relay = new JobRelay(Map("c1" -> List(host)), 1, false, 1.second, 0)
     val codec = new ReplicatingJsonCodec(relay, { badJob =>
       println(new String(badJob, "UTF-8"))
     })
@@ -32,8 +32,8 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     val schedulerConfig = new gizzard.config.Scheduler {
       val name = "tbird_test_q"
       val schedulerType = new gizzard.config.KestrelScheduler {
-        val queuePath = "/tmp"
-        override val keepJournal = false
+        path = "/tmp"
+        keepJournal = false
       }
 
       errorLimit = 10

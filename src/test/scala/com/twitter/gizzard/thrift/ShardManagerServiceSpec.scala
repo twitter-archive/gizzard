@@ -58,7 +58,6 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       woot mustEqual true
     }
 
-
     "create_shard" in {
       expect {
         one(nameServer).createShard(shardInfo1)
