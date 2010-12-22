@@ -8,7 +8,7 @@ import com.twitter.querulous.StatsCollector
 import com.twitter.querulous.query.SqlQueryTimeoutException
 import gizzard.GizzardServer
 import nameserver.NameServer
-import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException}
+import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException, CopyDestination, CopyDestinationShard}
 import scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
 
 object config {
@@ -168,9 +168,9 @@ object TestShardCopyAdapter extends shards.ShardCopyAdapter[TestShard] {
     }.toSeq)
   }
 
-  def copyPage(source: TestShard, dest: TestShard, context: Option[Map[String,Any]], count: Int) = {
+  def copyPage(source: TestShard, dests: List[CopyDestinationShard[TestShard]], context: Option[Map[String,Any]], count: Int) = {
     val (rows, nextCursor) = rowsAndNextCursor(source, context, count)
-    dest.putAll(rows)
+    dests.foreach(_.shard.putAll(rows))
 
     nextCursor
   }
@@ -253,4 +253,33 @@ class PutParser(forwarding: Long => TestShard) extends JsonJobParser {
 class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends JsonJob {
   def toMap = Map("key" -> key, "value" -> value)
   def apply() { forwarding(key).put(key, value) }
+}
+
+class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+extends CopyJobFactory[TestShard] {
+  def apply(src: ShardId, dests: List[CopyDestination]) = new TestCopy(src, dests, 0, 500, ns, s)
+}
+
+class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+extends CopyJobParser[TestShard] {
+  def deserialize(m: Map[String, Any], src: ShardId, dests: List[CopyDestination], count: Int) = {
+    val cursor = m("cursor").asInstanceOf[Int]
+    val count  = m("count").asInstanceOf[Int]
+    new TestCopy(src, dests, cursor, count, ns, s)
+  }
+}
+
+class TestCopy(srcId: ShardId, destinations: List[CopyDestination], cursor: Int, count: Int,
+               ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+extends CopyJob[TestShard](srcId, destinations, count, ns, s) {
+  def copyPage(src: TestShard, dests: List[CopyDestinationShard[TestShard]], count: Int) = {
+    val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
+
+    dests.foreach(_.shard.putAll(rows))
+
+    if (rows.isEmpty) None
+    else Some(new TestCopy(srcId, destinations, rows.last._1, count, ns, s))
+  }
+
+  def serialize = Map("cursor" -> cursor)
 }

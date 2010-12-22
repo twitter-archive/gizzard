@@ -5,18 +5,19 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 
-class FakeCopy(val sourceShardId: shards.ShardId, val destinationShardId: shards.ShardId, count: Int,
+class FakeCopy(val sourceShardId: shards.ShardId, val dests: List[CopyDestination], count: Int,
                nameServer: nameserver.NameServer[shards.Shard], scheduler: JobScheduler[JsonJob])(nextJob: => Option[FakeCopy])
-      extends CopyJob[shards.Shard](sourceShardId, destinationShardId, count, nameServer, scheduler) {
+      extends CopyJob[shards.Shard](sourceShardId, dests, count, nameServer, scheduler) {
   def serialize = Map("cursor" -> 1)
 
   @throws(classOf[Exception])
-  def copyPage(sourceShard: shards.Shard, destinationShard: shards.Shard, count: Int) = nextJob
+  def copyPage(sourceShard: shards.Shard, destinationShards: List[CopyDestinationShard[shards.Shard]], count: Int) = {
+    nextJob
+  }
 
   override def equals(that: Any) = that match {
     case that: FakeCopy =>
-      this.sourceShardId == that.sourceShardId &&
-        this.destinationShardId == that.destinationShardId
+      this.sourceShardId == that.sourceShardId
     case _ => false
   }
 }
@@ -25,11 +26,12 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
   "CopyJob" should {
     val sourceShardId = shards.ShardId("testhost", "1")
     val destinationShardId = shards.ShardId("testhost", "2")
+    val destinations = List(CopyDestination(destinationShardId, None))
     val count = CopyJob.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
     val nameServer = mock[nameserver.NameServer[shards.Shard]]
     val jobScheduler = mock[JobScheduler[JsonJob]]
-    val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(_)
+    val makeCopy = new FakeCopy(sourceShardId, destinations, count, nameServer, jobScheduler)(_)
     val shard1 = mock[shards.Shard]
     val shard2 = mock[shards.Shard]
 
@@ -38,8 +40,8 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
       copy.toMap mustEqual Map(
         "source_shard_hostname" -> sourceShardId.hostname,
         "source_shard_table_prefix" -> sourceShardId.tablePrefix,
-        "destination_shard_hostname" -> destinationShardId.hostname,
-        "destination_shard_table_prefix" -> destinationShardId.tablePrefix,
+        "destination_0_hostname" -> destinationShardId.hostname,
+        "destination_0_table_prefix" -> destinationShardId.tablePrefix,
         "count" -> count
       ) ++ copy.serialize
     }
@@ -50,8 +52,8 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
       json mustMatch "Copy"
       json mustMatch "\"source_shard_hostname\":\"%s\"".format(sourceShardId.hostname)
       json mustMatch "\"source_shard_table_prefix\":\"%s\"".format(sourceShardId.tablePrefix)
-      json mustMatch "\"destination_shard_hostname\":\"%s\"".format(destinationShardId.hostname)
-      json mustMatch "\"destination_shard_table_prefix\":\"%s\"".format(destinationShardId.tablePrefix)
+      json mustMatch "\"destination_0_hostname\":\"%s\"".format(destinationShardId.hostname)
+      json mustMatch "\"destination_0_table_prefix\":\"%s\"".format(destinationShardId.tablePrefix)
       json mustMatch "\"count\":" + count
     }
 
@@ -86,7 +88,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
           one(jobScheduler).put(copy)
         }
-
+      
         copy.apply()
         copy.toMap("count") mustEqual (count * 0.9).toInt
       }
@@ -118,7 +120,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
         "after too many retries" in {
           val count = CopyJob.MIN_COPY - 1
-          val copy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
+          val copy = new FakeCopy(sourceShardId, destinations, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
 
           expect {
             one(nameServer).findShardById(sourceShardId) willReturn shard1
