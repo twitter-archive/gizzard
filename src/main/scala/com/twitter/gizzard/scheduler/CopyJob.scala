@@ -124,13 +124,15 @@ class BasicCopyJobFactory[S <: Shard](
 extends CopyJobFactory[S] {
 
   def apply(sourceId: ShardId, destId: ShardId) = {
+    println("creating a new job")
     new BasicCopyJob(sourceId, destId, None, defaultCount, ns, s, copyAdapter)
   }
 
   def parser = new CopyJobParser[S] {
     def deserialize(attrs: Map[String, Any], sourceId: ShardId, destId: ShardId, count: Int) = {
-      val cursor = attrs("cursor").asInstanceOf[Map[String,Any]]
-      new BasicCopyJob(sourceId, destId, Some(cursor), count, ns, s, copyAdapter)
+      println("parsing a new job")
+      val cursor = attrs.get("cursor").map(_.asInstanceOf[Map[String,Any]])
+      new BasicCopyJob(sourceId, destId, cursor, count, ns, s, copyAdapter)
     }
   }
 }
@@ -145,9 +147,10 @@ class BasicCopyJob[S <: Shard](
   copyAdapter: ShardCopyAdapter[S])
 extends CopyJob[S](sourceId, destId, count, nameServer, scheduler) {
 
-  def serialize = Map("cursor" -> cursor)
+  def serialize = cursor.map(c => Map("cursor" -> c)).getOrElse(Map())
 
   def copyPage(source: S, dest: S, count: Int) = {
+    println("here")
     copyAdapter.copyPage(source, dest, cursor, count).map { nextCursor =>
       new BasicCopyJob(sourceId, destId, Some(nextCursor), count, nameServer, scheduler, copyAdapter)
     }

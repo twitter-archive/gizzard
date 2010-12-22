@@ -180,7 +180,7 @@ extends CrossClusterCopyJob[S](sourceId, destId, count, factory) {
 
   def applyPage() {
     try {
-      nameServer.jobRelay(destId.cluster)(List(writeJob.toJson))
+      nameServer.jobRelay.getOnlineOrOfflineCluster(destId.cluster)(List(writeJob.toJson))
     } catch {
       case e: ShardTimeoutException if (count > CopyJob.MIN_COPY) =>
         log.warning("Shard block " + phase + " timed out; trying a smaller block size.")
