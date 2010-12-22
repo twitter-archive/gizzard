@@ -3,7 +3,7 @@ package com.twitter.gizzard.scheduler
 import com.twitter.util.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-
+import shards.{Busy, Shard, CopyDestination, CopyDestinationShard}
 
 class FakeCopy(val sourceShardId: shards.ShardId, val dests: List[CopyDestination], count: Int,
                nameServer: nameserver.NameServer[shards.Shard], scheduler: JobScheduler[JsonJob])(nextJob: => Option[FakeCopy])

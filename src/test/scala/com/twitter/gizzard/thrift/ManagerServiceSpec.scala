@@ -5,7 +5,7 @@ import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
-import shards.{Busy, Shard}
+import shards.{Busy, Shard, CopyDestination, CopyDestinationShard}
 import scheduler._
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {

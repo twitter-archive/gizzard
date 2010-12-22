@@ -18,9 +18,6 @@ object CopyJob {
  */
 trait CopyJobFactory[S <: Shard] extends ((ShardId, List[CopyDestination]) => CopyJob[S])
 
-case class CopyDestination(shardId: ShardId, baseId: Option[Long])
-case class CopyDestinationShard[S](shard: S, baseId: Option[Long])
-
 /**
  * A parser that creates a copy job out of json. The basic attributes (source shard ID, destination)
  * shard ID, and count) are parsed out first, and the remaining attributes are passed to
@@ -169,33 +166,33 @@ class BasicCopyJobFactory[S <: Shard](
   defaultCount: Int)
 extends CopyJobFactory[S] {
 
-  def apply(sourceId: ShardId, destId: ShardId) = {
-    new BasicCopyJob(sourceId, destId, None, defaultCount, ns, s, copyAdapter)
+  def apply(sourceId: ShardId, destinations: List[CopyDestination]) = {
+    new BasicCopyJob(sourceId, destinations, None, defaultCount, ns, s, copyAdapter)
   }
 
   def parser = new CopyJobParser[S] {
-    def deserialize(attrs: Map[String, Any], sourceId: ShardId, destId: ShardId, count: Int) = {
+    def deserialize(attrs: Map[String, Any], sourceId: ShardId, destinations: List[CopyDestination], count: Int) = {
       val cursor = attrs("cursor").asInstanceOf[Map[String,Any]]
-      new BasicCopyJob(sourceId, destId, Some(cursor), count, ns, s, copyAdapter)
+      new BasicCopyJob(sourceId, destinations, Some(cursor), count, ns, s, copyAdapter)
     }
   }
 }
 
 class BasicCopyJob[S <: Shard](
   sourceId: ShardId,
-  destId: ShardId,
+  destinations: List[CopyDestination],
   cursor: Option[Map[String, Any]],
   count: Int,
   nameServer: NameServer[S],
   scheduler: JobScheduler[JsonJob],
   copyAdapter: ShardCopyAdapter[S])
-extends CopyJob[S](sourceId, destId, count, nameServer, scheduler) {
+extends CopyJob[S](sourceId, destinations, count, nameServer, scheduler) {
 
   def serialize = Map("cursor" -> cursor)
 
-  def copyPage(source: S, dest: S, count: Int) = {
+  def copyPage(source: S, dest: List[CopyDestinationShard[S]], count: Int) = {
     copyAdapter.copyPage(source, dest, cursor, count).map { nextCursor =>
-      new BasicCopyJob(sourceId, destId, Some(nextCursor), count, nameServer, scheduler, copyAdapter)
+      new BasicCopyJob(sourceId, destinations, Some(nextCursor), count, nameServer, scheduler, copyAdapter)
     }
   }
 }
