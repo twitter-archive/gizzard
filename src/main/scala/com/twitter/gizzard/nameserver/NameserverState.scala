@@ -17,7 +17,7 @@ class NameserverState(initialShards: List[gizzard.shards.ShardInfo],
     val key = link.upId
     val entry = map.getOrElse(key, List[gizzard.shards.LinkInfo]())
     
-    map + ((key, entry + link))
+    map + ((key, entry ::: List(link)))
   }
   
   val forwardings = initialForwardings.filter(_.tableId == tableId)
