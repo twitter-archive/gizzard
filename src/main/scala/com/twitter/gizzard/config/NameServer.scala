@@ -34,8 +34,9 @@ class JobRelay {
   var priority: Int     = 0
   var framed: Boolean   = true
   var timeout: Duration = 1.seconds
+  var retries: Int      = 3
 
-  def apply() = new JobRelayFactory(priority, framed, timeout)
+  def apply() = new JobRelayFactory(priority, framed, timeout, retries)
 }
 
 object NoJobRelay extends JobRelay {
