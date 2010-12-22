@@ -13,6 +13,8 @@ import shards._
 class NonExistentShard(message: String) extends ShardException(message: String)
 class InvalidShard(message: String) extends ShardException(message: String)
 
+class NameserverUninitialized extends ShardException("Please call reload() before operating on the NameServer")
+
 class NameServer[S <: shards.Shard](
   nameServerShard: Shard,
   shardRepository: ShardRepository[S],
@@ -40,6 +42,7 @@ extends Shard {
   def getShardInfo(id: ShardId) = shardInfos(id)
 
   def getChildren(id: ShardId) = {
+    if(familyTree == null) throw new NameserverUninitialized
     familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
   }
 
@@ -90,6 +93,7 @@ extends Shard {
   def findShardById(id: ShardId): S = findShardById(id, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
+    if(forwardings == null) throw new NameserverUninitialized
     val shardInfo = forwardings.get(tableId).flatMap { bySourceIds =>
       val item = bySourceIds.floorEntry(mappingFunction(id))
       if (item != null) {
