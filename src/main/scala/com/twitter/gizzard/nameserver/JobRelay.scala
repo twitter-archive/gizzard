@@ -15,17 +15,22 @@ extends Exception("Job replication to cluster '" + cluster + "' is blocked.", ca
 class JobRelayFactory(
   priority: Int,
   framed: Boolean,
-  timeout: Duration)
+  timeout: Duration,
+  retries: Int)
 extends (Map[String, Seq[Host]] => JobRelay) {
+
+  def this(priority: Int, framed: Boolean, timeout: Duration) = this(priority, framed, timeout, 0)
+
   def apply(hostMap: Map[String, Seq[Host]]) =
-    new JobRelay(hostMap, priority, framed, timeout)
+    new JobRelay(hostMap, priority, framed, timeout, retries)
 }
 
 class JobRelay(
   hostMap: Map[String, Seq[Host]],
   priority: Int,
   framed: Boolean,
-  timeout: Duration)
+  timeout: Duration,
+  retries: Int)
 extends (String => JobRelayCluster) {
 
   private val clients = Map(hostMap.flatMap { case (c, hs) =>
@@ -39,7 +44,7 @@ extends (String => JobRelayCluster) {
     if (onlineHosts.isEmpty) {
       if (blocked) Seq(c -> new BlockedJobRelayCluster(c)) else Seq()
     } else {
-      Seq(c -> new JobRelayCluster(onlineHosts, priority, framed, timeout))
+      Seq(c -> new JobRelayCluster(onlineHosts, priority, framed, timeout, retries))
     }
   }.toSeq: _*)
 
@@ -52,9 +57,10 @@ class JobRelayCluster(
   hosts: Seq[Host],
   priority: Int,
   framed: Boolean,
-  timeout: Duration)
+  timeout: Duration,
+  retries: Int)
 extends (Iterable[String] => Unit) {
-  val client = new LoadBalancingChannel(hosts.map(h => new JobInjectorClient(h.hostname, h.port, framed, timeout)))
+  val client = new LoadBalancingChannel(hosts.map(h => new JobInjectorClient(h.hostname, h.port, framed, timeout, retries)))
 
   def apply(jobs: Iterable[String]) {
     val jobList = new JLinkedList[thrift.Job]()
@@ -73,14 +79,14 @@ object NullJobRelayFactory extends JobRelayFactory(0, false, new Duration(0)) {
   override def apply(h: Map[String, Seq[Host]]) = NullJobRelay
 }
 
-object NullJobRelay extends JobRelay(Map(), 0, false, new Duration(0))
+object NullJobRelay extends JobRelay(Map(), 0, false, new Duration(0), 0)
 
-object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, new Duration(0)) {
+object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, new Duration(0), 0) {
   override val client = null
   override def apply(jobs: Iterable[String]) = ()
 }
 
-class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, new Duration(0)) {
+class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, new Duration(0), 0) {
   override val client = null
   override def apply(jobs: Iterable[String]) { throw new ClusterBlockedException(cluster) }
 }

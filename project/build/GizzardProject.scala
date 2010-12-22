@@ -11,7 +11,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   inline("com.twitter" % "ostrich" % "1.2.10")
   inline("com.twitter" % "util" % "1.1.2")
 
-  val rpcclient = "com.twitter" %% "rpcclient" % "1.1.2-SNAPSHOT"
+  val rpcclient = "com.twitter" %% "rpcclient" % "1.2.0-SNAPSHOT"
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
   val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
   val thrift    = "thrift" % "libthrift" % "0.5.0"
