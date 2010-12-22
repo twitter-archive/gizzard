@@ -8,8 +8,6 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import shards.{Busy, Shard}
 import scheduler._
 
-
-
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer    = mock[nameserver.NameServer[Shard]]
   val copier        = mock[CopyJobFactory[Shard]]
@@ -57,7 +55,6 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       }
       woot mustEqual true
     }
-
 
     "create_shard" in {
       expect {
@@ -112,10 +109,11 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
+      val dests = List(CopyDestination(shardId2, None))
       val copyJob = mock[CopyJob[Shard]]
 
       expect {
-        one(copier).apply(shardId1, shardId2) willReturn copyJob
+        one(copier).apply(shardId1, dests) willReturn copyJob
         one(copyScheduler).put(copyJob)
       }
 
