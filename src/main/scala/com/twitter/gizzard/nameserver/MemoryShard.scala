@@ -24,10 +24,6 @@ class MemoryShard extends Shard {
     }
   }
 
-  def dumpStructure(tableId: Int) = {
-    new NameserverState(shardTable.toList, parentTable.toList, forwardingTable.toList, tableId)
-  }
-
   private def find(shardId: ShardId): Option[ShardInfo] = {
     shardTable.find { _.id == shardId }
   }
