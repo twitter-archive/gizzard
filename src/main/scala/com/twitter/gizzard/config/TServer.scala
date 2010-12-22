@@ -28,7 +28,7 @@ trait TServer extends (thrift.TProcessor => thrift.server.TServer) {
   var idleTimeout = 60.seconds
   var threadPool  = new ThreadPool
 
-  def getPool = threadPool(name + " ThreadPool")
+  def getPool = threadPool(name + "_thread_pool")
 
   def apply(processor: thrift.TProcessor): thrift.server.TServer
 }
