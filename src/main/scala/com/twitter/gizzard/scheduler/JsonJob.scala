@@ -1,9 +1,10 @@
 package com.twitter.gizzard.scheduler
 
-import com.twitter.json.{Json, JsonException}
 import com.twitter.ostrich.{StatsProvider, W3CStats}
+import org.codehaus.jackson.map.ObjectMapper
 import net.lag.logging.Logger
 import gizzard.proxy.LoggingProxy
+import java.util.{Map => JMap, List => JList}
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
 
@@ -12,6 +13,10 @@ class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, 
  * map containing 'className' => 'toMap', where 'toMap' should return a map of key/values from the
  * job. The default 'className' is the job's java/scala class name.
  */
+object JsonJob {
+  val mapper = new ObjectMapper
+}
+
 trait JsonJob extends Job {
   def toMap: Map[String, Any]
 
@@ -20,7 +25,32 @@ trait JsonJob extends Job {
 
   def toJson = {
     def json = toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage)
-    Json.build(Map(className -> json)).toString
+    val javaMap = deepConvert(Map(className -> json))
+    JsonJob.mapper.writeValueAsString(javaMap)
+  }
+
+  private def deepConvert(scalaMap: Map[String, Any]): JMap[String, Any] = {
+    val map = new java.util.LinkedHashMap[String, Any]()
+    scalaMap.map { case (k, v) =>
+      v match {
+        case m: Map[String, Any] => map.put(k, deepConvert(m))
+        case a: Iterable[Any] => map.put(k, deepConvert(a))
+        case v => map.put(k, v)
+      }
+    }
+    map
+  }
+
+  private def deepConvert(scalaIterable: Iterable[Any]): JList[Any] = {
+    val list = new java.util.LinkedList[Any]()
+    scalaIterable.map { v =>
+      v match {
+        case m: Map[String, Any] => list.add(deepConvert(m))
+        case a: Iterable[Any] => list.add(deepConvert(a))
+        case v => list.add(v)
+      }
+    }
+    list
   }
 
   override def toString = toJson

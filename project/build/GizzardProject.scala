@@ -15,7 +15,6 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
   val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
   val thrift    = "thrift" % "libthrift" % "0.5.0"
-  val json      = "com.twitter" %% "json" % "2.1.5"
   val jackson   = "org.codehaus.jackson" % "jackson-core-asl" % "1.6.1"
   val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
 

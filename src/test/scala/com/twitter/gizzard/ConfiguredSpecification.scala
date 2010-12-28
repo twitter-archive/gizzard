@@ -11,6 +11,7 @@ import com.twitter.util.Eval
 
 
 trait ConfiguredSpecification extends Specification {
+  noDetailedDiffs()
   val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
   config.logging()
 }
