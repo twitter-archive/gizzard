@@ -198,7 +198,7 @@ extends TestShard {
   }
 
   def get(key: Int) = evaluator.selectOne(getSql, key)(asResult)
-  def getAll(key: Int, count: Int) = evaluator.select(getSql, key, count)(asResult)
+  def getAll(key: Int, count: Int) = evaluator.select(getAllSql, key, count)(asResult)
 }
 
 
@@ -235,10 +235,12 @@ extends CopyJob[TestShard](srcId, destId, count, ns, s) {
   def copyPage(src: TestShard, dest: TestShard, count: Int) = {
     val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
 
-    dest.putAll(rows)
-
-    if (rows.isEmpty) None
-    else Some(new TestCopy(srcId, destId, rows.last._1, count, ns, s))
+    if (rows.isEmpty) {
+      None
+    } else {
+      dest.putAll(rows)
+      Some(new TestCopy(srcId, destId, rows.last._1, count, ns, s))
+    }
   }
 
   def serialize = Map("cursor" -> cursor)
