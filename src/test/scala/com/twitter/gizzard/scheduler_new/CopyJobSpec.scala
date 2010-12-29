@@ -46,7 +46,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
     "toJson" in {
       val copy = makeCopy(Some(nextCopy))
-      val json = copy.toJson
+      val json = new String(copy.toJson, "UTF-8")
       json mustMatch "Copy"
       json mustMatch "\"source_shard_hostname\":\"%s\"".format(sourceShardId.hostname)
       json mustMatch "\"source_shard_table_prefix\":\"%s\"".format(sourceShardId.tablePrefix)

@@ -26,7 +26,7 @@ trait JsonJob extends Job {
   def toJson = {
     def json = toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage)
     val javaMap = deepConvert(Map(className -> json))
-    JsonJob.mapper.writeValueAsString(javaMap)
+    JsonJob.mapper.writeValueAsBytes(javaMap)
   }
 
   private def deepConvert(scalaMap: Map[String, Any]): JMap[String, Any] = {
@@ -53,7 +53,7 @@ trait JsonJob extends Job {
     list
   }
 
-  override def toString = toJson
+  override def toString = new String(toJson, "UTF-8")
 }
 
 /**
@@ -61,14 +61,14 @@ trait JsonJob extends Job {
  */
 class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob[JsonJob](jobs) with JsonJob {
   def toMap: Map[String, Any] = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
-  override def toString = toJson
+  //override def toString = toJson
 }
 
 /**
  * A JobConsumer that encodes JsonJobs into a string and logs them at error level.
  */
 class JsonJobLogger(logger: Logger) extends JobConsumer[JsonJob] {
-  def put(job: JsonJob) = logger.error(job.toJson)
+  def put(job: JsonJob) = logger.error(job.toString)
 }
 
 class LoggingJsonJobParser(

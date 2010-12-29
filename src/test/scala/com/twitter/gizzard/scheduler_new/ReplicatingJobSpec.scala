@@ -13,7 +13,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
 
     "toMap" in {
       expect {
-        one(job1).toJson    willReturn """{"foo":"bar"}"""
+        one(job1).toJson    willReturn """{"foo":"bar"}""".getBytes("UTF-8")
         one(job1).className willReturn testJsonJobClass
         one(job1).toMap     willReturn Map[String, Any]()
       }
@@ -28,7 +28,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
     }
 
     "replicate when list of clusters is present" in {
-      val json = """{"foo":"bar"}"""
+      val json = """{"foo":"bar"}""".getBytes("UTF-8")
 
       expect {
         one(job1).toJson willReturn json
@@ -48,7 +48,7 @@ class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with Class
 
     "not replicate when list of clusters is empty" in {
       expect {
-        one(job1).toJson willReturn """{"foo":"bar"}"""
+        one(job1).toJson willReturn """{"foo":"bar"}""".getBytes("UTF-8")
         one(job1).apply()
       }
 

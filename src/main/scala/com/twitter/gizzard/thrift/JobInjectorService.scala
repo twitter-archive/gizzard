@@ -31,7 +31,7 @@ extends JobInjector.Iface {
       if (isDeserialized) {
         deserialized.toJson
       } else {
-        new String(serialized, "UTF-8")
+        serialized
       }
     }
   }
