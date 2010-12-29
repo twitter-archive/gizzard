@@ -36,7 +36,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   def +=(item: (Regex, JsonJobParser)) = processors += item
   def +=(r: Regex, p: JsonJobParser) = processors += ((r, p))
 
-  def flatten(job: JsonJob): Array[Byte] = job.toJson
+  def flatten(job: JsonJob): Array[Byte] = job.toJsonBytes
 
   def inflate(data: Array[Byte]): JsonJob = {
     try {

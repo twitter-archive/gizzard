@@ -55,7 +55,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
       }
 
       "JsonJob" in {
-        val json = new String(job.toJson, "UTF-8")
+        val json = job.toJson
         json mustMatch "\"FakeJob\""
         json mustMatch "\"a\":1"
         json mustMatch "\"error_count\":0"
@@ -64,7 +64,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
 
       "JsonNestedJob" in {
         val nestedJob = new JsonNestedJob(List(job))
-        val json = new String(nestedJob.toJson, "UTF-8")
+        val json = nestedJob.toJson
 
         json mustMatch "\"com.twitter.gizzard.scheduler.JsonNestedJob\":\\{"
         json mustMatch "\"error_count\":0"
@@ -76,7 +76,7 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
         job.errorCount = 23
         job.errorMessage = "Good heavens!"
 
-        val json = new String(job.toJson, "UTF-8")
+        val json = job.toJson
         json mustMatch "\\{\"FakeJob\":\\{"
         json mustMatch "\"a\":1"
         json mustMatch "\"error_count\":23"

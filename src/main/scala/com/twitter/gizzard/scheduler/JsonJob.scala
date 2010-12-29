@@ -23,11 +23,13 @@ trait JsonJob extends Job {
   def shouldReplicate = true
   def className = getClass.getName
 
-  def toJson = {
+  def toJsonBytes = {
     def json = toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage)
     val javaMap = deepConvert(Map(className -> json))
     JsonJob.mapper.writeValueAsBytes(javaMap)
   }
+
+  def toJson = new String(toJsonBytes, "UTF-8")
 
   private def deepConvert(scalaMap: Map[String, Any]): JMap[String, Any] = {
     val map = new java.util.LinkedHashMap[String, Any]()
@@ -53,7 +55,7 @@ trait JsonJob extends Job {
     list
   }
 
-  override def toString = new String(toJson, "UTF-8")
+  override def toString = toJson
 }
 
 /**

@@ -59,7 +59,7 @@ class ReplicatingJob(
 extends JsonNestedJob(jobs) {
 
   def this(relay: JobRelay, jobs: Iterable[JsonJob], clusters: Iterable[String]) =
-    this(relay, jobs, clusters, jobs.map(_.toJson))
+    this(relay, jobs, clusters, jobs.map(_.toJsonBytes))
 
   def this(relay: JobRelay, jobs: Iterable[JsonJob]) = this(relay, jobs, relay.clusters)
 
