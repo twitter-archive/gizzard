@@ -14,7 +14,7 @@ class JournaledJobSpec extends ConfiguredSpecification with JMocker with ClassMo
     "journal on success" in {
       expect {
         one(job).apply()
-        one(job).toString willReturn "hello"
+        one(job).toJson willReturn "hello".getBytes("UTF-8")
         one(queue).apply("hello")
       }
 
