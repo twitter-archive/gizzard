@@ -11,11 +11,11 @@ class JournaledJob(val job: JsonJob, journaller: String => Unit) extends JsonJob
   def apply() {
     job()
     try {
-      journaller(new String(job.toJson, "UTF-8"))
+      journaller(job.toJson)
     } catch {
       case e: Exception =>
         val log = Logger.get(getClass.getName)
-        log.warning(e, "Failed to journal job: %s", job.toString)
+        log.warning(e, "Failed to journal job: %s", job.toJson)
     }
   }
 }

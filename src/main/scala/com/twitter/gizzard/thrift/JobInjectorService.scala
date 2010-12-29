@@ -27,9 +27,9 @@ extends JobInjector.Iface {
     def apply = deserialized.apply()
     def toMap = deserialized.toMap
 
-    override def toJson = {
+    override def toJsonBytes = {
       if (isDeserialized) {
-        deserialized.toJson
+        deserialized.toJsonBytes
       } else {
         serialized
       }
