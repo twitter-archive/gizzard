@@ -83,14 +83,21 @@ class ReplicatingShard[S <: Shard](
   }
 
   protected def fanoutWriteSerial[A](method: (S => A), replicas: Seq[S]): A = {
+    val exceptions = new mutable.ListBuffer[Throwable]
+
     val results = replicas.flatMap { shard =>
       try {
         Some(method(shard))
       } catch {
         case e: ShardBlackHoleException =>
           None
+        case e =>
+          exceptions += e
+          None
       }
     }
+
+    exceptions.map { throw _ }
     if (results.size == 0) {
       throw new ShardBlackHoleException(shardInfo.id)
     }
@@ -112,10 +119,10 @@ class ReplicatingShard[S <: Shard](
         try {
           f(shard)
         } catch {
+          case e: ShardRejectedOperationException =>
+            failover(f, remainder)
           case e: ShardException =>
-            if (!e.isInstanceOf[ShardRejectedOperationException]) {
-              log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
-            }
+            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             failover(f, remainder)
         }
       }
@@ -141,10 +148,10 @@ class ReplicatingShard[S <: Shard](
               Some(answer)
           }
         } catch {
+          case e: ShardRejectedOperationException =>
+            rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
           case e: ShardException =>
-            if (!e.isInstanceOf[ShardRejectedOperationException]) {
-              log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
-            }
+            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }
     }
