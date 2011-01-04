@@ -70,14 +70,14 @@ class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, c
   }
 
   def drainTo(otherQueue: JobQueue[J], delay: Duration) {
-    queue.expiredQueue = Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue)
-    queue.maxAge = delay.inMilliseconds.toInt
+    queue.expiredQueue set Some(Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue))
+    queue.maxAge set Some(delay.inMilliseconds.toInt)
   }
 
   def checkExpiration(flushLimit: Int) {
     val count = queue.discardExpired(flushLimit)
     if (count > 0) {
-      log.info("Replaying %d error jobs.", count)
+      log.info("Replaying %d error jobs from %s.", count, queueName)
     }
   }
 

@@ -1,6 +1,7 @@
 package com.twitter.gizzard.testserver
 
 import java.sql.{ResultSet, SQLException}
+import java.util.TreeMap
 import com.twitter.querulous.evaluator.{QueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
@@ -41,8 +42,8 @@ object config {
 
   trait TestJobScheduler extends Scheduler {
     val schedulerType = new KestrelScheduler {
-      val queuePath = "/tmp"
-      override val keepJournal = false
+      path = "/tmp"
+      keepJournal = false
     }
     errorLimit = 25
   }
@@ -199,7 +200,7 @@ extends TestShard {
   }
 
   def get(key: Int) = evaluator.selectOne(getSql, key)(asResult)
-  def getAll(key: Int, count: Int) = evaluator.select(getSql, key, count)(asResult)
+  def getAll(key: Int, count: Int) = evaluator.select(getAllSql, key, count)(asResult)
 }
 
 
@@ -218,7 +219,7 @@ class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends Jso
 
 class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
 extends CopyJobFactory[TestShard] {
-  def apply(src: ShardId, dests: List[CopyDestination]) = new TestCopy(src, dests, 0, 500, ns, s)
+  def apply(src: ShardId, dests: List[CopyDestination]) = new TestCopy(src, dests, -1, 500, ns, s)
 }
 
 class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
@@ -244,3 +245,34 @@ extends CopyJob[TestShard](srcId, destinations, count, ns, s) {
 
   def serialize = Map("cursor" -> cursor)
 }
+
+class TestSplitFactory(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+extends CopyJobFactory[TestShard] {
+  def apply(src: ShardId, dests: List[CopyDestination]) = new TestSplit(src, dests, -1, 500, ns, s)
+}
+
+class TestSplit(srcId: ShardId, destinations: List[CopyDestination], cursor: Int, count: Int,
+               ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+extends CopyJob[TestShard](srcId, destinations, count, ns, s) {
+  def copyPage(src: TestShard, dests: List[CopyDestinationShard[TestShard]], count: Int) = {
+    val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
+
+    val byBaseIds = new TreeMap[Long, TestShard]()
+    dests.foreach { d => byBaseIds.put(d.baseId.getOrElse(0), d.shard) }
+
+    rows.foreach { row =>
+      val shard = byBaseIds.floorEntry(nameServer.mappingFunction(row._1)).getValue
+      if(shard != null) {
+        shard.put(row._1, row._2)
+      } else {
+        println("wtf: " + row._1 + " mapped to " + nameServer.mappingFunction(row._1) + " returned null")
+      }
+    }
+
+    if (rows.isEmpty) None
+    else Some(new TestCopy(srcId, destinations, rows.last._1, count, ns, s))
+  }
+
+  def serialize = Map("cursor" -> cursor)
+}
+

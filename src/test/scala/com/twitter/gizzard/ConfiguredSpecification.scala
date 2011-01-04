@@ -11,6 +11,7 @@ import com.twitter.util.Eval
 
 
 trait ConfiguredSpecification extends Specification {
+  noDetailedDiffs()
   val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
   config.logging()
 }
@@ -21,7 +22,7 @@ trait IntegrationSpecification extends Specification {
   trait TestServerFacts {
     def enum: Int; def nsDatabaseName: String; def databaseName: String
     def basePort: Int; def injectorPort: Int; def managerPort: Int
-    def sqlShardInfo: shards.ShardInfo; def forwarding: nameserver.Forwarding
+    def sqlShardInfos: List[shards.ShardInfo]; def forwardings: List[nameserver.Forwarding]
     def kestrelQueues: Seq[String]
   }
 
@@ -35,9 +36,11 @@ trait IntegrationSpecification extends Specification {
       val basePort       = port
       val injectorPort   = port + 1
       val managerPort    = port + 2
-      val sqlShardInfo = shards.ShardInfo(shards.ShardId("localhost", "t0_0"),
-                                          "TestShard", "int", "int", shards.Busy.Normal)
-      val forwarding = nameserver.Forwarding(0, 0, sqlShardInfo.id)
+      val sqlShardInfos = List(shards.ShardInfo(shards.ShardId("localhost", "t0_0"),
+                                                             "TestShard", "int", "int", shards.Busy.Normal))
+                                                             
+      val forwardings = List(nameserver.Forwarding(0, 0, sqlShardInfos.first.id))
+      
       val kestrelQueues = Seq("gizzard_test_"+name+"_high_queue",
                               "gizzard_test_"+name+"_high_queue_errors",
                               "gizzard_test_"+name+"_low_queue",
@@ -80,8 +83,8 @@ trait IntegrationSpecification extends Specification {
     servers.foreach { s =>
       createTestServerDBs(s)
       s.nameServer.rebuildSchema()
-      s.nameServer.setForwarding(s.forwarding)
-      s.nameServer.createShard(s.sqlShardInfo)
+      s.forwardings.foreach { f => s.nameServer.setForwarding(f) }
+      s.sqlShardInfos.foreach { ssi => s.nameServer.createShard(ssi) }
       s.nameServer.reload()
     }
   }

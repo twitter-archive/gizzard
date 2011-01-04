@@ -4,6 +4,9 @@ import scala.collection.mutable
 import scala.util.matching.Regex
 import com.twitter.json.Json
 import net.lag.logging.Logger
+import org.codehaus.jackson.map.ObjectMapper
+import java.util.{Map => JMap, List => JList}
+import scala.collection.jcl
 
 /**
  * Codec for json-encoded jobs.
@@ -18,27 +21,28 @@ import net.lag.logging.Logger
  * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
  */
 class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob] {
+  private val mapper = new ObjectMapper
+
   protected val log = Logger.get(getClass.getName)
   protected val processors = {
     val p = mutable.Map.empty[Regex, JsonJobParser]
     p += (("JsonNestedJob".r, new JsonNestedJobParser(this)))
     // for backward compat:
     p += (("JobWithTasks".r, new JsonNestedJobParser(this)))
+    p += (("SchedulableWithTasks".r, new JsonNestedJobParser(this)))
     p
   }
 
   def +=(item: (Regex, JsonJobParser)) = processors += item
   def +=(r: Regex, p: JsonJobParser) = processors += ((r, p))
 
-  def flatten(job: JsonJob): Array[Byte] = job.toJson.getBytes
+  def flatten(job: JsonJob): Array[Byte] = job.toJsonBytes
 
   def inflate(data: Array[Byte]): JsonJob = {
     try {
-      Json.parse(new String(data)) match {
-        case json: Map[_, _] =>
-          assert(json.size == 1)
-          inflate(json.asInstanceOf[Map[String, Any]])
-      }
+      val javaMap: JMap[String, Any] = mapper.readValue(new String(data, "UTF-8"), classOf[JMap[String, Any]])
+      val scalaMap = deepConvert(javaMap)
+      inflate(scalaMap)
     } catch {
       case e =>
         log.error(e, "Unparsable JsonJob; dropping: " + e.toString)
@@ -60,5 +64,25 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
       case e =>
         throw new UnparsableJsonException("Processor '%s' blew up: %s".format(jobType, e.toString), e)
     }
+  }
+
+  private def deepConvert(javaList: JList[Any]): List[Any] = {
+    jcl.Buffer(javaList).map { v =>
+      v match {
+        case jm: JMap[String, Any] => deepConvert(jm)
+        case jl: JList[Any] => deepConvert(jl)
+        case _ => v
+      }
+    }.toList
+  }
+
+  private def deepConvert(javaMap: JMap[String, Any]): Map[String, Any] = {
+    Map(jcl.Map(javaMap).toSeq.map { case (k,v) =>
+      v match {
+        case jm: JMap[String, Any] => (k, deepConvert(jm))
+        case jl: JList[Any] => (k, deepConvert(jl))
+        case _ => (k, v)
+      }
+    }: _*)
   }
 }

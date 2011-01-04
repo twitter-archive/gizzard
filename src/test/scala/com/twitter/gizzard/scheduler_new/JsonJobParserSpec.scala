@@ -55,20 +55,32 @@ class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassM
       }
 
       "JsonJob" in {
-        job.toJson mustEqual """{"FakeJob":{"a":1,"error_count":0,"error_message":"(none)"}}"""
+        val json = job.toJson
+        json mustMatch "\"FakeJob\""
+        json mustMatch "\"a\":1"
+        json mustMatch "\"error_count\":0"
+        json mustMatch "\"error_message\":\"\\(none\\)\""
       }
 
       "JsonNestedJob" in {
         val nestedJob = new JsonNestedJob(List(job))
+        val json = nestedJob.toJson
 
-        nestedJob.toJson mustEqual """{"com.twitter.gizzard.scheduler.JsonNestedJob":{"error_count":0,"error_message":"(none)","tasks":[{"FakeJob":{"a":1}}]}}"""
+        json mustMatch "\"com.twitter.gizzard.scheduler.JsonNestedJob\":\\{"
+        json mustMatch "\"error_count\":0"
+        json mustMatch "\"error_message\":\"\\(none\\)\""
+        json mustMatch "\"tasks\":\\[\\{\"FakeJob\":\\{\"a\":1\\}\\}\\]"
       }
 
       "errors" in {
         job.errorCount = 23
         job.errorMessage = "Good heavens!"
 
-        job.toJson mustEqual """{"FakeJob":{"a":1,"error_count":23,"error_message":"Good heavens!"}}"""
+        val json = job.toJson
+        json mustMatch "\\{\"FakeJob\":\\{"
+        json mustMatch "\"a\":1"
+        json mustMatch "\"error_count\":23"
+        json mustMatch "\"error_message\":\"Good heavens!\""
       }
     }
   }
