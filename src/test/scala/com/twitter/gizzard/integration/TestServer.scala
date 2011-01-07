@@ -6,10 +6,10 @@ import com.twitter.querulous.evaluator.{QueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
 import gizzard.GizzardServer
-import com.twitter.gizzard.scheduler.{CopyDestination, CopyDestinationShard}
+import com.twitter.gizzard.scheduler.cursor._
 import nameserver.NameServer
 import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException}
-import scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
+import scheduler.{JobScheduler, JsonJob, JsonJobParser, PrioritizingJobScheduler}
 
 object config {
   import com.twitter.gizzard.config._

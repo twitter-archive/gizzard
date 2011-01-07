@@ -9,13 +9,14 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyDestination, CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler}
+import com.twitter.gizzard.scheduler.{JsonJob, JobScheduler, PrioritizingJobScheduler}
+import com.twitter.gizzard.scheduler.cursor._
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) extends Manager.Iface {
+class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CursorJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) extends Manager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -94,8 +95,9 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   def mark_shard_busy(id: ShardId, busy: Int) = {
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   }
+  
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, List(CopyDestination(destinationId.fromThrift, None)))))
+    wrapEx(copyScheduler.put(copier(Source(sourceId.fromThrift), DestinationList(destinationId.fromThrift))))
   }
 
   def dump_nameserver(tableId: Int) = wrapEx(nameServer.dumpStructure(tableId).toThrift)

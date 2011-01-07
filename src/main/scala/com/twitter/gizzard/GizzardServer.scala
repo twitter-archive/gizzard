@@ -4,14 +4,15 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
-import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec}
+import scheduler.{JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec}
+import com.twitter.gizzard.scheduler.cursor.CursorJobFactory
 import shards.{Shard, ReadWriteShard}
 
 
 abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.GizzardServer) {
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
-  def copyFactory: CopyJobFactory[S]
+  def copyFactory: CursorJobFactory[S]
   def jobPriorities: Seq[Int]
   def copyPriority: Int
   def start(): Unit
