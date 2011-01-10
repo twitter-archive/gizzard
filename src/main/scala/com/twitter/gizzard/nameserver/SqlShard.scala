@@ -85,10 +85,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
 
-  def dumpStructure(tableId: Int) = {
-    val shards = queryEvaluator.select("SELECT * FROM shards") { row => rowToShardInfo(row) }
-    new NameserverState(shards.toList, listLinks(), getForwardings(), tableId)
-  }
+  // Forwardings/Shard Management Write Methods
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     queryEvaluator.transaction { transaction =>
@@ -112,27 +109,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
           throw new InvalidShard("SQL Error: %s".format(e.getMessage))
       }
     }
-  }
-
-  def getShard(id: ShardId) = {
-    queryEvaluator.selectOne("SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) { row =>
-      rowToShardInfo(row)
-    } getOrElse {
-      throw new NonExistentShard("Shard not found: %s".format(id))
-    }
-  }
-
-  def listHostnames() = {
-    queryEvaluator.select("SELECT DISTINCT hostname FROM shards") { row =>
-      row.getString("hostname")
-    }
-  }
-
-  def removeForwarding(f: Forwarding) = {
-    queryEvaluator.execute("DELETE FROM forwardings WHERE base_source_id = ? AND " +
-                           "shard_hostname = ? AND shard_table_prefix = ? AND " +
-                           "table_id = ? LIMIT 1",
-                           f.baseId, f.shardId.hostname, f.shardId.tablePrefix, f.tableId)
   }
 
   def deleteShard(id: ShardId) = {
@@ -160,6 +136,45 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   def removeLink(upId: ShardId, downId: ShardId) {
     queryEvaluator.execute("DELETE FROM shard_children WHERE parent_hostname = ? AND parent_table_prefix = ? AND child_hostname = ? AND child_table_prefix = ?",
       upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix) == 0
+  }
+
+  def setForwarding(forwarding: Forwarding) {
+    queryEvaluator.execute("REPLACE forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix) VALUES (?, ?, ?, ?)",
+      forwarding.baseId, forwarding.tableId, forwarding.shardId.hostname, forwarding.shardId.tablePrefix)
+  }
+
+  def replaceForwarding(oldId: ShardId, newId: ShardId) {
+    queryEvaluator.execute("UPDATE forwardings SET shard_hostname = ?, shard_table_prefix = ? WHERE shard_hostname = ? AND shard_table_prefix = ?",
+      newId.hostname, newId.tablePrefix, oldId.hostname, oldId.tablePrefix)
+  }
+
+  def removeForwarding(f: Forwarding) = {
+    queryEvaluator.execute("DELETE FROM forwardings WHERE base_source_id = ? AND " +
+                           "shard_hostname = ? AND shard_table_prefix = ? AND " +
+                           "table_id = ? LIMIT 1",
+                           f.baseId, f.shardId.hostname, f.shardId.tablePrefix, f.tableId)
+  }
+
+
+  // Forwardings/Shard Management Read Methods
+
+  def dumpStructure(tableId: Int) = {
+    val shards = queryEvaluator.select("SELECT * FROM shards") { row => rowToShardInfo(row) }
+    new NameserverState(shards.toList, listLinks(), getForwardings(), tableId)
+  }
+
+  def getShard(id: ShardId) = {
+    queryEvaluator.selectOne("SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) { row =>
+      rowToShardInfo(row)
+    } getOrElse {
+      throw new NonExistentShard("Shard not found: %s".format(id))
+    }
+  }
+
+  def listHostnames() = {
+    queryEvaluator.select("SELECT DISTINCT hostname FROM shards") { row =>
+      row.getString("hostname")
+    }
   }
 
   def listLinks() = {
@@ -190,16 +205,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE hostname = ? AND table_prefix = ?", busy.id, id.hostname, id.tablePrefix) == 0) {
       throw new NonExistentShard("Could not find shard: %s".format(id))
     }
-  }
-
-  def setForwarding(forwarding: Forwarding) {
-    queryEvaluator.execute("REPLACE forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix) VALUES (?, ?, ?, ?)",
-      forwarding.baseId, forwarding.tableId, forwarding.shardId.hostname, forwarding.shardId.tablePrefix)
-  }
-
-  def replaceForwarding(oldId: ShardId, newId: ShardId) {
-    queryEvaluator.execute("UPDATE forwardings SET shard_hostname = ?, shard_table_prefix = ? WHERE shard_hostname = ? AND shard_table_prefix = ?",
-      newId.hostname, newId.tablePrefix, oldId.hostname, oldId.tablePrefix)
   }
 
   def getForwarding(tableId: Int, baseId: Long) = {
