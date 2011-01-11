@@ -31,28 +31,13 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def currentState(): Seq[NameServerState]
 
   @throws(classOf[shards.ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
-    lazy val linksByUpId = listLinks().foldLeft(mutable.Map[ShardId,LinkInfo]()) { (m, l) => m + (l.upId -> l) }
-    lazy val shardsById  = listShards().foldLeft(mutable.Map[ShardId,ShardInfo]()) { (m, s) => m + (s.id -> s) }
+    lazy val shardsById         = Map(listShards().map(s => s.id -> s): _*)
+    lazy val linksByUpId        = NameServerState.mapOfSets(listLinks())(_.upId)
+    lazy val forwardingsByTable = NameServerState.mapOfSets(getForwardingsForTableIds(tableIds))(_.tableId)
 
-    lazy val forwardingsByTable =
-      getForwardingsForTableIds(tableIds).foldLeft(mutable.Map[Int,List[Forwarding]]()) { (m, f) =>
-        m + (f.tableId -> (f :: m.getOrElse(f.tableId, Nil)))
-      }
+    def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTable)(linksByUpId)(shardsById)
 
-    def descendantLinks(ids: List[ShardId]): List[LinkInfo] = {
-      if (ids.isEmpty) Nil else {
-        val ls = ids.flatMap(id => linksByUpId.get(id).toList)
-        ls ::: descendantLinks(ls.map(_.downId))
-      }
-    }
-
-    tableIds.map { tableId =>
-      val forwardings = forwardingsByTable(tableId)
-      val links       = descendantLinks(forwardings.map(_.shardId))
-      val shards      = Set(forwardings.map(_.shardId) ++ links.map(_.downId): _*).map(shardsById)
-
-      NameServerState(shards.toList, links, forwardings, tableId)
-    }
+    tableIds.map(extractor)
   }
 
   // Remote Host Cluster Management

@@ -175,11 +175,60 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     dumpStructure(tableIds)
   }
 
-  @volatile private var _currentState: Option[Seq[NameServerState]] = None
+  private def updateState(state: Seq[NameServerState], updatedSequence: Int) = {
+    val oldForwardings = Map(state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f): _*)
+    val oldLinks       = Set(state.flatMap(_.links): _*)
+    val oldShards      = Map(state.flatMap(_.shards).map(s => s.id -> s): _*)
+    val oldShardIds    = oldShards.keySet
+
+    val newForwardings     = mutable.Map[(Int,Long), Forwarding]()
+    val deletedForwardings = mutable.Map[(Int,Long), Forwarding]()
+
+    queryEvaluator.select("SELECT * FROM forwardings WHERE updated_seq > ?", updatedSequence) { row =>
+      val f  = rowToForwarding(row)
+      val fs = if (row.getBoolean("deleted")) deletedForwardings else newForwardings
+
+      fs += (f.tableId, f.baseId) -> f
+    }
+
+    val newRootIds  = Set(newForwardings.map(_._2.shardId).toSeq: _*)
+    val newLinks    = NameServerState.descendantLinks(newRootIds)(listDownwardLinks)
+    val newShardIds = newRootIds ++ newLinks.map(_.downId)
+    val newShards   = Map(newShardIds.toList.map(id => id -> getShard(id)): _*)
+
+    val updatedForwardings = (oldForwardings -- deletedForwardings.keys) ++ newForwardings
+    val updatedLinks       = (oldLinks ++ newLinks)
+    val updatedShards      = (oldShards ++ newShards)
+
+    val forwardingsByTableId = NameServerState.mapOfSets(updatedForwardings.map(_._2))(_.tableId)
+    val linksByUpId          = NameServerState.mapOfSets(updatedLinks)(_.upId)
+
+    def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTableId)(linksByUpId)(updatedShards)
+
+    state.map(s => extractor(s.tableId))
+  }
+
+  @volatile private var _forwardingUpdatedSeq: Int = 0
+  @volatile private var _currentState: Seq[NameServerState] = null
+
+  private def latestUpdatedSeq() = {
+    val query = "SELECT updated_seq FROM forwardings ORDER BY updated_seq DESC LIMIT 1"
+    queryEvaluator.selectOne(query)(_.getInt("updated_seq")).getOrElse(0)
+  }
 
   def currentState() = {
-    syncronized {
-      loadState()
+    synchronized {
+      val nextUpdatedSeq = latestUpdatedSeq()
+
+      if (_currentState eq null) {
+        _currentState = loadState()
+      } else {
+        _currentState = updateState(_currentState, _forwardingUpdatedSeq)
+      }
+
+      _forwardingUpdatedSeq = nextUpdatedSeq
+
+      _currentState
     }
   }
 
