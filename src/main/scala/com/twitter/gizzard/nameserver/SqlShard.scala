@@ -171,7 +171,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   // Forwardings/Shard Management Read Methods
 
   def dumpStructure(tableId: Int) = {
-    new NameserverState(listShards(), listLinks(), getForwardings(), tableId)
+    NameServerState(listShards(), listLinks(), getForwardings(), tableId)
   }
 
   def getShard(id: ShardId) = {

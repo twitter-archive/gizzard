@@ -32,7 +32,7 @@ struct Forwarding {
   3: ShardId shard_id
 }
 
-struct NameserverState {
+struct NameServerState {
   1: list<ShardInfo> shards
   2: list<LinkInfo> links
   3: list<Forwarding> forwardings
@@ -90,7 +90,7 @@ service Manager {
   void mark_shard_busy(1: ShardId id, 2: i32 busy) throws(1: GizzardException ex)
   void copy_shard(1: ShardId source_id, 2: ShardId destination_id) throws(1: GizzardException ex)
 
-  NameserverState dump_nameserver(1: i32 table_id) throws(1: GizzardException ex)
+  NameServerState dump_nameserver(1: i32 table_id) throws(1: GizzardException ex)
 
   // job scheduler management
 
