@@ -170,6 +170,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   // Forwardings/Shard Management Read Methods
 
+  def currentState() = {
+    val tableIds = queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id"))
+    dumpStructure(tableIds)
+  }
+
   def getShard(id: ShardId) = {
     val query = "SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?"
     queryEvaluator.selectOne(query, id.hostname, id.tablePrefix)(rowToShardInfo) getOrElse {

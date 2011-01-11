@@ -28,11 +28,13 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def reload()
   @throws(classOf[shards.ShardException]) def listHostnames(): Seq[String]
 
-  @throws(classOf[shards.ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
-    val linksByUpId = listLinks().foldLeft(mutable.Map[ShardId,LinkInfo]()) { (m, l) => m + (l.upId -> l) }
-    val shardsById  = listShards().foldLeft(mutable.Map[ShardId,ShardInfo]()) { (m, s) => m + (s.id -> s) }
+  @throws(classOf[shards.ShardException]) def currentState(): Seq[NameServerState]
 
-    val forwardingsByTable =
+  @throws(classOf[shards.ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
+    lazy val linksByUpId = listLinks().foldLeft(mutable.Map[ShardId,LinkInfo]()) { (m, l) => m + (l.upId -> l) }
+    lazy val shardsById  = listShards().foldLeft(mutable.Map[ShardId,ShardInfo]()) { (m, s) => m + (s.id -> s) }
+
+    lazy val forwardingsByTable =
       getForwardingsForTableIds(tableIds).foldLeft(mutable.Map[Int,List[Forwarding]]()) { (m, f) =>
         m + (f.tableId -> (f :: m.getOrElse(f.tableId, Nil)))
       }
@@ -47,7 +49,7 @@ trait Shard extends shards.Shard {
     tableIds.map { tableId =>
       val forwardings = forwardingsByTable(tableId)
       val links       = descendantLinks(forwardings.map(_.shardId))
-      val shards      = Set(links.map(l => shardsById(l.upId)): _*) ++ links.map(l => shardsById(l.downId))
+      val shards      = Set(forwardings.map(_.shardId) ++ links.map(_.downId): _*).map(shardsById)
 
       NameServerState(shards.toList, links, forwardings, tableId)
     }

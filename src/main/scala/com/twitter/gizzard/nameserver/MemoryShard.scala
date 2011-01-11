@@ -32,6 +32,11 @@ class MemoryShard extends Shard {
                           (a.weight == b.weight && a.downId.hashCode > b.downId.hashCode) }
   }
 
+  def currentState() = {
+    val tableIds = Set(forwardingTable.map(_.tableId): _*).toList
+    dumpStructure(tableIds)
+  }
+
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
     find(shardInfo) match {
       case Some(x) =>

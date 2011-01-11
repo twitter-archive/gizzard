@@ -10,6 +10,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val SQL_SHARD = "com.example.SqlShard"
 
     val nameServerShard = mock[Shard]
+    val nameServerState = mock[NameServerState]
     var shardRepository = mock[ShardRepository[shards.Shard]]
     val mappingFunction = (n: Long) => n
     var nameServer: NameServer[shards.Shard] = null
@@ -29,10 +30,12 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     doBefore {
       expect {
         one(nameServerShard).reload()
-        one(nameServerShard).listShards() willReturn shardInfos
-        one(nameServerShard).listLinks() willReturn linksList
-        one(nameServerShard).getForwardings() willReturn shardForwardings
         one(nameServerShard).listRemoteHosts() willReturn remoteHosts
+        one(nameServerShard).currentState()    willReturn Seq(nameServerState)
+
+        one(nameServerState).shards            willReturn shardInfos
+        one(nameServerState).links             willReturn linksList
+        one(nameServerState).forwardings       willReturn shardForwardings
       }
 
       nameServer = new NameServer[gizzard.shards.Shard](

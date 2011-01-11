@@ -51,26 +51,33 @@ class NameServer[S <: shards.Shard](
     log.info("Loading name server configuration...")
     nameServerShard.reload()
 
-    val newShardInfos = mutable.Map.empty[ShardId, ShardInfo]
-    nameServerShard.listShards().foreach { shardInfo =>
-      newShardInfos += (shardInfo.id -> shardInfo)
-    }
+    val newRemoteClusters = mutable.Map[String, List[Host]]()
+    val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
+    val newFamilyTree     = mutable.Map[ShardId, mutable.ArrayBuffer[LinkInfo]]()
+    val newForwardings    = mutable.Map[Int, TreeMap[Long, ShardInfo]]()
 
-    val newFamilyTree = new mutable.HashMap[ShardId, mutable.ArrayBuffer[LinkInfo]]
-    nameServerShard.listLinks().foreach { link =>
-      val children = newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo])
-      children += link
-    }
-
-    val newForwardings = new mutable.HashMap[Int, TreeMap[Long, ShardInfo]]
-    nameServerShard.getForwardings().foreach { forwarding =>
-      val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
-      treeMap.put(forwarding.baseId, newShardInfos.getOrElse(forwarding.shardId, throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))))
-    }
-
-    val newRemoteClusters = new mutable.HashMap[String, List[Host]]
     nameServerShard.listRemoteHosts.foreach { h =>
       newRemoteClusters += h.cluster -> (h :: newRemoteClusters.getOrElse(h.cluster, List()))
+    }
+
+    nameServerShard.currentState().foreach { state =>
+
+      state.shards.foreach { info => newShardInfos += (info.id -> info) }
+
+      state.links.foreach { link =>
+        newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo]) += link
+      }
+
+      state.forwardings.foreach { forwarding =>
+        val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
+
+        newShardInfos.get(forwarding.shardId) match {
+          case Some(shard) => treeMap.put(forwarding.baseId, shard)
+          case None => {
+            throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))
+          }
+        }
+      }
     }
 
     shardInfos  = newShardInfos
