@@ -171,7 +171,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   // Forwardings/Shard Management Read Methods
 
   def dumpStructure(tableId: Int) = {
-    NameServerState(listShards(), listLinks(), getForwardings(), tableId)
+    val forwardings = getForwardingsByTableId(tableId)
+    val links       = listDescendantLinks(forwardings.map(_.shardId))
+    val shards      = getShards(links.map(_.upId) ::: links.map(_.downId))
+
+    NameServerState(shards, links, forwardings, tableId)
   }
 
   def getShard(id: ShardId) = {
@@ -181,12 +185,29 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
+  def getShards(ids: Seq[ShardId]) = {
+    val query = "SELECT * FROM shards WHERE (hostname, table_prefix) IN (?)"
+
+    queryEvaluator.select(query, ids.map(id => (id.hostname, id.tablePrefix)))(rowToShardInfo).toList
+  }
+
   def listHostnames() = {
     queryEvaluator.select("SELECT DISTINCT hostname FROM shards")(_.getString("hostname")).toList
   }
 
   def listLinks() = {
     queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_hostname, parent_table_prefix")(rowToLinkInfo).toList
+  }
+
+  def listDescendantLinks(ids: Seq[ShardId]): List[LinkInfo] = {
+    if (ids.isEmpty) {
+      Nil
+    } else {
+      val query    = "SELECT * FROM shard_children WHERE (parent_hostname, parent_table_prefix) IN (?)"
+      val children = queryEvaluator.select(query, ids.map(id => (id.hostname, id.tablePrefix)))(rowToLinkInfo).toList
+
+      children ::: listDescendantLinks(children.map(_.downId))
+    }
   }
 
   def listDownwardLinks(id: ShardId) = {
@@ -222,6 +243,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   def getForwardings() = {
     queryEvaluator.select("SELECT * FROM forwardings WHERE deleted = 0 ORDER BY table_id, base_source_id ASC")(rowToForwarding).toList
+  }
+
+  def getForwardingsByTableId(tableId: Int) = {
+    queryEvaluator.select("SELECT * FROM forwardings WHERE table_id = ? AND deleted = 0 ORDER BY table_id, base_source_id ASC", tableId)(rowToForwarding).toList
   }
 
   def shardsForHostname(hostname: String) = {
