@@ -90,7 +90,7 @@ service Manager {
   void mark_shard_busy(1: ShardId id, 2: i32 busy) throws(1: GizzardException ex)
   void copy_shard(1: ShardId source_id, 2: ShardId destination_id) throws(1: GizzardException ex)
 
-  NameServerState dump_nameserver(1: i32 table_id) throws(1: GizzardException ex)
+  list<NameServerState> dump_nameserver(1: list<i32> table_id) throws(1: GizzardException ex)
 
   // job scheduler management
 

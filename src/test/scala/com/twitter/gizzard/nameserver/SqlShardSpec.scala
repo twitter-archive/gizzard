@@ -50,24 +50,24 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
       val c = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "c", "localhost")
       val d = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "d", "localhost")
-      
+
       nameServer.createShard(a, repo)
       nameServer.createShard(b, repo)
       nameServer.setForwarding(Forwarding(0, 0, a.id))
       nameServer.addLink(a.id, b.id, 2)
-      
+
       // please don't exist in dump
-      nameServer.setForwarding(Forwarding(1, 0, c.id)) 
+      nameServer.setForwarding(Forwarding(1, 0, c.id))
       nameServer.createShard(c, repo)
       nameServer.createShard(d, repo)
       nameServer.addLink(c.id, d.id, 2)
 
-      val structure = nameServer.dumpStructure(0)
+      val structure = nameServer.dumpStructure(List(0)).first
 
       structure.forwardings.length mustEqual 1
       structure.links.length mustEqual 1
       structure.shards.length mustEqual 2
-      
+
       structure.shards.first mustEqual a
     }
 

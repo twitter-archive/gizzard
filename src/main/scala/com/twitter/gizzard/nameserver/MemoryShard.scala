@@ -1,6 +1,5 @@
 package com.twitter.gizzard.nameserver
 
-import scala.collection.Map
 import scala.collection.mutable
 import shards._
 
@@ -22,10 +21,6 @@ class MemoryShard extends Shard {
     shardTable.find { x =>
       x.tablePrefix == info.tablePrefix && x.hostname == info.hostname
     }
-  }
-
-  def dumpStructure(tableId: Int) = {
-    NameServerState(shardTable.toList, parentTable.toList, forwardingTable.toList, tableId)
   }
 
   private def find(shardId: ShardId): Option[ShardInfo] = {
@@ -124,6 +119,12 @@ class MemoryShard extends Shard {
   def getForwardings(): Seq[Forwarding] = {
     forwardingTable.toList
   }
+
+  def getForwardingsForTableIds(tableIds: Seq[Int]) = {
+    val tableIdsSet = Set(tableIds: _*)
+    forwardingTable.filter(f => tableIdsSet(f.tableId)).toList
+  }
+
 
   def listHostnames(): Seq[String] = {
     (Set() ++ shardTable.map { x => x.hostname }).toList

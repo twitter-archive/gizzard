@@ -1,33 +1,57 @@
 package com.twitter.gizzard.nameserver
 
 import shards._
-import scala.collection.Map
-
+import scala.collection.mutable
 
 trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S])
-  @throws(classOf[shards.ShardException]) def getShard(id: ShardId): ShardInfo
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
   @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId)
+  @throws(classOf[shards.ShardException]) def setForwarding(forwarding: Forwarding)
+  @throws(classOf[shards.ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId)
+  @throws(classOf[shards.ShardException]) def removeForwarding(forwarding: Forwarding)
+
+  @throws(classOf[shards.ShardException]) def getShard(id: ShardId): ShardInfo
   @throws(classOf[shards.ShardException]) def listUpwardLinks(id: ShardId): Seq[LinkInfo]
   @throws(classOf[shards.ShardException]) def listDownwardLinks(id: ShardId): Seq[LinkInfo]
   @throws(classOf[shards.ShardException]) def markShardBusy(id: ShardId, busy: Busy.Value)
-  @throws(classOf[shards.ShardException]) def setForwarding(forwarding: Forwarding)
-  @throws(classOf[shards.ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId)
   @throws(classOf[shards.ShardException]) def getForwarding(tableId: Int, baseId: Long): Forwarding
   @throws(classOf[shards.ShardException]) def getForwardingForShard(id: ShardId): Forwarding
   @throws(classOf[shards.ShardException]) def getForwardings(): Seq[Forwarding]
+  @throws(classOf[shards.ShardException]) def getForwardingsForTableIds(tableIds: Seq[Int]): Seq[Forwarding]
   @throws(classOf[shards.ShardException]) def shardsForHostname(hostname: String): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def listShards(): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def listLinks(): Seq[LinkInfo]
   @throws(classOf[shards.ShardException]) def getBusyShards(): Seq[ShardInfo]
   @throws(classOf[shards.ShardException]) def rebuildSchema()
   @throws(classOf[shards.ShardException]) def reload()
-  @throws(classOf[shards.ShardException]) def dumpStructure(tableId: Int): NameServerState
   @throws(classOf[shards.ShardException]) def listHostnames(): Seq[String]
-  @throws(classOf[shards.ShardException]) def removeForwarding(forwarding: Forwarding)
 
+  @throws(classOf[shards.ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
+    val linksByUpId = listLinks().foldLeft(mutable.Map[ShardId,LinkInfo]()) { (m, l) => m + (l.upId -> l) }
+    val shardsById  = listShards().foldLeft(mutable.Map[ShardId,ShardInfo]()) { (m, s) => m + (s.id -> s) }
+
+    val forwardingsByTable =
+      getForwardingsForTableIds(tableIds).foldLeft(mutable.Map[Int,List[Forwarding]]()) { (m, f) =>
+        m + (f.tableId -> (f :: m.getOrElse(f.tableId, Nil)))
+      }
+
+    def descendantLinks(ids: List[ShardId]): List[LinkInfo] = {
+      if (ids.isEmpty) Nil else {
+        val ls = ids.flatMap(id => linksByUpId.get(id).toList)
+        ls ::: descendantLinks(ls.map(_.downId))
+      }
+    }
+
+    tableIds.map { tableId =>
+      val forwardings = forwardingsByTable(tableId)
+      val links       = descendantLinks(forwardings.map(_.shardId))
+      val shards      = Set(links.map(l => shardsById(l.upId)): _*) ++ links.map(l => shardsById(l.downId))
+
+      NameServerState(shards.toList, links, forwardings, tableId)
+    }
+  }
 
   // Remote Host Cluster Management
 

@@ -19,8 +19,7 @@ class NameServer[S <: shards.Shard](
   nameServerShard: Shard,
   shardRepository: ShardRepository[S],
   jobRelayFactory: JobRelayFactory,
-  val mappingFunction: Long => Long)
-extends Shard {
+  val mappingFunction: Long => Long) {
 
   private val log = Logger.get(getClass.getName)
 
@@ -46,7 +45,7 @@ extends Shard {
     familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
   }
 
-  def dumpStructure(tableId: Int) = nameServerShard.dumpStructure(tableId: Int)
+  def dumpStructure(tableIds: Seq[Int]) = nameServerShard.dumpStructure(tableIds)
 
   def reload() {
     log.info("Loading name server configuration...")

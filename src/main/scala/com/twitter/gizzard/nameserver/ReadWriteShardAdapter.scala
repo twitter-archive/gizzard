@@ -7,6 +7,7 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def getForwarding(tableId: Int, baseId: Long)                   = shard.readOperation(_.getForwarding(tableId, baseId))
   def getForwardingForShard(id: ShardId)                          = shard.readOperation(_.getForwardingForShard(id))
   def getForwardings()                                            = shard.readOperation(_.getForwardings())
+  def getForwardingsForTableIds(tableIds: Seq[Int]): Seq[Forwarding] = shard.readOperation(_.getForwardingsForTableIds(tableIds))
   def getShard(id: ShardId)                                       = shard.readOperation(_.getShard(id))
   def listUpwardLinks(id: ShardId)                                = shard.readOperation(_.listUpwardLinks(id))
   def listDownwardLinks(id: ShardId)                              = shard.readOperation(_.listDownwardLinks(id))
@@ -14,7 +15,6 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def listShards()                                                = shard.readOperation(_.listShards())
   def shardsForHostname(hostname: String)                         = shard.readOperation(_.shardsForHostname(hostname))
   def listHostnames()                                             = shard.readOperation(_.listHostnames)
-  def dumpStructure(tableId: Int)                                 = shard.readOperation(_.dumpStructure(tableId))
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = shard.writeOperation(_.createShard(shardInfo, repository))
   def deleteShard(id: ShardId)                                    = shard.writeOperation(_.deleteShard(id))
