@@ -170,9 +170,17 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   // Forwardings/Shard Management Read Methods
 
-  def currentState() = {
+  private def loadState() = {
     val tableIds = queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id"))
     dumpStructure(tableIds)
+  }
+
+  @volatile private var _currentState: Option[Seq[NameServerState]] = None
+
+  def currentState() = {
+    syncronized {
+      loadState()
+    }
   }
 
   def getShard(id: ShardId) = {
