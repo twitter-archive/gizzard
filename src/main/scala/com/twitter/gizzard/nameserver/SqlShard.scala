@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS shard_children (
     parent_table_prefix     VARCHAR(125) NOT NULL,
     child_hostname          VARCHAR(125) NOT NULL,
     child_table_prefix      VARCHAR(125) NOT NULL,
-    weight                  INT NOT NULL DEFAULT 1,
+    weight                  INT          NOT NULL DEFAULT 1,
 
     PRIMARY KEY (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
     INDEX child (child_hostname, child_table_prefix)
@@ -38,12 +38,15 @@ CREATE TABLE IF NOT EXISTS forwardings (
     table_id                INT                     NOT NULL,
     shard_hostname          VARCHAR(125)            NOT NULL,
     shard_table_prefix      VARCHAR(125)            NOT NULL,
+    deleted                 TINYINT                 NOT NULL DEFAULT 0,
+    updated_seq             BIGINT                  NOT NULL AUTO_INCREMENT,
 
-    PRIMARY KEY (base_source_id, table_id),
-
-    UNIQUE unique_shard (shard_hostname, shard_table_prefix)
+    PRIMARY KEY         (base_source_id, table_id),
+    UNIQUE unique_shard (shard_hostname, shard_table_prefix),
+    UNIQUE updated_seq  (updated_seq)
 ) ENGINE=INNODB;
 """
+
   val HOSTS_DDL = """
 CREATE TABLE IF NOT EXISTS hosts (
     hostname                VARCHAR(125) NOT NULL,
@@ -138,29 +141,37 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
       upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix) == 0
   }
 
-  def setForwarding(forwarding: Forwarding) {
-    queryEvaluator.execute("REPLACE forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix) VALUES (?, ?, ?, ?)",
-      forwarding.baseId, forwarding.tableId, forwarding.shardId.hostname, forwarding.shardId.tablePrefix)
+  private def insertOrUpdateForwarding(evaluator: QueryEvaluator, f: Forwarding, deleted: Boolean) {
+    val deletedInt = if (deleted) 1 else 0
+
+    val query = "INSERT INTO forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix, deleted) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
+                "base_source_id = VALUES(base_source_id), table_id = VALUES(table_id), " +
+                "shard_hostname = VALUES(shard_hostname), shard_table_prefix = VALUES(shard_table_prefix), " +
+                "deleted = VALUES(deleted), updated_seq = LAST_INSERT_ID(updated_seq) + 1"
+
+    evaluator.execute(query, f.baseId, f.tableId, f.shardId.hostname, f.shardId.tablePrefix, deletedInt)
   }
+
+  def setForwarding(f: Forwarding) { insertOrUpdateForwarding(queryEvaluator, f, false) }
+
+  def removeForwarding(f: Forwarding) { insertOrUpdateForwarding(queryEvaluator, f, true) }
 
   def replaceForwarding(oldId: ShardId, newId: ShardId) {
-    queryEvaluator.execute("UPDATE forwardings SET shard_hostname = ?, shard_table_prefix = ? WHERE shard_hostname = ? AND shard_table_prefix = ?",
-      newId.hostname, newId.tablePrefix, oldId.hostname, oldId.tablePrefix)
-  }
+    queryEvaluator.transaction { t =>
+      val query       = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ? FOR UPDATE"
+      val forwardings = t.select(query, oldId.hostname, oldId.tablePrefix)(rowToForwarding)
 
-  def removeForwarding(f: Forwarding) = {
-    queryEvaluator.execute("DELETE FROM forwardings WHERE base_source_id = ? AND " +
-                           "shard_hostname = ? AND shard_table_prefix = ? AND " +
-                           "table_id = ? LIMIT 1",
-                           f.baseId, f.shardId.hostname, f.shardId.tablePrefix, f.tableId)
+      forwardings.foreach { case Forwarding(tableId, baseId, _) =>
+        insertOrUpdateForwarding(t, Forwarding(tableId, baseId, newId), false)
+      }
+    }
   }
 
 
   // Forwardings/Shard Management Read Methods
 
   def dumpStructure(tableId: Int) = {
-    val shards = queryEvaluator.select("SELECT * FROM shards") { row => rowToShardInfo(row) }
-    new NameserverState(shards.toList, listLinks(), getForwardings(), tableId)
+    new NameserverState(listShards(), listLinks(), getForwardings(), tableId)
   }
 
   def getShard(id: ShardId) = {
@@ -208,21 +219,17 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   def getForwarding(tableId: Int, baseId: Long) = {
-    queryEvaluator.selectOne("SELECT * FROM forwardings WHERE base_source_id = ? AND table_id = ?", baseId, tableId) { row =>
-      rowToForwarding(row)
-    } getOrElse { throw new ShardException("No such forwarding") }
+    val query = "SELECT * FROM forwardings WHERE base_source_id = ? AND table_id = ? AND deleted = 0"
+    queryEvaluator.selectOne(query, baseId, tableId)(rowToForwarding) getOrElse { throw new ShardException("No such forwarding") }
   }
 
   def getForwardingForShard(id: ShardId) = {
-    queryEvaluator.select("SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ?", id.hostname, id.tablePrefix) { row =>
-      rowToForwarding(row)
-    }.firstOption.getOrElse { throw new ShardException("No such forwarding") }
+    val query = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ? AND deleted = 0"
+    queryEvaluator.selectOne(query, id.hostname, id.tablePrefix)(rowToForwarding) getOrElse { throw new ShardException("No such forwarding") }
   }
 
   def getForwardings() = {
-    queryEvaluator.select("SELECT * FROM forwardings ORDER BY table_id, base_source_id ASC") { row =>
-      rowToForwarding(row)
-    }.toList
+    queryEvaluator.select("SELECT * FROM forwardings WHERE deleted = 0 ORDER BY table_id, base_source_id ASC")(rowToForwarding).toList
   }
 
   def shardsForHostname(hostname: String) = {
