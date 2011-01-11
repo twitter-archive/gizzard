@@ -175,45 +175,37 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   def getShard(id: ShardId) = {
-    queryEvaluator.selectOne("SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) { row =>
-      rowToShardInfo(row)
-    } getOrElse {
+    val query = "SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?"
+    queryEvaluator.selectOne(query, id.hostname, id.tablePrefix)(rowToShardInfo) getOrElse {
       throw new NonExistentShard("Shard not found: %s".format(id))
     }
   }
 
   def listHostnames() = {
-    queryEvaluator.select("SELECT DISTINCT hostname FROM shards") { row =>
-      row.getString("hostname")
-    }
+    queryEvaluator.select("SELECT DISTINCT hostname FROM shards")(_.getString("hostname")).toList
   }
 
   def listLinks() = {
-    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_hostname, parent_table_prefix") { row =>
-      rowToLinkInfo(row)
-    }.toList
+    queryEvaluator.select("SELECT * FROM shard_children ORDER BY parent_hostname, parent_table_prefix")(rowToLinkInfo).toList
   }
 
   def listDownwardLinks(id: ShardId) = {
-    queryEvaluator.select("SELECT * FROM shard_children WHERE parent_hostname = ? AND parent_table_prefix = ? ORDER BY weight DESC", id.hostname, id.tablePrefix) { row =>
-      rowToLinkInfo(row)
-    }.toList
+    val query = "SELECT * FROM shard_children WHERE parent_hostname = ? AND parent_table_prefix = ? ORDER BY weight DESC"
+    queryEvaluator.select(query, id.hostname, id.tablePrefix)(rowToLinkInfo).toList
   }
 
   def listUpwardLinks(id: ShardId) = {
-    queryEvaluator.select("SELECT * FROM shard_children WHERE child_hostname = ? AND child_table_prefix = ? ORDER BY weight DESC", id.hostname, id.tablePrefix) { row =>
-      rowToLinkInfo(row)
-    }.toList
+    val query = "SELECT * FROM shard_children WHERE child_hostname = ? AND child_table_prefix = ? ORDER BY weight DESC"
+    queryEvaluator.select(query, id.hostname, id.tablePrefix)(rowToLinkInfo).toList
   }
 
   def listShards() = {
-    queryEvaluator.select("SELECT * FROM shards") { row =>
-      rowToShardInfo(row)
-    }.toList
+    queryEvaluator.select("SELECT * FROM shards")(rowToShardInfo).toList
   }
 
   def markShardBusy(id: ShardId, busy: Busy.Value) {
-    if (queryEvaluator.execute("UPDATE shards SET busy = ? WHERE hostname = ? AND table_prefix = ?", busy.id, id.hostname, id.tablePrefix) == 0) {
+    val query = "UPDATE shards SET busy = ? WHERE hostname = ? AND table_prefix = ?"
+    if (queryEvaluator.execute(query, busy.id, id.hostname, id.tablePrefix) == 0) {
       throw new NonExistentShard("Could not find shard: %s".format(id))
     }
   }
@@ -233,11 +225,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   def shardsForHostname(hostname: String) = {
-    queryEvaluator.select("SELECT * FROM shards WHERE hostname = ?", hostname) { row => rowToShardInfo(row) }.toList
+    queryEvaluator.select("SELECT * FROM shards WHERE hostname = ?", hostname)(rowToShardInfo).toList
   }
 
   def getBusyShards() = {
-    queryEvaluator.select("SELECT * FROM shards where busy != 0") { row => rowToShardInfo(row) }.toList
+    queryEvaluator.select("SELECT * FROM shards where busy != 0")(rowToShardInfo).toList
   }
 
   def reload() {
