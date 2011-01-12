@@ -167,6 +167,14 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
+  def markAncestorForwardingsAsUpdated(id: ShardId) {
+    import TreeUtils._
+
+    val ancestorIds = Set(collectFromTree(List(id))(listUpwardLinks(_).map(_.upId))(identity): _*)
+
+    ancestorIds.foreach(id => replaceForwarding(id, id))
+  }
+
 
   // Forwardings/Shard Management Read Methods
 
@@ -176,6 +184,8 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   private def updateState(state: Seq[NameServerState], updatedSequence: Int) = {
+    import TreeUtils._
+
     val oldForwardings = Map(state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f): _*)
     val oldLinks       = Set(state.flatMap(_.links): _*)
     val oldShards      = Map(state.flatMap(_.shards).map(s => s.id -> s): _*)
@@ -192,7 +202,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
 
     val newRootIds  = Set(newForwardings.map(_._2.shardId).toSeq: _*)
-    val newLinks    = NameServerState.descendantLinks(newRootIds)(listDownwardLinks)
+    val newLinks    = descendantLinks(newRootIds)(listDownwardLinks)
     val newShardIds = newRootIds ++ newLinks.map(_.downId)
     val newShards   = Map(newShardIds.toList.map(id => id -> getShard(id)): _*)
 
@@ -200,8 +210,8 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     val updatedLinks       = (oldLinks ++ newLinks)
     val updatedShards      = (oldShards ++ newShards)
 
-    val forwardingsByTableId = NameServerState.mapOfSets(updatedForwardings.map(_._2))(_.tableId)
-    val linksByUpId          = NameServerState.mapOfSets(updatedLinks)(_.upId)
+    val forwardingsByTableId = mapOfSets(updatedForwardings.map(_._2))(_.tableId)
+    val linksByUpId          = mapOfSets(updatedLinks)(_.upId)
 
     def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTableId)(linksByUpId)(updatedShards)
 

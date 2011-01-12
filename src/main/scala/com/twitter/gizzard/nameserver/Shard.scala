@@ -31,9 +31,11 @@ trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def currentState(): Seq[NameServerState]
 
   @throws(classOf[shards.ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
+    import TreeUtils._
+
     lazy val shardsById         = Map(listShards().map(s => s.id -> s): _*)
-    lazy val linksByUpId        = NameServerState.mapOfSets(listLinks())(_.upId)
-    lazy val forwardingsByTable = NameServerState.mapOfSets(getForwardingsForTableIds(tableIds))(_.tableId)
+    lazy val linksByUpId        = mapOfSets(listLinks())(_.upId)
+    lazy val forwardingsByTable = mapOfSets(getForwardingsForTableIds(tableIds))(_.tableId)
 
     def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTable)(linksByUpId)(shardsById)
 

@@ -54,7 +54,7 @@ class NameServer[S <: shards.Shard](
   @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
-  @volatile var jobRelay: JobRelay = null
+  @volatile var jobRelay: JobRelay = NullJobRelay
 
   @throws(classOf[shards.ShardException])
   def createShard(shardInfo: ShardInfo) {
@@ -70,43 +70,57 @@ class NameServer[S <: shards.Shard](
 
   def dumpStructure(tableIds: Seq[Int]) = nameServerShard.dumpStructure(tableIds)
 
+  private def recreateInternalShardState() {
+    synchronized {
+      val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
+      val newFamilyTree     = mutable.Map[ShardId, mutable.ArrayBuffer[LinkInfo]]()
+      val newForwardings    = mutable.Map[Int, TreeMap[Long, ShardInfo]]()
+
+      nameServerShard.currentState().foreach { state =>
+
+        state.shards.foreach { info => newShardInfos += (info.id -> info) }
+
+        state.links.foreach { link =>
+          newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo]) += link
+        }
+
+        state.forwardings.foreach { forwarding =>
+          val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
+
+          newShardInfos.get(forwarding.shardId) match {
+            case Some(shard) => treeMap.put(forwarding.baseId, shard)
+            case None => {
+              throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))
+            }
+          }
+        }
+      }
+
+      shardInfos  = newShardInfos
+      familyTree  = newFamilyTree
+      forwardings = newForwardings
+    }
+  }
+
+  def reloadUpdatedForwardings() {
+    log.info("Loading updated name server configuration...")
+    recreateInternalShardState()
+    log.info("Loading updated name server configuration is done.")
+  }
+
   def reload() {
     log.info("Loading name server configuration...")
     nameServerShard.reload()
 
     val newRemoteClusters = mutable.Map[String, List[Host]]()
-    val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
-    val newFamilyTree     = mutable.Map[ShardId, mutable.ArrayBuffer[LinkInfo]]()
-    val newForwardings    = mutable.Map[Int, TreeMap[Long, ShardInfo]]()
 
     nameServerShard.listRemoteHosts.foreach { h =>
-      newRemoteClusters += h.cluster -> (h :: newRemoteClusters.getOrElse(h.cluster, List()))
+      newRemoteClusters += h.cluster -> (h :: newRemoteClusters.getOrElse(h.cluster, Nil))
     }
 
-    nameServerShard.currentState().foreach { state =>
+    jobRelay  = jobRelayFactory(Map(newRemoteClusters.toSeq: _*))
 
-      state.shards.foreach { info => newShardInfos += (info.id -> info) }
-
-      state.links.foreach { link =>
-        newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo]) += link
-      }
-
-      state.forwardings.foreach { forwarding =>
-        val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
-
-        newShardInfos.get(forwarding.shardId) match {
-          case Some(shard) => treeMap.put(forwarding.baseId, shard)
-          case None => {
-            throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))
-          }
-        }
-      }
-    }
-
-    shardInfos  = newShardInfos
-    familyTree  = newFamilyTree
-    forwardings = newForwardings
-    jobRelay    = jobRelayFactory(Map(newRemoteClusters.toSeq: _*))
+    recreateInternalShardState()
     log.info("Loading name server configuration is done.")
   }
 

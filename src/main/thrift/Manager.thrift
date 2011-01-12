@@ -56,6 +56,7 @@ struct Host {
 }
 
 service Manager {
+  void reload_updated_forwardings() throws(1: GizzardException ex)
   void reload_config() throws(1: GizzardException ex)
   void rebuild_schema() throws(1: GizzardException ex)
 

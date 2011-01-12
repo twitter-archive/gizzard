@@ -22,9 +22,10 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     case ex: Throwable => throw new thrift.GizzardException(ex.getMessage)
   }
 
-
+  def reload_updated_forwardings() = wrapEx {
+    nameServer.reloadUpdatedForwardings()
+  }
   def reload_config() = wrapEx {
-    log.info("Reloading forwardings...")
     nameServer.reload()
   }
 

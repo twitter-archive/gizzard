@@ -17,23 +17,7 @@ case class NameServerState(shards: List[ShardInfo], links: List[LinkInfo], forwa
 }
 
 object NameServerState {
-  protected[nameserver] def mapOfSets[A,B](s: Iterable[A])(getKey: A => B): Map[B,Set[A]] = {
-    s.foldLeft(Map[B,Set[A]]()) { (m, item) =>
-      val key = getKey(item)
-      m + (key -> m.get(key).map(_ + item).getOrElse(Set(item)))
-    }
-  }
-
-  protected[nameserver] def descendantLinks(ids: Set[ShardId])(f: ShardId => Iterable[LinkInfo]): Set[LinkInfo] = {
-
-    // if f is a map, just rescue and return an empty set on application in flatMap
-    def getOrElse(id: ShardId) = try { f(id) } catch { case e: NoSuchElementException => Nil }
-
-    if (ids.isEmpty) Set() else {
-      val ls = ids.flatMap(getOrElse)
-      ls ++ descendantLinks(ls.map(_.downId))(f)
-    }
-  }
+  import TreeUtils._
 
   def extractTable(tableId: Int)
                   (forwardingsByTable: Int => Set[Forwarding])
