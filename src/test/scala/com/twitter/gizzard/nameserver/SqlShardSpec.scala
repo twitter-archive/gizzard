@@ -46,29 +46,65 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     }
 
     "be able to dump nameserver structure" in {
-      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
-      val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
-      val c = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "c", "localhost")
-      val d = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "d", "localhost")
+      val shards = (0 to 11).toList.map { i =>
+        new ShardInfo("com.twitter.gizzard.fake.NestableShard", "%02d".format(i), "localhost")
+      }
+      val shardSets = List((0 to 5).toList,(6 to 11).toList).map(_.map(shards))
 
-      nameServer.createShard(a, repo)
-      nameServer.createShard(b, repo)
-      nameServer.setForwarding(Forwarding(0, 0, a.id))
-      nameServer.addLink(a.id, b.id, 2)
+      shards.foreach { s => nameServer.createShard(s, repo) }
 
-      // please don't exist in dump
-      nameServer.setForwarding(Forwarding(1, 0, c.id))
-      nameServer.createShard(c, repo)
-      nameServer.createShard(d, repo)
-      nameServer.addLink(c.id, d.id, 2)
+      List(0,1).zip(shardSets).foreach { case (tableId, List(a,b,c,d,e,f)) =>
+        nameServer.setForwarding(Forwarding(tableId, 0, a.id))
+        nameServer.addLink(a.id, b.id, 2)
+        nameServer.addLink(a.id, c.id, 2)
 
-      val structure = nameServer.dumpStructure(List(0)).first
+        nameServer.setForwarding(Forwarding(tableId, 1, d.id))
+        nameServer.addLink(d.id, e.id, 2)
+        nameServer.addLink(d.id, f.id, 2)
+      }
 
-      structure.forwardings.length mustEqual 1
-      structure.links.length mustEqual 1
-      structure.shards.length mustEqual 2
+      val singleStructureList = nameServer.dumpStructure(List(0)).toList
+      singleStructureList.length mustEqual 1
 
-      structure.shards.first mustEqual a
+      val structureList = nameServer.dumpStructure(List(0,1)).toList
+      structureList.length mustEqual 2
+
+      structureList.zip(shardSets).foreach { case (structure, List(a,b,c,d,e,f)) =>
+        structure.forwardings.length mustEqual 2
+        structure.links.length mustEqual 4
+        structure.shards.length mustEqual 6
+
+        structure.shards.sort { (a,b) => a.tablePrefix.compareTo(b.tablePrefix) < 0 }  mustEqual List(a,b,c,d,e,f)
+      }
+    }
+
+    "be able to update nameserver structure" in {
+      val shards = (0 to 11).toList.map { i =>
+        new ShardInfo("com.twitter.gizzard.fake.NestableShard", "%02d".format(i), "localhost")
+      }
+
+      shards.foreach { s => nameServer.createShard(s, repo) }
+      nameServer.currentState().isEmpty mustEqual true
+
+      nameServer.addLink(shards(0).id, shards(1).id, 2)
+      nameServer.currentState().isEmpty mustEqual true
+
+      nameServer.setForwarding(Forwarding(0, 1, shards(0).id))
+
+      val state1 = nameServer.currentState()
+      state1.length mustEqual 1
+      state1.first.forwardings.toList mustEqual List(Forwarding(0, 1, shards(0).id))
+      state1.first.links.length mustEqual 1
+      state1.first.shards.toList mustEqual List(shards(0), shards(1))
+
+      nameServer.addLink(shards(0).id, shards(3).id, 2)
+      nameServer.setForwarding(Forwarding(0, 2, shards(4).id))
+
+      val state2 = nameServer.currentState()
+      state2.length mustEqual 1
+      state2.first.forwardings.length mustEqual 2
+      state2.first.links.length mustEqual 2
+      state2.first.shards.length mustEqual 4
     }
 
     "be idempotent" in {

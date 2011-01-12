@@ -107,6 +107,8 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                              shardInfo.sourceType, shardInfo.destinationType)
           repository.create(shardInfo)
         }
+
+        markAncestorForwardingsAsUpdated(shardInfo.id)
       } catch {
         case e: SQLIntegrityConstraintViolationException =>
           throw new InvalidShard("SQL Error: %s".format(e.getMessage))
@@ -114,7 +116,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
-  def deleteShard(id: ShardId) = {
+  def deleteShard(id: ShardId) {
     if (listUpwardLinks(id).length > 0) {
       throw new ShardException("Shard still has links")
     }
@@ -122,6 +124,8 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
       throw new ShardException("Shard still has links")
     }
     queryEvaluator.execute("DELETE FROM shards WHERE hostname = ? AND table_prefix = ?", id.hostname, id.tablePrefix) == 0
+
+    markAncestorForwardingsAsUpdated(id)
   }
 
   def addLink(upId: ShardId, downId: ShardId, weight: Int) {
@@ -134,11 +138,15 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     queryEvaluator.execute("INSERT INTO shard_children (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix, weight) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE weight=VALUES(weight)",
       upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix, weight)
     // XXX: todo - check loops
+
+    Seq(upId, downId).foreach(markAncestorForwardingsAsUpdated)
   }
 
   def removeLink(upId: ShardId, downId: ShardId) {
     queryEvaluator.execute("DELETE FROM shard_children WHERE parent_hostname = ? AND parent_table_prefix = ? AND child_hostname = ? AND child_table_prefix = ?",
       upId.hostname, upId.tablePrefix, downId.hostname, downId.tablePrefix) == 0
+
+    Seq(upId, downId).foreach(markAncestorForwardingsAsUpdated)
   }
 
   private def insertOrUpdateForwarding(evaluator: QueryEvaluator, f: Forwarding, deleted: Boolean) {
@@ -212,10 +220,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
     val forwardingsByTableId = mapOfSets(updatedForwardings.map(_._2))(_.tableId)
     val linksByUpId          = mapOfSets(updatedLinks)(_.upId)
+    val tableIds             = forwardingsByTableId.keySet
 
     def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTableId)(linksByUpId)(updatedShards)
 
-    state.map(s => extractor(s.tableId))
+    tableIds.map(t => extractor(t)).toSeq
   }
 
   @volatile private var _forwardingUpdatedSeq: Int = 0
