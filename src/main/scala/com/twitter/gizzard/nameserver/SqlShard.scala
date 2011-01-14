@@ -164,12 +164,12 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     evaluator.transaction { t =>
       t.execute("INSERT INTO update_counters (id, counter) VALUES ('forwardings', 1) ON DUPLICATE KEY UPDATE counter = counter + 1")
 
-      val updatedSeq = t.selectOne("SELECT counter FROM update_counters WHERE id = 'forwardings' FOR UPDATE")(_.getLong("counter")).get
+      val updateCounter = t.selectOne("SELECT counter FROM update_counters WHERE id = 'forwardings' FOR UPDATE")(_.getLong("counter")).get
       val query = "INSERT INTO forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix, deleted, updated_seq) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
                   "shard_hostname = VALUES(shard_hostname), shard_table_prefix = VALUES(shard_table_prefix), " +
                   "deleted = VALUES(deleted), updated_seq = VALUES(updated_seq)"
 
-      t.execute(query, f.baseId, f.tableId, f.shardId.hostname, f.shardId.tablePrefix, deletedInt, updatedSeq)
+      t.execute(query, f.baseId, f.tableId, f.shardId.hostname, f.shardId.tablePrefix, deletedInt, updateCounter)
     }
   }
 
@@ -329,7 +329,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   def reload() {
     try {
-      List("shards", "shard_children", "forwardings", "hosts").foreach { table =>
+      List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {
