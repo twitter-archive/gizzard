@@ -39,11 +39,20 @@ CREATE TABLE IF NOT EXISTS forwardings (
     shard_hostname          VARCHAR(125)            NOT NULL,
     shard_table_prefix      VARCHAR(125)            NOT NULL,
     deleted                 TINYINT                 NOT NULL DEFAULT 0,
-    updated_seq             BIGINT                  NOT NULL AUTO_INCREMENT,
+    updated_seq             BIGINT                  NOT NULL,
 
     PRIMARY KEY         (base_source_id, table_id),
     UNIQUE unique_shard (shard_hostname, shard_table_prefix),
     UNIQUE updated_seq  (updated_seq)
+) ENGINE=INNODB;
+"""
+
+  val UPDATE_COUNTER_DDL = """
+CREATE TABLE IF NOT EXISTS update_counters (
+    id                      VARCHAR(25) NOT NULL,
+    counter                 BIGINT      NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (id)
 ) ENGINE=INNODB;
 """
 
@@ -152,12 +161,16 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   private def insertOrUpdateForwarding(evaluator: QueryEvaluator, f: Forwarding, deleted: Boolean) {
     val deletedInt = if (deleted) 1 else 0
 
-    val query = "INSERT INTO forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix, deleted) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
-                "base_source_id = VALUES(base_source_id), table_id = VALUES(table_id), " +
-                "shard_hostname = VALUES(shard_hostname), shard_table_prefix = VALUES(shard_table_prefix), " +
-                "deleted = VALUES(deleted), updated_seq = LAST_INSERT_ID(updated_seq) + 1"
+    evaluator.transaction { t =>
+      t.execute("INSERT INTO update_counters (id, counter) VALUES ('forwardings', 0) ON DUPLICATE KEY UPDATE counter = counter + 1")
 
-    evaluator.execute(query, f.baseId, f.tableId, f.shardId.hostname, f.shardId.tablePrefix, deletedInt)
+      val updatedSeq = t.selectOne("SELECT counter FROM update_counters WHERE id = 'forwardings' FOR UPDATE")(_.getLong("counter")).get
+      val query = "INSERT INTO forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix, deleted, updated_seq) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
+                  "shard_hostname = VALUES(shard_hostname), shard_table_prefix = VALUES(shard_table_prefix), " +
+                  "deleted = VALUES(deleted), updated_seq = VALUES(updated_seq)"
+
+      t.execute(query, f.baseId, f.tableId, f.shardId.hostname, f.shardId.tablePrefix, deletedInt, updatedSeq)
+    }
   }
 
   def setForwarding(f: Forwarding) { insertOrUpdateForwarding(queryEvaluator, f, false) }
@@ -165,8 +178,9 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   def removeForwarding(f: Forwarding) { insertOrUpdateForwarding(queryEvaluator, f, true) }
 
   def replaceForwarding(oldId: ShardId, newId: ShardId) {
+    val query       = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ?"
+
     queryEvaluator.transaction { t =>
-      val query       = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ? FOR UPDATE"
       val forwardings = t.select(query, oldId.hostname, oldId.tablePrefix)(rowToForwarding)
 
       forwardings.foreach { case Forwarding(tableId, baseId, _) =>
@@ -191,7 +205,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     dumpStructure(tableIds)
   }
 
-  private def updateState(state: Seq[NameServerState], updatedSequence: Int) = {
+  private def updateState(state: Seq[NameServerState], updatedSequence: Long) = {
     import TreeUtils._
 
     val oldForwardings = Map(state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f): _*)
@@ -227,12 +241,12 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     tableIds.map(t => extractor(t)).toSeq
   }
 
-  @volatile private var _forwardingUpdatedSeq: Int = 0
+  @volatile private var _forwardingUpdatedSeq = 0L
   @volatile private var _currentState: Seq[NameServerState] = null
 
   private def latestUpdatedSeq() = {
-    val query = "SELECT updated_seq FROM forwardings ORDER BY updated_seq DESC LIMIT 1"
-    queryEvaluator.selectOne(query)(_.getInt("updated_seq")).getOrElse(0)
+    val query = "SELECT counter FROM update_counters WHERE id = 'forwardings'"
+    queryEvaluator.selectOne(query)(_.getLong("counter")).getOrElse(0L)
   }
 
   def currentState() = {
@@ -329,6 +343,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     queryEvaluator.execute(SqlShard.SHARDS_DDL)
     queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
     queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
+    queryEvaluator.execute(SqlShard.UPDATE_COUNTER_DDL)
     queryEvaluator.execute(SqlShard.HOSTS_DDL)
   }
 
