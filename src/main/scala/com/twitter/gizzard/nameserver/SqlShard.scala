@@ -162,7 +162,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     val deletedInt = if (deleted) 1 else 0
 
     evaluator.transaction { t =>
-      t.execute("INSERT INTO update_counters (id, counter) VALUES ('forwardings', 0) ON DUPLICATE KEY UPDATE counter = counter + 1")
+      t.execute("INSERT INTO update_counters (id, counter) VALUES ('forwardings', 1) ON DUPLICATE KEY UPDATE counter = counter + 1")
 
       val updatedSeq = t.selectOne("SELECT counter FROM update_counters WHERE id = 'forwardings' FOR UPDATE")(_.getLong("counter")).get
       val query = "INSERT INTO forwardings (base_source_id, table_id, shard_hostname, shard_table_prefix, deleted, updated_seq) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE " +
