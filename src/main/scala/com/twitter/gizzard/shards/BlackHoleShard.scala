@@ -7,13 +7,15 @@ class BlackHoleShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadW
 }
 
 /**
- * A shard that refuses all read/write traffic in a silent way. 
+ * A shard that refuses all read/write traffic in a silent way.
  */
 class BlackHoleShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard])
   extends ReadWriteShard[ConcreteShard] {
 
   val exception = new ShardBlackHoleException(shardInfo.id)
+
+  def readAllOperation[A](method: (ConcreteShard => A)) = throw exception
 
   def readOperation[A](method: (ConcreteShard => A)) = throw exception
 

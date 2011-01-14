@@ -13,6 +13,8 @@ class BlockedShard[ConcreteShard <: Shard]
   val shard = children.first
   val exception = new ShardRejectedOperationException("shard is offline", shardInfo.id)
 
+  def readAllOperation[A](method: (ConcreteShard => A)) = throw exception
+
   def readOperation[A](method: (ConcreteShard => A)) = throw exception
 
   def writeOperation[A](method: (ConcreteShard => A)) = throw exception
