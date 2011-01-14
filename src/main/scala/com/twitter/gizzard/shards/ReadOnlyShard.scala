@@ -15,7 +15,7 @@ class ReadOnlyShard[ConcreteShard <: Shard]
 
   val shard = children.first
 
-  def readAllOperation[A](method: (ConcreteShard => A)) = Seq(method(shard))
+  def readAllOperation[A](method: (ConcreteShard => A)) = FanoutResults(method, shard)
 
   def readOperation[A](method: (ConcreteShard => A)) = method(shard)
 

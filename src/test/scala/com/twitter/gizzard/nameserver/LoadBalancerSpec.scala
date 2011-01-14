@@ -5,7 +5,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import scala.util.Random
 
 
-// FIXME: these tests kinda suck in theory. Ideally, we'd test based on 
+// FIXME: these tests kinda suck in theory. Ideally, we'd test based on
 //        a fuzzy expectation of the distribution of responses.
 
 
@@ -74,7 +74,7 @@ object FailingOverLoadBalancerSpec extends ConfiguredSpecification with JMocker 
       for ( i <- 1 to 1000 )
         if ( loadBalancer().head == shard3 )
           offlineWasInFront = true
-      
+
       offlineWasInFront mustEqual true
     }
   }

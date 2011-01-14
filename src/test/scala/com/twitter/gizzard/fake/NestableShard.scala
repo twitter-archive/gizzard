@@ -12,14 +12,14 @@ class NestableShardFactory extends shards.ShardFactory[Shard] {
 
 class NestableShard(val shardInfo: shards.ShardInfo, val weight:Int, val children: Seq[fake.Shard]) extends Shard {
   val map = new mutable.HashMap[String, String]
-  
+
   def get(key: String) = {
     map.get(key)
   }
-  
+
   def put(key: String, value: String) = {
     map.put(key, value)
     value
   }
-  
+
 }

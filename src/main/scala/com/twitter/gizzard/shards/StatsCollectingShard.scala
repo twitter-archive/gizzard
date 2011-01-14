@@ -9,7 +9,7 @@ class StatsCollectingShard[ConcreteShard <: Shard]
 
   val shardName = shardInfo.hostname
   val shard = children.first.asInstanceOf[ConcreteShard]
-  def readAllOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-readall")(Seq(method(shard)))
+  def readAllOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-readall")(FanoutResults(method, shard))
   def readOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-read")(method(shard))
   def writeOperation[A](method: (ConcreteShard => A)) = stats.time("shard-" + shardName + "-write")(method(shard))
   def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =

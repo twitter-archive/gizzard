@@ -49,7 +49,10 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         one(shard1).get("name").willReturn(Some("joe"))
         one(shard2).get("name").willReturn(Some("bob"))
       }
-      replicatingShard.getAll("name").toList mustEqual Seq(Some("joe"), Some("bob")).toList
+      val out = replicatingShard.getAll("name")
+      out.exceptions.size mustEqual 0
+      out.results.first mustEqual Some("joe")
+      out.results.last mustEqual Some("bob")
     }
 
     "writes happen to all shards" in {
