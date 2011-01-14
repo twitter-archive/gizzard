@@ -19,7 +19,9 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
-    case ex: Throwable => throw new thrift.GizzardException(ex.getMessage)
+    case ex: Throwable =>
+      log.error(ex, "Exception in Gizzard ManagerService: %s", ex)
+      throw new thrift.GizzardException(ex.getMessage)
   }
 
   def reload_updated_forwardings() = wrapEx {
