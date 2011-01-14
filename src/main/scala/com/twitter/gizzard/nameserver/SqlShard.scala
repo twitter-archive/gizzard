@@ -329,6 +329,11 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   def reload() {
     try {
+      synchronized {
+        _currentState         = null
+        _forwardingUpdatedSeq = 0L
+      }
+
       List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
