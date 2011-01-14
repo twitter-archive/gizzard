@@ -109,10 +109,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       nameServer.removeLink(shards(0).id, shards(1).id)
 
       val state3 = nameServer.currentState()
-      state2.length mustEqual 1
-      state2.first.forwardings.length mustEqual 2
-      state2.first.links.length mustEqual 1
-      state2.first.shards.length mustEqual 2
+      state3.length mustEqual 1
+      state3.first.forwardings.length mustEqual 2
+      state3.first.links.length mustEqual 1
+      state3.first.shards.length mustEqual 3
     }
 
     "be idempotent" in {
