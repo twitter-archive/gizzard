@@ -100,8 +100,8 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   // Forwardings/Shard Management Write Methods
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
-    queryEvaluator.transaction { transaction =>
-      try {
+    try {
+      queryEvaluator.transaction { transaction =>
         transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",
                               shardInfo.tablePrefix, shardInfo.hostname) { row =>
           if (row.getString("class_name") != shardInfo.className ||
@@ -116,12 +116,12 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                              shardInfo.sourceType, shardInfo.destinationType)
           repository.create(shardInfo)
         }
-
-        markAncestorForwardingsAsUpdated(shardInfo.id)
-      } catch {
-        case e: SQLIntegrityConstraintViolationException =>
-          throw new InvalidShard("SQL Error: %s".format(e.getMessage))
       }
+
+      markAncestorForwardingsAsUpdated(shardInfo.id)
+    } catch {
+      case e: SQLIntegrityConstraintViolationException =>
+        throw new InvalidShard("SQL Error: %s".format(e.getMessage))
     }
   }
 
