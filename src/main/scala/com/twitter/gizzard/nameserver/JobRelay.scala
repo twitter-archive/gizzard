@@ -59,14 +59,14 @@ class JobRelayCluster(
   framed: Boolean,
   timeout: Duration,
   retries: Int)
-extends (Iterable[String] => Unit) {
+extends (Iterable[Array[Byte]] => Unit) {
   val client = new LoadBalancingChannel(hosts.map(h => new JobInjectorClient(h.hostname, h.port, framed, timeout, retries)))
 
-  def apply(jobs: Iterable[String]) {
+  def apply(jobs: Iterable[Array[Byte]]) {
     val jobList = new JLinkedList[thrift.Job]()
 
     jobs.foreach { j =>
-      val tj = new thrift.Job(priority, ByteBuffer.wrap(j.getBytes("UTF-8")))
+      val tj = new thrift.Job(priority, ByteBuffer.wrap(j))
       tj.setIs_replicated(true)
       jobList.add(tj)
     }
@@ -83,10 +83,10 @@ object NullJobRelay extends JobRelay(Map(), 0, false, new Duration(0), 0)
 
 object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, new Duration(0), 0) {
   override val client = null
-  override def apply(jobs: Iterable[String]) = ()
+  override def apply(jobs: Iterable[Array[Byte]]) = ()
 }
 
 class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, new Duration(0), 0) {
   override val client = null
-  override def apply(jobs: Iterable[String]) { throw new ClusterBlockedException(cluster) }
+  override def apply(jobs: Iterable[Array[Byte]]) { throw new ClusterBlockedException(cluster) }
 }

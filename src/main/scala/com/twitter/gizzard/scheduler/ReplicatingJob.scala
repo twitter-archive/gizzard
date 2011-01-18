@@ -55,11 +55,11 @@ class ReplicatingJob(
   relay: JobRelay,
   jobs: Iterable[JsonJob],
   clusters: Iterable[String],
-  serialized: Iterable[String])
+  serialized: Iterable[Array[Byte]])
 extends JsonNestedJob(jobs) {
 
   def this(relay: JobRelay, jobs: Iterable[JsonJob], clusters: Iterable[String]) =
-    this(relay, jobs, clusters, jobs.map(_.toJson))
+    this(relay, jobs, clusters, jobs.map(_.toJsonBytes))
 
   def this(relay: JobRelay, jobs: Iterable[JsonJob]) = this(relay, jobs, relay.clusters)
 
@@ -69,7 +69,7 @@ extends JsonNestedJob(jobs) {
   override def toMap: Map[String, Any] = {
     var attrs = super.toMap.toList
     if (!clustersQueue.isEmpty) attrs = "dest_clusters" -> clustersQueue.toList :: attrs
-    if (!serialized.isEmpty)    attrs = "serialized" -> serialized :: attrs
+    if (!serialized.isEmpty)    attrs = "serialized" -> serialized.map(new String(_, "UTF-8")) :: attrs
     Map(attrs: _*)
   }
 
@@ -108,7 +108,7 @@ extends JsonJobParser {
 
   override def apply(json: Map[String, Any]): JsonJob = {
     val clusters   = json.get("dest_clusters").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
-    val serialized = json.get("serialized").map(_.asInstanceOf[Iterable[String]]) getOrElse Nil
+    val serialized = json.get("serialized").map(_.asInstanceOf[Iterable[String]].map(_.getBytes("UTF-8"))) getOrElse Nil
     val tasks      = json("tasks").asInstanceOf[Tasks].map(codec.inflate)
 
     new ReplicatingJob(relay, tasks, clusters, serialized)

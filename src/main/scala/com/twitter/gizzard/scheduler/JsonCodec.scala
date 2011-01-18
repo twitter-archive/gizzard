@@ -36,11 +36,11 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   def +=(item: (Regex, JsonJobParser)) = processors += item
   def +=(r: Regex, p: JsonJobParser) = processors += ((r, p))
 
-  def flatten(job: JsonJob): Array[Byte] = job.toJson.getBytes
+  def flatten(job: JsonJob): Array[Byte] = job.toJsonBytes
 
   def inflate(data: Array[Byte]): JsonJob = {
     try {
-      val javaMap: JMap[String, Any] = mapper.readValue(new String(data), classOf[JMap[String, Any]])
+      val javaMap: JMap[String, Any] = mapper.readValue(new String(data, "UTF-8"), classOf[JMap[String, Any]])
       val scalaMap = deepConvert(javaMap)
       inflate(scalaMap)
     } catch {

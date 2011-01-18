@@ -4,7 +4,6 @@ import scala.collection.mutable
 import com.twitter.json.Json
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import shards.ShardRejectedOperationException
 
 class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NestedJob" should {
