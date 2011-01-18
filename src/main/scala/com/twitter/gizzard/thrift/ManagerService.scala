@@ -101,6 +101,8 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
   }
 
+  def list_tables() = wrapEx(nameServer.listTables.toJavaList)
+
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(nameServer.dumpStructure(tableIds.toList).map(_.toThrift).toJavaList)
 
 

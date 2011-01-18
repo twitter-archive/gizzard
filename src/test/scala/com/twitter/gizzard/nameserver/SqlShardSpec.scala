@@ -176,7 +176,21 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "list hostnames" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       nameServer.createShard(a, repo)
-      nameServer.listHostnames.first mustEqual "localhost"
+      nameServer.listHostnames().first mustEqual "localhost"
+    }
+
+    "list tables" in {
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
+      val c = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "c", "localhost")
+      nameServer.createShard(a, repo)
+      nameServer.createShard(b, repo)
+      nameServer.createShard(c, repo)
+      nameServer.setForwarding(Forwarding(0, 0, a.id))
+      nameServer.setForwarding(Forwarding(0, 1, b.id))
+      nameServer.setForwarding(Forwarding(1, 0, c.id))
+
+      nameServer.listTables must haveTheSameElementsAs(List(0, 1))
     }
 
     "create" in {

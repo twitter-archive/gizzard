@@ -14,7 +14,8 @@ class ReadWriteShardAdapter(shard: ReadWriteShard[Shard]) extends shards.ReadWri
   def listLinks()                                                 = shard.readOperation(_.listLinks())
   def listShards()                                                = shard.readOperation(_.listShards())
   def shardsForHostname(hostname: String)                         = shard.readOperation(_.shardsForHostname(hostname))
-  def listHostnames()                                             = shard.readOperation(_.listHostnames)
+  def listHostnames()                                             = shard.readOperation(_.listHostnames())
+  def listTables()                                                = shard.readOperation(_.listTables())
 
   def currentState()                                              = shard.readOperation(_.currentState())
 

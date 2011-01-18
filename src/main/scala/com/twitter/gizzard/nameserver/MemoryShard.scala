@@ -151,6 +151,10 @@ class MemoryShard extends Shard {
     shardTable.filter { _.busy.id > 0 }.toList
   }
 
+  def listTables(): Seq[Int] = {
+    Set(forwardingTable.map(_.tableId): _*).toList.sort((a,b) => (a < b))
+  }
+
   def rebuildSchema() { }
 
   def reload() { }

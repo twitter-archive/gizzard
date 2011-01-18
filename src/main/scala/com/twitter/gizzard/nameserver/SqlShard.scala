@@ -200,10 +200,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   // Forwardings/Shard Management Read Methods
 
-  private def loadState() = {
-    val tableIds = queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id"))
-    dumpStructure(tableIds)
-  }
+  private def loadState() = dumpStructure(listTables)
 
   private def updateState(state: Seq[NameServerState], updatedSequence: Long) = {
     import TreeUtils._
@@ -275,6 +272,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     queryEvaluator.selectOne(query, id.hostname, id.tablePrefix)(rowToShardInfo) getOrElse {
       throw new NonExistentShard("Shard not found: %s".format(id))
     }
+  }
+
+  def listTables() = {
+    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id")).toList.sort((a,b) => (a < b))
   }
 
   def listHostnames() = {

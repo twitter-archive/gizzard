@@ -169,6 +169,7 @@ class NameServer[S <: shards.Shard](
   @throws(classOf[shards.ShardException]) def rebuildSchema() = nameServerShard.rebuildSchema()
   @throws(classOf[shards.ShardException]) def removeForwarding(f: Forwarding) = nameServerShard.removeForwarding(f)
   @throws(classOf[shards.ShardException]) def listHostnames() = nameServerShard.listHostnames()
+  @throws(classOf[shards.ShardException]) def listTables() = nameServerShard.listTables()
 
 
   // Remote Host Management

@@ -169,23 +169,29 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
       val shard1 = new ShardInfo(SQL_SHARD, "forward_1", "localhost")
       val shard2 = new ShardInfo(SQL_SHARD, "forward_1_also", "localhost")
       val shard3 = new ShardInfo(SQL_SHARD, "forward_1_too", "localhost")
+      val shard4 = new ShardInfo(SQL_SHARD, "forward_2", "localhost")
 
       doBefore {
         expect {
           one(shardRepository).create(shard1)
           one(shardRepository).create(shard2)
           one(shardRepository).create(shard3)
+          one(shardRepository).create(shard4)
         }
 
         nameServer.createShard(shard1, shardRepository)
         nameServer.createShard(shard2, shardRepository)
         nameServer.createShard(shard3, shardRepository)
+        nameServer.createShard(shard4, shardRepository)
         nameServer.addLink(shard1.id, shard2.id, 10)
         nameServer.addLink(shard2.id, shard3.id, 10)
+        nameServer.setForwarding(Forwarding(0, 0, shard1.id))
+        nameServer.setForwarding(Forwarding(0, 1, shard2.id))
+        nameServer.setForwarding(Forwarding(1, 0, shard4.id))
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost").map { _.id }.toList mustEqual List(shard1.id, shard2.id, shard3.id)
+        nameServer.shardsForHostname("localhost").map { _.id }.toList mustEqual List(shard1.id, shard2.id, shard3.id, shard4.id)
       }
 
       "getBusyShards" in {
@@ -198,6 +204,10 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
         nameServer.listUpwardLinks(shard3.id).map { _.upId }.toList mustEqual List(shard2.id)
         nameServer.listUpwardLinks(shard2.id).map { _.upId }.toList mustEqual List(shard1.id)
         nameServer.listUpwardLinks(shard1.id).map { _.upId }.toList mustEqual List[ShardId]()
+      }
+
+      "list tables" in {
+        nameServer.listTables must haveTheSameElementsAs(List(0, 1))
       }
     }
 
