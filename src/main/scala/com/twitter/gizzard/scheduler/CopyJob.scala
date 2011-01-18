@@ -70,33 +70,49 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
 
   def apply() {
     try {
-      log.info("Copying shard block (type %s) from %s to %s: state=%s",
-               getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
-      val sourceShard = nameServer.findShardById(sourceId)
-      val destinationShard = nameServer.findShardById(destinationId)
-      // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-      nameServer.markShardBusy(destinationId, shards.Busy.Busy)
+      if (nameServer.getShard(destinationId).busy == shards.Busy.Cancelled) {
+        log.info("Copying cancelled for (type %s) from %s to %s",
+                 getClass.getName.split("\\.").last, sourceId, destinationId)
+        Stats.clearGauge(gaugeName)
 
-      val nextJob = copyPage(sourceShard, destinationShard, count)
-      nextJob match {
-        case Some(job) =>
-          incrGauge
-          scheduler.put(job)
-        case None =>
-          finish()
+      } else {
+
+        val sourceShard = nameServer.findShardById(sourceId)
+        val destinationShard = nameServer.findShardById(destinationId)
+
+        log.info("Copying shard block (type %s) from %s to %s: state=%s",
+                 getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
+        // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
+        nameServer.markShardBusy(destinationId, shards.Busy.Busy)
+
+        val nextJob = copyPage(sourceShard, destinationShard, count)
+        nextJob match {
+          case Some(job) =>
+            incrGauge
+            scheduler.put(job)
+          case None =>
+            finish()
+        }
       }
     } catch {
       case e: NonExistentShard =>
         log.error("Shard block copy failed because one of the shards doesn't exist. Terminating the copy.")
-      case e: ShardTimeoutException if (count > CopyJob.MIN_COPY) =>
-        log.warning("Shard block copy timed out; trying a smaller block size.")
-        count = (count * 0.9).toInt
-        scheduler.put(this)
+      case e: ShardTimeoutException =>
+        if (count > CopyJob.MIN_COPY) {
+          log.warning("Shard block copy timed out; trying a smaller block size.")
+          count = (count * 0.9).toInt
+          scheduler.put(this)
+        } else {
+          nameServer.markShardBusy(destinationId, shards.Busy.Error)
+          log.error("Shard block copy timed out on minimum block size.")
+          throw e
+        }
       case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler.put(this)
       case e: Throwable =>
-        log.warning("Shard block copy stopped due to exception: %s", e)
+        nameServer.markShardBusy(destinationId, shards.Busy.Error)
+        log.error("Shard block copy stopped due to exception: %s", e)
         throw e
     }
   }

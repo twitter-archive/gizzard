@@ -25,6 +25,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
   "CopyJob" should {
     val sourceShardId = shards.ShardId("testhost", "1")
     val destinationShardId = shards.ShardId("testhost", "2")
+    val destinationShardInfo = shards.ShardInfo(destinationShardId, "FakeShard", "", "", shards.Busy.Normal)
     val count = CopyJob.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
     val nameServer = mock[nameserver.NameServer[shards.Shard]]
@@ -59,6 +60,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
       "normally" in {
         val copy = makeCopy(Some(nextCopy))
         expect {
+          one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
@@ -68,10 +70,21 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
         copy.apply()
       }
 
-      "no shard" in {
+      "no source shard" in {
         val copy = makeCopy(Some(nextCopy))
         expect {
+          one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
           one(nameServer).findShardById(sourceShardId) willThrow new nameserver.NonExistentShard("foo")
+          never(jobScheduler).put(nextCopy)
+        }
+
+        copy.apply()
+      }
+
+      "no destination shard" in {
+        val copy = makeCopy(Some(nextCopy))
+        expect {
+          one(nameServer).getShard(destinationShardId) willThrow new nameserver.NonExistentShard("foo")
           never(jobScheduler).put(nextCopy)
         }
 
@@ -81,6 +94,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
       "with a database connection timeout" in {
         val copy = makeCopy(throw new shards.ShardDatabaseTimeoutException(100.milliseconds, sourceShardId))
         expect {
+          one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
@@ -94,9 +108,11 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
       "with a random exception" in {
         val copy = makeCopy(throw new Exception("boo"))
         expect {
+          one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+          one(nameServer).markShardBusy(destinationShardId, shards.Busy.Error)
           never(jobScheduler).put(nextCopy)
         }
 
@@ -107,6 +123,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
         "early on" in {
           val copy = makeCopy(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
           expect {
+            one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
             one(nameServer).findShardById(sourceShardId) willReturn shard1
             one(nameServer).findShardById(destinationShardId) willReturn shard2
             one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
@@ -121,9 +138,11 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           val copy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
 
           expect {
+            one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
             one(nameServer).findShardById(sourceShardId) willReturn shard1
             one(nameServer).findShardById(destinationShardId) willReturn shard2
             one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+            one(nameServer).markShardBusy(destinationShardId, shards.Busy.Error)
             never(jobScheduler).put(nextCopy)
           }
 
@@ -131,10 +150,26 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
         }
       }
 
+      "when cancelled" in {
+        val copy = makeCopy(Some(nextCopy))
+        val cancelledInfo = shards.ShardInfo(destinationShardId, "FakeShard", "", "", shards.Busy.Cancelled)
+
+        expect {
+          one(nameServer).getShard(destinationShardId) willReturn cancelledInfo
+          never(nameServer).findShardById(sourceShardId)
+          never(nameServer).findShardById(destinationShardId)
+          never(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
+          never(jobScheduler).put(nextCopy)
+        }
+
+        copy.apply()
+      }
+
       "when finished" in {
         val copy = makeCopy(None)
 
         expect {
+          one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)

@@ -111,14 +111,15 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   }
 
   def shutdown() {
-    running = false
-    selectorThread.join()
-    try {
-      serverSocket.close()
-    } catch {
-      case _ =>
+    if ((selectorThread ne null) && selectorThread.isAlive()) {
+      running = false
+      selectorThread.join()
+      try {
+        serverSocket.close()
+      } catch {
+        case _ =>
+      }
     }
-
     executor.shutdown()
     while (!executor.isTerminated()) {
       log.info("Waiting for thread-pool executor...")
