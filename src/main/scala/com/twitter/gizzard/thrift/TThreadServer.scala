@@ -60,7 +60,7 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
   private val ACCEPT_TIMEOUT = 1000
   private val SHUTDOWN_TIMEOUT = 5000
 
-  @volatile var running = true
+  @volatile var running = false
   private val deathSwitch = new CountDownLatch(1)
 
   def start() {
@@ -77,6 +77,8 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
     val serverSocket = new ServerSocket(port)
     serverSocket.setReuseAddress(true)
     serverSocket.setSoTimeout(ACCEPT_TIMEOUT)
+
+    running = true
 
     while (running) {
       try {
@@ -113,8 +115,10 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
   }
 
   override def stop() {
-    running = false
-    deathSwitch.await()
+    if (running) {
+      running = false
+      deathSwitch.await()
+    }
   }
 
   private def process(client: Socket) {
