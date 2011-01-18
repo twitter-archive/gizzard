@@ -71,35 +71,33 @@ class NameServer[S <: shards.Shard](
   def dumpStructure(tableIds: Seq[Int]) = nameServerShard.dumpStructure(tableIds)
 
   private def recreateInternalShardState() {
-    synchronized {
-      val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
-      val newFamilyTree     = mutable.Map[ShardId, mutable.ArrayBuffer[LinkInfo]]()
-      val newForwardings    = mutable.Map[Int, TreeMap[Long, ShardInfo]]()
+    val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
+    val newFamilyTree     = mutable.Map[ShardId, mutable.ArrayBuffer[LinkInfo]]()
+    val newForwardings    = mutable.Map[Int, TreeMap[Long, ShardInfo]]()
 
-      nameServerShard.currentState().foreach { state =>
+    nameServerShard.currentState().foreach { state =>
 
-        state.shards.foreach { info => newShardInfos += (info.id -> info) }
+      state.shards.foreach { info => newShardInfos += (info.id -> info) }
 
-        state.links.foreach { link =>
-          newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo]) += link
-        }
+      state.links.foreach { link =>
+        newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo]) += link
+      }
 
-        state.forwardings.foreach { forwarding =>
-          val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
+      state.forwardings.foreach { forwarding =>
+        val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
 
-          newShardInfos.get(forwarding.shardId) match {
-            case Some(shard) => treeMap.put(forwarding.baseId, shard)
-            case None => {
-              throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))
-            }
+        newShardInfos.get(forwarding.shardId) match {
+          case Some(shard) => treeMap.put(forwarding.baseId, shard)
+          case None => {
+            throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))
           }
         }
       }
-
-      shardInfos  = newShardInfos
-      familyTree  = newFamilyTree
-      forwardings = newForwardings
     }
+
+    shardInfos  = newShardInfos
+    familyTree  = newFamilyTree
+    forwardings = newForwardings
   }
 
   def reloadUpdatedForwardings() {
