@@ -108,6 +108,16 @@ extends Shard {
     findShardById(shardInfo.id)
   }
 
+  @throws(classOf[shards.ShardException])
+  def getRootForwardings(id: ShardId): Seq[Forwarding] = {
+    val ids = nameServerShard.listUpwardLinks(id)
+    (try {
+      getForwardingForShard(id) ::: Nil
+    } catch {
+      case e:ShardException => Nil
+    }) ++ ids.map((i) => getRootForwardings(i.upId)).flatMap((i) => i)
+  }
+
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId) = nameServerShard.getShard(id)
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
