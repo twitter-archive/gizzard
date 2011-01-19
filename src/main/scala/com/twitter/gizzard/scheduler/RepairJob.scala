@@ -11,23 +11,19 @@ object RepairJob {
   val MIN_COPY = 500
 }
 
-trait Repairable[T] {
-  def similar(other: T): Int
-}
-
 /**
  * A factory for creating a new repair job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait RepairJobFactory[S <: Shard, R <: Repairable[R]] extends ((ShardId, ShardId) => RepairJob[S, R])
+trait RepairJobFactory[S <: Shard] extends ((ShardId, ShardId) => RepairJob[S])
 
 /**
  * A parser that creates a repair job out of json. The basic attributes (source shard ID, destination)
  * shard ID, count) are parsed out first, and the remaining attributes are passed to
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
-trait RepairJobParser[S <: Shard, R <: Repairable[R]] extends JsonJobParser {
-  def deserialize(attributes: Map[String, Any], sourceId: ShardId, destinationId: ShardId, count: Int): RepairJob[S, R]
+trait RepairJobParser[S <: Shard] extends JsonJobParser {
+  def deserialize(attributes: Map[String, Any], sourceId: ShardId, destinationId: ShardId, count: Int): RepairJob[S]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
@@ -46,7 +42,7 @@ trait RepairJobParser[S <: Shard, R <: Repairable[R]] extends JsonJobParser {
  * 'repair' is called to do the actual data repair. It should return a new Some[RepairJob] representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class RepairJob[S <: Shard, R <: Repairable[R]](sourceId: ShardId,
+abstract case class RepairJob[S <: Shard](sourceId: ShardId,
                                        destinationId: ShardId,
                                        var count: Int,
                                        nameServer: NameServer[S],
@@ -103,44 +99,4 @@ abstract case class RepairJob[S <: Shard, R <: Repairable[R]](sourceId: ShardId,
   def repair(sourceShard: S, destinationShard: S)
 
   def serialize: Map[String, Any]
-  
-  def enqueueFirst(tableId: Int, list: ListBuffer[R])
-  
-  def resolve(tableId: Int, srcSeq: Seq[R], srcCursorAtEnd: Boolean, destSeq: Seq[R], destCursorAtEnd: Boolean) = {
-    val srcItems = new ListBuffer[R]()
-    srcItems ++= srcSeq
-    val destItems = new ListBuffer[R]()
-    destItems ++= destSeq
-    var running = !(srcItems.isEmpty && destItems.isEmpty)
-    while (running) {
-      val srcItem = srcItems.firstOption
-      val destItem = destItems.firstOption
-      (srcCursorAtEnd, destCursorAtEnd, srcItem, destItem) match {
-        case (true, true, None, None) => running = false
-        case (true, true, _, None) => enqueueFirst(tableId, srcItems)
-        case (true, true, None, _) => enqueueFirst(tableId, destItems)
-        case (_, _, _, _) =>
-          (srcItem, destItem) match {
-            case (None, None) => running = false
-            case (_, None) => running = false
-            case (None, _) => running = false
-            case (_, _) =>
-              srcItem.get.similar(destItem.get) match {
-                case x if x < 0 => enqueueFirst(tableId, srcItems)
-                case x if x > 0 => enqueueFirst(tableId, destItems)
-                case _ =>
-                  if (srcItem != destItem) {
-                    enqueueFirst(tableId, srcItems)
-                    enqueueFirst(tableId, destItems)
-                  } else {
-                    srcItems.remove(0)
-                    destItems.remove(0)
-                  }
-              }
-          }
-      }
-      running &&= !(srcItems.isEmpty && destItems.isEmpty)
-    }
-    (srcItems.firstOption, destItems.firstOption)
-  }
 }

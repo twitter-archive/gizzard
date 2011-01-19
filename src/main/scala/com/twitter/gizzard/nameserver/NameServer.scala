@@ -112,7 +112,7 @@ extends Shard {
   def getRootForwardings(id: ShardId): Seq[Forwarding] = {
     val ids = nameServerShard.listUpwardLinks(id)
     (try {
-      getForwardingForShard(id) ::: Nil
+      getForwardingForShard(id) :: Nil
     } catch {
       case e:ShardException => Nil
     }) ++ ids.map((i) => getRootForwardings(i.upId)).flatMap((i) => i)
