@@ -10,7 +10,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val SQL_SHARD = "com.example.SqlShard"
 
     val nameServerShard = mock[Shard]
-    val nameServerState = mock[NameServerState]
     var shardRepository = mock[ShardRepository[shards.Shard]]
     val mappingFunction = (n: Long) => n
     var nameServer: NameServer[shards.Shard] = null
@@ -21,6 +20,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val linksList = List(new shards.LinkInfo(shardInfos(2).id, shardInfos(3).id, 1))
     val shardForwardings = List(new Forwarding(1, 1, shardInfos(0).id), new Forwarding(1, 2, shardInfos(1).id),
                                 new Forwarding(1, 3, shardInfos(2).id), new Forwarding(2, 1, shardInfos(3).id))
+
+    val nameServerState = NameServerState(shardInfos, linksList, shardForwardings, 1)
+
     val remoteHosts = List(new Host("host1", 7777, "c1", HostStatus.Normal),
                            new Host("host2", 7777, "c1", HostStatus.Normal),
                            new Host("host3", 7777, "c2", HostStatus.Normal))
@@ -32,10 +34,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).reload()
         one(nameServerShard).listRemoteHosts() willReturn remoteHosts
         one(nameServerShard).currentState()    willReturn Seq(nameServerState)
-
-        one(nameServerState).shards            willReturn shardInfos
-        one(nameServerState).links             willReturn linksList
-        one(nameServerState).forwardings       willReturn shardForwardings
       }
 
       nameServer = new NameServer[gizzard.shards.Shard](
@@ -95,6 +93,18 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
 
       nameServer.findShardById(shardInfos(2).id) mustEqual shard
+    }
+
+    "find shard by id with a shard not attached to a forwarding" in {
+      val floatingShard = shards.ShardInfo(shards.ShardId("localhost", "floating"), SQL_SHARD, "a", "b", shards.Busy.Normal)
+
+      expect {
+        one(nameServerShard).getShard(floatingShard.id) willReturn floatingShard
+        one(nameServerShard).listDownwardLinks(floatingShard.id) willReturn List[shards.LinkInfo]()
+        one(shardRepository).find(floatingShard, 1, List()) willReturn shard
+      }
+
+      nameServer.findShardById(floatingShard.id) mustEqual shard
     }
 
     "create shard" in {

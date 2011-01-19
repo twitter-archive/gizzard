@@ -123,10 +123,16 @@ class NameServer[S <: shards.Shard](
   }
 
   def findShardById(id: ShardId, weight: Int): S = {
-    val shardInfo = getShardInfo(id)
-    val children = getChildren(id).map { linkInfo =>
-      findShardById(linkInfo.downId, linkInfo.weight)
-    }.toList
+    val (shardInfo, downwardLinks) = shardInfos.get(id).map { info =>
+      // either pull shard and links from our internal data structures...
+      (info, getChildren(id))
+    } getOrElse {
+      // or directly from the db, in the case they are not attached to a forwarding.
+      (getShard(id), listDownwardLinks(id))
+    }
+
+    val children = downwardLinks.map(l => findShardById(l.downId, l.weight)).toList
+
     shardRepository.find(shardInfo, weight, children)
   }
 
