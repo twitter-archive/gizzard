@@ -37,8 +37,15 @@ class ReplicatingShard[S <: Shard](
       val future: Option[Future])
   extends ReadWriteShard[S] {
 
+  def readAllOperation[A](method: (S => A)) = fanout(method(_), children)
   def readOperation[A](method: (S => A)) = failover(method(_), loadBalancer())
-  def writeOperation[A](method: (S => A)) = fanoutWrite(method, children)
+
+  def writeOperation[A](method: (S => A)) = {
+    val out = fanout(method, children)
+    out.exceptions.map(throw _)
+    out.results.first
+  }
+
   def rebuildableReadOperation[A](method: (S => Option[A]))(rebuild: (S, S) => Unit) =
     rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
 
@@ -56,11 +63,11 @@ class ReplicatingShard[S <: Shard](
     }
   }
 
-  protected def fanoutWriteFuture[A](method: (S => A), replicas: Seq[S], future: Future): A = {
+  protected def fanoutFuture[A](method: (S => A), replicas: Seq[S], future: Future) = {
     val exceptions = new mutable.ArrayBuffer[Throwable]()
     val results = new mutable.ArrayBuffer[A]()
 
-    replicas.map { replica => (replica.shardInfo, future(method(replica))) }.map { case (shardInfo, futureTask) =>
+    replicas.map { replica => (replica, future(method(replica))) }.map { case (replica, futureTask) =>
       try {
         results += futureTask.get(future.timeout.inMillis, TimeUnit.MILLISECONDS)
       } catch {
@@ -69,20 +76,19 @@ class ReplicatingShard[S <: Shard](
             case e: ShardBlackHoleException =>
               // nothing.
             case e: TimeoutException =>
-              exceptions += new ReplicatingShardTimeoutException(shardInfo.id, e)
+              exceptions += new ReplicatingShardTimeoutException(replica.shardInfo.id, e)
             case e =>
               exceptions += e
           }
       }
     }
-    exceptions.map { throw _ }
     if (results.size == 0) {
       throw new ShardBlackHoleException(shardInfo.id)
     }
-    results.first
+    FanoutResults(results, exceptions)
   }
 
-  protected def fanoutWriteSerial[A](method: (S => A), replicas: Seq[S]): A = {
+  protected def fanoutSerial[A](method: (S => A), replicas: Seq[S]) = {
     val exceptions = new mutable.ListBuffer[Throwable]
 
     val results = replicas.flatMap { shard =>
@@ -97,17 +103,16 @@ class ReplicatingShard[S <: Shard](
       }
     }
 
-    exceptions.map { throw _ }
     if (results.size == 0) {
       throw new ShardBlackHoleException(shardInfo.id)
     }
-    results.first
+    FanoutResults(results, exceptions)
   }
 
-  protected def fanoutWrite[A](method: (S => A), replicas: Seq[S]): A = {
+  protected def fanout[A](method: (S => A), replicas: Seq[S]) = {
     future match {
-      case None => fanoutWriteSerial(method, replicas)
-      case Some(f) => fanoutWriteFuture(method, replicas, f)
+      case None => fanoutSerial(method, replicas)
+      case Some(f) => fanoutFuture(method, replicas, f)
     }
   }
 

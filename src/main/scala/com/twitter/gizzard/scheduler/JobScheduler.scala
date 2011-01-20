@@ -7,6 +7,7 @@ import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 import net.lag.kestrel.PersistentQueue
 import net.lag.logging.Logger
+import java.util.concurrent.atomic.AtomicInteger
 import shards.{ShardBlackHoleException, ShardRejectedOperationException}
 
 object JobScheduler {
@@ -85,6 +86,9 @@ class JobScheduler[J <: Job](val name: String,
   private val log = Logger.get(getClass.getName)
   var workerThreads: Collection[BackgroundProcess] = Nil
   @volatile var running = false
+  private var _activeThreads = new AtomicInteger
+
+  def activeThreads = _activeThreads.get()
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
@@ -133,8 +137,7 @@ class JobScheduler[J <: Job](val name: String,
     log.info("Pausing work in JobScheduler: %s", queue)
     queue.pause()
     errorQueue.pause()
-    workerThreads.foreach { _.shutdown() }
-    workerThreads = Nil
+    shutdownWorkerThreads()
   }
 
   def resume() = {
@@ -146,13 +149,19 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def shutdown() {
-    log.info("Shutting down JobScheduler: %s", queue)
-    queue.shutdown()
-    errorQueue.shutdown()
+    if(running) {
+      log.info("Shutting down JobScheduler: %s", queue)
+      queue.shutdown()
+      errorQueue.shutdown()
+      shutdownWorkerThreads()
+      retryTask.shutdown()
+      running = false
+    }
+  }
+
+  private def shutdownWorkerThreads() {
     workerThreads.foreach { _.shutdown() }
     workerThreads = Nil
-    retryTask.shutdown()
-    running = false
   }
 
   def isShutdown = queue.isShutdown
@@ -177,29 +186,34 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def process() {
-    queue.get().foreach { ticket =>
-      val job = ticket.job
+    queue.get.foreach { ticket =>
+      _activeThreads.incrementAndGet()
       try {
-        job()
-        Stats.incr("job-success-count")
-      } catch {
-        case e: ShardBlackHoleException =>
-          Stats.incr("job-blackholed-count")
-        case e: ShardRejectedOperationException =>
-          Stats.incr("job-darkmoded-count")
-          errorQueue.put(job)
-        case e =>
-          Stats.incr("job-error-count")
-          log.error(e, "Error in Job: %s - %s", job, e)
-          job.errorCount += 1
-          job.errorMessage = e.toString
-          if (job.errorCount > errorLimit) {
-            badJobQueue.foreach { _.put(job) }
-          } else {
+        val job = ticket.job
+        try {
+            job()
+            Stats.incr("job-success-count")
+        } catch {
+          case e: ShardBlackHoleException =>
+            Stats.incr("job-blackholed-count")
+          case e: ShardRejectedOperationException =>
+            Stats.incr("job-darkmoded-count")
             errorQueue.put(job)
-          }
+          case e =>
+            Stats.incr("job-error-count")
+            log.error(e, "Error in Job: %s - %s", job, e)
+            job.errorCount += 1
+            job.errorMessage = e.toString
+            if (job.errorCount > errorLimit) {
+              badJobQueue.foreach { _.put(job) }
+            } else {
+              errorQueue.put(job)
+            }
+        }
+       ticket.ack()
+      } finally {
+        _activeThreads.decrementAndGet()
       }
-      ticket.ack()
     }
   }
 }

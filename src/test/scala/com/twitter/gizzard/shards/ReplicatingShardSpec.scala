@@ -7,7 +7,6 @@ import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.ostrich.W3CReporter
 
-
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
   "ReplicatingShard" should {
     val shardId = ShardId("fake", "shard")
@@ -45,14 +44,23 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       }
     }
 
+    "read all shards" in {
+      expect {
+        one(shard1).get("name").willReturn(Some("joe"))
+        one(shard2).get("name").willReturn(Some("bob"))
+      }
+      val out = replicatingShard.getAll("name")
+      out.exceptions.size mustEqual 0
+      out.results.first mustEqual Some("joe")
+      out.results.last mustEqual Some("bob")
+    }
+
     "writes happen to all shards" in {
       "in parallel" in {
         "when they succeed" in {
           expect {
             one(shard1).put("name", "alice")
-            one(shard1).shardInfo
             one(shard2).put("name", "alice")
-            one(shard2).shardInfo
           }
           replicatingShard.put("name", "alice")
         }
@@ -60,9 +68,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         "when the first one fails" in {
           expect {
             one(shard1).put("name", "alice") willThrow new ShardException("o noes")
-            one(shard1).shardInfo
             one(shard2).put("name", "alice")
-            one(shard2).shardInfo
           }
           replicatingShard.put("name", "alice") must throwA[Exception]
         }
@@ -70,9 +76,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         "when one replica is black holed" in {
           expect {
             one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
-            one(shard1).shardInfo
             one(shard2).put("name", "alice")
-            one(shard2).shardInfo
           }
           replicatingShard.put("name", "alice")
         }
@@ -80,9 +84,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         "when all replicas are black holed" in {
           expect {
             one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
-            one(shard1).shardInfo
             one(shard2).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).shardInfo
           }
           replicatingShard.put("name", "alice") must throwA[ShardBlackHoleException]
         }

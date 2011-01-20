@@ -45,4 +45,5 @@ class PrioritizingJobScheduler[J <: Job](val _schedulers: Map[Int, JobScheduler[
   def retryErrors() = schedulers.values.foreach { _.retryErrors() }
 
   def size = schedulers.values.foldLeft(0) { _ + _.size }
+  def activeThreads = schedulers.values.foldLeft(0) { _ + _.activeThreads }
 }

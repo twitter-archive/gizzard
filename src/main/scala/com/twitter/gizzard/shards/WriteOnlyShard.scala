@@ -15,6 +15,9 @@ class WriteOnlyShard[ConcreteShard <: Shard]
 
   val shard = children.first
 
+  def readAllOperation[A](method: (ConcreteShard => A)) =
+    throw new ShardRejectedOperationException("shard is write-only", shardInfo.id)
+
   def readOperation[A](method: (ConcreteShard => A)) =
     throw new ShardRejectedOperationException("shard is write-only", shardInfo.id)
 
