@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS forwardings (
 
     PRIMARY KEY         (base_source_id, table_id),
     UNIQUE unique_shard (shard_hostname, shard_table_prefix),
-    UNIQUE updated_seq  (updated_seq)
+    INDEX  updated_seq  (updated_seq)
 ) ENGINE=INNODB;
 """
 
