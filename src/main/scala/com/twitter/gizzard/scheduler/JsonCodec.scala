@@ -69,8 +69,8 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   private def deepConvert(javaList: JList[Any]): List[Any] = {
     jcl.Buffer(javaList).map { v =>
       v match {
-        case jm: JMap[String, Any] => deepConvert(jm)
-        case jl: JList[Any] => deepConvert(jl)
+        case jm: JMap[_,_] => deepConvert(jm.asInstanceOf[JMap[String,Any]])
+        case jl: JList[_]  => deepConvert(jl.asInstanceOf[JList[Any]])
         case _ => v
       }
     }.toList
@@ -79,8 +79,8 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   private def deepConvert(javaMap: JMap[String, Any]): Map[String, Any] = {
     Map(jcl.Map(javaMap).toSeq.map { case (k,v) =>
       v match {
-        case jm: JMap[String, Any] => (k, deepConvert(jm))
-        case jl: JList[Any] => (k, deepConvert(jl))
+        case jm: JMap[_,_] => (k, deepConvert(jm.asInstanceOf[JMap[String,Any]]))
+        case jl: JList[_]  => (k, deepConvert(jl.asInstanceOf[JList[Any]]))
         case _ => (k, v)
       }
     }: _*)

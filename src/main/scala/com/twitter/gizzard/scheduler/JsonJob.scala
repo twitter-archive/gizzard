@@ -35,8 +35,8 @@ trait JsonJob extends Job {
     val map = new java.util.LinkedHashMap[String, Any]()
     scalaMap.map { case (k, v) =>
       v match {
-        case m: Map[String, Any] => map.put(k, deepConvert(m))
-        case a: Iterable[Any] => map.put(k, deepConvert(a))
+        case m: Map[_,_]    => map.put(k, deepConvert(m.asInstanceOf[Map[String,Any]]))
+        case a: Iterable[_] => map.put(k, deepConvert(a.asInstanceOf[Iterable[Any]]))
         case v => map.put(k, v)
       }
     }
@@ -47,8 +47,8 @@ trait JsonJob extends Job {
     val list = new java.util.LinkedList[Any]()
     scalaIterable.map { v =>
       v match {
-        case m: Map[String, Any] => list.add(deepConvert(m))
-        case a: Iterable[Any] => list.add(deepConvert(a))
+        case m: Map[_,_]    => list.add(deepConvert(m.asInstanceOf[Map[String,Any]]))
+        case a: Iterable[_] => list.add(deepConvert(a.asInstanceOf[Iterable[Any]]))
         case v => list.add(v)
       }
     }
