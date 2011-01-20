@@ -5,18 +5,17 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.7.7"
 
-  inline("com.twitter" %% "querulous" % "1.5.4")
-  inline("net.lag" % "configgy" % "1.6.10-SNAPSHOT")
-  inline("net.lag" % "kestrel" % "1.2.7")
-  inline("com.twitter" % "ostrich" % "1.2.10")
-  inline("com.twitter" % "util" % "1.1.2")
-
-  val rpcclient = "com.twitter" %% "rpcclient" % "1.2.0-SNAPSHOT"
-  val slf4j     = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
-  val slf4jApi  = "org.slf4j" % "slf4j-api" % "1.5.2"
-  val thrift    = "thrift" % "libthrift" % "0.5.0"
-  val jackson   = "org.codehaus.jackson" % "jackson-core-asl" % "1.6.1"
-  val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
+  val querulous   = "com.twitter" %% "querulous" % "1.5.4"
+  val configgy    = "net.lag" % "configgy" % "1.6.10"
+  val kestrel     = "net.lag" % "kestrel" % "1.2.7"
+  val ostrich     = "com.twitter" % "ostrich" % "1.2.10"
+  val twitterUtil = "com.twitter" % "util" % "1.1.2"
+  val rpcclient   = "com.twitter" %% "rpcclient" % "1.2.0-gizzardRC1"
+  val slf4j       = "org.slf4j" % "slf4j-jdk14" % "1.5.2"
+  val slf4jApi    = "org.slf4j" % "slf4j-api" % "1.5.2"
+  val thrift      = "thrift" % "libthrift" % "0.5.0"
+  val jackson     = "org.codehaus.jackson" % "jackson-core-asl" % "1.6.1"
+  val jacksonMap  = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
 
   // test jars
   val specs     = "org.scala-tools.testing" % "specs" % "1.6.2.1" % "test"
