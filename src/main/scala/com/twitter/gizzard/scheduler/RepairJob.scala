@@ -15,7 +15,7 @@ object RepairJob {
  * A factory for creating a new repair job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait RepairJobFactory[S <: Shard] extends ((ShardId, ShardId) => RepairJob[S])
+trait RepairJobFactory[S <: Shard] extends (Seq[ShardId] => RepairJob[S])
 
 /**
  * A parser that creates a repair job out of json. The basic attributes (source shard ID, destination)
@@ -23,12 +23,12 @@ trait RepairJobFactory[S <: Shard] extends ((ShardId, ShardId) => RepairJob[S])
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
 trait RepairJobParser[S <: Shard] extends JsonJobParser {
-  def deserialize(attributes: Map[String, Any], sourceId: ShardId, destinationId: ShardId, count: Int): RepairJob[S]
+  def deserialize(attributes: Map[String, Any], shardIds: Seq[ShardId], count: Int): RepairJob[S]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
-      ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
-      ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString),
+      attributes("shards").asInstanceOf[Seq[Map[String, Any]]].
+        map((e: Map[String, Any]) => ShardId(e("hostname").toString, e("table_prefix").toString)),
       attributes("count").asInstanceOf[{def toInt: Int}].toInt)
   }
 }
@@ -42,8 +42,7 @@ trait RepairJobParser[S <: Shard] extends JsonJobParser {
  * 'repair' is called to do the actual data repair. It should return a new Some[RepairJob] representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class RepairJob[S <: Shard](sourceId: ShardId,
-                                       destinationId: ShardId,
+abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
                                        var count: Int,
                                        nameServer: NameServer[S],
                                        scheduler: PrioritizingJobScheduler[JsonJob],
@@ -51,18 +50,17 @@ abstract case class RepairJob[S <: Shard](sourceId: ShardId,
   private val log = Logger.get(getClass.getName)
 
   def finish() {
-    log.info("Repair finished for (type %s) from %s to %s",
-             getClass.getName.split("\\.").last, sourceId, destinationId)
+    log.info("Repair finished for (type %s) for %s",
+             getClass.getName.split("\\.").last, shardIds.mkString(", "))
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
-      log.info("Repairing shard block (type %s) from %s to %s: state=%s",
-               getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
-      val sourceShard = nameServer.findShardById(sourceId)
-      val destinationShard = nameServer.findShardById(destinationId)
-      repair(sourceShard, destinationShard)
+      log.info("Repairing shard block (type %s): state=%s",
+               getClass.getName.split("\\.").last, toMap)
+      val shards = shardIds.map(nameServer.findShardById(_))
+      repair(shards)
     } catch {
       case e: NonExistentShard =>
         log.error("Shard block repair failed because one of the shards doesn't exist. Terminating the repair.")
@@ -80,10 +78,7 @@ abstract case class RepairJob[S <: Shard](sourceId: ShardId,
   }
 
   def toMap = {
-    Map("source_shard_hostname" -> sourceId.hostname,
-        "source_shard_table_prefix" -> sourceId.tablePrefix,
-        "destination_shard_hostname" -> destinationId.hostname,
-        "destination_shard_table_prefix" -> destinationId.tablePrefix,
+    Map("shards" -> shardIds.map((id:ShardId) => Map("hostname" -> id.hostname, "table_prefix" -> id.tablePrefix)),
         "count" -> count
     ) ++ serialize
   }
@@ -93,10 +88,10 @@ abstract case class RepairJob[S <: Shard](sourceId: ShardId,
   }
 
   private def gaugeName = {
-    "x-repairing-" + sourceId + "-" + destinationId
+    "x-repairing-" + shardIds.mkString("-")
   }
 
-  def repair(sourceShard: S, destinationShard: S)
+  def repair(shards: Seq[S])
 
   def serialize: Map[String, Any]
 }

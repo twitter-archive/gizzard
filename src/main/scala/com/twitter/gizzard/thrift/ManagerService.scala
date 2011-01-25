@@ -98,8 +98,10 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
   }
   
-  def repair_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, repairer(sourceId.fromThrift, destinationId.fromThrift)))
+  def repair_shard(shardIds: JList[ShardId]) = {
+    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, repairer(
+      List.fromArray(shardIds.toArray).map(_.asInstanceOf[ShardId].fromThrift)
+    )))
   }
 
   def dump_nameserver(tableId: Int) = wrapEx(nameServer.dumpStructure(tableId).toThrift)
