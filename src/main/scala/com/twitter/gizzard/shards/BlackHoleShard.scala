@@ -13,14 +13,12 @@ class BlackHoleShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard])
   extends ReadWriteShard[ConcreteShard] {
 
-  val exception = new ShardBlackHoleException(shardInfo.id)
+  private def throwException = throw new ShardBlackHoleException(shardInfo.id)
 
-  def readAllOperation[A](method: (ConcreteShard => A)) = throw exception
-
-  def readOperation[A](method: (ConcreteShard => A)) = throw exception
-
-  def writeOperation[A](method: (ConcreteShard => A)) = throw exception
+  def readAllOperation[A](method: (ConcreteShard => A)) = try { throwException } catch { case e => Seq(Left(e)) }
+  def readOperation[A](method: (ConcreteShard => A))    = throwException
+  def writeOperation[A](method: (ConcreteShard => A))   = throwException
 
   def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
-    throw exception
+    throwException
 }

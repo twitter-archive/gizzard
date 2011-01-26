@@ -37,22 +37,45 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         expect {
           one(shard1).shardInfo willReturn shard1Info
           one(shard2).shardInfo willReturn shard1Info
-          one(shard1).get("name").willThrow(exception)
-          one(shard2).get("name").willThrow(exception)
+          one(shard1).get("name") willThrow exception
+          one(shard2).get("name") willThrow exception
         }
         replicatingShard.get("name") must throwA[ShardException]
       }
     }
 
     "read all shards" in {
-      expect {
-        one(shard1).get("name").willReturn(Some("joe"))
-        one(shard2).get("name").willReturn(Some("bob"))
+      "when all succeed" in {
+        expect {
+          one(shard1).get("name") willReturn Some("joe")
+          one(shard2).get("name") willReturn Some("bob")
+        }
+
+        replicatingShard.getAll("name") must haveTheSameElementsAs(List(Right(Some("joe")), Right(Some("bob"))))
       }
-      val out = replicatingShard.getAll("name")
-      out.exceptions.size mustEqual 0
-      out.results.first mustEqual Some("joe")
-      out.results.last mustEqual Some("bob")
+
+      "when one fails" in {
+        val ex = new ShardException("hate and pain")
+
+        expect {
+          one(shard1).get("name") willThrow ex
+          one(shard2).get("name") willReturn Some("bob")
+        }
+
+        replicatingShard.getAll("name") must haveTheSameElementsAs(List(Left(ex), Right(Some("bob"))))
+      }
+
+      "when all fail" in {
+        val ex1 = new ShardException("hate")
+        val ex2 = new ShardException("bad thoughts")
+
+        expect {
+          one(shard1).get("name") willThrow ex1
+          one(shard2).get("name") willThrow ex2
+        }
+
+        replicatingShard.getAll("name") must haveTheSameElementsAs(List(Left(ex1), Left(ex2)))
+      }
     }
 
     "writes happen to all shards" in {
