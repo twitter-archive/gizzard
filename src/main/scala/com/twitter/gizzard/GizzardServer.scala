@@ -4,7 +4,7 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
-import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec}
+import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
 import shards.{Shard, ReadWriteShard}
 
 
@@ -12,8 +12,10 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
+  def repairFactory: RepairJobFactory[S] = null
   def jobPriorities: Seq[Int]
   def copyPriority: Int
+  def repairPriority: Int = copyPriority
   def start(): Unit
   def shutdown(quiesce: Boolean): Unit
   def shutdown() { shutdown(false) }
@@ -45,7 +47,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, copyFactory, jobScheduler, copyScheduler)
+  lazy val managerServer       = new thrift.ManagerService(nameServer, copyFactory, jobScheduler, copyScheduler, repairFactory, repairPriority)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
