@@ -7,6 +7,10 @@ import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
 import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
+trait Repairable[T] {
+  def similar(other: T): Int
+}
+
 object RepairJob {
   val MIN_COPY = 500
 }
@@ -94,4 +98,48 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   def repair(shards: Seq[S])
 
   def serialize: Map[String, Any]
+}
+
+abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
+    nameServer: NameServer[S], scheduler: PrioritizingJobScheduler[JsonJob], priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
+
+  def scheduleNextRepair(lowestItem: Option[R]): Unit
+
+  def schedule(tableId: Int, item: R)
+
+  def cursorAtEnd(cursor: C): Boolean
+
+  def smallestList(listCursors: Seq[(ListBuffer[R], C)]) = {
+    listCursors.map(_._1).filter(!_.isEmpty).reduceLeft((list1, list2) => if (list1(0).similar(list2(0)) < 0) list1 else list2)
+  }
+
+  def repairListCursor(listCursors: Seq[(ListBuffer[R], C)], tableIds: Seq[Int]) = {
+    if (tableIds.forall((id) => id == tableIds(0))) {
+      while (listCursors.forall(lc => !lc._1.isEmpty || cursorAtEnd(lc._2)) && listCursors.exists(lc => !lc._1.isEmpty)) {
+        val tableId = tableIds(0)
+        val firstList = smallestList(listCursors)
+        val firstItem = firstList.remove(0)
+        var firstEnqueued = false
+        val similarLists = listCursors.map(_._1).filter(!_.isEmpty).filter(_ != firstList).filter(_(0).similar(firstItem) == 0)
+        if (similarLists.size != (listCursors.size - 1) ) {
+          firstEnqueued = true
+          schedule(tableId, firstItem)
+        }
+        for (list <- similarLists) {
+          if (firstItem == list(0)) {
+            list.remove(0)
+          } else {
+            if (!firstEnqueued) {
+              firstEnqueued = true
+              schedule(tableId, firstItem)
+            }
+            schedule(tableId, list.remove(0))
+          }
+        }
+      }
+      scheduleNextRepair(if (listCursors.filter(!_._1.isEmpty).size == 0) None else Some(smallestList(listCursors)(0)))
+    } else {
+      throw new RuntimeException("tableIds didn't match")
+    }
+  }
 }
