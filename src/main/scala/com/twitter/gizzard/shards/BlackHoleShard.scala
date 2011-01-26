@@ -15,7 +15,7 @@ class BlackHoleShard[ConcreteShard <: Shard]
 
   private def throwException = throw new ShardBlackHoleException(shardInfo.id)
 
-  def readAllOperation[A](method: (ConcreteShard => A)) = try { throwException } catch { case e => Seq(Left(e)) }
+  def readAllOperation[A](method: (ConcreteShard => A)) = Seq[Either[Throwable,A]]()
   def readOperation[A](method: (ConcreteShard => A))    = throwException
   def writeOperation[A](method: (ConcreteShard => A))   = throwException
 
