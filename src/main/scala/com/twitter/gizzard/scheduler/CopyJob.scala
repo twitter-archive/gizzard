@@ -103,16 +103,16 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
           count = (count * 0.9).toInt
           scheduler.put(this)
         } else {
-          nameServer.markShardBusy(destinationId, shards.Busy.Error)
           log.error("Shard block copy timed out on minimum block size.")
+          nameServer.markShardBusy(destinationId, shards.Busy.Error)
           throw e
         }
       case e: ShardDatabaseTimeoutException =>
         log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler.put(this)
       case e: Throwable =>
-        nameServer.markShardBusy(destinationId, shards.Busy.Error)
         log.error("Shard block copy stopped due to exception: %s", e)
+        nameServer.markShardBusy(destinationId, shards.Busy.Error)
         throw e
     }
   }
