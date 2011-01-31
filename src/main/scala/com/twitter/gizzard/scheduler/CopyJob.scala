@@ -111,7 +111,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
         log.warning("Shard block copy failed to get a database connection; retrying.")
         scheduler.put(this)
       case e: Throwable =>
-        log.error("Shard block copy stopped due to exception: %s", e)
+        log.error(e, "Shard block copy stopped due to exception: %s", e)
         nameServer.markShardBusy(destinationId, shards.Busy.Error)
         throw e
     }
