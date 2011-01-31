@@ -91,6 +91,7 @@ service Manager {
   void mark_shard_busy(1: ShardId id, 2: i32 busy) throws(1: GizzardException ex)
   void copy_shard(1: ShardId source_id, 2: ShardId destination_id) throws(1: GizzardException ex)
   void repair_shard(1: list<ShardId> ids) throws(1: GizzardException ex)
+  void diff_shards(1: list<ShardId> ids) throws(1: GizzardException ex)
 
   list<i32> list_tables() throws(1: GizzardException ex)
 

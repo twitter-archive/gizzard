@@ -107,39 +107,39 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
 
   def scheduleNextRepair(lowestItem: Option[R]): Unit
 
-  def schedule(tableId: Int, item: R)
+  def schedule(list: (S, ListBuffer[R], C), tableId: Int, item: R)
 
   def cursorAtEnd(cursor: C): Boolean
 
-  def smallestList(listCursors: Seq[(ListBuffer[R], C)]) = {
-    listCursors.map(_._1).filter(!_.isEmpty).reduceLeft((list1, list2) => if (list1(0).similar(list2(0)) < 0) list1 else list2)
+  def smallestList(listCursors: Seq[(S, ListBuffer[R], C)]) = {
+    listCursors.filter(!_._2.isEmpty).reduceLeft((list1, list2) => if (list1._2(0).similar(list2._2(0)) < 0) list1 else list2)
   }
 
-  def repairListCursor(listCursors: Seq[(ListBuffer[R], C)], tableIds: Seq[Int]) = {
+  def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
     if (tableIds.forall((id) => id == tableIds(0))) {
-      while (listCursors.forall(lc => !lc._1.isEmpty || cursorAtEnd(lc._2)) && listCursors.exists(lc => !lc._1.isEmpty)) {
+      while (listCursors.forall(lc => !lc._2.isEmpty || cursorAtEnd(lc._3)) && listCursors.exists(lc => !lc._2.isEmpty)) {
         val tableId = tableIds(0)
         val firstList = smallestList(listCursors)
-        val firstItem = firstList.remove(0)
+        val firstItem = firstList._2.remove(0)
         var firstEnqueued = false
-        val similarLists = listCursors.map(_._1).filter(!_.isEmpty).filter(_ != firstList).filter(_(0).similar(firstItem) == 0)
+        val similarLists = listCursors.filter(!_._2.isEmpty).filter(_._2 != firstList).filter(_._2(0).similar(firstItem) == 0)
         if (similarLists.size != (listCursors.size - 1) ) {
           firstEnqueued = true
-          schedule(tableId, firstItem)
+          schedule(firstList, tableId, firstItem)
         }
         for (list <- similarLists) {
-          if (firstItem == list(0)) {
-            list.remove(0)
+          if (firstItem == list._2(0)) {
+            list._2.remove(0)
           } else {
             if (!firstEnqueued) {
               firstEnqueued = true
-              schedule(tableId, firstItem)
+              schedule(firstList, tableId, firstItem)
             }
-            schedule(tableId, list.remove(0))
+            schedule(list, tableId, list._2.remove(0))
           }
         }
       }
-      scheduleNextRepair(if (listCursors.filter(!_._1.isEmpty).size == 0) None else Some(smallestList(listCursors)(0)))
+      scheduleNextRepair(if (listCursors.filter(!_._2.isEmpty).size == 0) None else Some(smallestList(listCursors)._2(0)))
     } else {
       throw new RuntimeException("tableIds didn't match")
     }

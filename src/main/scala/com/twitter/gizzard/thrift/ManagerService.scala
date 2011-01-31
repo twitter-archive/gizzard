@@ -15,7 +15,7 @@ import net.lag.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob], repairer: RepairJobFactory[S], repairPriority: Int) extends Manager.Iface {
+class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob], repairer: RepairJobFactory[S], repairPriority: Int, differ: RepairJobFactory[S]) extends Manager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -107,6 +107,12 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   
   def repair_shard(shardIds: JList[ShardId]) = {
     wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, repairer(
+      List.fromArray(shardIds.toArray).map(_.asInstanceOf[ShardId].fromThrift)
+    )))
+  }
+
+  def diff_shards(shardIds: JList[ShardId]) = {
+    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, differ(
       List.fromArray(shardIds.toArray).map(_.asInstanceOf[ShardId].fromThrift)
     )))
   }

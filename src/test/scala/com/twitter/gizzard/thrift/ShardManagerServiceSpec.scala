@@ -16,7 +16,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
   val scheduler     = mock[PrioritizingJobScheduler[JsonJob]]
   val subScheduler  = mock[JobScheduler[JsonJob]]
   val copyScheduler = mock[JobScheduler[JsonJob]]
-  val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler, null, 0)
+  val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler, null, 0, null)
 
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),

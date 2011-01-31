@@ -13,6 +13,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
   def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
   def repairFactory: RepairJobFactory[S] = null
+  def diffFactory: RepairJobFactory[S] = null
   def jobPriorities: Seq[Int]
   def copyPriority: Int
   def repairPriority: Int = copyPriority
@@ -47,7 +48,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, copyFactory, jobScheduler, copyScheduler, repairFactory, repairPriority)
+  lazy val managerServer       = new thrift.ManagerService(nameServer, copyFactory, jobScheduler, copyScheduler, repairFactory, repairPriority, diffFactory)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
