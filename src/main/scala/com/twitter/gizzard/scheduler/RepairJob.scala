@@ -53,6 +53,8 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
                                        priority: Int) extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
+  override def shouldReplicate = false
+
   def finish() {
     log.info("Repair finished for (type %s) for %s",
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
