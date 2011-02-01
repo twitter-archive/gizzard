@@ -121,6 +121,8 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
     listCursors.filter(!_._2.isEmpty).reduceLeft((list1, list2) => if (list1._2(0).similar(list2._2(0)) < 0) list1 else list2)
   }
 
+  def shouldSchedule(original:R, suspect: R): Boolean
+
   def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
     if (tableIds.forall((id) => id == tableIds(0))) {
       while (listCursors.forall(lc => !lc._2.isEmpty || cursorAtEnd(lc._3)) && listCursors.exists(lc => !lc._2.isEmpty)) {
@@ -136,7 +138,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
         for (list <- similarLists) {
           if (firstItem == list._2(0)) {
             list._2.remove(0)
-          } else {
+          } else if (shouldSchedule(firstItem, list._2(0))){
             if (!firstEnqueued) {
               firstEnqueued = true
               schedule(firstList, tableId, firstItem)
