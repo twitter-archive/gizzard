@@ -55,30 +55,32 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
 
   override def shouldReplicate = false
 
+  def label(): String
+
   def finish() {
-    log.info("Repair finished for (type %s) for %s",
+    log.info("[%s] - finished for (type %s) for %s", label, 
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
-      log.info("Repairing shard block (type %s): state=%s",
+      log.info("[%s] - shard block (type %s): state=%s", label, 
                getClass.getName.split("\\.").last, toMap)
       val shards = shardIds.map(nameServer.findShardById(_))
       repair(shards)
     } catch {
       case e: NonExistentShard =>
-        log.error("Shard block repair failed because one of the shards doesn't exist. Terminating the repair.")
+        log.error("[%s] - failed because one of the shards doesn't exist. Terminating the repair.", label)
       case e: ShardDatabaseTimeoutException =>
-        log.warning("Shard block repair failed to get a database connection; retrying.")
+        log.warning("[%s] - failed to get a database connection; retrying.", label)
         scheduler.put(priority, this)
       case e: ShardTimeoutException if (count > RepairJob.MIN_COPY) =>
-        log.warning("Shard block copy timed out; trying a smaller block size.")
+        log.warning("[%s] - block copy timed out; trying a smaller block size.", label)
         count = (count * 0.9).toInt
         scheduler.put(priority, this)
       case e: Throwable =>
-        log.warning("Shard block repair stopped due to exception: %s", e)
+        log.warning(e, "[%s] - stopped due to exception: %s", label, e)
         throw e
     }
   }
@@ -94,7 +96,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   }
 
   private def gaugeName = {
-    "x-repairing-" + shardIds.mkString("-")
+    "x-"+label+"-" + shardIds.mkString("-")
   }
 
   def repair(shards: Seq[S])
@@ -105,15 +107,21 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
 abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
     nameServer: NameServer[S], scheduler: PrioritizingJobScheduler[JsonJob], priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
 
-  def scheduleNextRepair(lowestItem: Option[R]): Unit
+  private val log = Logger.get(getClass.getName)
+
+  def scheduleNextRepair(lowestCursor: C): Unit
 
   def schedule(list: (S, ListBuffer[R], C), tableId: Int, item: R)
 
   def cursorAtEnd(cursor: C): Boolean
 
+  def lowestCursor(c1: C, c2: C): C
+
   def smallestList(listCursors: Seq[(S, ListBuffer[R], C)]) = {
     listCursors.filter(!_._2.isEmpty).reduceLeft((list1, list2) => if (list1._2(0).similar(list2._2(0)) < 0) list1 else list2)
   }
+
+  def shouldSchedule(original:R, suspect: R): Boolean
 
   def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
     if (tableIds.forall((id) => id == tableIds(0))) {
@@ -130,7 +138,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
         for (list <- similarLists) {
           if (firstItem == list._2(0)) {
             list._2.remove(0)
-          } else {
+          } else if (shouldSchedule(firstItem, list._2(0))){
             if (!firstEnqueued) {
               firstEnqueued = true
               schedule(firstList, tableId, firstItem)
@@ -139,7 +147,8 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
           }
         }
       }
-      scheduleNextRepair(if (listCursors.filter(!_._2.isEmpty).size == 0) None else Some(smallestList(listCursors)._2(0)))
+      val nextCursor = listCursors.map(_._3).reduceLeft((c1, c2) => lowestCursor(c1, c2))
+      scheduleNextRepair(nextCursor)
     } else {
       throw new RuntimeException("tableIds didn't match")
     }
