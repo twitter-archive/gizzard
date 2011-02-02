@@ -56,3 +56,23 @@ object Proxy {
     def name = method.getName
   }
 }
+
+class ProxyFactory[T <: AnyRef](implicit manifest: Manifest[T]) {
+  val ctor = getProxyConstructor(manifest)
+
+  private def getProxyConstructor(manifest: Manifest[T]) = {
+    val cls = manifest.erasure
+    val clazz = reflect.Proxy.getProxyClass(cls.getClassLoader, cls.getInterfaces: _*)
+    clazz.getConstructor(classOf[reflect.InvocationHandler])
+  }
+
+  def apply(obj: T)(f: Proxy.MethodCall[T] => Object): T = {
+    val invocationHandler = new reflect.InvocationHandler {
+      def invoke(unused: Object, method: reflect.Method, args: Array[Object]) = {
+        f(new Proxy.MethodCall(obj, method, args))
+      }
+    }
+
+    ctor.newInstance(invocationHandler).asInstanceOf[T]
+  }
+}
