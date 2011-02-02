@@ -136,14 +136,13 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
           schedule(firstList, tableId, firstItem)
         }
         for (list <- similarLists) {
-          if (firstItem == list._2(0)) {
-            list._2.remove(0)
-          } else if (shouldSchedule(firstItem, list._2(0))){
+          val listItem = list._2.remove(0)
+          if (shouldSchedule(firstItem, listItem)) {
             if (!firstEnqueued) {
               firstEnqueued = true
               schedule(firstList, tableId, firstItem)
             }
-            schedule(list, tableId, list._2.remove(0))
+            schedule(list, tableId, listItem)
           }
         }
       }
