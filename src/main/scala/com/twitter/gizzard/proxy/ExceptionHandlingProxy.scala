@@ -24,7 +24,7 @@ class ExceptionHandlingProxy(f: Throwable => Unit) {
 
 class ExceptionHandlingProxyFactory[T <: AnyRef](f: Throwable => Unit)(implicit manifest: Manifest[T]) {
   val proxyFactory = new ProxyFactory[T]
-  def apply(obj: T): T = {
+  def apply[I >: T](obj: T): I = {
     proxyFactory(obj) { method =>
       try {
         method()
