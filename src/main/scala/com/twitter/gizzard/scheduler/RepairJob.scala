@@ -96,7 +96,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   }
 
   private def gaugeName = {
-    "x-"+label+"-" + shardIds.mkString("-")
+    "x-"+label.toLowerCase+"-" + shardIds.mkString("-")
   }
 
   def repair(shards: Seq[S])
@@ -111,7 +111,9 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
 
   def scheduleNextRepair(lowestCursor: C): Unit
 
-  def schedule(list: (S, ListBuffer[R], C), tableId: Int, item: R)
+  def scheduleDifferent(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
+
+  def scheduleMissing(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
 
   def cursorAtEnd(cursor: C): Boolean
 
@@ -124,7 +126,11 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
   def shouldSchedule(original:R, suspect: R): Boolean
 
   def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
-    if (tableIds.forall((id) => id == tableIds(0))) {
+    if (!tableIds.forall((id) => id == tableIds(0))) {
+      throw new RuntimeException("tableIds didn't match")
+    } else if (nameServer.getCommonShardId(shardIds) == None) {
+      throw new RuntimeException("these shardIds don't have a common ancestor")
+    } else {
       while (listCursors.forall(lc => !lc._2.isEmpty || cursorAtEnd(lc._3)) && listCursors.exists(lc => !lc._2.isEmpty)) {
         val tableId = tableIds(0)
         val firstList = smallestList(listCursors)
@@ -133,23 +139,21 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
         val similarLists = listCursors.filter(!_._2.isEmpty).filter(_._1 != firstList._1).filter(_._2(0).similar(firstItem) == 0)
         if (similarLists.size != (listCursors.size - 1) ) {
           firstEnqueued = true
-          schedule(firstList, tableId, firstItem)
+          scheduleMissing(firstList, tableId, firstItem)
         }
         for (list <- similarLists) {
           val listItem = list._2.remove(0)
           if (shouldSchedule(firstItem, listItem)) {
             if (!firstEnqueued) {
               firstEnqueued = true
-              schedule(firstList, tableId, firstItem)
+              scheduleDifferent(firstList, tableId, firstItem)
             }
-            schedule(list, tableId, listItem)
+            scheduleDifferent(list, tableId, listItem)
           }
         }
       }
       val nextCursor = listCursors.map(_._3).reduceLeft((c1, c2) => lowestCursor(c1, c2))
       scheduleNextRepair(nextCursor)
-    } else {
-      throw new RuntimeException("tableIds didn't match")
     }
   }
 }
