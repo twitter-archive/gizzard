@@ -159,7 +159,7 @@ class NameServer[S <: shards.Shard](
   def getRootForwardings(id: ShardId): Seq[Forwarding] = {
     val ids = nameServerShard.listUpwardLinks(id)
     (try {
-      getForwardingForShard(id) :: Nil
+      if (ids.isEmpty) getForwardingForShard(id) :: Nil else Nil
     } catch {
       case e:ShardException => Nil
     }) ++ ids.map((i) => getRootForwardings(i.upId)).flatMap((i) => i)
