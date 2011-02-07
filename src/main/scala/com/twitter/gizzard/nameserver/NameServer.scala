@@ -157,12 +157,21 @@ class NameServer[S <: shards.Shard](
 
   @throws(classOf[shards.ShardException])
   def getRootForwardings(id: ShardId): Seq[Forwarding] = {
+    getRootShardIds(id).map(getForwardingForShard(_))
+  }
+
+  @throws(classOf[shards.ShardException])
+  def getRootShardIds(id: ShardId): Seq[ShardId] = {
     val ids = nameServerShard.listUpwardLinks(id)
     (try {
-      if (ids.isEmpty) getForwardingForShard(id) :: Nil else Nil
+      if (ids.isEmpty) id :: Nil else Nil
     } catch {
       case e:ShardException => Nil
-    }) ++ ids.map((i) => getRootForwardings(i.upId)).flatMap((i) => i)
+    }) ++ ids.map((i) => getRootShardIds(i.upId)).flatMap((i) => i)
+  }
+
+  def getCommonShardId(ids: Seq[ShardId]): Option[ShardId] = {
+    ids.map(getRootShardIds(_)).reduceLeft((s1, s2) => s1.filter(s2.contains(_))).firstOption
   }
 
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
