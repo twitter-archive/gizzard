@@ -56,3 +56,41 @@ object Proxy {
     def name = method.getName
   }
 }
+
+/**
+ * A factory for type-bound proxies. It creates proxies for a specific class.
+ * It has much better runtime performance (about 30x on current hardware and
+ * JVM) when creating proxies than Proxy does, as it memoizes the expensive
+ * class-specific lookup.
+ * @tparam T the type of the objects that will be proxied
+ * @author Attila Szegedi
+ */
+class ProxyFactory[T <: AnyRef](implicit manifest: Manifest[T]) {
+  val ctor = getProxyConstructor(manifest)
+
+  private def getProxyConstructor(manifest: Manifest[T]) = {
+    val cls = manifest.erasure
+    val clazz = reflect.Proxy.getProxyClass(cls.getClassLoader, cls.getInterfaces: _*)
+    clazz.getConstructor(classOf[reflect.InvocationHandler])
+  }
+
+  /**
+   * Creates a proxy for the specific object where each method call on the
+   * proxy is sent to the specified function.
+   * @param obj the object being proxied
+   * @param f the function receiving each method call
+   * @tparam I the exposed interface of the created proxy. Must be an
+   * interface the object implements.
+   * @return a proxy for the object, implementing the requested interface,
+   * that sends each method invocation through the specified function.
+   */
+  def apply[I >: T](obj: T)(f: Proxy.MethodCall[T] => Object): I = {
+    val invocationHandler = new reflect.InvocationHandler {
+      def invoke(unused: Object, method: reflect.Method, args: Array[Object]) = {
+        f(new Proxy.MethodCall(obj, method, args))
+      }
+    }
+
+    ctor.newInstance(invocationHandler).asInstanceOf[I]
+  }
+}
