@@ -27,6 +27,26 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
   }
 })
 
+class SqlExceptionWrappingProxyFactory[S <: shards.Shard](implicit manifest: Manifest[S]) extends ExceptionHandlingProxyFactory[S]({ (shard, e) =>
+  val id = shard.shardInfo.id
+  e match {
+    case e: SqlQueryTimeoutException =>
+      throw new shards.ShardTimeoutException(e.timeout, id, e)
+    case e: SqlDatabaseTimeoutException =>
+      throw new shards.ShardDatabaseTimeoutException(e.timeout, id, e)
+    case e: MySQLTransientException =>
+      throw new shards.NormalShardException(e.toString, id, null)
+    case e: SQLException =>
+      if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
+        throw new shards.NormalShardException(e.toString, id, null)
+      } else {
+        throw new shards.ShardException(e.toString, e)
+      }
+    case e: shards.ShardException =>
+      throw e
+  }
+})
+
 class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEvaluator) extends QueryEvaluatorProxy(evaluator) {
   override protected def delegate[A](f: => A) = {
     try {

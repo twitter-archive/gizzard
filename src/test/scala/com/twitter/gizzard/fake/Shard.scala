@@ -4,6 +4,6 @@ import shards.ShardException
 
 
 trait Shard extends shards.Shard {
-  @throws(classOf[ShardException]) def get(k: String): Option[String]
-  @throws(classOf[ShardException]) def put(k: String, v: String):String
+  @throws(classOf[Throwable]) def get(k: String): Option[String]
+  @throws(classOf[Throwable]) def put(k: String, v: String):String
 }
