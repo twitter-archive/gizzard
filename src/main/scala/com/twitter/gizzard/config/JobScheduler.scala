@@ -3,11 +3,15 @@ package com.twitter.gizzard.config
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
-import net.lag.kestrel.{PersistentQueue, PersistentQueueConfig}
-import gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
+import net.lag.kestrel.PersistentQueue
+import net.lag.kestrel.config.QueueConfig
+
+import com.twitter.gizzard
+import com.twitter.gizzard.scheduler
+import com.twitter.gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
 trait SchedulerType
-trait KestrelScheduler extends PersistentQueueConfig with SchedulerType with Cloneable {
+trait KestrelScheduler extends QueueConfig with SchedulerType with Cloneable {
   def apply(newName: String): PersistentQueue = {
     // ugh
     val oldName = name
