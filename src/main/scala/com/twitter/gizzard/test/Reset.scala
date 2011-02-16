@@ -62,7 +62,7 @@ trait NameServerDatabase extends Specification {
     cfg.replicas.flatMap({
       case m: config.Mysql => Seq(m.queryEvaluator()(m.connection))
       case _ => Nil
-    }).first
+    }).head
   }
 
   def reset(cfg: config.NameServer) {
