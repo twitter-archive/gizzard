@@ -64,20 +64,4 @@ class ParallelSeq[A](seq: Seq[A], future: Future) extends SeqProxy[A] {
     b.sizeHint(coll)
     b.result
   }
-
-  // override def map[B, That](f: A => Traversable[B])(implicit bf: CanBuildFrom[Seq[A], B, That]): That = {
-  //   if (seq.size <= 1) {
-  //     seq.map(f)
-  //   } else {
-  //     seq.map { a => future(f(a)) }.map { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
-  //   }
-  // }
-
-  // override def flatMap[B, That](f: A => Traversable[B])(implicit bf: CanBuildFrom[Seq[A], B, That]): That = {
-  //   if (seq.size <= 1) {
-  //     seq.flatMap(f)
-  //   } else {
-  //     seq.map { a => future(f(a)) }.flatMap { _.get(future.timeout.inMillis, TimeUnit.MILLISECONDS) }
-  //   }
-  // }
 }
