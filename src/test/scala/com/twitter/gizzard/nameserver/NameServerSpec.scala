@@ -1,8 +1,10 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.configgy.Config
+
+import com.twitter.gizzard
 
 
 object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {

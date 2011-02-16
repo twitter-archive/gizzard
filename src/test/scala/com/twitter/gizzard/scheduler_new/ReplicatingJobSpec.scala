@@ -1,4 +1,5 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import org.specs.mock.{ClassMocker, JMocker}
 import nameserver.{JobRelay, JobRelayCluster, Host}

@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import com.twitter.util.TimeConversions._
 import org.specs.Specification

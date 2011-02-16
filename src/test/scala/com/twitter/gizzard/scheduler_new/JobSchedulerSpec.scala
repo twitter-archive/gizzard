@@ -1,10 +1,10 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.util.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.configgy.Config
 import shards.{ShardId, ShardRejectedOperationException}
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {

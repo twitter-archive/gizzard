@@ -1,9 +1,11 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import scala.collection.mutable
 import com.twitter.util.Time
 import com.twitter.util.TimeConversions._
-import net.lag.kestrel.{PersistentQueue, QItem, OverlaySetting}
+import net.lag.kestrel.{PersistentQueue, QItem}
+import net.lag.kestrel.config.QueueConfig
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 

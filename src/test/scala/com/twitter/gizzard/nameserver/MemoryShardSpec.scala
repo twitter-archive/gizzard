@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import com.twitter.util.TimeConversions._
 import com.twitter.gizzard.shards.{Busy, LinkInfo, ShardId, ShardInfo}
