@@ -1,7 +1,11 @@
 import sbt._
 import com.twitter.sbt._
 
-class GizzardProject(info: ProjectInfo) extends StandardProject(info) with SubversionPublisher with InlineDependencies {
+class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) with SubversionPublisher {
+  override def compileOptions = super.compileOptions ++ Seq(Unchecked) ++
+    compileOptions("-encoding", "utf8") ++
+    compileOptions("-Xmigration", "-Xcheckinit", "-Xwarninit")
+
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
 
@@ -25,7 +29,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
 
   // test jars
 
-  val specs     = "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5" % "test"
+  val specs     = "org.scala-tools.testing" % "specs_2.8.1" % "1.6.6" % "test" withSources()
   val objenesis = "org.objenesis" % "objenesis"    % "1.1"    % "test"
   val jmock     = "org.jmock"     % "jmock"        % "2.4.0"  % "test"
   val hamcrest  = "org.hamcrest"  % "hamcrest-all" % "1.1"    % "test"
