@@ -1,20 +1,9 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import scala.collection.Map
 import scala.collection.mutable
-import net.lag.configgy.ConfigMap
 
-
-object PrioritizingJobScheduler {
-  def apply[J <: Job](config: ConfigMap, codec: Codec[J], queueNames: Map[Int, String],
-                      badJobQueue: Option[JobConsumer[J]]) = {
-    val schedulerMap = new mutable.HashMap[Int, JobScheduler[J]]
-    queueNames.foreach { case (priority, queueName) =>
-      schedulerMap(priority) = JobScheduler(queueName, config, codec, badJobQueue)
-    }
-    new PrioritizingJobScheduler[J](schedulerMap)
-  }
-}
 
 /**
  * A map of JobSchedulers by priority. It can be treated as a single scheduler, and all process

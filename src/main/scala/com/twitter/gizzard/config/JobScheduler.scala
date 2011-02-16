@@ -11,14 +11,11 @@ import com.twitter.gizzard.scheduler
 import com.twitter.gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
 trait SchedulerType
-trait KestrelScheduler extends QueueConfig with SchedulerType with Cloneable {
-  def apply(newName: String): PersistentQueue = {
-    // ugh
-    val oldName = name
-    name = newName
-    val q = apply()
-    name = oldName
-    q
+trait KestrelScheduler extends QueueConfig with SchedulerType {
+  var path = "/tmp"
+
+  def apply(name: String): PersistentQueue = {
+    new PersistentQueue(name, path, this.copy())
   }
 }
 class MemoryScheduler extends SchedulerType {
