@@ -15,7 +15,7 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
 
   val ostrich    = "com.twitter" % "ostrich"  % "2.3.6"
   val util       = "com.twitter" % "util" % "1.6.4"
-  val rpcclient  = "com.twitter" % "rpcclient" % "1.2.0-gizzardRC4"
+  val rpcclient  = "com.twitter" % "rpcclient" % "1.2.0-gizzardRC5"
 
   val thrift     = "thrift" % "libthrift" % "0.5.0"
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"
