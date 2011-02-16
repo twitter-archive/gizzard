@@ -2,9 +2,6 @@ import sbt._
 import com.twitter.sbt._
 
 class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) with SubversionPublisher {
-  override def compileOptions = super.compileOptions ++ Seq(Unchecked) ++
-    compileOptions("-encoding", "utf8") ++
-    compileOptions("-Xmigration", "-Xcheckinit", "-Xwarninit")
 
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
