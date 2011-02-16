@@ -18,6 +18,8 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     val job1 = mock[Job]
     val job2 = mock[Job]
     val destinationQueue = mock[KestrelJobQueue[Job]]
+    val aQueueConfig = mock[QueueConfig]
+
 
     var kestrelJobQueue: KestrelJobQueue[Job] = null
 
@@ -35,7 +37,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
 
     "age" in {
       expect {
-        one(queue).currentAge willReturn 23500
+        one(queue).currentAge willReturn 23500.milliseconds
       }
 
       kestrelJobQueue.age mustEqual 23.5
@@ -43,7 +45,9 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
 
     "start, pause, resume, shutdown" in {
       expect {
-        one(queue).maxExpireSweep_=(0)
+        one(queue).config willReturn aQueueConfig
+        one(aQueueConfig).copy(maxExpireSweep = 0) willReturn aQueueConfig
+        one(queue).config_=(aQueueConfig)
         one(queue).setup()
       }
 
@@ -102,7 +106,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
       "item available immediately" in {
         expect {
           allowing(queue).isClosed willReturn false
-          one(queue).removeReceive(any[Long], any[Boolean]) willReturn Some(QItem(0, 0, "abc".getBytes, 900))
+          one(queue).removeReceive(any[Option[Time]], any[Boolean]) willReturn Some(QItem(Time.fromSeconds(0), None, "abc".getBytes, 900))
           one(codec).inflate("abc".getBytes) willReturn job1
           one(queue).confirmRemove(900)
         }
@@ -115,8 +119,8 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
       "item available eventually" in {
         expect {
           allowing(queue).isClosed willReturn false
-          one(queue).removeReceive(any[Long], any[Boolean]).willReturn(None) then
-            one(queue).removeReceive(any[Long], any[Boolean]).willReturn(Some(QItem(0, 0, "abc".getBytes, 900)))
+          one(queue).removeReceive(any[Option[Time]], any[Boolean]).willReturn(None) then
+            one(queue).removeReceive(any[Option[Time]], any[Boolean]).willReturn(Some(QItem(Time.fromSeconds(0), None, "abc".getBytes, 900)))
           one(codec).inflate("abc".getBytes) willReturn job1
           one(queue).confirmRemove(900)
         }
@@ -128,20 +132,17 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     }
 
     "drainTo" in {
-      val expiredQueueOverlay = mock[OverlaySetting[Option[PersistentQueue]]]
-      val maxAgeOverlay       = mock[OverlaySetting[Int]]
-
       expect {
         one(destinationQueue).queue willReturn queue2
 
-        one(queue).expiredQueue willReturn expiredQueueOverlay
-        one(expiredQueueOverlay).set(Some(Some(queue2)))
+        one(queue).config willReturn aQueueConfig
+        one(aQueueConfig).copy(maxAge = Some(1.second)) willReturn aQueueConfig
 
-        one(queue).maxAge willReturn maxAgeOverlay
-        one(maxAgeOverlay).set(Some(1))
+        one(queue).expireQueue_=(Some(queue2))
+        one(queue).config_=(aQueueConfig)
       }
 
-      kestrelJobQueue.drainTo(destinationQueue, 1.millisecond)
+      kestrelJobQueue.drainTo(destinationQueue, 1.second)
     }
   }
 }

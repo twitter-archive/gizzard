@@ -24,7 +24,7 @@ class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, c
   def size = queue.length.toInt
 
   /** Age (in seconds) of items in this queue. */
-  def age = queue.currentAge / 1000.0
+  def age = queue.currentAge.inSeconds
 
   def start() {
     // don't expire items except when we explicitly call 'discardExpired'.
