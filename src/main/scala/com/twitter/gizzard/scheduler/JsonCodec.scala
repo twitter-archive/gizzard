@@ -6,7 +6,7 @@ import com.twitter.json.Json
 import net.lag.logging.Logger
 import org.codehaus.jackson.map.ObjectMapper
 import java.util.{Map => JMap, List => JList}
-import scala.collection.jcl
+import scala.collection.JavaConversions._
 
 /**
  * Codec for json-encoded jobs.
@@ -67,7 +67,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   }
 
   private def deepConvert(javaList: JList[Any]): List[Any] = {
-    jcl.Buffer(javaList).map { v =>
+    javaList.map { v =>
       v match {
         case jm: JMap[_,_] => deepConvert(jm.asInstanceOf[JMap[String,Any]])
         case jl: JList[_]  => deepConvert(jl.asInstanceOf[JList[Any]])
@@ -77,12 +77,12 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   }
 
   private def deepConvert(javaMap: JMap[String, Any]): Map[String, Any] = {
-    Map(jcl.Map(javaMap).toSeq.map { case (k,v) =>
+    javaMap.map { case (k,v) =>
       v match {
         case jm: JMap[_,_] => (k, deepConvert(jm.asInstanceOf[JMap[String,Any]]))
         case jl: JList[_]  => (k, deepConvert(jl.asInstanceOf[JList[Any]]))
         case _ => (k, v)
       }
-    }: _*)
+    }.toMap
   }
 }

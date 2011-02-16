@@ -5,8 +5,8 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.channels._
 import java.util.concurrent._
-import scala.collection.jcl
 import scala.collection.mutable
+import scala.collection.JavaConversions._
 import org.apache.thrift._
 import org.apache.thrift.protocol._
 import org.apache.thrift.transport._
@@ -193,7 +193,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
 
       selector.select(100)
 
-      for (key <- jcl.Set(selector.selectedKeys)) {
+      for (key <- selector.selectedKeys) {
         if (key.isAcceptable()) {
           // there's only one listen socket for now.
           val clientSocket = serverSocket.accept()

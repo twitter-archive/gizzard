@@ -2,7 +2,6 @@ package com.twitter.gizzard.scheduler
 
 import java.util.{ArrayList => JArrayList}
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
-import scala.collection.jcl
 import com.twitter.ostrich.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
