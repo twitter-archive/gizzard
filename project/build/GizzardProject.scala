@@ -9,7 +9,7 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   val querulous  = "com.twitter" % "querulous" % "2.0.0"
   val configgy   = "net.lag"     % "configgy" % "2.0.2"
 
- //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
+  //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
   // remove when moved to libkestrel
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
