@@ -14,7 +14,7 @@ class GizzardProject(info: ProjectInfo) extends StandardProject(info) with Subve
 
   val ostrich    = "com.twitter" % "ostrich"  % "2.3.6"
   val util       = "com.twitter" % "util" % "1.6.4"
-  val rpcclient  = "com.twitter" % "rpcclient_2.8.0" % "1.2.0-gizzardRC3"
+  val rpcclient  = "com.twitter" % "rpcclient" % "1.2.0-gizzardRC4"
 
   val thrift     = "thrift" % "libthrift" % "0.5.0"
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"

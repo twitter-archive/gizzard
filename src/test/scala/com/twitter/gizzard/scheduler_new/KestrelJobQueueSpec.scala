@@ -3,7 +3,8 @@ package scheduler
 
 import scala.collection.mutable
 import com.twitter.util.Time
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
+import com.twitter.conversions.storage._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.kestrel.config.QueueConfig
 import org.specs.Specification
@@ -18,8 +19,8 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     val job1 = mock[Job]
     val job2 = mock[Job]
     val destinationQueue = mock[KestrelJobQueue[Job]]
-    val aQueueConfig = mock[QueueConfig]
-
+    val aQueueConfig = QueueConfig(Int.MaxValue, 1.megabyte, 1.megabyte, None, 1.megabyte, 1.megabyte,
+                                   10, false, true, false, false, None, 1, false)
 
     var kestrelJobQueue: KestrelJobQueue[Job] = null
 
@@ -46,8 +47,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
     "start, pause, resume, shutdown" in {
       expect {
         one(queue).config willReturn aQueueConfig
-        one(aQueueConfig).copy(maxExpireSweep = 0) willReturn aQueueConfig
-        one(queue).config_=(aQueueConfig)
+        one(queue).config_=(aQueueConfig.copy(maxExpireSweep = 0))
         one(queue).setup()
       }
 
@@ -136,10 +136,9 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
         one(destinationQueue).queue willReturn queue2
 
         one(queue).config willReturn aQueueConfig
-        one(aQueueConfig).copy(maxAge = Some(1.second)) willReturn aQueueConfig
 
         one(queue).expireQueue_=(Some(queue2))
-        one(queue).config_=(aQueueConfig)
+        one(queue).config_=(aQueueConfig.copy(maxAge = Some(1.second)))
       }
 
       kestrelJobQueue.drainTo(destinationQueue, 1.second)
