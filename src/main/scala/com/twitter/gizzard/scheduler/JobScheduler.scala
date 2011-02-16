@@ -36,7 +36,7 @@ class JobScheduler[J <: Job](val name: String,
       extends Process with JobConsumer[J] {
 
   private val log = Logger.get(getClass.getName)
-  var workerThreads: Collection[BackgroundProcess] = Nil
+  var workerThreads: Iterable[BackgroundProcess] = Nil
   @volatile var running = false
   private var _activeThreads = new AtomicInteger
 
@@ -44,7 +44,7 @@ class JobScheduler[J <: Job](val name: String,
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
-      val jitter = Math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
+      val jitter = math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
       Thread.sleep(strobeInterval.inMillis + jitter)
       try {
         checkExpiredJobs()

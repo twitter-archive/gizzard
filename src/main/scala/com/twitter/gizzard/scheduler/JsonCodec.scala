@@ -52,7 +52,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob
   }
 
   def inflate(json: Map[String, Any]): JsonJob = {
-    val (jobType, attributes) = json.toList.first
+    val (jobType, attributes) = json.toList.head
     val processor = processors.find { case (processorRegex, _) =>
       processorRegex.findFirstIn(jobType).isDefined
     }.map { case (_, processor) => processor }.getOrElse {

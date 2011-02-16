@@ -24,7 +24,7 @@ object TSelectorServer {
 
   def makeThreadPoolExecutor(config: ConfigMap): ThreadPoolExecutor = {
     makeThreadPoolExecutor(config("name"), config.getInt("stop_timeout", 60), config("min_threads").toInt,
-      config.getInt("max_threads", Math.MAX_INT))
+      config.getInt("max_threads", Int.MaxValue))
   }
 
   def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int): ThreadPoolExecutor = {
@@ -32,7 +32,7 @@ object TSelectorServer {
       if (!executor.isShutdown()) {
         return executor
       }
-      cache.removeKey(name)
+      cache.remove(name)
     }
 
     val queue = new LinkedBlockingQueue[Runnable]

@@ -14,7 +14,7 @@ class ReadOnlyShard[ConcreteShard <: Shard]
   (val shardInfo: ShardInfo, val weight: Int, val children: Seq[ConcreteShard])
   extends ReadWriteShard[ConcreteShard] {
 
-  val shard = children.first
+  val shard = children.head
 
   def readAllOperation[A](method: (ConcreteShard => A)) = Seq(try { Right(method(shard)) } catch { case e => Left(e) })
 

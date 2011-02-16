@@ -40,7 +40,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
         one(queue).currentAge willReturn 23500.milliseconds
       }
 
-      kestrelJobQueue.age mustEqual 23.5
+      kestrelJobQueue.age mustEqual 23
     }
 
     "start, pause, resume, shutdown" in {

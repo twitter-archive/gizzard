@@ -16,7 +16,7 @@ class NestedJob[J <: Job](val jobs: Iterable[J]) extends Job {
 
   def apply() {
     while (!taskQueue.isEmpty) {
-      taskQueue.first.apply()
+      taskQueue.head.apply()
       taskQueue.dequeue()
     }
   }
