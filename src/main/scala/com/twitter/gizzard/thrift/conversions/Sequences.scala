@@ -10,7 +10,7 @@ class ScalaSeqAdapter[A, B](protected val list: JList[A])(f: A => B) extends Seq
 
   def apply(i: Int) = f(list.get(i))
 
-  def elements = new Iterator[B] {
+  def iterator = new Iterator[B] {
     val iterator = list.iterator
 
     def next = f(iterator.next)
