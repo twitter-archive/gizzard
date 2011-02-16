@@ -58,17 +58,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       ns.mappingFunction(0) mustEqual 632747166973704645L
     }
 
-    "construct from configgy" in {
-      val config = new Config()
-      config("mapping") = "fnv1a-64"
-      config("replicas.ns1.type") = "memory"
-
-      val ns = new gizzard.config.ConfiggyNameServer(config)(shardRepository)
-
-      // mapping function should be FNV1A-64:
-      ns.mappingFunction(0) mustEqual 632747166973704645L
-    }
-
     "reload and get shard info" in {
       nameServer.getShardInfo(shardInfos(0).id) mustEqual shardInfos(0)
       nameServer.getShardInfo(shardInfos(1).id) mustEqual shardInfos(1)
