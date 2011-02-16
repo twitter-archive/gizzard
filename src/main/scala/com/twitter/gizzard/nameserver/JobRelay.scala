@@ -78,18 +78,18 @@ extends (Iterable[Array[Byte]] => Unit) {
   }
 }
 
-object NullJobRelayFactory extends JobRelayFactory(0, false, new Duration(0)) {
+object NullJobRelayFactory extends JobRelayFactory(0, false, 0.seconds) {
   override def apply(h: Map[String, Seq[Host]]) = NullJobRelay
 }
 
-object NullJobRelay extends JobRelay(Map(), 0, false, new Duration(0), 0)
+object NullJobRelay extends JobRelay(Map(), 0, false, 0.seconds, 0)
 
-object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, new Duration(0), 0) {
+object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, 0.seconds, 0) {
   override val client = null
   override def apply(jobs: Iterable[Array[Byte]]) = ()
 }
 
-class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, new Duration(0), 0) {
+class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, 0.seconds, 0) {
   override val client = null
   override def apply(jobs: Iterable[Array[Byte]]) { throw new ClusterBlockedException(cluster) }
 }
