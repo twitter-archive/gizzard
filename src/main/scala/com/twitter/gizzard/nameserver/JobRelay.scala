@@ -1,9 +1,12 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
 import com.twitter.rpcclient.LoadBalancingChannel
+import com.twitter.conversions.time._
 import com.twitter.util.Duration
+
 import scheduler.JsonJob
 import thrift.{JobInjector, JobInjectorClient}
 

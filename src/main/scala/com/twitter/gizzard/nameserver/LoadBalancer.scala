@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import scala.util.Random
 import scala.collection.mutable.ArrayBuffer

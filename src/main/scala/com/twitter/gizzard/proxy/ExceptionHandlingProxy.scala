@@ -1,4 +1,5 @@
-package com.twitter.gizzard.proxy
+package com.twitter.gizzard
+package proxy
 
 import java.lang.reflect.UndeclaredThrowableException
 import java.sql.SQLException

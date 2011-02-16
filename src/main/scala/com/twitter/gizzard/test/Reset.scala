@@ -1,4 +1,5 @@
-package com.twitter.gizzard.test
+package com.twitter.gizzard
+package test
 
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}

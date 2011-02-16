@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable

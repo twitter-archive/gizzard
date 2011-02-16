@@ -1,4 +1,5 @@
-package com.twitter.gizzard.shards
+package com.twitter.gizzard
+package shards
 
 class BlockedShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
   def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =

@@ -1,6 +1,7 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
-import gizzard.shards.{ShardId, ShardInfo, LinkInfo}
+import shards.{ShardId, ShardInfo, LinkInfo}
 import thrift.conversions.ShardInfo._
 import thrift.conversions.LinkInfo._
 import thrift.conversions.Forwarding._

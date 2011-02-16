@@ -1,4 +1,5 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import java.util.Random
 import com.twitter.ostrich.{BackgroundProcess, Stats}

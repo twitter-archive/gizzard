@@ -1,4 +1,6 @@
-package com.twitter.gizzard.thrift.conversions
+package com.twitter.gizzard
+package thrift
+package conversions
 
 import conversions.Sequences._
 import conversions.ShardId._

@@ -1,4 +1,5 @@
-package com.twitter.gizzard.thrift
+package com.twitter.gizzard
+package thrift
 
 import java.util.{List => JList}
 import conversions.Sequences._

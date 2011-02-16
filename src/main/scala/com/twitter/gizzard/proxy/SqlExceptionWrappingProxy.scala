@@ -1,4 +1,5 @@
-package com.twitter.gizzard.proxy
+package com.twitter.gizzard
+package proxy
 
 import java.sql.SQLException
 import shards.ShardId

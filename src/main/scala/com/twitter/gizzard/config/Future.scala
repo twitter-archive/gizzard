@@ -4,6 +4,8 @@ import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
 
+import com.twitter.gizzard
+
 class Future {
   var poolSize    = 1
   var maxPoolSize = 1

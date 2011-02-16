@@ -6,9 +6,10 @@ import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
 import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
 import shards.{Shard, ReadWriteShard}
+import config.{GizzardServer => ServerConfig}
 
 
-abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.GizzardServer) {
+abstract class GizzardServer[S <: Shard, J <: JsonJob](config: ServerConfig) {
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
