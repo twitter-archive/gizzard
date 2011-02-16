@@ -9,7 +9,7 @@ import com.twitter.querulous.database.SqlDatabaseTimeoutException
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 
-class ExceptionHandlingProxy(f: Throwable => Unit) {
+class ExceptionHandlingProxy(f: Throwable => AnyRef) {
   def apply[T <: AnyRef](obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       try {
@@ -32,7 +32,7 @@ class ExceptionHandlingProxy(f: Throwable => Unit) {
  * @param f the exception handling function
  * @author Attila Szegedi
  */
-class ExceptionHandlingProxyFactory[T <: AnyRef](f: (T, Throwable) => Unit)(implicit manifest: Manifest[T]) {
+class ExceptionHandlingProxyFactory[T <: AnyRef](f: (T, Throwable) => AnyRef)(implicit manifest: Manifest[T]) {
   val proxyFactory = new ProxyFactory[T]
   /**
    * Creates an exception-handling proxy for the specific object where each
