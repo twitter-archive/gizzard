@@ -1,4 +1,5 @@
-package com.twitter.gizzard.thrift.conversions
+package com.twitter.gizzard
+package thrift.conversions
 
 import java.nio.{BufferUnderflowException, ByteBuffer, ByteOrder}
 import java.util.{AbstractList => JAbstractList, List => JList}
@@ -9,7 +10,7 @@ class ScalaSeqAdapter[A, B](protected val list: JList[A])(f: A => B) extends Seq
 
   def apply(i: Int) = f(list.get(i))
 
-  def elements = new Iterator[B] {
+  def iterator = new Iterator[B] {
     val iterator = list.iterator
 
     def next = f(iterator.next)

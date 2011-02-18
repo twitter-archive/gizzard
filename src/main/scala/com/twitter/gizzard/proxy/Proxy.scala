@@ -1,4 +1,5 @@
-package com.twitter.gizzard.proxy
+package com.twitter.gizzard
+package proxy
 
 import java.lang.reflect
 import scala.reflect.Manifest
@@ -70,7 +71,9 @@ class ProxyFactory[T <: AnyRef](implicit manifest: Manifest[T]) {
 
   private def getProxyConstructor(manifest: Manifest[T]) = {
     val cls = manifest.erasure
-    val clazz = reflect.Proxy.getProxyClass(cls.getClassLoader, cls.getInterfaces: _*)
+
+    val interfaces = if (cls.isInterface()) Array(cls) else cls.getInterfaces
+    val clazz = reflect.Proxy.getProxyClass(cls.getClassLoader, interfaces: _*)
     clazz.getConstructor(classOf[reflect.InvocationHandler])
   }
 

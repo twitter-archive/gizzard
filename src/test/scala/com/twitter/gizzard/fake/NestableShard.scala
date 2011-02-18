@@ -1,9 +1,9 @@
-package com.twitter.gizzard.fake
+package com.twitter.gizzard
+package fake
 
-import shards.ShardException
-import org.specs.mock.{ClassMocker, JMocker}
 import scala.collection.mutable
-import shards.ShardInfo
+import org.specs.mock.{ClassMocker, JMocker}
+import shards.{ShardException,ShardInfo}
 
 class NestableShardFactory extends shards.ShardFactory[Shard] {
   def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[Shard]) = new NestableShard(shardInfo, weight, children)

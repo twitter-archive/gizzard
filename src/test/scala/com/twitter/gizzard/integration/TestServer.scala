@@ -1,15 +1,18 @@
-package com.twitter.gizzard.testserver
+package com.twitter.gizzard
+package testserver
 
 import java.sql.{ResultSet, SQLException}
+import com.twitter.querulous
 import com.twitter.querulous.evaluator.{QueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
-import gizzard.GizzardServer
+
+import com.twitter.gizzard
 import nameserver.NameServer
 import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException}
 import scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
 
-object config {
+package object config {
   import com.twitter.gizzard.config._
   import com.twitter.querulous.config._
   import com.twitter.util.TimeConversions._

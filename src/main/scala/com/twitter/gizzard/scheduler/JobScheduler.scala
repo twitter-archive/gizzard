@@ -1,4 +1,5 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import java.util.Random
 import com.twitter.ostrich.{BackgroundProcess, Stats}
@@ -9,55 +10,6 @@ import net.lag.kestrel.PersistentQueue
 import net.lag.logging.Logger
 import java.util.concurrent.atomic.AtomicInteger
 import shards.{ShardBlackHoleException, ShardRejectedOperationException}
-
-object JobScheduler {
-  /**
-   * Configure a JobScheduler from a queue ConfigMap and a scheduler-specific ConfigMap, creating
-   * a new ErrorHandlingJobParser and linking the job & error queues together through it.
-   */
-  def apply[J <: Job](name: String, queueConfig: ConfigMap, codec: Codec[J],
-                      badJobQueue: Option[JobConsumer[J]]) = {
-    val path = queueConfig.getString("path", "/var/spool/kestrel")
-    val schedulerConfig = queueConfig.configMap(name)
-
-    val threadCount = schedulerConfig("threads").toInt
-    val strobeInterval = schedulerConfig("strobe_interval").toInt.milliseconds
-    val errorLimit = schedulerConfig("error_limit").toInt
-    val flushLimit = schedulerConfig("flush_limit").toInt
-    val errorDelay = schedulerConfig("error_delay").toInt.seconds
-    val sizeLimit = schedulerConfig.getInt("size_limit", 0)
-    val jitterRate = schedulerConfig("jitter_rate").toFloat
-
-    val jobQueueName = schedulerConfig("job_queue")
-    val errorQueueName = schedulerConfig("error_queue")
-
-    val (jobQueue, errorQueue) = schedulerConfig.getString("type", "kestrel") match {
-      case "kestrel" => {
-        val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
-        val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
-
-        val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
-        val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
-
-        (jobQueue, errorQueue)
-      }
-
-      case "memory" => {
-        val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
-        val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
-
-        (jobQueue, errorQueue)
-      }
-
-      case x => throw new Exception("Unknown queue type " + x)
-    }
-
-    errorQueue.drainTo(jobQueue, errorDelay)
-
-    new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
-                        jitterRate, jobQueue, errorQueue, badJobQueue)
-  }
-}
 
 /**
  * A cluster of worker threads which poll a JobQueue for work and execute jobs.
@@ -84,7 +36,7 @@ class JobScheduler[J <: Job](val name: String,
       extends Process with JobConsumer[J] {
 
   private val log = Logger.get(getClass.getName)
-  var workerThreads: Collection[BackgroundProcess] = Nil
+  var workerThreads: Iterable[BackgroundProcess] = Nil
   @volatile var running = false
   private var _activeThreads = new AtomicInteger
 
@@ -92,7 +44,7 @@ class JobScheduler[J <: Job](val name: String,
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
-      val jitter = Math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
+      val jitter = math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
       Thread.sleep(strobeInterval.inMillis + jitter)
       try {
         checkExpiredJobs()

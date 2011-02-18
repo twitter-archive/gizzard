@@ -1,10 +1,13 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import com.twitter.ostrich.{StatsProvider, W3CStats}
 import org.codehaus.jackson.map.ObjectMapper
 import net.lag.logging.Logger
-import gizzard.proxy.LoggingProxy
 import java.util.{Map => JMap, List => JList}
+
+import proxy.LoggingProxy
+
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
 

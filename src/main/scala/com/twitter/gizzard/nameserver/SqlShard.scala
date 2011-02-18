@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
@@ -275,7 +276,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   }
 
   def listTables() = {
-    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id")).toList.sort((a,b) => (a < b))
+    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id")).toList.sortWith((a,b) => a < b)
   }
 
   def listHostnames() = {

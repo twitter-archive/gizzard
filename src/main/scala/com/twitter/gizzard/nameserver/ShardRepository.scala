@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import scala.collection.mutable
 import shards.{ShardInfo, ShardFactory}

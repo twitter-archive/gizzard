@@ -1,4 +1,5 @@
-package com.twitter.gizzard.test
+package com.twitter.gizzard
+package test
 
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}
@@ -61,7 +62,7 @@ trait NameServerDatabase extends Specification {
     cfg.replicas.flatMap({
       case m: config.Mysql => Seq(m.queryEvaluator()(m.connection))
       case _ => Nil
-    }).first
+    }).head
   }
 
   def reset(cfg: config.NameServer) {

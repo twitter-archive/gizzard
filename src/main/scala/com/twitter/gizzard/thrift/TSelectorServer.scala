@@ -1,11 +1,12 @@
-package com.twitter.gizzard.thrift
+package com.twitter.gizzard
+package thrift
 
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.channels._
 import java.util.concurrent._
-import scala.collection.jcl
 import scala.collection.mutable
+import scala.collection.JavaConversions._
 import org.apache.thrift._
 import org.apache.thrift.protocol._
 import org.apache.thrift.transport._
@@ -23,7 +24,7 @@ object TSelectorServer {
 
   def makeThreadPoolExecutor(config: ConfigMap): ThreadPoolExecutor = {
     makeThreadPoolExecutor(config("name"), config.getInt("stop_timeout", 60), config("min_threads").toInt,
-      config.getInt("max_threads", Math.MAX_INT))
+      config.getInt("max_threads", Int.MaxValue))
   }
 
   def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int): ThreadPoolExecutor = {
@@ -31,7 +32,7 @@ object TSelectorServer {
       if (!executor.isShutdown()) {
         return executor
       }
-      cache.removeKey(name)
+      cache.remove(name)
     }
 
     val queue = new LinkedBlockingQueue[Runnable]
@@ -192,7 +193,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
 
       selector.select(100)
 
-      for (key <- jcl.Set(selector.selectedKeys)) {
+      for (key <- selector.selectedKeys) {
         if (key.isAcceptable()) {
           // there's only one listen socket for now.
           val clientSocket = serverSocket.accept()

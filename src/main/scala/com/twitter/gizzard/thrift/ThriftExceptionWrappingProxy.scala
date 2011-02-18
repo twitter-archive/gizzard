@@ -1,8 +1,8 @@
-package com.twitter.gizzard.thrift
+package com.twitter.gizzard
+package thrift
 
 import scala.reflect.Manifest
-import com.twitter.gizzard.proxy.{Proxy, ExceptionHandlingProxy}
-import com.twitter.gizzard.shards
+import proxy.{Proxy, ExceptionHandlingProxy}
 
 
 object ThriftExceptionWrappingProxy extends ExceptionHandlingProxy({e =>

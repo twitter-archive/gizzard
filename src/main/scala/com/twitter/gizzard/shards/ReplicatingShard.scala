@@ -1,4 +1,5 @@
-package com.twitter.gizzard.shards
+package com.twitter.gizzard
+package shards
 
 import java.lang.reflect.UndeclaredThrowableException
 import java.sql.SQLException
@@ -44,7 +45,7 @@ class ReplicatingShard[S <: Shard](
     fanout(method, children).map {
       case Left(ex)      => throw ex
       case Right(result) => result
-    }.firstOption.getOrElse(throw new ShardBlackHoleException(shardInfo.id))
+    }.headOption.getOrElse(throw new ShardBlackHoleException(shardInfo.id))
   }
 
   def rebuildableReadOperation[A](method: (S => Option[A]))(rebuild: (S, S) => Unit) =

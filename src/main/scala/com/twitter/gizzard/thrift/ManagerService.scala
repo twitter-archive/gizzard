@@ -1,6 +1,8 @@
-package com.twitter.gizzard.thrift
+package com.twitter.gizzard
+package thrift
 
 import scala.reflect.Manifest
+import scala.collection.JavaConversions._
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.Busy._
 import com.twitter.gizzard.thrift.conversions.LinkInfo._
@@ -104,16 +106,16 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   def list_tables() = wrapEx(nameServer.listTables.toJavaList)
 
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(nameServer.dumpStructure(tableIds.toList).map(_.toThrift).toJavaList)
-  
+
   def repair_shard(shardIds: JList[ShardId]) = {
     wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, repairer(
-      List.fromArray(shardIds.toArray).map(_.asInstanceOf[ShardId].fromThrift)
+      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
     )))
   }
 
   def diff_shards(shardIds: JList[ShardId]) = {
     wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, differ(
-      List.fromArray(shardIds.toArray).map(_.asInstanceOf[ShardId].fromThrift)
+      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
     )))
   }
 

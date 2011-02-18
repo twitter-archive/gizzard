@@ -1,8 +1,10 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.configgy.Config
+
+import com.twitter.gizzard
 
 
 object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -14,9 +16,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val mappingFunction = (n: Long) => n
     var nameServer: NameServer[shards.Shard] = null
 
-    val shardInfos = (1 until 5).force.map { id =>
+    val shardInfos = (1 until 5).toList.map { id =>
       new shards.ShardInfo(shards.ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
-    }.toList
+    }
     val linksList = List(new shards.LinkInfo(shardInfos(2).id, shardInfos(3).id, 1))
     val shardForwardings = List(new Forwarding(1, 1, shardInfos(0).id), new Forwarding(1, 2, shardInfos(1).id),
                                 new Forwarding(1, 3, shardInfos(2).id), new Forwarding(2, 1, shardInfos(3).id))
@@ -51,17 +53,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
 
       val ns = config(shardRepository)
-
-      // mapping function should be FNV1A-64:
-      ns.mappingFunction(0) mustEqual 632747166973704645L
-    }
-
-    "construct from configgy" in {
-      val config = new Config()
-      config("mapping") = "fnv1a-64"
-      config("replicas.ns1.type") = "memory"
-
-      val ns = new gizzard.config.ConfiggyNameServer(config)(shardRepository)
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L

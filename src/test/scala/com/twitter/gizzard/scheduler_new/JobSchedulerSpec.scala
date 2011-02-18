@@ -1,10 +1,10 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.util.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.configgy.Config
 import shards.{ShardId, ShardRejectedOperationException}
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -35,46 +35,6 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
             liveThreads.decrementAndGet()
           }
         }
-      }
-    }
-
-    "configure" in {
-      "kestrel queue" in {
-        val config = Config.fromMap(Map("path" -> "/tmp", "write.job_queue" -> "write1",
-                                        "write.error_queue" -> "error1", "write.threads" -> "100",
-                                        "write.jitter_rate" -> "0.05",
-                                        "write.error_delay" -> "60",
-                                        "write.flush_limit" -> "130",
-                                        "write.strobe_interval" -> "1000", "write.error_limit" -> "5"))
-        val scheduler = JobScheduler("write", config, codec, Some(badJobQueue))
-        scheduler.name mustEqual "write"
-        scheduler.threadCount mustEqual 100
-        scheduler.strobeInterval mustEqual 1.seconds
-        scheduler.errorLimit mustEqual 5
-        scheduler.flushLimit mustEqual 130
-        scheduler.jitterRate mustEqual 0.05f
-        scheduler.queue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "write1"
-        scheduler.errorQueue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "error1"
-        scheduler.badJobQueue mustEqual Some(badJobQueue)
-      }
-
-      "memory queue" in {
-        val config = Config.fromMap(Map("write.type" -> "memory", "write.job_queue" -> "write1",
-                                        "write.error_queue" -> "error1", "write.threads" -> "100",
-                                        "write.jitter_rate" -> "0.05",
-                                        "write.error_delay" -> "60",
-                                        "write.flush_limit" -> "130",
-                                        "write.strobe_interval" -> "1000", "write.error_limit" -> "5"))
-        val scheduler = JobScheduler("write", config, codec, Some(badJobQueue))
-        scheduler.name mustEqual "write"
-        scheduler.threadCount mustEqual 100
-        scheduler.strobeInterval mustEqual 1.seconds
-        scheduler.errorLimit mustEqual 5
-        scheduler.flushLimit mustEqual 130
-        scheduler.jitterRate mustEqual 0.05f
-        scheduler.queue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "write1"
-        scheduler.errorQueue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "error1"
-        scheduler.badJobQueue mustEqual Some(badJobQueue)
       }
     }
 

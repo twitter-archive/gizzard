@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import scala.collection.mutable
 import shards._
@@ -28,8 +29,9 @@ class MemoryShard extends Shard {
   }
 
   private def sortedLinks(list: List[LinkInfo]): List[LinkInfo] = {
-    list.sort { (a, b) => a.weight > b.weight ||
-                          (a.weight == b.weight && a.downId.hashCode > b.downId.hashCode) }
+    list.sortWith { (a, b) =>
+      a.weight > b.weight || (a.weight == b.weight && a.downId.hashCode > b.downId.hashCode)
+    }
   }
 
   def currentState() = {
@@ -56,7 +58,7 @@ class MemoryShard extends Shard {
   }
 
   def deleteShard(shardId: ShardId) {
-    parentTable.elements.toList.foreach { link =>
+    parentTable.iterator.toList.foreach { link =>
       if (link.upId == shardId || link.downId == shardId) {
         parentTable -= link
       }
@@ -70,7 +72,7 @@ class MemoryShard extends Shard {
   }
 
   def removeLink(upId: ShardId, downId: ShardId) {
-    parentTable.elements.toList.foreach { link =>
+    parentTable.iterator.toList.foreach { link =>
       if (upId == link.upId && downId == link.downId) {
         parentTable -= link
       }
@@ -152,7 +154,7 @@ class MemoryShard extends Shard {
   }
 
   def listTables(): Seq[Int] = {
-    Set(forwardingTable.map(_.tableId): _*).toList.sort((a,b) => (a < b))
+    Set(forwardingTable.map(_.tableId): _*).toList.sortWith((a,b) => a < b)
   }
 
   def rebuildSchema() { }
