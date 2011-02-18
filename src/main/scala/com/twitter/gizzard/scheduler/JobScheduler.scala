@@ -171,6 +171,7 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def size = queue.size
+  def errorSize = errorQueue.size
 
   private def makeWorker(n: Int) = {
     new BackgroundProcess("JobEvaluatorThread:" + name + ":" + n.toString) {

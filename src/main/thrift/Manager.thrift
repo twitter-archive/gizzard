@@ -108,7 +108,8 @@ service Manager {
   void resume_writes_for(1: i32 priority) throws(1: GizzardException ex)
 
   bool is_writing(1: i32 priority) throws(1: GizzardException ex)
-
+	i32 queue_size(1: i32 priority) throws(1: GizzardException ex)
+	i32 error_queue_size(1: i32 priority) throws(1: GizzardException ex)
 
   // remote host cluster management
 
