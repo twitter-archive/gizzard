@@ -8,7 +8,7 @@ import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, Prioritizi
 import shards.{Shard, ReadWriteShard}
 
 
-abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.GizzardServer) {
+abstract class GizzardServer[S <: Shard](config: gizzard.config.GizzardServer) {
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
@@ -43,7 +43,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: gizzard.config.Gi
   lazy val jobScheduler = new PrioritizingJobScheduler(Map(jobPriorities.map { p =>
     p -> config.jobQueues(p)(jobCodec)
   }:_*))
-  lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler[JsonJob]]
+  lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler]
 
 
   // service wiring

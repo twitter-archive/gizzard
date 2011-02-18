@@ -7,10 +7,10 @@ import org.specs.Specification
 
 class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NestedJob" should {
-    val job1 = mock[Job]
-    val job2 = mock[Job]
-    val job3 = mock[Job]
-    val nestedJob = new NestedJob(List(job1, job2, job3))
+    val job1 = mock[JsonJob]
+    val job2 = mock[JsonJob]
+    val job3 = mock[JsonJob]
+    val nestedJob = new JsonNestedJob(List(job1, job2, job3))
 
     "loggingName" in {
       expect {
@@ -23,7 +23,7 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
     }
 
     "equals" in {
-      nestedJob mustEqual new NestedJob(List(job1, job2, job3))
+      nestedJob mustEqual new JsonNestedJob(List(job1, job2, job3))
     }
 
     "apply" in {

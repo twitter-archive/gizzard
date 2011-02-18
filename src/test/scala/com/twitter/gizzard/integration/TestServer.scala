@@ -84,7 +84,7 @@ object Priority extends Enumeration {
   val High, Low = Value
 }
 
-class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJob](conf) {
+class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf) {
 
   // shard/nameserver/scheduler wiring
 
@@ -122,7 +122,7 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJ
 
 // Service Interface
 
-class TestServerIFace(forwarding: Long => TestShard, scheduler: PrioritizingJobScheduler[JsonJob])
+class TestServerIFace(forwarding: Long => TestShard, scheduler: PrioritizingJobScheduler)
 extends thrift.TestServer.Iface {
   import com.twitter.gizzard.thrift.conversions.Sequences._
 
@@ -215,12 +215,12 @@ class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends Jso
   def apply() { forwarding(key).put(key, value) }
 }
 
-class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler)
 extends CopyJobFactory[TestShard] {
   def apply(src: ShardId, dest: ShardId) = new TestCopy(src, dest, 0, 500, ns, s)
 }
 
-class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler)
 extends CopyJobParser[TestShard] {
   def deserialize(m: Map[String, Any], src: ShardId, dest: ShardId, count: Int) = {
     val cursor = m("cursor").asInstanceOf[Int]
@@ -230,7 +230,7 @@ extends CopyJobParser[TestShard] {
 }
 
 class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
-               ns: NameServer[TestShard], s: JobScheduler[JsonJob])
+               ns: NameServer[TestShard], s: JobScheduler)
 extends CopyJob[TestShard](srcId, destId, count, ns, s) {
   def copyPage(src: TestShard, dest: TestShard, count: Int) = {
     val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }

@@ -43,7 +43,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
       1 -> schedulerConfig(codec)
     ))
 
-    val queue = scheduler(1).queue.asInstanceOf[KestrelJobQueue[JsonJob]].queue
+    val queue = scheduler(1).queue.asInstanceOf[KestrelJobQueue].queue
 
     val service   = new JobInjectorService(codec, scheduler)
     val processor = new JobInjector.Processor(service)

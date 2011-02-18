@@ -9,15 +9,15 @@ import shards.{ShardId, ShardRejectedOperationException}
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
-    val queue = mock[JobQueue[Job]]
-    val errorQueue = mock[JobQueue[Job]]
-    val badJobQueue = mock[JobConsumer[Job]]
-    val job1 = mock[Job]
-    val ticket1 = mock[Ticket[Job]]
-    val codec = mock[Codec[Job]]
+    val queue = mock[JobQueue]
+    val errorQueue = mock[JobQueue]
+    val badJobQueue = mock[JobConsumer]
+    val job1 = mock[JsonJob]
+    val ticket1 = mock[Ticket]
+    val codec = mock[Codec]
     val shardId = ShardId("fake", "shard")
 
-    var jobScheduler: JobScheduler[Job] = null
+    var jobScheduler: JobScheduler = null
     val liveThreads = new AtomicInteger(0)
 
     val MAX_ERRORS = 100
@@ -53,8 +53,8 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         scheduler.errorLimit mustEqual 5
         scheduler.flushLimit mustEqual 130
         scheduler.jitterRate mustEqual 0.05f
-        scheduler.queue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "write1"
-        scheduler.errorQueue.asInstanceOf[KestrelJobQueue[_]].name mustEqual "error1"
+        scheduler.queue.asInstanceOf[KestrelJobQueue].name mustEqual "write1"
+        scheduler.errorQueue.asInstanceOf[KestrelJobQueue].name mustEqual "error1"
         scheduler.badJobQueue mustEqual Some(badJobQueue)
       }
 
@@ -72,8 +72,8 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         scheduler.errorLimit mustEqual 5
         scheduler.flushLimit mustEqual 130
         scheduler.jitterRate mustEqual 0.05f
-        scheduler.queue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "write1"
-        scheduler.errorQueue.asInstanceOf[MemoryJobQueue[_]].name mustEqual "error1"
+        scheduler.queue.asInstanceOf[MemoryJobQueue].name mustEqual "write1"
+        scheduler.errorQueue.asInstanceOf[MemoryJobQueue].name mustEqual "error1"
         scheduler.badJobQueue mustEqual Some(badJobQueue)
       }
     }
@@ -180,6 +180,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
           one(queue).get() willReturn Some(ticket1)
           one(ticket1).job willReturn job1
           one(job1).apply()
+          one(job1).nextJob willReturn None
           one(ticket1).ack()
         }
 
@@ -192,6 +193,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
           one(ticket1).job willReturn job1
           one(job1).apply() willThrow new ShardRejectedOperationException("darkmoded!", shardId)
           one(ticket1).ack()
+          one(job1).nextJob willReturn None
           one(errorQueue).put(job1)
         }
 
@@ -208,6 +210,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
           one(job1).errorMessage_=("java.lang.Exception: aie!")
           one(job1).errorCount willReturn 1
           one(ticket1).ack()
+          one(job1).nextJob willReturn None
           one(errorQueue).put(job1)
         }
 
@@ -224,6 +227,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
           one(job1).errorMessage_=("java.lang.Exception: aie!")
           one(job1).errorCount willReturn MAX_ERRORS + 1
           one(ticket1).ack()
+          one(job1).nextJob willReturn None
           one(badJobQueue).put(job1)
         }
 

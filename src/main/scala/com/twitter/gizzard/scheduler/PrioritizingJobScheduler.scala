@@ -6,13 +6,13 @@ import net.lag.configgy.ConfigMap
 
 
 object PrioritizingJobScheduler {
-  def apply[J <: Job](config: ConfigMap, codec: Codec[J], queueNames: Map[Int, String],
-                      badJobQueue: Option[JobConsumer[J]]) = {
-    val schedulerMap = new mutable.HashMap[Int, JobScheduler[J]]
+  def apply(config: ConfigMap, codec: Codec, queueNames: Map[Int, String],
+                      badJobQueue: Option[JobConsumer]) = {
+    val schedulerMap = new mutable.HashMap[Int, JobScheduler]
     queueNames.foreach { case (priority, queueName) =>
       schedulerMap(priority) = JobScheduler(queueName, config, codec, badJobQueue)
     }
-    new PrioritizingJobScheduler[J](schedulerMap)
+    new PrioritizingJobScheduler(schedulerMap)
   }
 }
 
@@ -20,20 +20,20 @@ object PrioritizingJobScheduler {
  * A map of JobSchedulers by priority. It can be treated as a single scheduler, and all process
  * operations work on the cluster of schedulers as a whole.
  */
-class PrioritizingJobScheduler[J <: Job](val _schedulers: Map[Int, JobScheduler[J]]) extends Process {
-  val schedulers = mutable.Map.empty[Int, JobScheduler[J]] ++ _schedulers
+class PrioritizingJobScheduler(val _schedulers: Map[Int, JobScheduler]) extends Process {
+  val schedulers = mutable.Map.empty[Int, JobScheduler] ++ _schedulers
 
-  def put(priority: Int, job: J) {
+  def put(priority: Int, job: JsonJob) {
     apply(priority).put(job)
   }
 
-  def apply(priority: Int): JobScheduler[J] = {
+  def apply(priority: Int): JobScheduler = {
     schedulers.get(priority).getOrElse {
       throw new Exception("No scheduler for priority " + priority)
     }
   }
 
-  def update(priority: Int, scheduler: JobScheduler[J]) {
+  def update(priority: Int, scheduler: JobScheduler) {
     schedulers(priority) = scheduler
   }
 

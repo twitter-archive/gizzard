@@ -46,7 +46,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
                                         destinationId: ShardId,
                                         var count: Int,
                                         nameServer: NameServer[S],
-                                        scheduler: JobScheduler[JsonJob])
+                                        scheduler: JobScheduler)
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
@@ -89,7 +89,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
         nextJob match {
           case Some(job) =>
             incrGauge
-            scheduler.put(job)
+            job.nextJob = Some(job)
           case None =>
             finish()
         }

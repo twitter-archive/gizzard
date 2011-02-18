@@ -22,13 +22,13 @@ class MemoryScheduler extends SchedulerType {
 }
 
 trait BadJobConsumer {
-  def apply(): JobConsumer[JsonJob]
+  def apply(): JobConsumer
 }
 
 class JsonJobLogger extends BadJobConsumer {
   var name = "bad_jobs"
 
-  def apply(): JobConsumer[JsonJob] = new scheduler.JsonJobLogger(Logger.get(name))
+  def apply(): JobConsumer = new scheduler.JsonJobLogger(Logger.get(name))
 }
 
 trait Scheduler {
@@ -50,20 +50,20 @@ trait Scheduler {
   var badJobQueue: Option[BadJobConsumer] = None
   def badJobQueue_=(c: BadJobConsumer) { badJobQueue = Some(c) }
 
-  def apply(codec: Codec[JsonJob]): gizzard.scheduler.JobScheduler[JsonJob] = {
+  def apply(codec: Codec): gizzard.scheduler.JobScheduler = {
     val (jobQueue, errorQueue) = schedulerType match {
       case kestrel: KestrelScheduler => {
         val persistentJobQueue = kestrel(jobQueueName)
-        val jobQueue = new KestrelJobQueue[JsonJob](jobQueueName, persistentJobQueue, codec)
+        val jobQueue = new KestrelJobQueue(jobQueueName, persistentJobQueue, codec)
         val persistentErrorQueue = kestrel(errorQueueName)
-        val errorQueue = new KestrelJobQueue[JsonJob](errorQueueName, persistentErrorQueue, codec)
+        val errorQueue = new KestrelJobQueue(errorQueueName, persistentErrorQueue, codec)
 
         (jobQueue, errorQueue)
       }
 
       case memory: MemoryScheduler => {
-        val jobQueue = new gizzard.scheduler.MemoryJobQueue[JsonJob](jobQueueName, memory.sizeLimit)
-        val errorQueue = new gizzard.scheduler.MemoryJobQueue[JsonJob](errorQueueName, memory.sizeLimit)
+        val jobQueue = new gizzard.scheduler.MemoryJobQueue(jobQueueName, memory.sizeLimit)
+        val errorQueue = new gizzard.scheduler.MemoryJobQueue(errorQueueName, memory.sizeLimit)
 
         (jobQueue, errorQueue)
       }
@@ -71,7 +71,7 @@ trait Scheduler {
 
     errorQueue.drainTo(jobQueue, errorRetryDelay)
 
-    new gizzard.scheduler.JobScheduler[JsonJob](
+    new gizzard.scheduler.JobScheduler(
       name,
       threads,
       errorStrobeInterval,

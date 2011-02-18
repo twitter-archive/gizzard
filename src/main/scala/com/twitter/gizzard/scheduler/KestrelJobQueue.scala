@@ -12,8 +12,8 @@ import net.lag.logging.Logger
  * ticket's 'ack' method is called, so if a job is half-complete when the server dies, it will be
  * back in the queue when the server restarts.
  */
-class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, codec: Codec[J])
-      extends JobQueue[J] {
+class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Codec)
+      extends JobQueue {
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
 
@@ -46,13 +46,13 @@ class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, c
 
   def isShutdown = queue.isClosed
 
-  def put(job: J) {
+  def put(job: JsonJob) {
     if (!Stats.timeMicros("kestrel-put-usec") { queue.add(codec.flatten(job)) }) {
       throw new Exception("Unable to add job to queue")
     }
   }
 
-  def get(): Option[Ticket[J]] = {
+  def get(): Option[Ticket] = {
     var item: Option[QItem] = None
     while (item == None && !queue.isClosed) {
       // do not use Time.now or it will interact strangely with tests.
@@ -60,17 +60,18 @@ class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, c
     }
     item.map { qitem =>
       val decoded = codec.inflate(qitem.data)
-      new Ticket[J] {
+      new Ticket {
         def job = decoded
         def ack() {
           queue.confirmRemove(qitem.xid)
         }
+        def continue(job: JsonJob) = queue.continue(qitem.xid, codec.flatten(job))
       }
     }
   }
 
-  def drainTo(otherQueue: JobQueue[J], delay: Duration) {
-    queue.expiredQueue set Some(Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue))
+  def drainTo(otherQueue: JobQueue, delay: Duration) {
+    queue.expiredQueue set Some(Some(otherQueue.asInstanceOf[KestrelJobQueue].queue))
     queue.maxAge set Some(delay.inMilliseconds.toInt)
   }
 

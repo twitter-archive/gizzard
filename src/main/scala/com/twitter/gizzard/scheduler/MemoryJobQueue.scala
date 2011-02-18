@@ -14,7 +14,7 @@ import net.lag.logging.Logger
  * by reference. This is meant to be used for jobs that can be lost and recovered in some other
  * way, or are of minor importance (like filling a cache).
  */
-class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue[J] {
+class MemoryJobQueue(queueName: String, maxSize: Int) extends JobQueue {
   val TIMEOUT = 100
 
   private val log = Logger.get(getClass.getName)
@@ -22,18 +22,18 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
   Stats.makeGauge(queueName + "_items") { size }
 
   val queue = if (maxSize > 0) {
-    new LinkedBlockingQueue[(J, Time)](maxSize)
+    new LinkedBlockingQueue[(JsonJob, Time)](maxSize)
   } else {
-    new LinkedBlockingQueue[(J, Time)]
+    new LinkedBlockingQueue[(JsonJob, Time)]
   }
 
   @volatile var paused = true
   @volatile var running = false
 
-  var expireTo: Option[MemoryJobQueue[J]] = None
+  var expireTo: Option[MemoryJobQueue] = None
   var expireDuration = 0.seconds
 
-  def put(job: J) {
+  def put(job: JsonJob) {
     while (!queue.offer((job, Time.now + expireDuration))) {
       queue.poll(TIMEOUT, TimeUnit.MILLISECONDS)
       Stats.incr(queueName + "_discarded")
@@ -41,7 +41,7 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
   }
 
   def innerGet() = {
-    var qitem: (J, Time) = null
+    var qitem: (JsonJob, Time) = null
     while (running && !paused && (qitem eq null)) {
       qitem = queue.poll(TIMEOUT, TimeUnit.MILLISECONDS)
     }
@@ -55,15 +55,16 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
   def get() = {
     innerGet().map { case (item, time) =>
       // no need to ack to the in-memory queue. if the server dies, it's gone.
-      new Ticket[J] {
+      new Ticket {
         def job = item
         def ack() { }
+        def continue(job: JsonJob) = put(job)
       }
     }
   }
 
-  def drainTo(otherQueue: JobQueue[J], delay: Duration) {
-    expireTo = Some(otherQueue.asInstanceOf[MemoryJobQueue[J]])
+  def drainTo(otherQueue: JobQueue, delay: Duration) {
+    expireTo = Some(otherQueue.asInstanceOf[MemoryJobQueue])
     expireDuration = delay
   }
 

@@ -20,7 +20,7 @@ import scala.collection.jcl
  *
  * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
  */
-class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec[JsonJob] {
+class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) extends Codec {
   private val mapper = new ObjectMapper
 
   protected val log = Logger.get(getClass.getName)

@@ -12,12 +12,12 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
   "KestrelJobQueue" should {
     val queue = mock[PersistentQueue]
     val queue2 = mock[PersistentQueue]
-    val codec = mock[Codec[Job]]
-    val job1 = mock[Job]
-    val job2 = mock[Job]
-    val destinationQueue = mock[KestrelJobQueue[Job]]
+    val codec = mock[Codec]
+    val job1 = mock[JsonJob]
+    val job2 = mock[JsonJob]
+    val destinationQueue = mock[KestrelJobQueue]
 
-    var kestrelJobQueue: KestrelJobQueue[Job] = null
+    var kestrelJobQueue: KestrelJobQueue = null
 
     doBefore {
       kestrelJobQueue = new KestrelJobQueue("queue", queue, codec)
@@ -106,7 +106,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
         }
 
         val ticket = kestrelJobQueue.get()
-        ticket must beSome[Ticket[Job]].which { _.job == job1 }
+        ticket must beSome[Ticket].which { _.job == job1 }
         ticket.get.ack()
       }
 
@@ -120,7 +120,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
         }
 
         val ticket = kestrelJobQueue.get()
-        ticket must beSome[Ticket[Job]].which { _.job == job1 }
+        ticket must beSome[Ticket].which { _.job == job1 }
         ticket.get.ack()
       }
     }

@@ -13,9 +13,9 @@ import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobSchedule
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer    = mock[nameserver.NameServer[Shard]]
   val copier        = mock[CopyJobFactory[Shard]]
-  val scheduler     = mock[PrioritizingJobScheduler[JsonJob]]
-  val subScheduler  = mock[JobScheduler[JsonJob]]
-  val copyScheduler = mock[JobScheduler[JsonJob]]
+  val scheduler     = mock[PrioritizingJobScheduler]
+  val subScheduler  = mock[JobScheduler]
+  val copyScheduler = mock[JobScheduler]
   val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler, null, 0, null)
 
   val shard = mock[Shard]

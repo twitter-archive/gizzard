@@ -15,8 +15,8 @@ object JobScheduler {
    * Configure a JobScheduler from a queue ConfigMap and a scheduler-specific ConfigMap, creating
    * a new ErrorHandlingJobParser and linking the job & error queues together through it.
    */
-  def apply[J <: Job](name: String, queueConfig: ConfigMap, codec: Codec[J],
-                      badJobQueue: Option[JobConsumer[J]]) = {
+  def apply(name: String, queueConfig: ConfigMap, codec: Codec,
+                      badJobQueue: Option[JobConsumer]) = {
     val path = queueConfig.getString("path", "/var/spool/kestrel")
     val schedulerConfig = queueConfig.configMap(name)
 
@@ -34,17 +34,17 @@ object JobScheduler {
     val (jobQueue, errorQueue) = schedulerConfig.getString("type", "kestrel") match {
       case "kestrel" => {
         val persistentJobQueue = new PersistentQueue(path, jobQueueName, queueConfig)
-        val jobQueue = new KestrelJobQueue[J](jobQueueName, persistentJobQueue, codec)
+        val jobQueue = new KestrelJobQueue(jobQueueName, persistentJobQueue, codec)
 
         val persistentErrorQueue = new PersistentQueue(path, errorQueueName, queueConfig)
-        val errorQueue = new KestrelJobQueue[J](errorQueueName, persistentErrorQueue, codec)
+        val errorQueue = new KestrelJobQueue(errorQueueName, persistentErrorQueue, codec)
 
         (jobQueue, errorQueue)
       }
 
       case "memory" => {
-        val jobQueue = new MemoryJobQueue[J](jobQueueName, sizeLimit)
-        val errorQueue = new MemoryJobQueue[J](errorQueueName, sizeLimit)
+        val jobQueue = new MemoryJobQueue(jobQueueName, sizeLimit)
+        val errorQueue = new MemoryJobQueue(errorQueueName, sizeLimit)
 
         (jobQueue, errorQueue)
       }
@@ -54,7 +54,7 @@ object JobScheduler {
 
     errorQueue.drainTo(jobQueue, errorDelay)
 
-    new JobScheduler[J](name, threadCount, strobeInterval, errorLimit, flushLimit,
+    new JobScheduler(name, threadCount, strobeInterval, errorLimit, flushLimit,
                         jitterRate, jobQueue, errorQueue, badJobQueue)
   }
 }
@@ -72,16 +72,16 @@ object JobScheduler {
  * Jobs are added to the scheduler with 'put', and the thread pool & queues can be controlled
  * with the normal Process methods ('start', 'shutdown', and so on).
  */
-class JobScheduler[J <: Job](val name: String,
+class JobScheduler(val name: String,
                              val threadCount: Int,
                              val strobeInterval: Duration,
                              val errorLimit: Int,
                              val flushLimit: Int,
                              val jitterRate: Float,
-                             val queue: JobQueue[J],
-                             val errorQueue: JobQueue[J],
-                             val badJobQueue: Option[JobConsumer[J]])
-      extends Process with JobConsumer[J] {
+                             val queue: JobQueue,
+                             val errorQueue: JobQueue,
+                             val badJobQueue: Option[JobConsumer])
+      extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
   var workerThreads: Collection[BackgroundProcess] = Nil
@@ -166,7 +166,7 @@ class JobScheduler[J <: Job](val name: String,
 
   def isShutdown = queue.isShutdown
 
-  def put(job: J) {
+  def put(job: JsonJob) {
     queue.put(job)
   }
 
@@ -211,7 +211,11 @@ class JobScheduler[J <: Job](val name: String,
               errorQueue.put(job)
             }
         }
-       ticket.ack()
+       job.nextJob match {
+         case None => ticket.ack()
+         case _ => ticket.continue(job.nextJob.get)
+       }
+       
       } finally {
         _activeThreads.decrementAndGet()
       }
