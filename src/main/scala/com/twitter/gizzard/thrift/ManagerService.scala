@@ -127,7 +127,8 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   def stop_writes_for(priority: Int)   = wrapEx(scheduler(priority).pause())
   def resume_writes_for(priority: Int) = wrapEx(scheduler(priority).resume())
   def is_writing(priority: Int)        = wrapEx(!scheduler(priority).isShutdown)
-
+  def queue_size(priority: Int)        = wrapEx(scheduler(priority).size)
+  def error_queue_size(priority: Int)  = wrapEx(scheduler(priority).errorSize)
 
   // Remote Host Cluster Management
 
