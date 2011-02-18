@@ -85,14 +85,8 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
         // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
         nameServer.markShardBusy(destinationId, shards.Busy.Busy)
 
-        val nextJob = copyPage(sourceShard, destinationShard, count)
-        nextJob match {
-          case Some(job) =>
-            incrGauge
-            job.nextJob = Some(job)
-          case None =>
-            finish()
-        }
+        this.nextJob = copyPage(sourceShard, destinationShard, count)
+        if (this.nextJob != None) incrGauge else finish()
       }
     } catch {
       case e: NonExistentShard =>
