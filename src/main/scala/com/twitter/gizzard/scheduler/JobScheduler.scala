@@ -192,11 +192,10 @@ class JobScheduler(val name: String,
       try {
         val job = ticket.job
         try {
-            job()
-            Stats.incr("job-success-count")
+          job()
+          Stats.incr("job-success-count")
         } catch {
-          case e: ShardBlackHoleException =>
-            Stats.incr("job-blackholed-count")
+          case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
           case e: ShardRejectedOperationException =>
             Stats.incr("job-darkmoded-count")
             errorQueue.put(job)
@@ -211,11 +210,10 @@ class JobScheduler(val name: String,
               errorQueue.put(job)
             }
         }
-       job.nextJob match {
-         case None => ticket.ack()
-         case _ => ticket.continue(job.nextJob.get)
-       }
-       
+        job.nextJob match {
+          case None => ticket.ack()
+          case _    => ticket.continue(job.nextJob.get)
+        }
       } finally {
         _activeThreads.decrementAndGet()
       }
