@@ -1,8 +1,7 @@
-package com.twitter.gizzard.fake
+package com.twitter.gizzard
+package fake
 
-import shards.ReadWriteShard
-
-class ReadWriteShardAdapter(shard: ReadWriteShard[Shard])
+class ReadWriteShardAdapter(shard: shards.ReadWriteShard[Shard])
   extends shards.ReadWriteShardAdapter(shard) with Shard {
 
   def getAll(k: String) = shard.readAllOperation(_.get(k))

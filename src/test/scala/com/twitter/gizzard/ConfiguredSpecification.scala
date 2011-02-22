@@ -5,9 +5,12 @@ import org.specs.Specification
 import net.lag.configgy.Configgy
 import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.rpcclient.{PooledClient, ThriftConnection}
+import com.twitter.util.Eval
+
+import com.twitter.gizzard
 import testserver.{Priority, TestServer}
 import testserver.config.TestServerConfig
-import com.twitter.util.Eval
+
 
 
 trait ConfiguredSpecification extends Specification {

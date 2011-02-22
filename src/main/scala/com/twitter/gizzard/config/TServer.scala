@@ -4,6 +4,7 @@ import java.util.concurrent.ThreadPoolExecutor
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import org.apache.thrift
+import com.twitter.gizzard
 
 class ThreadPool extends (String => ThreadPoolExecutor) {
   var stopTimeout = 60

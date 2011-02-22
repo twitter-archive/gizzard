@@ -1,4 +1,5 @@
-package com.twitter.gizzard.integration
+package com.twitter.gizzard
+package integration
 
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import testserver.thrift.TestResult

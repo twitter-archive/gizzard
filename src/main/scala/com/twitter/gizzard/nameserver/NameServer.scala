@@ -1,4 +1,5 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import java.util.TreeMap
 import scala.collection.mutable
@@ -168,7 +169,7 @@ class NameServer[S <: shards.Shard](
   }
 
   def getCommonShardId(ids: Seq[ShardId]) = {
-    ids.map(getRootShardIds).reduceLeft((s1, s2) => s1.filter(s2.contains)).toSeq.firstOption
+    ids.map(getRootShardIds).reduceLeft((s1, s2) => s1.filter(s2.contains)).toSeq.headOption
   }
 
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)

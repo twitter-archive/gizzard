@@ -1,20 +1,55 @@
 package com.twitter.gizzard.config
 
-import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
+import com.twitter.util.{Duration, StorageUnit}
+import com.twitter.conversions.storage._
+import com.twitter.conversions.time._
 import net.lag.logging.Logger
-import net.lag.kestrel.{PersistentQueue, PersistentQueueConfig}
-import gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
+import net.lag.kestrel.PersistentQueue
+import net.lag.kestrel.config.QueueConfig
+
+import com.twitter.gizzard
+import com.twitter.gizzard.scheduler
+import com.twitter.gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
 trait SchedulerType
-trait KestrelScheduler extends PersistentQueueConfig with SchedulerType with Cloneable {
-  def apply(newName: String): PersistentQueue = {
-    // ugh
-    val oldName = name
-    name = newName
-    val q = apply()
-    name = oldName
-    q
+trait KestrelScheduler extends SchedulerType {
+  var path = "/tmp"
+
+  // redo config here
+  var maxItems: Int                 = Int.MaxValue
+  var maxSize: StorageUnit          = Long.MaxValue.bytes
+  var maxItemSize: StorageUnit      = Long.MaxValue.bytes
+  var maxAge: Option[Duration]      = None
+  var maxJournalSize: StorageUnit   = 16.megabytes
+  var maxMemorySize: StorageUnit    = 128.megabytes
+  var maxJournalOverflow: Int       = 10
+  var discardOldWhenFull: Boolean   = false
+  var keepJournal: Boolean          = true
+  var syncJournal: Boolean          = false
+  var multifileJournal: Boolean     = false
+  var expireToQueue: Option[String] = None
+  var maxExpireSweep: Int           = Int.MaxValue
+  var fanoutOnly: Boolean           = false
+
+  def aConfig = QueueConfig(
+    maxItems           = maxItems,
+    maxSize            = maxSize,
+    maxItemSize        = maxItemSize,
+    maxAge             = maxAge,
+    maxJournalSize     = maxJournalSize,
+    maxMemorySize      = maxMemorySize,
+    maxJournalOverflow = maxJournalOverflow,
+    discardOldWhenFull = discardOldWhenFull,
+    keepJournal        = keepJournal,
+    syncJournal        = syncJournal,
+    multifileJournal   = multifileJournal,
+    expireToQueue      = expireToQueue,
+    maxExpireSweep     = maxExpireSweep,
+    fanoutOnly         = fanoutOnly
+  )
+
+  def apply(name: String): PersistentQueue = {
+    new PersistentQueue(name, path, aConfig)
   }
 }
 class MemoryScheduler extends SchedulerType {

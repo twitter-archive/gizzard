@@ -1,4 +1,5 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import com.twitter.ostrich.Stats
 import com.twitter.util.TimeConversions._
@@ -58,14 +59,14 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   def label(): String
 
   def finish() {
-    log.info("[%s] - finished for (type %s) for %s", label, 
+    log.info("[%s] - finished for (type %s) for %s", label,
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
-      log.info("[%s] - shard block (type %s): state=%s", label, 
+      log.info("[%s] - shard block (type %s): state=%s", label,
                getClass.getName.split("\\.").last, toMap)
       val shards = shardIds.map(nameServer.findShardById(_))
       repair(shards)

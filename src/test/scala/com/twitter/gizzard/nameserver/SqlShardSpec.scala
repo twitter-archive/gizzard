@@ -1,7 +1,8 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
 import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.test.NameServerDatabase
@@ -38,7 +39,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "be wrappable while replicating" in {
       val nameServerShards = Seq(nameServer)
       val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
-      val replicationFuture = new Future("ReplicationFuture", 1, 1, new Duration(1), new Duration(1))
+      val replicationFuture = new Future("ReplicationFuture", 1, 1, 1.second, 1.second)
       val shard: shards.ReadWriteShard[nameserver.Shard] =
         new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture))
       val adapted = new nameserver.ReadWriteShardAdapter(shard)
@@ -74,7 +75,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         structure.links.length mustEqual 4
         structure.shards.length mustEqual 6
 
-        structure.shards.sort { (a,b) => a.tablePrefix.compareTo(b.tablePrefix) < 0 }  mustEqual List(a,b,c,d,e,f)
+        structure.shards.sortWith((a,b) => a.tablePrefix.compareTo(b.tablePrefix) < 0) mustEqual List(a,b,c,d,e,f)
       }
     }
 
@@ -93,26 +94,26 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
       val state1 = nameServer.currentState()
       state1.length mustEqual 1
-      state1.first.forwardings.toList mustEqual List(Forwarding(0, 1, shards(0).id))
-      state1.first.links.length mustEqual 1
-      state1.first.shards.toList mustEqual List(shards(0), shards(1))
+      state1.head.forwardings.toList mustEqual List(Forwarding(0, 1, shards(0).id))
+      state1.head.links.length mustEqual 1
+      state1.head.shards.toList mustEqual List(shards(0), shards(1))
 
       nameServer.addLink(shards(0).id, shards(3).id, 2)
       nameServer.setForwarding(Forwarding(0, 2, shards(4).id))
 
       val state2 = nameServer.currentState()
       state2.length mustEqual 1
-      state2.first.forwardings.length mustEqual 2
-      state2.first.links.length mustEqual 2
-      state2.first.shards.length mustEqual 4
+      state2.head.forwardings.length mustEqual 2
+      state2.head.links.length mustEqual 2
+      state2.head.shards.length mustEqual 4
 
       nameServer.removeLink(shards(0).id, shards(1).id)
 
       val state3 = nameServer.currentState()
       state3.length mustEqual 1
-      state3.first.forwardings.length mustEqual 2
-      state3.first.links.length mustEqual 1
-      state3.first.shards.length mustEqual 3
+      state3.head.forwardings.length mustEqual 2
+      state3.head.links.length mustEqual 1
+      state3.head.shards.length mustEqual 3
     }
 
     "be idempotent" in {
@@ -138,7 +139,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nameServer.createShard(b, repo)
         nameServer.addLink(a.id, b.id, 1)
         nameServer.addLink(a.id, b.id, 2)
-        nameServer.listUpwardLinks(b.id).first.weight mustEqual 2
+        nameServer.listUpwardLinks(b.id).head.weight mustEqual 2
         nameServer.removeLink(a.id, b.id)
         nameServer.removeLink(a.id, b.id)
       }
@@ -176,7 +177,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "list hostnames" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       nameServer.createShard(a, repo)
-      nameServer.listHostnames().first mustEqual "localhost"
+      nameServer.listHostnames().head mustEqual "localhost"
     }
 
     "list tables" in {
@@ -390,7 +391,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost").map { _.id }.sort(_.tablePrefix < _.tablePrefix) mustEqual List(shard1.id, shard2.id, shard3.id).sort(_.tablePrefix < _.tablePrefix)
+        nameServer.shardsForHostname("localhost").map { _.id }.sortWith(_.tablePrefix < _.tablePrefix) mustEqual List(shard1.id, shard2.id, shard3.id).sortWith(_.tablePrefix < _.tablePrefix)
       }
 
       "getBusyShards" in {

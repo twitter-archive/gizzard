@@ -1,7 +1,7 @@
 import com.twitter.gizzard.config._
 import com.twitter.querulous.config._
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 
 object Priority extends Enumeration {
   val High, Medium, Low = Value

@@ -1,4 +1,5 @@
-package com.twitter.gizzard.shards
+package com.twitter.gizzard
+package shards
 
 import com.twitter.util.TimeConversions._
 import net.lag.logging.{GenericFormatter, Logger, StringHandler}

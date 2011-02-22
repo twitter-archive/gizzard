@@ -24,11 +24,11 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Code
   def size = queue.length.toInt
 
   /** Age (in seconds) of items in this queue. */
-  def age = queue.currentAge / 1000.0
+  def age = queue.currentAge.inSeconds
 
   def start() {
     // don't expire items except when we explicitly call 'discardExpired'.
-    queue.maxExpireSweep = 0
+    queue.config = queue.config.copy(maxExpireSweep = 0)
     queue.setup()
   }
 
@@ -56,7 +56,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Code
     var item: Option[QItem] = None
     while (item == None && !queue.isClosed) {
       // do not use Time.now or it will interact strangely with tests.
-      item = queue.removeReceive(System.currentTimeMillis + TIMEOUT, true)
+      item = queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + TIMEOUT)), true)
     }
     item.map { qitem =>
       val decoded = codec.inflate(qitem.data)
@@ -71,8 +71,12 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Code
   }
 
   def drainTo(otherQueue: JobQueue, delay: Duration) {
-    queue.expiredQueue set Some(Some(otherQueue.asInstanceOf[KestrelJobQueue].queue))
-    queue.maxAge set Some(delay.inMilliseconds.toInt)
+    require(otherQueue.isInstanceOf[KestrelJobQueue[_]])
+
+    val newConfig = queue.config.copy(maxAge = Some(delay))
+
+    queue.expireQueue = Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue)
+    queue.config = newConfig
   }
 
   def checkExpiration(flushLimit: Int) {

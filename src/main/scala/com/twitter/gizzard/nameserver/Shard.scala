@@ -1,7 +1,8 @@
-package com.twitter.gizzard.nameserver
+package com.twitter.gizzard
+package nameserver
 
-import shards._
 import scala.collection.mutable
+import shards._
 
 trait Shard extends shards.Shard {
   @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S])

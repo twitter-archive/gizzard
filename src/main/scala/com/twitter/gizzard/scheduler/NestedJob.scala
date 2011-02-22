@@ -16,7 +16,7 @@ abstract class NestedJob(val jobs: Iterable[JsonJob]) extends JsonJob {
 
   def apply() {
     while (!taskQueue.isEmpty) {
-      taskQueue.first.apply()
+      taskQueue.head.apply()
       taskQueue.dequeue()
     }
   }

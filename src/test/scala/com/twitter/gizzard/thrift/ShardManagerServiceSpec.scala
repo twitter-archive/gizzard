@@ -1,4 +1,5 @@
-package com.twitter.gizzard.thrift
+package com.twitter.gizzard
+package thrift
 
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification

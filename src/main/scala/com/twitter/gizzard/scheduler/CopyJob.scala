@@ -1,4 +1,5 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import com.twitter.ostrich.Stats
 import com.twitter.util.TimeConversions._
