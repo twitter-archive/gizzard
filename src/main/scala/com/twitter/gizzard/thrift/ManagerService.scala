@@ -67,18 +67,18 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(nameServer.getShard(id.fromThrift).toThrift)
   }
   def shards_for_hostname(hostname: String): JList[ShardInfo] = {
-    wrapEx(nameServer.shardsForHostname(hostname).map(_.toThrift).toJavaList)
+    wrapEx(nameServer.shardsForHostname(hostname).map(_.toThrift))
   }
   def get_busy_shards(): JList[ShardInfo] = {
-    wrapEx(nameServer.getBusyShards().map(_.toThrift).toJavaList)
+    wrapEx(nameServer.getBusyShards().map(_.toThrift))
   }
 
 
   def list_upward_links(id: ShardId): JList[LinkInfo] = {
-    wrapEx(nameServer.listUpwardLinks(id.fromThrift).map(_.toThrift).toJavaList)
+    wrapEx(nameServer.listUpwardLinks(id.fromThrift).map(_.toThrift))
   }
   def list_downward_links(id: ShardId): JList[LinkInfo] = {
-    wrapEx(nameServer.listDownwardLinks(id.fromThrift).map(_.toThrift).toJavaList)
+    wrapEx(nameServer.listDownwardLinks(id.fromThrift).map(_.toThrift))
   }
 
 
@@ -91,7 +91,7 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(nameServer.getForwardingForShard(id.fromThrift).toThrift)
   }
   def get_forwardings(): JList[Forwarding] = {
-    wrapEx(nameServer.getForwardings().map(_.toThrift).toJavaList)
+    wrapEx(nameServer.getForwardings().map(_.toThrift))
   }
 
   def list_hostnames() = wrapEx(nameServer.listHostnames.toJavaList)
