@@ -35,7 +35,7 @@ object TreeUtils {
   }
 
   protected[nameserver] def descendantLinks(ids: Set[ShardId])(f: ShardId => Iterable[LinkInfo]): Set[LinkInfo] = {
-    Set(collectFromTree(ids)(f)(_.downId): _*)
+    collectFromTree(ids)(f)(_.downId).toSet
   }
 }
 
@@ -47,7 +47,7 @@ class NameServer[S <: shards.Shard](
 
   private val log = Logger.get(getClass.getName)
 
-  val children = List()
+  val children = Nil
   val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
   val weight = 1 // hardcode for now
   val RETRIES = 5
@@ -117,7 +117,7 @@ class NameServer[S <: shards.Shard](
       newRemoteClusters += h.cluster -> (h :: newRemoteClusters.getOrElse(h.cluster, Nil))
     }
 
-    jobRelay  = jobRelayFactory(Map(newRemoteClusters.toSeq: _*))
+    jobRelay  = jobRelayFactory(newRemoteClusters.toMap)
 
     recreateInternalShardState()
     log.info("Loading name server configuration is done.")

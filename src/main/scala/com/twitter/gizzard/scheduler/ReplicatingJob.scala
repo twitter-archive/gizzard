@@ -69,10 +69,12 @@ extends JsonNestedJob(jobs) {
   clustersQueue ++= clusters
 
   override def toMap: Map[String, Any] = {
-    var attrs = super.toMap.toList
-    if (!clustersQueue.isEmpty) attrs = "dest_clusters" -> clustersQueue.toList :: attrs
-    if (!serialized.isEmpty)    attrs = "serialized" -> serialized.map(new String(_, "UTF-8")) :: attrs
-    Map(attrs: _*)
+    var attrs = super.toMap
+
+    if (!clustersQueue.isEmpty) attrs += ("dest_clusters" -> clustersQueue.toList)
+    if (!serialized.isEmpty)    attrs += ("serialized" -> serialized.map(new String(_, "UTF-8")))
+
+    attrs.toMap
   }
 
   // XXX: do this work in parallel in a future pool.

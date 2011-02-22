@@ -35,8 +35,8 @@ class MemoryShard extends Shard {
   }
 
   def currentState() = {
-    val tableIds = Set(forwardingTable.map(_.tableId): _*).toList
-    dumpStructure(tableIds)
+    val tableIds = forwardingTable.map(_.tableId).toSet
+    dumpStructure(tableIds.toSeq)
   }
 
   def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
@@ -128,7 +128,7 @@ class MemoryShard extends Shard {
   }
 
   def getForwardingsForTableIds(tableIds: Seq[Int]) = {
-    val tableIdsSet = Set(tableIds: _*)
+    val tableIdsSet = tableIds.toSet
     forwardingTable.filter(f => tableIdsSet(f.tableId)).toList
   }
 
@@ -154,7 +154,7 @@ class MemoryShard extends Shard {
   }
 
   def listTables(): Seq[Int] = {
-    Set(forwardingTable.map(_.tableId): _*).toList.sortWith((a,b) => a < b)
+    forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
   }
 
   def rebuildSchema() { }

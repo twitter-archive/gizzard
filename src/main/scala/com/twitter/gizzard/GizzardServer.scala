@@ -41,9 +41,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: ServerConfig) {
   }
 
   lazy val jobCodec     = new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob)
-  lazy val jobScheduler = new PrioritizingJobScheduler(Map(jobPriorities.map { p =>
-    p -> config.jobQueues(p)(jobCodec)
-  }:_*))
+  lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities.map(p => p -> config.jobQueues(p)(jobCodec)).toMap)
   lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler[JsonJob]]
 
 

@@ -193,7 +193,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   def markAncestorForwardingsAsUpdated(id: ShardId) {
     import TreeUtils._
 
-    val ancestorIds = Set(collectFromTree(List(id))(listUpwardLinks(_).map(_.upId))(identity): _*) + id
+    val ancestorIds = collectFromTree(List(id))(listUpwardLinks(_).map(_.upId))(identity).toSet + id
 
     ancestorIds.foreach(id => replaceForwarding(id, id))
   }
@@ -206,10 +206,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
   private def updateState(state: Seq[NameServerState], updatedSequence: Long) = {
     import TreeUtils._
 
-    val oldForwardings = Map(state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f): _*)
-    val oldLinks       = Set(state.flatMap(_.links): _*)
+    val oldForwardings = state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f).toMap
+    val oldLinks       = state.flatMap(_.links).toSet
     val oldLinksByUpId = mapOfSets(oldLinks)(_.upId)
-    val oldShards      = Map(state.flatMap(_.shards).map(s => s.id -> s): _*)
+    val oldShards      = state.flatMap(_.shards).map(s => s.id -> s).toMap
     val oldShardIds    = oldShards.keySet
 
     val newForwardings     = mutable.Map[(Int,Long), Forwarding]()
@@ -222,10 +222,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
       fs += (f.tableId, f.baseId) -> f
     }
 
-    val newRootIds  = Set(newForwardings.map(_._2.shardId).toSeq: _*)
+    val newRootIds  = newForwardings.map(_._2.shardId).toSet
     val newLinks    = descendantLinks(newRootIds)(listDownwardLinks)
     val newShardIds = newRootIds ++ newLinks.map(_.downId)
-    val newShards   = Map(newShardIds.toList.map(id => id -> getShard(id)): _*)
+    val newShards   = newShardIds.toList.map(id => id -> getShard(id)).toMap
 
     val purgeableRootIds  = newRootIds ++ deletedForwardings.map(_._2.shardId)
     val purgeableLinks    = descendantLinks(purgeableRootIds)(oldLinksByUpId)
