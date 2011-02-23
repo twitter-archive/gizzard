@@ -9,6 +9,8 @@ import java.util.{AbstractList => JAbstractList, List => JList}
 object Sequences {
   class RichSeq[A <: AnyRef](seq: Seq[A]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
+
+    @deprecated("rely on implicit conversion from scala.collection.JavaConversions._")
     def toJavaList: JList[A] = seq
     def double = for (i <- seq) yield (i, i)
   }
@@ -16,6 +18,8 @@ object Sequences {
 
   class RichIntSeq(seq: Seq[Int]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
+
+    @deprecated("there is implicit conversion from Seq[Int] to java.util.List[java.lang.Integer]")
     def toJavaList: JList[java.lang.Integer] = seq.map(_.asInstanceOf[java.lang.Integer])
     def double = for (i <- seq) yield (i, i)
 
@@ -28,10 +32,15 @@ object Sequences {
       byteBuffer
     }
   }
+
   implicit def seqToRichIntSeq(seq: Seq[Int]) = new RichIntSeq(seq)
+  implicit def intSeqToBoxedJavaList(seq: Seq[Int]): JList[java.lang.Integer] = seq.map(_.asInstanceOf[java.lang.Integer])
+  implicit def boxedJavaListToIntSeq(list: JList[java.lang.Integer]): Seq[Int] = list.map(_.asInstanceOf[Int])
 
   class RichLongSeq(seq: Seq[Long]) {
     def parallel(future: Future) = new ParallelSeq(seq, future)
+
+    @deprecated("there is implicit conversion from Seq[Long] to java.util.List[java.lang.Long]")
     def toJavaList: JList[java.lang.Long] = seq.map(_.asInstanceOf[java.lang.Long])
     def double = for (i <- seq) yield (i, i)
 
@@ -45,24 +54,8 @@ object Sequences {
     }
   }
   implicit def seqToRichLongSeq(seq: Seq[Long]) = new RichLongSeq(seq)
-
-  class RichJavaList[T <: AnyRef](list: JList[T]) {
-    def toSeq: Seq[T] = list
-    def toList = toSeq.toList
-  }
-  implicit def javaListToRichSeq[T <: AnyRef](list: JList[T]) = new RichJavaList(list)
-
-  class RichJavaIntList(list: JList[java.lang.Integer]) {
-    def toSeq: Seq[Int] = list.map(_.asInstanceOf[Int])
-    def toList = toSeq.toList
-  }
-  implicit def javaIntListToRichSeq(list: JList[java.lang.Integer]) = new RichJavaIntList(list)
-
-  class RichJavaLongList(list: JList[java.lang.Long]) {
-    def toSeq: Seq[Long] = list.map(_.asInstanceOf[Long])
-    def toList = toSeq.toList
-  }
-  implicit def javaLongListToRichSeq(list: JList[java.lang.Long]) = new RichJavaLongList(list)
+  implicit def longSeqToBoxedJavaList(seq: Seq[Long]): JList[java.lang.Long] = seq.map(_.asInstanceOf[java.lang.Long])
+  implicit def boxedJavaListToLongSeq(list: JList[java.lang.Long]): Seq[Long] = list.map(_.asInstanceOf[Long])
 
   class RichByteBuffer(buffer: ByteBuffer) {
     def toIntArray = {

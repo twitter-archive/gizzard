@@ -94,7 +94,7 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(nameServer.getForwardings().map(_.toThrift))
   }
 
-  def list_hostnames() = wrapEx(nameServer.listHostnames.toJavaList)
+  def list_hostnames() = wrapEx(nameServer.listHostnames)
 
   def mark_shard_busy(id: ShardId, busy: Int) = {
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
@@ -103,9 +103,9 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
   }
 
-  def list_tables() = wrapEx(nameServer.listTables.toJavaList)
+  def list_tables(): JList[java.lang.Integer] = wrapEx(nameServer.listTables)
 
-  def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(nameServer.dumpStructure(tableIds.toList).map(_.toThrift).toJavaList)
+  def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(nameServer.dumpStructure(tableIds.toList).map(_.toThrift))
 
   def repair_shard(shardIds: JList[ShardId]) = {
     wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler[JsonJob]]).put(repairPriority, repairer(
@@ -151,10 +151,10 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
     wrapEx(nameServer.getRemoteHost(hostname, port).toThrift)
   }
 
-  def list_remote_clusters(): JList[String] = wrapEx(nameServer.listRemoteClusters.toJavaList)
-  def list_remote_hosts(): JList[Host]      = wrapEx(nameServer.listRemoteHosts.map(_.toThrift).toJavaList)
+  def list_remote_clusters(): JList[String] = wrapEx(nameServer.listRemoteClusters)
+  def list_remote_hosts(): JList[Host]      = wrapEx(nameServer.listRemoteHosts.map(_.toThrift))
 
   def list_remote_hosts_in_cluster(cluster: String): JList[Host] = {
-    wrapEx(nameServer.listRemoteHosts.map(_.toThrift).toJavaList)
+    wrapEx(nameServer.listRemoteHosts.map(_.toThrift))
   }
 }

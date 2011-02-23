@@ -127,13 +127,14 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard, JsonJ
 
 class TestServerIFace(forwarding: Long => TestShard, scheduler: PrioritizingJobScheduler[JsonJob])
 extends thrift.TestServer.Iface {
+  import scala.collection.JavaConversions._
   import com.twitter.gizzard.thrift.conversions.Sequences._
 
   def put(key: Int, value: String) {
     scheduler.put(Priority.High.id, new PutJob(key, value, forwarding))
   }
 
-  def get(key: Int) = forwarding(key).get(key).map(asTestResult).map(List(_).toJavaList) getOrElse List[thrift.TestResult]().toJavaList
+  def get(key: Int) = forwarding(key).get(key).toList.map(asTestResult)
 
   private def asTestResult(t: (Int, String, Int)) = new thrift.TestResult(t._1, t._2, t._3)
 }

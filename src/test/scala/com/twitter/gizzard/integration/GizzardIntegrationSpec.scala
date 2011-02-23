@@ -1,6 +1,7 @@
 package com.twitter.gizzard
 package integration
 
+import scala.collection.JavaConversions._
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import testserver.thrift.TestResult
 
@@ -33,41 +34,41 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       client1.put(1, "foo")
 
-      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client1.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client2.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client3.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
 
       client2.put(2, "bar")
 
-      client1.get(2) must eventually(be_==(List(new TestResult(2, "bar", 1)).toJavaList))
-      client2.get(2) must eventually(be_==(List(new TestResult(2, "bar", 1)).toJavaList))
-      client3.get(2) must eventually(be_==(List(new TestResult(2, "bar", 1)).toJavaList))
+      client1.get(2).toList must eventually(be_==(List(new TestResult(2, "bar", 1))))
+      client2.get(2).toList must eventually(be_==(List(new TestResult(2, "bar", 1))))
+      client3.get(2).toList must eventually(be_==(List(new TestResult(2, "bar", 1))))
 
       client3.put(3, "baz")
 
-      client1.get(3) must eventually(be_==(List(new TestResult(3, "baz", 1)).toJavaList))
-      client2.get(3) must eventually(be_==(List(new TestResult(3, "baz", 1)).toJavaList))
-      client3.get(3) must eventually(be_==(List(new TestResult(3, "baz", 1)).toJavaList))
+      client1.get(3).toList must eventually(be_==(List(new TestResult(3, "baz", 1))))
+      client2.get(3).toList must eventually(be_==(List(new TestResult(3, "baz", 1))))
+      client3.get(3).toList must eventually(be_==(List(new TestResult(3, "baz", 1))))
     }
 
     "retry replication errors" in {
       startServers(server1)
 
       client1.put(1, "foo")
-      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client1.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
 
       startServers(server2)
       server1.jobScheduler.retryErrors()
 
-      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client2.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client1.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
 
       startServers(server3)
       server1.jobScheduler.retryErrors()
 
-      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client3.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client2.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client1.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
     }
 
     "retry unblocked clusters" in {
@@ -77,16 +78,16 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
       server1.nameServer.reload()
 
       client1.put(1, "foo")
-      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client1.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client3.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
 
-      client2.get(1) mustEqual List[TestResult]().toJavaList
+      client2.get(1).toList mustEqual List[TestResult]()
 
       server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
       server1.nameServer.reload()
       server1.jobScheduler.retryErrors()
 
-      client2.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client2.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
     }
 
     "drop blackholed clusters" in {
@@ -96,10 +97,10 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
       server1.nameServer.reload()
 
       client1.put(1, "foo")
-      client1.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
-      client3.get(1) must eventually(be_==(List(new TestResult(1, "foo", 1)).toJavaList))
+      client1.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
+      client3.get(1).toList must eventually(be_==(List(new TestResult(1, "foo", 1))))
 
-      client2.get(1) mustEqual List[TestResult]().toJavaList
+      client2.get(1).toList mustEqual List[TestResult]()
 
       server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
       server1.nameServer.reload()
@@ -107,7 +108,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       Thread.sleep(200)
 
-      client2.get(1) mustEqual List[TestResult]().toJavaList
+      client2.get(1).toList mustEqual List[TestResult]()
     }
   }
 }

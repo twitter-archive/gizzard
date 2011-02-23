@@ -1,6 +1,7 @@
 package com.twitter.gizzard
 package thrift
 
+import scala.collection.JavaConversions._
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
@@ -97,8 +98,8 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       expect {
         one(nameServer).listDownwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo1.id, shardInfo2.id, 1))
       }
-      manager.list_downward_links(thriftShardInfo1.id) mustEqual
-        List(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1)).toJavaList
+      manager.list_downward_links(thriftShardInfo1.id).toList mustEqual
+        List(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1))
     }
 
     "mark_shard_busy" in {
@@ -153,7 +154,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       expect {
         one(nameServer).getForwardings() willReturn List(forwarding)
       }
-      manager.get_forwardings() mustEqual List(thriftForwarding).toJavaList
+      manager.get_forwardings().toList mustEqual List(thriftForwarding)
     }
 
     "reload_config" in {
@@ -175,21 +176,21 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       expect {
         one(nameServer).shardsForHostname(hostname) willReturn List(shardInfo1)
       }
-      manager.shards_for_hostname(hostname) mustEqual List(thriftShardInfo1).toJavaList
+      manager.shards_for_hostname(hostname).toList mustEqual List(thriftShardInfo1)
     }
 
     "get_busy_shards" in {
       expect {
         one(nameServer).getBusyShards() willReturn List(shardInfo1)
       }
-      manager.get_busy_shards() mustEqual List(thriftShardInfo1).toJavaList
+      manager.get_busy_shards().toList mustEqual List(thriftShardInfo1)
     }
 
     "list_upward_links" in {
       expect {
         one(nameServer).listUpwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo2.id, shardInfo1.id, 1))
       }
-      manager.list_upward_links(thriftShardInfo1.id) mustEqual List(new thrift.LinkInfo(thriftShardInfo2.id, thriftShardInfo1.id, 1)).toJavaList
+      manager.list_upward_links(thriftShardInfo1.id).toList mustEqual List(new thrift.LinkInfo(thriftShardInfo2.id, thriftShardInfo1.id, 1))
     }
 
 

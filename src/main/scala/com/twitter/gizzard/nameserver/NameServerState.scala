@@ -1,6 +1,7 @@
 package com.twitter.gizzard
 package nameserver
 
+import scala.collection.JavaConversions._
 import shards.{ShardId, ShardInfo, LinkInfo}
 import thrift.conversions.ShardInfo._
 import thrift.conversions.LinkInfo._
@@ -10,9 +11,9 @@ import scala.collection.mutable.ListBuffer
 
 case class NameServerState(shards: List[ShardInfo], links: List[LinkInfo], forwardings: List[Forwarding], tableId: Int) {
   def toThrift = {
-    val thriftForwardings = forwardings.map(_.toThrift).toJavaList
-    val thriftLinks       = links.map(_.toThrift).toJavaList
-    val thriftShards      = shards.map(_.toThrift).toJavaList
+    val thriftForwardings = forwardings.map(_.toThrift)
+    val thriftLinks       = links.map(_.toThrift)
+    val thriftShards      = shards.map(_.toThrift)
     new thrift.NameServerState(thriftShards, thriftLinks, thriftForwardings, tableId)
   }
 }
