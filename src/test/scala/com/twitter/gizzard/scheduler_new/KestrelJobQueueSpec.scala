@@ -15,7 +15,7 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
   "KestrelJobQueue" should {
     val queue = mock[PersistentQueue]
     val queue2 = mock[PersistentQueue]
-    val codec = mock[Codec]
+    val codec = mock[JsonCodec]
     val job1 = mock[JsonJob]
     val job2 = mock[JsonJob]
     val destinationQueue = mock[KestrelJobQueue]

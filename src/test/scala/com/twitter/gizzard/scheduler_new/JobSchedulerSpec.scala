@@ -14,7 +14,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val badJobQueue = mock[JobConsumer]
     val job1 = mock[JsonJob]
     val ticket1 = mock[Ticket]
-    val codec = mock[Codec]
+    val codec = mock[JsonCodec]
     val shardId = ShardId("fake", "shard")
 
     var jobScheduler: JobScheduler = null

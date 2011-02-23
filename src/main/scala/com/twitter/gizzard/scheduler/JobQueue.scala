@@ -30,12 +30,3 @@ trait JobQueue extends JobConsumer with Process {
   def checkExpiration(flushLimit: Int)
   def size: Int
 }
-
-/**
- * A mechanism for turning jobs into byte arrays (and vice versa) so that they can be used with
- * journaled queues.
- */
-trait Codec {
-  def flatten(job: JsonJob): Array[Byte]
-  def inflate(data: Array[Byte]): JsonJob
-}

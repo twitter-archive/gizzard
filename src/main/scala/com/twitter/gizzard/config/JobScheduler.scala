@@ -9,7 +9,7 @@ import net.lag.kestrel.config.QueueConfig
 
 import com.twitter.gizzard
 import com.twitter.gizzard.scheduler
-import com.twitter.gizzard.scheduler.{JsonJob, Codec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
+import com.twitter.gizzard.scheduler.{JsonJob, JsonCodec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
 
 trait SchedulerType
 trait KestrelScheduler extends SchedulerType {
@@ -85,7 +85,7 @@ trait Scheduler {
   var badJobQueue: Option[BadJobConsumer] = None
   def badJobQueue_=(c: BadJobConsumer) { badJobQueue = Some(c) }
 
-  def apply(codec: Codec): gizzard.scheduler.JobScheduler = {
+  def apply(codec: JsonCodec): gizzard.scheduler.JobScheduler = {
     val (jobQueue, errorQueue) = schedulerType match {
       case kestrel: KestrelScheduler => {
         val persistentJobQueue = kestrel(jobQueueName)

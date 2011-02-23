@@ -12,7 +12,7 @@ import net.lag.logging.Logger
  * ticket's 'ack' method is called, so if a job is half-complete when the server dies, it will be
  * back in the queue when the server restarts.
  */
-class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Codec)
+class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: JsonCodec)
       extends JobQueue {
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
