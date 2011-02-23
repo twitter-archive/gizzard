@@ -22,10 +22,9 @@ object JsonJob {
 
 trait JsonJob {
   @throws(classOf[Exception])
-  var nextJob: Option[JsonJob] = None
-
   def apply(): Unit
 
+  var nextJob: Option[JsonJob] = None
   var errorCount: Int = 0
   var errorMessage: String = "(none)"
 
