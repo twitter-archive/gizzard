@@ -87,7 +87,10 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
         nameServer.markShardBusy(destinationId, shards.Busy.Busy)
 
         this.nextJob = copyPage(sourceShard, destinationShard, count)
-        if (this.nextJob != None) incrGauge else finish()
+        this.nextJob match {
+          case None => finish()
+          case _ => incrGauge
+        }
       }
     } catch {
       case e: NonExistentShard =>
