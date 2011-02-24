@@ -41,13 +41,24 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: ServerConfig) {
   }
 
   lazy val jobCodec     = new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob)
-  lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities.map(p => p -> config.jobQueues(p)(jobCodec)).toMap)
+  lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
+    p -> config.jobQueues(p)(jobCodec)
+  } toMap)
+
   lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler[JsonJob]]
 
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, copyFactory, jobScheduler, copyScheduler, repairFactory, repairPriority, diffFactory)
+  lazy val managerServer = new thrift.ManagerService(
+    nameServer,
+    copyFactory,
+    jobScheduler,
+    copyScheduler,
+    repairFactory,
+    repairPriority,
+    diffFactory)
+
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
