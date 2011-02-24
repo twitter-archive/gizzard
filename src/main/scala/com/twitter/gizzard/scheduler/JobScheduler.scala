@@ -24,16 +24,16 @@ import shards.{ShardBlackHoleException, ShardRejectedOperationException}
  * Jobs are added to the scheduler with 'put', and the thread pool & queues can be controlled
  * with the normal Process methods ('start', 'shutdown', and so on).
  */
-class JobScheduler[J <: Job](val name: String,
+class JobScheduler(val name: String,
                              val threadCount: Int,
                              val strobeInterval: Duration,
                              val errorLimit: Int,
                              val flushLimit: Int,
                              val jitterRate: Float,
-                             val queue: JobQueue[J],
-                             val errorQueue: JobQueue[J],
-                             val badJobQueue: Option[JobConsumer[J]])
-      extends Process with JobConsumer[J] {
+                             val queue: JobQueue,
+                             val errorQueue: JobQueue,
+                             val badJobQueue: Option[JobConsumer])
+      extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
   var workerThreads: Iterable[BackgroundProcess] = Nil
@@ -118,7 +118,7 @@ class JobScheduler[J <: Job](val name: String,
 
   def isShutdown = queue.isShutdown
 
-  def put(job: J) {
+  def put(job: JsonJob) {
     queue.put(job)
   }
 
@@ -144,11 +144,10 @@ class JobScheduler[J <: Job](val name: String,
       try {
         val job = ticket.job
         try {
-            job()
-            Stats.incr("job-success-count")
+          job()
+          Stats.incr("job-success-count")
         } catch {
-          case e: ShardBlackHoleException =>
-            Stats.incr("job-blackholed-count")
+          case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
           case e: ShardRejectedOperationException =>
             Stats.incr("job-darkmoded-count")
             errorQueue.put(job)
@@ -163,7 +162,10 @@ class JobScheduler[J <: Job](val name: String,
               errorQueue.put(job)
             }
         }
-       ticket.ack()
+        job.nextJob match {
+          case None => ticket.ack()
+          case _    => ticket.continue(job.nextJob.get)
+        }
       } finally {
         _activeThreads.decrementAndGet()
       }

@@ -7,12 +7,12 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 
 class FakeCopy(val sourceShardId: shards.ShardId, val destinationShardId: shards.ShardId, count: Int,
-               nameServer: nameserver.NameServer[shards.Shard], scheduler: JobScheduler[JsonJob])(nextJob: => Option[FakeCopy])
+               nameServer: nameserver.NameServer[shards.Shard], scheduler: JobScheduler)(nextCopy: => Option[FakeCopy])
       extends CopyJob[shards.Shard](sourceShardId, destinationShardId, count, nameServer, scheduler) {
   def serialize = Map("cursor" -> 1)
 
   @throws(classOf[Exception])
-  def copyPage(sourceShard: shards.Shard, destinationShard: shards.Shard, count: Int) = nextJob
+  def copyPage(sourceShard: shards.Shard, destinationShard: shards.Shard, count: Int) = nextCopy
 
   override def equals(that: Any) = that match {
     case that: FakeCopy =>
@@ -30,7 +30,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val count = CopyJob.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
     val nameServer = mock[nameserver.NameServer[shards.Shard]]
-    val jobScheduler = mock[JobScheduler[JsonJob]]
+    val jobScheduler = mock[JobScheduler]
     val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(_)
     val shard1 = mock[shards.Shard]
     val shard2 = mock[shards.Shard]
@@ -65,7 +65,6 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
-          one(jobScheduler).put(nextCopy)
         }
 
         copy.apply()
@@ -76,7 +75,6 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
         expect {
           one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo
           one(nameServer).findShardById(sourceShardId) willThrow new nameserver.NonExistentShard("foo")
-          never(jobScheduler).put(nextCopy)
         }
 
         copy.apply()
@@ -86,7 +84,6 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
         val copy = makeCopy(Some(nextCopy))
         expect {
           one(nameServer).getShard(destinationShardId) willThrow new nameserver.NonExistentShard("foo")
-          never(jobScheduler).put(nextCopy)
         }
 
         copy.apply()

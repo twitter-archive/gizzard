@@ -20,7 +20,9 @@ package net.lag.kestrel
 import java.io._
 import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.channels.FileChannel
-import com.twitter.actors.Actor._
+import java.util.concurrent.Semaphore
+import com.twitter.ostrich.BackgroundProcess
+import com.twitter.conversions.storage._
 import net.lag.logging.Logger
 import com.twitter.util.Time
 
@@ -35,6 +37,7 @@ object JournalItem {
   case class SavedXid(xid: Int) extends JournalItem
   case class Unremove(xid: Int) extends JournalItem
   case class ConfirmRemove(xid: Int) extends JournalItem
+  case class Continue(item: QItem, xid: Int) extends JournalItem
   case object EndOfFile extends JournalItem
 }
 
@@ -50,8 +53,10 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
   private var reader: Option[FileChannel] = None
   private var readerFilename: Option[String] = None
   private var replayer: Option[FileChannel] = None
+  private var replayerFilename: Option[String] = None
 
   var size: Long = 0
+  @volatile var closed: Boolean = false
 
   // small temporary buffer for formatting operations into the journal:
   private val buffer = new Array[Byte](16)
@@ -66,7 +71,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
   private val CMD_UNREMOVE = 5
   private val CMD_CONFIRM_REMOVE = 6
   private val CMD_ADD_XID = 7
-
+  private val CMD_CONTINUE = 8
 
   def this(fullPath: String, syncJournal: => Boolean) =
     this(new File(fullPath).getParent(), new File(fullPath).getName(), syncJournal, false)
@@ -98,7 +103,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
   def dump(xid: Int, openItems: Seq[QItem], queue: Iterable[QItem]) {
     size = 0
     for (item <- openItems) {
-      addWithXid(item)
+      addWithXidAndCommand(CMD_ADD_XID, item)
       removeTentative(false)
     }
     saveXid(xid)
@@ -113,6 +118,9 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
     reader.foreach { _.close }
     reader = None
     readerFilename = None
+    closed = true
+    packerSemaphore.release()
+    packer.join()
   }
 
   def erase(): Unit = {
@@ -139,9 +147,13 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
 
   def add(item: QItem): Unit = add(true, item)
 
-  // used only to list pending transactions when recreating the journal.
-  private def addWithXid(item: QItem) = {
-    val blob = item.pack(CMD_ADD_XID.toByte, true)
+  def continue(xid: Int, item: QItem): Unit = {
+    item.xid = xid
+    addWithXidAndCommand(CMD_CONTINUE, item)
+  }
+
+  private def addWithXidAndCommand(command: Int, item: QItem) = {
+    val blob = item.pack(command.toByte, true)
     do {
       writer.write(blob)
     } while (blob.position < blob.limit)
@@ -174,17 +186,21 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
 
   def startReadBehind(): Unit = {
     val pos = if (replayer.isDefined) replayer.get.position else writer.position
-    val rj = new FileInputStream(queueFile).getChannel
+    val filename = if (replayerFilename.isDefined) replayerFilename.get else queueName
+    val rj = new FileInputStream(new File(queuePath, filename)).getChannel
     rj.position(pos)
     reader = Some(rj)
-    readerFilename = Some(queueName)
+    readerFilename = Some(filename)
+    log.debug("Read-behind on '%s' starting at file %s", queueName, readerFilename.get)
   }
 
   // not tail recursive, but should only recurse once.
   def fillReadBehind(f: QItem => Unit): Unit = {
     val pos = if (replayer.isDefined) replayer.get.position else writer.position
+    val filename = if (replayerFilename.isDefined) replayerFilename.get else queueName
+
     reader.foreach { rj =>
-      if (rj.position == pos && readerFilename.get == queueName) {
+      if (rj.position == pos && readerFilename.get == filename) {
         // we've caught up.
         rj.close
         reader = None
@@ -193,12 +209,16 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
         readJournalEntry(rj) match {
           case (JournalItem.Add(item), _) =>
             f(item)
+          case (JournalItem.Continue(item, xid), _) =>
+            f(item)
           case (JournalItem.EndOfFile, _) =>
             // move to next file and try again.
+            val oldFilename = readerFilename.get
             readerFilename = Journal.journalAfter(new File(queuePath), queueName, readerFilename.get)
             reader = Some(new FileInputStream(new File(queuePath, readerFilename.get)).getChannel)
+            log.debug("Read-behind on '%s' moving from file %s to %s", queueName, oldFilename, readerFilename.get)
             fillReadBehind(f)
-            // FIXME: send actor signal to pack queue files!
+            packerSemaphore.release()
           case (_, _) =>
         }
       }
@@ -207,18 +227,19 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
 
   def replay(name: String)(f: JournalItem => Unit): Unit = {
     Journal.journalsForQueue(new File(queuePath), queueName).foreach { filename =>
-      replayFile(name, new File(queuePath, filename).getCanonicalPath)(f)
+      replayFile(name, filename)(f)
     }
   }
 
   def replayFile(name: String, filename: String)(f: JournalItem => Unit): Unit = {
+    log.debug("Replaying '%s' file %s", name, filename)
     size = 0
     var lastUpdate = 0L
-    val TEN_MB = 10L * 1024 * 1024
     try {
-      val in = new FileInputStream(filename).getChannel
+      val in = new FileInputStream(new File(queuePath, filename).getCanonicalPath).getChannel
+      replayer = Some(in)
+      replayerFilename = Some(filename)
       try {
-        replayer = Some(in)
         var done = false
         do {
           readJournalEntry(in) match {
@@ -226,9 +247,9 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
             case (x, itemsize) =>
               size += itemsize
               f(x)
-              if (size / TEN_MB > lastUpdate) {
-                lastUpdate = size / TEN_MB
-                log.info("Continuing to read '%s' journal (%s); %d MB so far...", name, filename, lastUpdate * 10)
+              if (size > lastUpdate + 10.megabytes.inBytes) {
+                log.info("Continuing to read '%s' journal (%s); %d so far...", name, filename, size.bytes)
+                lastUpdate = size
               }
           }
         } while (!done)
@@ -248,6 +269,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
         // of writing a journal. not awesome but we should recover.
     }
     replayer = None
+    replayerFilename = None
   }
 
   private def truncateJournal(position: Long) {
@@ -298,6 +320,11 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
             val item = QItem.unpack(data)
             item.xid = xid
             (JournalItem.Add(item), 9 + data.length)
+          case CMD_CONTINUE =>
+            val xid = readInt(in)
+            val data = readBlock(in)
+            val item = QItem.unpack(data)
+            (JournalItem.Continue(item, xid), 9 + data.length)
           case n =>
             throw new BrokenItemException(lastPosition, new IOException("invalid opcode in journal: " + n.toInt + " at position " + (in.position - 1)))
         }
@@ -308,18 +335,18 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
     }
   }
 
-  def walk() = new tools.PythonIterator[(JournalItem, Int)] {
-// FIXME
+  def walk(): Iterator[(JournalItem, Int)] = {
     val in = new FileInputStream(new File(queuePath, queueName)).getChannel
-    def apply() = {
+    def next(): Stream[(JournalItem, Int)] = {
       readJournalEntry(in) match {
         case (JournalItem.EndOfFile, _) =>
           in.close()
-          None
+          Stream.Empty
         case x =>
-          Some(x)
+          new Stream.Cons(x, next())
       }
     }
+    next().iterator
   }
 
   private def readBlock(in: FileChannel): Array[Byte] = {
@@ -355,6 +382,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
   private def write(allowSync: Boolean, items: Any*): Int = {
     byteBuffer.clear
     for (item <- items) item match {
+      case bb: ByteBuffer => byteBuffer.put(bb)
       case b: Byte => byteBuffer.put(b)
       case i: Int => byteBuffer.putInt(i)
     }
@@ -368,7 +396,11 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
 
   def rotate() {
     writer.close
-    val rotatedFile = queueName + "." + Time.now.inMilliseconds
+    var rotatedFile = queueName + "." + Time.now.inMilliseconds
+    while (new File(queuePath, rotatedFile).exists) {
+      Thread.sleep(1)
+      rotatedFile = queueName + "." + Time.now.inMilliseconds
+    }
     new File(queuePath, queueName).renameTo(new File(queuePath, rotatedFile))
     size = 0
     open
@@ -376,23 +408,21 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
     if (readerFilename == Some(queueName)) {
       readerFilename = Some(rotatedFile)
     }
-    packer ! "pack"
+    packerSemaphore.release()
   }
 
-  val packer = actor {
-    loop {
-      react {
-        case "pack" =>
-          pack()
-      }
+  val packerSemaphore = new Semaphore(0)
+  val packer = BackgroundProcess.spawnDaemon("pack:" + queueName) {
+    while (!closed) {
+      packerSemaphore.acquire()
+      if (!closed) pack()
     }
   }
-  packer.start()
 
   private def pack() {
     val filenames = Journal.journalsBefore(new File(queuePath), queueName, readerFilename.getOrElse(queueName))
     if (filenames.size > 1) {
-      log.info("Packing journals for '%s' ...", queueName)
+      log.info("Packing journals for '%s': %s", queueName, filenames.mkString(", "))
       val tmpFile = new File(queuePath, queueName + "~~" + Time.now.inMilliseconds)
       val packer = new JournalPacker(filenames.map { new File(queuePath, _).getAbsolutePath },
                                      tmpFile.getAbsolutePath)
@@ -401,7 +431,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
         if (bytes1 == 0 && bytes2 == 0) {
           log.info("Packing '%s' into new journal.", queueName)
         } else {
-          log.info("Packing '%s' -> %d / %d", queueName, bytes1, bytes2)
+          log.info("Packing '%s': %d so far (%d trailing)", queueName, bytes1.bytes, bytes2.bytes)
         }
       }
 
@@ -409,7 +439,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
       val packFile = new File(queuePath, queueName + ".0.pack")
       tmpFile.renameTo(packFile)
       Journal.cleanUpFinishedPack(new File(queuePath), filenames, packFile.getAbsolutePath)
-      log.info("Packing '%s' done.", queueName)
+      log.info("Packing '%s' done: %s", queueName, Journal.journalsForQueue(new File(queuePath), queueName).mkString(", "))
     }
   }
 }

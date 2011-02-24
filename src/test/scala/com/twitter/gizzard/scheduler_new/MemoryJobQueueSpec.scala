@@ -10,12 +10,12 @@ import org.specs.mock.{ClassMocker, JMocker}
 
 object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "MemoryJobQueue" should {
-    val job1 = mock[Job]
-    val job2 = mock[Job]
-    val job3 = mock[Job]
-    val destinationQueue = mock[MemoryJobQueue[Job]]
+    val job1 = mock[JsonJob]
+    val job2 = mock[JsonJob]
+    val job3 = mock[JsonJob]
+    val destinationQueue = mock[MemoryJobQueue]
 
-    var queue: MemoryJobQueue[Job] = null
+    var queue: MemoryJobQueue = null
 
     doBefore {
       queue = new MemoryJobQueue("queue", 20)
@@ -43,7 +43,7 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
       queue.resume()
       queue.running mustEqual true
       queue.paused mustEqual false
-      queue.get() must beSome[Ticket[Job]]
+      queue.get() must beSome[Ticket]
 
       queue.shutdown()
       queue.running mustEqual false
@@ -55,7 +55,7 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
       "normal" in {
         queue.put(job1)
         queue.size mustEqual 1
-        queue.get() must beSome[Ticket[Job]].which { _.job eq job1 }
+        queue.get() must beSome[Ticket].which { _.job eq job1 }
       }
 
       "full" in {
@@ -63,7 +63,7 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
         queue.put(job2)
         (0 until 19).foreach { n => queue.put(job3) }
         queue.size mustEqual 20
-        queue.get() must beSome[Ticket[Job]].which { _.job eq job2 }
+        queue.get() must beSome[Ticket].which { _.job eq job2 }
       }
     }
 

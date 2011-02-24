@@ -50,7 +50,7 @@ trait RepairJobParser[S <: Shard] extends JsonJobParser {
 abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
                                        var count: Int,
                                        nameServer: NameServer[S],
-                                       scheduler: PrioritizingJobScheduler[JsonJob],
+                                       scheduler: PrioritizingJobScheduler,
                                        priority: Int) extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
@@ -106,7 +106,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
 }
 
 abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
-    nameServer: NameServer[S], scheduler: PrioritizingJobScheduler[JsonJob], priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
+    nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
 
   private val log = Logger.get(getClass.getName)
 

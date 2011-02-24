@@ -6,8 +6,8 @@ import com.twitter.util.Duration
 /**
  * Anything that can receive jobs.
  */
-trait JobConsumer[J <: Job] {
-  def put(job: J)
+trait JobConsumer {
+  def put(job: JsonJob)
 }
 
 /**
@@ -15,26 +15,18 @@ trait JobConsumer[J <: Job] {
  * confirmed until the 'ack' method is called. If a ticket isn't acked before the server shuts
  * down or dies, the job will be retried on the next startup.
  */
-trait Ticket[J <: Job] {
-  def job: J
+trait Ticket {
+  def job: JsonJob
   def ack()
+  def continue(job: JsonJob)
 }
 
 /**
  * A job queue that can put and get, and be drained into another queue.
  */
-trait JobQueue[J <: Job] extends JobConsumer[J] with Process {
-  def get(): Option[Ticket[J]]
-  def drainTo(queue: JobQueue[J], delay: Duration)
+trait JobQueue extends JobConsumer with Process {
+  def get(): Option[Ticket]
+  def drainTo(queue: JobQueue, delay: Duration)
   def checkExpiration(flushLimit: Int)
   def size: Int
-}
-
-/**
- * A mechanism for turning jobs into byte arrays (and vice versa) so that they can be used with
- * journaled queues.
- */
-trait Codec[J <: Job] {
-  def flatten(job: J): Array[Byte]
-  def inflate(data: Array[Byte]): J
 }
