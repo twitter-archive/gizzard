@@ -8,7 +8,7 @@ import scheduler._
 
 class JobInjectorService(
   codecParam: JsonCodec,
-  scheduler: PrioritizingJobScheduler[JsonJob])
+  scheduler: PrioritizingJobScheduler)
 extends JobInjector.Iface {
 
   private val codec = codecParam match {

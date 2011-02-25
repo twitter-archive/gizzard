@@ -47,7 +47,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
                                         destinationId: ShardId,
                                         var count: Int,
                                         nameServer: NameServer[S],
-                                        scheduler: JobScheduler[JsonJob])
+                                        scheduler: JobScheduler)
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
@@ -86,13 +86,10 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
         // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
         nameServer.markShardBusy(destinationId, shards.Busy.Busy)
 
-        val nextJob = copyPage(sourceShard, destinationShard, count)
-        nextJob match {
-          case Some(job) =>
-            incrGauge
-            scheduler.put(job)
-          case None =>
-            finish()
+        this.nextJob = copyPage(sourceShard, destinationShard, count)
+        this.nextJob match {
+          case None => finish()
+          case _ => incrGauge
         }
       }
     } catch {

@@ -7,9 +7,9 @@ import scala.collection.mutable
  * If any of the smaller jobs throws an exception, the NestedJob is enqueued with only that
  * job and the remaining jobs -- in other words, it's enqueued with its progress so far.
  */
-class NestedJob[J <: Job](val jobs: Iterable[J]) extends Job {
+abstract class NestedJob(val jobs: Iterable[JsonJob]) extends JsonJob {
   val taskQueue = {
-    val q = new mutable.Queue[J]()
+    val q = new mutable.Queue[JsonJob]()
     q ++= jobs
     q
   }
@@ -25,7 +25,7 @@ class NestedJob[J <: Job](val jobs: Iterable[J]) extends Job {
 
   override def equals(other: Any) = {
     other match {
-      case other: NestedJob[_] if (other ne null) =>
+      case other: NestedJob if (other ne null) =>
         taskQueue.toList == other.taskQueue.toList
       case _ =>
         false

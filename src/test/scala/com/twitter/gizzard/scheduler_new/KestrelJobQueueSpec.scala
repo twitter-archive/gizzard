@@ -2,27 +2,27 @@ package com.twitter.gizzard
 package scheduler
 
 import scala.collection.mutable
-import com.twitter.util.Time
+import com.twitter.util.{Time, Promise}
 import com.twitter.conversions.time._
 import com.twitter.conversions.storage._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.kestrel.config.QueueConfig
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-
+import java.util.concurrent.FutureTask
 
 object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "KestrelJobQueue" should {
     val queue = mock[PersistentQueue]
     val queue2 = mock[PersistentQueue]
-    val codec = mock[Codec[Job]]
-    val job1 = mock[Job]
-    val job2 = mock[Job]
-    val destinationQueue = mock[KestrelJobQueue[Job]]
+    val codec = mock[JsonCodec]
+    val job1 = mock[JsonJob]
+    val job2 = mock[JsonJob]
+    val destinationQueue = mock[KestrelJobQueue]
     val aQueueConfig = QueueConfig(Int.MaxValue, 1.megabyte, 1.megabyte, None, 1.megabyte, 1.megabyte,
                                    10, false, true, false, false, None, 1, false)
 
-    var kestrelJobQueue: KestrelJobQueue[Job] = null
+    var kestrelJobQueue: KestrelJobQueue = null
 
     doBefore {
       kestrelJobQueue = new KestrelJobQueue("queue", queue, codec)
@@ -104,29 +104,37 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
       }
 
       "item available immediately" in {
+        val promise = new com.twitter.util.Promise[Option[QItem]]
+        promise.setValue(Some(QItem(Time.fromSeconds(0), None, "abc".getBytes, 900)))
         expect {
           allowing(queue).isClosed willReturn false
-          one(queue).removeReceive(any[Option[Time]], any[Boolean]) willReturn Some(QItem(Time.fromSeconds(0), None, "abc".getBytes, 900))
+          one(queue).waitRemove(any[Option[Time]], any[Boolean]) willReturn promise
           one(codec).inflate("abc".getBytes) willReturn job1
           one(queue).confirmRemove(900)
         }
 
         val ticket = kestrelJobQueue.get()
-        ticket must beSome[Ticket[Job]].which { _.job == job1 }
+        ticket must beSome[Ticket].which { _.job == job1 }
         ticket.get.ack()
       }
 
       "item available eventually" in {
+        val promiseNone = new com.twitter.util.Promise[Option[QItem]]
+        val promiseSome = new com.twitter.util.Promise[Option[QItem]]
+        //val none = None(QItem)
+        promiseNone.setValue(None)
+        promiseSome.setValue(Some(QItem(Time.fromSeconds(0), None, "abc".getBytes, 900)))
+
         expect {
           allowing(queue).isClosed willReturn false
-          one(queue).removeReceive(any[Option[Time]], any[Boolean]).willReturn(None) then
-            one(queue).removeReceive(any[Option[Time]], any[Boolean]).willReturn(Some(QItem(Time.fromSeconds(0), None, "abc".getBytes, 900)))
+          one(queue).waitRemove(any[Option[Time]], any[Boolean]).willReturn(promiseNone) then
+            one(queue).waitRemove(any[Option[Time]], any[Boolean]).willReturn(promiseSome)
           one(codec).inflate("abc".getBytes) willReturn job1
           one(queue).confirmRemove(900)
         }
 
         val ticket = kestrelJobQueue.get()
-        ticket must beSome[Ticket[Job]].which { _.job == job1 }
+        ticket must beSome[Ticket].which { _.job == job1 }
         ticket.get.ack()
       }
     }

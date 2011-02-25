@@ -9,7 +9,7 @@ import shards.{Shard, ReadWriteShard}
 import config.{GizzardServer => ServerConfig}
 
 
-abstract class GizzardServer[S <: Shard, J <: JsonJob](config: ServerConfig) {
+abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
@@ -45,7 +45,7 @@ abstract class GizzardServer[S <: Shard, J <: JsonJob](config: ServerConfig) {
     p -> config.jobQueues(p)(jobCodec)
   } toMap)
 
-  lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler[JsonJob]]
+  lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler]
 
 
   // service wiring

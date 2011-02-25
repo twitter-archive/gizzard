@@ -20,7 +20,22 @@ object JsonJob {
   val mapper = new ObjectMapper
 }
 
-trait JsonJob extends Job {
+trait JsonJob {
+  @throws(classOf[Exception])
+  def apply(): Unit
+
+  var nextJob: Option[JsonJob] = None
+  var errorCount: Int = 0
+  var errorMessage: String = "(none)"
+
+  def loggingName = {
+    val className = getClass.getName
+    className.lastIndexOf('.') match {
+      case -1 => className
+      case n => className.substring(n + 1)
+    }
+  }
+
   def toMap: Map[String, Any]
 
   def shouldReplicate = true
@@ -64,7 +79,7 @@ trait JsonJob extends Job {
 /**
  * A NestedJob that can be encoded in json.
  */
-class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob[JsonJob](jobs) with JsonJob {
+class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob(jobs) with JsonJob {
   def toMap: Map[String, Any] = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
   //override def toString = toJson
 }
@@ -72,7 +87,7 @@ class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob[JsonJob](jobs) wi
 /**
  * A JobConsumer that encodes JsonJobs into a string and logs them at error level.
  */
-class JsonJobLogger(logger: Logger) extends JobConsumer[JsonJob] {
+class JsonJobLogger(logger: Logger) extends JobConsumer {
   def put(job: JsonJob) = logger.error(job.toString)
 }
 

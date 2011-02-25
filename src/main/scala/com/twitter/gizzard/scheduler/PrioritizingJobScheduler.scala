@@ -4,25 +4,24 @@ package scheduler
 import scala.collection.Map
 import scala.collection.mutable
 
-
 /**
  * A map of JobSchedulers by priority. It can be treated as a single scheduler, and all process
  * operations work on the cluster of schedulers as a whole.
  */
-class PrioritizingJobScheduler[J <: Job](val _schedulers: Map[Int, JobScheduler[J]]) extends Process {
-  val schedulers = mutable.Map.empty[Int, JobScheduler[J]] ++ _schedulers
+class PrioritizingJobScheduler(val _schedulers: Map[Int, JobScheduler]) extends Process {
+  val schedulers = mutable.Map.empty[Int, JobScheduler] ++ _schedulers
 
-  def put(priority: Int, job: J) {
+  def put(priority: Int, job: JsonJob) {
     apply(priority).put(job)
   }
 
-  def apply(priority: Int): JobScheduler[J] = {
+  def apply(priority: Int): JobScheduler = {
     schedulers.get(priority).getOrElse {
       throw new Exception("No scheduler for priority " + priority)
     }
   }
 
-  def update(priority: Int, scheduler: JobScheduler[J]) {
+  def update(priority: Int, scheduler: JobScheduler) {
     schedulers(priority) = scheduler
   }
 
