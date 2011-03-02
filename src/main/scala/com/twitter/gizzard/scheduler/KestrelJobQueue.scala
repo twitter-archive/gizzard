@@ -66,9 +66,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
           queue.confirmRemove(qitem.xid)
         }
         def continue(job: JsonJob) = {
-          queue.confirmRemove(qitem.xid)
-          queue.add(codec.flatten(job))
-          //queue.continue(qitem.xid, codec.flatten(job)) FIXME, this needs to be implemented
+          queue.continue(qitem.xid, codec.flatten(job))
         }
       }
     }
