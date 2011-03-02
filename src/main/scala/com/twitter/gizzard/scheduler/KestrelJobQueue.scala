@@ -65,17 +65,21 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
         def ack() {
           queue.confirmRemove(qitem.xid)
         }
-        def continue(job: JsonJob) = queue.continue(qitem.xid, codec.flatten(job))
+        def continue(job: JsonJob) = {
+          queue.confirmRemove(qitem.xid)
+          queue.add(codec.flatten(job))
+          //queue.continue(qitem.xid, codec.flatten(job)) FIXME, this needs to be implemented
+        }
       }
     }
   }
 
   def drainTo(otherQueue: JobQueue, delay: Duration) {
-    require(otherQueue.isInstanceOf[KestrelJobQueue[_]])
+    require(otherQueue.isInstanceOf[KestrelJobQueue])
 
     val newConfig = queue.config.copy(maxAge = Some(delay))
 
-    queue.expireQueue = Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue)
+    queue.expireQueue = Some(otherQueue.asInstanceOf[KestrelJobQueue].queue)
     queue.config = newConfig
   }
 
