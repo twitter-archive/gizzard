@@ -56,7 +56,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
     var item: Option[QItem] = None
     while (item == None && !queue.isClosed) {
       // do not use Time.now or it will interact strangely with tests.
-      item = queue.waitRemove(Some(Time.fromMilliseconds(System.currentTimeMillis + TIMEOUT)), true).get
+      item = queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + TIMEOUT)), true)
     }
     item.map { qitem =>
       val decoded = codec.inflate(qitem.data)
@@ -71,11 +71,11 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   }
 
   def drainTo(otherQueue: JobQueue, delay: Duration) {
-    require(otherQueue.isInstanceOf[KestrelJobQueue])
+    require(otherQueue.isInstanceOf[KestrelJobQueue[_]])
 
     val newConfig = queue.config.copy(maxAge = Some(delay))
 
-    queue.expireQueue = Some(otherQueue.asInstanceOf[KestrelJobQueue].queue)
+    queue.expireQueue = Some(otherQueue.asInstanceOf[KestrelJobQueue[J]].queue)
     queue.config = newConfig
   }
 
