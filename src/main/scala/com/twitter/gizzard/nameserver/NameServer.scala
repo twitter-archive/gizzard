@@ -159,8 +159,8 @@ class NameServer[S <: shards.Shard](
   def findForwardings(tableId: Int) = {
     if(forwardings == null) throw new NameserverUninitialized
     forwardings.get(tableId).flatMap { bySourceIds =>
-      val shards = bySourceIds.values.toArray.map { shardInfo =>
-        findShardById(shardInfo.asInstanceOf[ShardInfo].id)
+      val shards = bySourceIds.values.toArray(Array[ShardInfo]()).map { shardInfo =>
+        findShardById(shardInfo.id)
       }
       Some(shards)
     } getOrElse {
