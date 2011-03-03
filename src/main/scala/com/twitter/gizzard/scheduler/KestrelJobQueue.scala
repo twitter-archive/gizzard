@@ -56,7 +56,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
     var item: Option[QItem] = None
     while (item == None && !queue.isClosed) {
       // do not use Time.now or it will interact strangely with tests.
-      item = queue.waitRemove(Some(Time.fromMilliseconds(System.currentTimeMillis + TIMEOUT)), true).get
+      item = queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + TIMEOUT)), true)
     }
     item.map { qitem =>
       val decoded = codec.inflate(qitem.data)
@@ -65,7 +65,11 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
         def ack() {
           queue.confirmRemove(qitem.xid)
         }
-        def continue(job: JsonJob) = queue.continue(qitem.xid, codec.flatten(job))
+        def continue(job: JsonJob) = {
+          queue.confirmRemove(qitem.xid)
+          queue.add(codec.flatten(job))
+          //queue.continue(qitem.xid, codec.flatten(job)) FIXME, this needs to be implemented
+        }
       }
     }
   }

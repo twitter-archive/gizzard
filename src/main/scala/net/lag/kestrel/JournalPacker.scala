@@ -95,13 +95,11 @@ class JournalPacker(filenames: Seq[String], newFilename: String) {
 
     // now write the new journal.
     statusCallback(0, 0)
-    def next(): Stream[QItem] = {
-      advanceAdder() match {
-        case Some(x) => new Stream.Cons(x, next())
-        case None => Stream.Empty
+    val remaining = new Iterable[QItem] {
+      def iterator = new tools.PythonIterator[QItem] {
+        def apply() = advanceAdder()
       }
     }
-    val remaining = next()
 
     val out = new Journal(newFilename, false)
     out.open()
