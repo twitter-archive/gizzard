@@ -68,8 +68,13 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
     try {
       log.info("[%s] - shard block (type %s): state=%s", label,
                getClass.getName.split("\\.").last, toMap)
-      val shards = shardIds.map(nameServer.findShardById(_))
-      repair(shards)
+      val shardObjs = shardIds.map(nameServer.findShardById(_))
+      shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Busy))
+      repair(shardObjs)
+      this.nextJob match {
+        case None => shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Normal))
+        case _ =>
+      }
     } catch {
       case e: NonExistentShard =>
         log.error("[%s] - failed because one of the shards doesn't exist. Terminating the repair.", label)
