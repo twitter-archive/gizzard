@@ -110,7 +110,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
 
   private val log = Logger.get(getClass.getName)
 
-  def scheduleNextRepair(lowestCursor: C): Unit
+  def nextRepair(lowestCursor: C): Option[RepairJob[S]]
 
   def scheduleDifferent(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
 
@@ -154,7 +154,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
         }
       }
       val nextCursor = listCursors.map(_._3).reduceLeft((c1, c2) => lowestCursor(c1, c2))
-      scheduleNextRepair(nextCursor)
+      this.nextJob = nextRepair(nextCursor)
     }
   }
 }
