@@ -121,6 +121,8 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
 
   def scheduleMissing(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
 
+  def scheduleBulk(otherShards: Seq[S], items: Seq[R]): Unit
+
   def cursorAtEnd(cursor: C): Boolean
 
   def lowestCursor(c1: C, c2: C): C
@@ -140,21 +142,27 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
       while (listCursors.forall(lc => !lc._2.isEmpty || cursorAtEnd(lc._3)) && listCursors.exists(lc => !lc._2.isEmpty)) {
         val tableId = tableIds(0)
         val firstList = smallestList(listCursors)
-        val firstItem = firstList._2.remove(0)
-        var firstEnqueued = false
-        val similarLists = listCursors.filter(!_._2.isEmpty).filter(_._1 != firstList._1).filter(_._2(0).similar(firstItem) == 0)
-        if (similarLists.size != (listCursors.size - 1) ) {
-          firstEnqueued = true
-          scheduleMissing(firstList, tableId, firstItem)
-        }
-        for (list <- similarLists) {
-          val listItem = list._2.remove(0)
-          if (shouldSchedule(firstItem, listItem)) {
-            if (!firstEnqueued) {
-              firstEnqueued = true
-              scheduleDifferent(firstList, tableId, firstItem)
+        val finishedLists = listCursors.filter(lc => cursorAtEnd(lc._3) && lc._2.isEmpty)
+        if (finishedLists.size == listCursors.size - 1) {
+          scheduleBulk(finishedLists.map(_._1), firstList._2)
+          firstList._2.clear
+        } else {
+          val firstItem = firstList._2.remove(0)
+          var firstEnqueued = false
+          val similarLists = listCursors.filter(!_._2.isEmpty).filter(_._1 != firstList._1).filter(_._2(0).similar(firstItem) == 0)
+          if (similarLists.size != (listCursors.size - 1) ) {
+            firstEnqueued = true
+            scheduleMissing(firstList, tableId, firstItem)
+          }
+          for (list <- similarLists) {
+            val listItem = list._2.remove(0)
+            if (shouldSchedule(firstItem, listItem)) {
+              if (!firstEnqueued) {
+                firstEnqueued = true
+                scheduleDifferent(firstList, tableId, firstItem)
+              }
+              scheduleDifferent(list, tableId, listItem)
             }
-            scheduleDifferent(list, tableId, listItem)
           }
         }
       }
