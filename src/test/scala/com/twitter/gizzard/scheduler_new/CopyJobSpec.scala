@@ -65,7 +65,6 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
           one(nameServer).findShardById(sourceShardId) willReturn shard1
           one(nameServer).findShardById(destinationShardId) willReturn shard2
           one(nameServer).markShardBusy(destinationShardId, shards.Busy.Busy)
-          one(nextCopy).nextJob_$eq(Some(nextCopy))
         }
 
         copy.apply()
