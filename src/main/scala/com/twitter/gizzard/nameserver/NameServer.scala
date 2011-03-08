@@ -156,6 +156,18 @@ class NameServer[S <: shards.Shard](
     findShardById(shardInfo.id)
   }
 
+  def findForwardings(tableId: Int) = {
+    if(forwardings == null) throw new NameserverUninitialized
+    forwardings.get(tableId).flatMap { bySourceIds =>
+      val shards = bySourceIds.values.toArray(Array[ShardInfo]()).map { shardInfo =>
+        findShardById(shardInfo.id)
+      }
+      Some(shards)
+    } getOrElse {
+      throw new NonExistentShard("No shards for tableId: %s".format(tableId))
+    }
+  }
+
   @throws(classOf[shards.ShardException])
   def getRootForwardings(id: ShardId) = {
     getRootShardIds(id).map(getForwardingForShard)

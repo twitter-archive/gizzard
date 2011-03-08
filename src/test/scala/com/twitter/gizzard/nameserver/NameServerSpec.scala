@@ -77,6 +77,17 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       nameServer.findCurrentForwarding(1, 2) mustEqual shard
     }
 
+    "find forwardings" in {
+      expect {
+        one(shardRepository).find(shardInfos(3), 1, List()) willReturn shard
+        one(shardRepository).find(shardInfos(0), 1, List()) willReturn shard
+        one(shardRepository).find(shardInfos(1), 1, List()) willReturn shard
+        one(shardRepository).find(shardInfos(2), 1, List(shard)) willReturn shard
+      }
+
+      nameServer.findForwardings(1) mustEqual List(shard, shard, shard)
+    }
+
     "find shard by id" in {
       expect {
         one(shardRepository).find(shardInfos(3), 1, List()) willReturn shard
