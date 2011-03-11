@@ -121,6 +121,8 @@ class ReplicatingShard[S <: Shard](
         } catch {
           case e: ShardRejectedOperationException =>
             failover(f, remainder)
+          case e: ShardBlackHoleException =>
+            failover(f, remainder)
           case e: ShardException =>
             log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             failover(f, remainder)
@@ -149,6 +151,8 @@ class ReplicatingShard[S <: Shard](
           }
         } catch {
           case e: ShardRejectedOperationException =>
+            rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
+          case e: ShardBlackHoleException =>
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
           case e: ShardException =>
             log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
