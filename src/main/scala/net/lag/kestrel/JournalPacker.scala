@@ -70,6 +70,8 @@ class JournalPacker(filenames: Seq[String], newFilename: String) {
     for ((item, itemsize) <- remover) {
       item match {
         case JournalItem.Add(qitem) =>
+        case JournalItem.Continue(qitem, xid) =>
+          openTransactions -= xid
         case JournalItem.Remove =>
           advanceAdder().get
         case JournalItem.RemoveTentative =>
