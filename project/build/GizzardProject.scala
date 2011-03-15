@@ -13,7 +13,7 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   // remove when moved to libkestrel
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
-  val ostrich    = "com.twitter" % "ostrich"  % "2.3.6"
+  val ostrich    = "com.twitter" % "ostrich"  % "4.0.1"
   val util       = "com.twitter" % "util" % "1.6.4"
   val rpcclient  = "com.twitter" % "rpcclient" % "1.2.0-gizzardRC5"
 

@@ -1,7 +1,7 @@
 package com.twitter.gizzard
 package scheduler
 
-import com.twitter.ostrich.Stats
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}

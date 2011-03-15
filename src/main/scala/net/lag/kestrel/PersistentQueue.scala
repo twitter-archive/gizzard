@@ -26,7 +26,7 @@ import com.twitter.actors.{Actor, TIMEOUT}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
 import net.lag.logging.Logger
-import com.twitter.ostrich.Stats
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import config._
 
@@ -130,7 +130,7 @@ class PersistentQueue(val name: String, persistencePath: String, @volatile var c
     )
   }
 
-  def gauge(gaugeName: String, value: => Double) = Stats.makeGauge(name + "_" + gaugeName)(value)
+  def gauge(gaugeName: String, value: => Double) = Stats.addGauge(name + "_" + gaugeName)(value)
 
   gauge("items", length)
   gauge("bytes", bytes)

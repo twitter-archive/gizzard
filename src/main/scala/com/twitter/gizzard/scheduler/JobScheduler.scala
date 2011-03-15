@@ -2,7 +2,8 @@ package com.twitter.gizzard
 package scheduler
 
 import java.util.Random
-import com.twitter.ostrich.{BackgroundProcess, Stats}
+import com.twitter.ostrich.admin.BackgroundProcess
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap

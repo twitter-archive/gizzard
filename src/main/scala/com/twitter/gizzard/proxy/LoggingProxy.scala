@@ -2,8 +2,8 @@ package com.twitter.gizzard
 package proxy
 
 import scala.reflect.Manifest
-import com.twitter.util.Time
-import com.twitter.ostrich.{Stats, StatsProvider, W3CStats}
+import com.twitter.util.{Duration, Time}
+import com.twitter.ostrich.stats.{Stats, StatsProvider, W3CStats}
 
 
 /**
@@ -21,23 +21,25 @@ object LoggingProxy {
         if (method.name != "apply") {
           stats.incr("operation-" + shortName + "-" + method.name + "-count")
         }
-        logger.transaction {
-          logger.log("timestamp", Time.now.inMillis)
-          logger.log("operation", name + ":" + method.name)
+        logger { tstats =>
+        //logger.transaction {
+          tstats.setLabel("timestamp", Time.now.inMillis.toString)
+          tstats.setLabel("operation", name + ":" + method.name)
           val arguments = (if (method.args != null) method.args.mkString(",") else "").replaceAll("[ \n]", "_")
-          logger.log("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
-          val (rv, msec) = Stats.duration { method() }
-          logger.addTiming("action-timing", msec.toInt)
-          stats.addTiming("x-operation-" + shortName + ":" + method.name, msec.toInt)
+          tstats.setLabel("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
+          val (rv, duration) = Duration.inMilliseconds { method() }
+          tstats.addMetric("action-timing", duration.inMilliseconds.toInt)
+          tstats.addMetric("x-operation-" + shortName + ":" + method.name, duration.inMilliseconds.toInt)
 
           if (rv != null) {
             // structural types don't appear to work for some reason.
-            rv match {
-              case col: Collection[_] => logger.log("result-count", col.size)
-              case javaCol: java.util.Collection[_] => logger.log("result-count", javaCol.size)
-              case arr: Array[AnyRef] => logger.log("result-count", arr.size)
-              case _: AnyRef => logger.log("result-count", 1)
+            val resultCount = rv match {
+              case col: Collection[_]               => col.size.toString
+              case javaCol: java.util.Collection[_] => javaCol.size.toString
+              case arr: Array[AnyRef]               => arr.size.toString
+              case _: AnyRef                        => "1"
             }
+            tstats.setLabel("result-count", resultCount)
           }
           rv
         }

@@ -2,7 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import java.util.{ArrayList => JArrayList}
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
-import com.twitter.ostrich.Stats
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
@@ -18,7 +18,7 @@ class MemoryJobQueue(queueName: String, maxSize: Int) extends JobQueue {
 
   private val log = Logger.get(getClass.getName)
 
-  Stats.makeGauge(queueName + "_items") { size }
+  Stats.addGauge(queueName + "_items") { size }
 
   val queue = if (maxSize > 0) {
     new LinkedBlockingQueue[(JsonJob, Time)](maxSize)

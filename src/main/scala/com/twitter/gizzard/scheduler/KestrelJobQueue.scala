@@ -1,6 +1,6 @@
 package com.twitter.gizzard.scheduler
 
-import com.twitter.ostrich.{Stats, StatsProvider}
+import com.twitter.ostrich.stats.{Stats, StatsProvider}
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
 import net.lag.kestrel.{PersistentQueue, QItem}
@@ -17,8 +17,8 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
 
-  Stats.makeGauge(queueName + "_items") { size }
-  Stats.makeGauge(queueName + "_age") { age }
+  Stats.addGauge(queueName + "_items") { size }
+  Stats.addGauge(queueName + "_age") { age }
 
   def name = queueName
   def size = queue.length.toInt

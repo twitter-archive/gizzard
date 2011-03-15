@@ -11,7 +11,7 @@ import org.apache.thrift._
 import org.apache.thrift.protocol._
 import org.apache.thrift.transport._
 import org.apache.thrift.server._
-import com.twitter.ostrich.Stats
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
 import net.lag.configgy.ConfigMap
@@ -38,8 +38,8 @@ object TSelectorServer {
     val queue = new LinkedBlockingQueue[Runnable]
     val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
                                           queue, new NamedPoolThreadFactory(name))
-    Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
-    Stats.makeGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
+    Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.addGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
     cache(name) = executor
     executor
   }
@@ -81,7 +81,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   val clientMap = new mutable.HashMap[SelectableChannel, Client]
   val registerQueue = new ConcurrentLinkedQueue[SocketChannel]
 
-  Stats.makeGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
+  Stats.addGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
 
   def isRunning = running
 
@@ -204,7 +204,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
         } else {
           key.cancel()
           execute {
-            val (_, duration) = Stats.duration {
+            val (_, duration) = Duration.inMilliseconds {
               val client = clientMap.synchronized { clientMap(key.channel) }
               client.activity = Time.now
               try {
