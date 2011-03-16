@@ -5,11 +5,9 @@ import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
 import scala.collection.mutable.Queue
 import scala.util.matching.Regex
-import com.twitter.rpcclient.LoadBalancingChannel
 import com.twitter.util.Duration
 import net.lag.logging.Logger
 
-import thrift.{JobInjector, JobInjectorClient}
 import thrift.conversions.Sequences._
 import nameserver.JobRelay
 

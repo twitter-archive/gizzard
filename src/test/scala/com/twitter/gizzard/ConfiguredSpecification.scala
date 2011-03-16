@@ -4,7 +4,10 @@ import java.io.File
 import org.specs.Specification
 import net.lag.configgy.Configgy
 import com.twitter.querulous.evaluator.QueryEvaluator
-import com.twitter.rpcclient.{PooledClient, ThriftConnection}
+import com.twitter.finagle.builder.ClientBuilder
+import java.net.InetSocketAddress
+import org.apache.thrift.protocol.TBinaryProtocol
+import com.twitter.finagle.thrift.ThriftClientFramedCodec
 import com.twitter.util.Eval
 
 import com.twitter.gizzard
@@ -73,11 +76,11 @@ trait IntegrationSpecification extends Specification {
   def testServerClient(s: WithFacts) = {
     val i = s.enum
     val port = 8000 + (i - 1) * 3
-    new PooledClient[testserver.thrift.TestServer.Iface] {
-      val name = "testclient" + i
-      def createConnection =
-        new ThriftConnection[testserver.thrift.TestServer.Client]("localhost", port, true)
-    }.proxy
+    new testserver.thrift.TestServer.ServiceToClient(ClientBuilder()
+        .hosts(new InetSocketAddress("localhost", port))
+        .codec(ThriftClientFramedCodec())
+        .build(),
+        new TBinaryProtocol.Factory())
   }
 
   def setupServers(servers: WithFacts*) {

@@ -3,12 +3,15 @@ package nameserver
 
 import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
-import com.twitter.rpcclient.LoadBalancingChannel
 import com.twitter.conversions.time._
 import com.twitter.util.Duration
+import com.twitter.finagle.builder.ClientBuilder
+import java.net.InetSocketAddress
+import org.apache.thrift.protocol.TBinaryProtocol
+import com.twitter.finagle.thrift.ThriftClientFramedCodec
 
 import scheduler.JsonJob
-import thrift.{JobInjector, JobInjectorClient}
+import thrift.JobInjector
 
 class ClusterBlockedException(cluster: String, cause: Throwable)
 extends Exception("Job replication to cluster '" + cluster + "' is blocked.", cause) {
@@ -17,21 +20,19 @@ extends Exception("Job replication to cluster '" + cluster + "' is blocked.", ca
 
 class JobRelayFactory(
   priority: Int,
-  framed: Boolean,
   timeout: Duration,
   retries: Int)
 extends (Map[String, Seq[Host]] => JobRelay) {
 
-  def this(priority: Int, framed: Boolean, timeout: Duration) = this(priority, framed, timeout, 0)
+  def this(priority: Int, timeout: Duration) = this(priority, timeout, 0)
 
   def apply(hostMap: Map[String, Seq[Host]]) =
-    new JobRelay(hostMap, priority, framed, timeout, retries)
+    new JobRelay(hostMap, priority, timeout, retries)
 }
 
 class JobRelay(
   hostMap: Map[String, Seq[Host]],
   priority: Int,
-  framed: Boolean,
   timeout: Duration,
   retries: Int)
 extends (String => JobRelayCluster) {
@@ -47,7 +48,7 @@ extends (String => JobRelayCluster) {
     if (onlineHosts.isEmpty) {
       if (blocked) Map(c -> new BlockedJobRelayCluster(c)) else Map[String, JobRelayCluster]()
     } else {
-      Map(c -> new JobRelayCluster(onlineHosts, priority, framed, timeout, retries))
+      Map(c -> new JobRelayCluster(onlineHosts, priority, timeout, retries))
     }
   }
 
@@ -59,11 +60,16 @@ extends (String => JobRelayCluster) {
 class JobRelayCluster(
   hosts: Seq[Host],
   priority: Int,
-  framed: Boolean,
   timeout: Duration,
   retries: Int)
 extends (Iterable[Array[Byte]] => Unit) {
-  val client = new LoadBalancingChannel(hosts.map(h => new JobInjectorClient(h.hostname, h.port, framed, timeout, retries)))
+  val client = new JobInjector.ServiceToClient(ClientBuilder()
+      .hosts(hosts.map { h => new InetSocketAddress(h.hostname, h.port) })
+      .codec(ThriftClientFramedCodec())
+      .retries(retries)
+      .connectionTimeout(timeout)
+      .build(),
+      new TBinaryProtocol.Factory())
 
   def apply(jobs: Iterable[Array[Byte]]) {
     val jobList = new JLinkedList[thrift.Job]()
@@ -74,22 +80,22 @@ extends (Iterable[Array[Byte]] => Unit) {
       jobList.add(tj)
     }
 
-    client.proxy.inject_jobs(jobList)
+    client.inject_jobs(jobList)()
   }
 }
 
-object NullJobRelayFactory extends JobRelayFactory(0, false, 0.seconds) {
+object NullJobRelayFactory extends JobRelayFactory(0, 0.seconds) {
   override def apply(h: Map[String, Seq[Host]]) = NullJobRelay
 }
 
-object NullJobRelay extends JobRelay(Map(), 0, false, 0.seconds, 0)
+object NullJobRelay extends JobRelay(Map(), 0, 0.seconds, 0)
 
-object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, false, 0.seconds, 0) {
+object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, 0.seconds, 0) {
   override val client = null
   override def apply(jobs: Iterable[Array[Byte]]) = ()
 }
 
-class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, false, 0.seconds, 0) {
+class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, 0.seconds, 0) {
   override val client = null
   override def apply(jobs: Iterable[Array[Byte]]) { throw new ClusterBlockedException(cluster) }
 }

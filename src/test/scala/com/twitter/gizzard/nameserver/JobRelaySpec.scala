@@ -8,7 +8,7 @@ import thrift.{JobInjectorService, TThreadServer, JobInjector}
 
 
 object JobRelaySpec extends ConfiguredSpecification {
-  val relay = new JobRelayFactory(2, true, 1.second)(Map(
+  val relay = new JobRelayFactory(2, 1.second)(Map(
     "normal" ->
       Seq(Host("localhost1", 8000, "normal", HostStatus.Normal),
           Host("localhost2", 8000, "normal", HostStatus.Normal)),

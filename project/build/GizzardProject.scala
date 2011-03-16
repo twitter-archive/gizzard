@@ -1,7 +1,12 @@
 import sbt._
 import com.twitter.sbt._
 
-class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) with DefaultRepos with SubversionPublisher {
+class GizzardProject(info: ProjectInfo)
+  extends StandardLibraryProject(info)
+  with DefaultRepos
+  with SubversionPublisher
+  with CompileThriftFinagle
+{
 
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
@@ -13,11 +18,11 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   // remove when moved to libkestrel
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
-  val ostrich    = "com.twitter" % "ostrich"  % "4.0.1"
-  val util       = "com.twitter" % "util" % "1.6.4"
-  val rpcclient  = "com.twitter" % "rpcclient" % "1.2.0-gizzardRC5"
+  val util            = "com.twitter" % "util"             % "1.6.4"
+  val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.2.1"
+  val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.2.1"
 
-  val thrift     = "thrift" % "libthrift" % "0.5.0"
+  val thrift     = "thrift"               % "libthrift"          % "0.5.0"
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"
   val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
 
