@@ -68,6 +68,7 @@ extends (Iterable[Array[Byte]] => Unit) {
       .codec(ThriftClientFramedCodec())
       .retries(retries)
       .connectionTimeout(timeout)
+      .name("JobManagerClient")
       .build(),
       new TBinaryProtocol.Factory())
 
