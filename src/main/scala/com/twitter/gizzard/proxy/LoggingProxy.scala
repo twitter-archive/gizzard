@@ -22,14 +22,13 @@ object LoggingProxy {
           stats.incr("operation-" + shortName + "-" + method.name + "-count")
         }
         logger { tstats =>
-        //logger.transaction {
           tstats.setLabel("timestamp", Time.now.inMillis.toString)
           tstats.setLabel("operation", name + ":" + method.name)
           val arguments = (if (method.args != null) method.args.mkString(",") else "").replaceAll("[ \n]", "_")
           tstats.setLabel("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
           val (rv, duration) = Duration.inMilliseconds { method() }
           tstats.addMetric("action-timing", duration.inMilliseconds.toInt)
-          tstats.addMetric("x-operation-" + shortName + ":" + method.name, duration.inMilliseconds.toInt)
+          stats.addMetric("x-operation-" + shortName + ":" + method.name, duration.inMilliseconds.toInt)
 
           if (rv != null) {
             // structural types don't appear to work for some reason.
