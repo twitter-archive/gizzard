@@ -2,7 +2,6 @@ package com.twitter.gizzard
 package shards
 
 import com.twitter.util.TimeConversions._
-import net.lag.logging.Logger
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer

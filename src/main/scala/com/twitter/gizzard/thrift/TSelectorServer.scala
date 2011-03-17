@@ -14,18 +14,12 @@ import org.apache.thrift.server._
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
-import net.lag.configgy.ConfigMap
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 object TSelectorServer {
   val log = Logger.get(getClass.getName)
 
   val cache = new mutable.HashMap[String, ThreadPoolExecutor]()
-
-  def makeThreadPoolExecutor(config: ConfigMap): ThreadPoolExecutor = {
-    makeThreadPoolExecutor(config("name"), config.getInt("stop_timeout", 60), config("min_threads").toInt,
-      config.getInt("max_threads", Int.MaxValue))
-  }
 
   def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int): ThreadPoolExecutor = {
     cache.get(name) foreach { executor =>
@@ -51,12 +45,6 @@ object TSelectorServer {
     socket.socket().bind(new InetSocketAddress(port), 8192)
     log.info("Starting %s (%s) on port %d", name, processor.getClass.getName, port)
     new TSelectorServer(name, processor, socket, executor, timeout, idleTimeout)
-  }
-
-  def apply(name: String, port: Int, config: ConfigMap, processor: TProcessor): TSelectorServer = {
-    val clientTimeout = config("client_timeout_msec").toInt.milliseconds
-    val idleTimeout = config("idle_timeout_sec").toInt.seconds
-    apply(name, port, processor, makeThreadPoolExecutor(config), clientTimeout, idleTimeout)
   }
 }
 

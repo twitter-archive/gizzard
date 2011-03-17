@@ -4,7 +4,6 @@ package scheduler
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.configgy.{Config => CConfig}
 import com.twitter.util.TimeConversions._
 
 import com.twitter.gizzard

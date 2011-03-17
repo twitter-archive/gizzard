@@ -3,7 +3,7 @@ package scheduler
 
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util.TimeConversions._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
 import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}

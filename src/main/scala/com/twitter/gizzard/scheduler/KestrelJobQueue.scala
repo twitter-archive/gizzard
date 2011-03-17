@@ -4,7 +4,7 @@ import com.twitter.ostrich.stats.{Stats, StatsProvider}
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
 import net.lag.kestrel.{PersistentQueue, QItem}
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 /**
  * A JobQueue backed by a kestrel journal file. A codec is used to convert jobs into byte arrays

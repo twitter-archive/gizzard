@@ -25,7 +25,7 @@ import scala.collection.mutable
 import com.twitter.actors.{Actor, TIMEOUT}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import config._

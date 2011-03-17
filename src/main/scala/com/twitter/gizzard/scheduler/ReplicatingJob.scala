@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import scala.collection.mutable.Queue
 import scala.util.matching.Regex
 import com.twitter.util.Duration
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 import thrift.conversions.Sequences._
 import nameserver.JobRelay

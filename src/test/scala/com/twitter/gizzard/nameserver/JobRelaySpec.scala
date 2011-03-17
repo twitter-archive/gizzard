@@ -2,7 +2,6 @@ package com.twitter.gizzard
 package nameserver
 
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.configgy.{Config => CConfig}
 import com.twitter.util.TimeConversions._
 import thrift.{JobInjectorService, TThreadServer, JobInjector}
 

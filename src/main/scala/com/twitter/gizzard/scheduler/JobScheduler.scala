@@ -6,9 +6,8 @@ import com.twitter.ostrich.admin.BackgroundProcess
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
-import net.lag.configgy.ConfigMap
 import net.lag.kestrel.PersistentQueue
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import java.util.concurrent.atomic.AtomicInteger
 import shards.{ShardBlackHoleException, ShardRejectedOperationException}
 

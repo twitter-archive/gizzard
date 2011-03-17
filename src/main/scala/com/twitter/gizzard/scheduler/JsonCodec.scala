@@ -3,7 +3,7 @@ package com.twitter.gizzard.scheduler
 import scala.collection.mutable
 import scala.util.matching.Regex
 import com.twitter.json.Json
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import org.codehaus.jackson.map.ObjectMapper
 import java.util.{Map => JMap, List => JList}
 import scala.collection.JavaConversions._

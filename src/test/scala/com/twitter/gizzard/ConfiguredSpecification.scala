@@ -2,7 +2,7 @@ package com.twitter.gizzard
 
 import java.io.File
 import org.specs.Specification
-import net.lag.configgy.Configgy
+import com.twitter.logging.Logger
 import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.finagle.builder.ClientBuilder
 import java.net.InetSocketAddress
@@ -19,7 +19,7 @@ import testserver.config.TestServerConfig
 trait ConfiguredSpecification extends Specification {
   noDetailedDiffs()
   val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
-  config.logging()
+  Logger.configure(config.loggers)
 }
 
 trait IntegrationSpecification extends Specification {

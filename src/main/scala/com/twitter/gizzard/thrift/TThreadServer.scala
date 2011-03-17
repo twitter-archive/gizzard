@@ -4,7 +4,7 @@ import java.net.{ServerSocket, Socket, SocketTimeoutException}
 import java.util.concurrent.{CountDownLatch, ExecutorService, SynchronousQueue, ThreadPoolExecutor, TimeUnit}
 import com.twitter.gizzard.NamedPoolThreadFactory
 import com.twitter.ostrich.stats.Stats
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import org.apache.thrift.{TProcessor, TProcessorFactory}
 import org.apache.thrift.protocol.{TBinaryProtocol, TProtocol, TProtocolFactory}
 import org.apache.thrift.server.TServer

@@ -5,7 +5,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.util.TimeConversions._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 /**
  * A JobQueue that stores the jobs in memory only (in a LinkedBlockingQueue), and may lose jobs
