@@ -30,7 +30,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       def setName(name: String) {}
     }
 
-    val w3cFields = Array("operation", "arguments", "action-timing", "result-count")
+    val w3cFields = Array("operation", "arguments", "result-count")
     val w3cStats = new W3CStats(logger, w3cFields)
     val bobProxy = LoggingProxy[Named](DevNullStats, w3cStats, "Bob", bob)
     val filteredBobProxy = LoggingProxy[Named](DevNullStats, w3cStats, "Bob", Set("name"), bob)
