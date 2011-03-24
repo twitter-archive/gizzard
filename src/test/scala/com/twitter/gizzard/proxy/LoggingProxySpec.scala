@@ -1,7 +1,7 @@
 package com.twitter.gizzard
 package proxy
 
-import com.twitter.ostrich.stats.{W3CStats, DevNullStats}
+import com.twitter.ostrich.stats.{TransactionalStatsCollection, StatsSummary, DevNullStats}
 import com.twitter.logging.Logger
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
@@ -18,8 +18,18 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     def setName(name: String)
   }
 
+  class FakeLogger extends TransactionalStatsCollection {
+    var summary: StatsSummary = null
+    def write(s: StatsSummary) {
+      summary = s
+    }
+
+    def reset {
+      summary = null
+    }
+  }
+
   "LoggingProxy" should {
-    val logger = mock[Logger]
     val bob = new Named {
       def name = "bob"
       def nameParts = Seq("bob", "marley").toArray
@@ -29,87 +39,52 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       def setName(name: String) {}
     }
 
-    val w3cFields = Array("operation", "arguments", "result-count")
-    val w3cStats = new W3CStats(logger, w3cFields, false)
-    val bobProxy = LoggingProxy[Named](DevNullStats, w3cStats, "Bob", bob)
-    val filteredBobProxy = LoggingProxy[Named](DevNullStats, w3cStats, "Bob", Set("name"), bob)
-    val robProxy = LoggingProxy[Namer](DevNullStats, w3cStats, "Rob", rob)
+    val stats = new FakeLogger
+    val bobProxy = LoggingProxy[Named](DevNullStats, stats, "Bob", bob)
+    val filteredBobProxy = LoggingProxy[Named](DevNullStats, stats, "Bob", Set("name"), bob)
+    val robProxy = LoggingProxy[Namer](DevNullStats, stats, "Rob", rob)
+
+    doAfter {
+      stats.reset
+    }
 
     "log stats on a proxied object" in {
-      val line = capturingParam[String]
-      expect {
-        2.of(logger).info(line.capture, any[Array[AnyRef]])
-      }
-
       bobProxy.name mustEqual "bob"
-      line.captured must include("Bob:name")
+      stats.summary.labels("operation") mustEqual "Bob:name"
     }
 
     "log the size of a result set" >> {
-      val line = capturingParam[String]
-
       "when the method returns nothing" >> {
-        expect {
-          2.of(logger).info(line.capture, any[Array[AnyRef]])
-        }
-
         robProxy.setName("rob bob")
-        val fields = line.captured.split(" ")
-        fields(w3cFields.indexOf("result-count")) mustEqual "-"
+        stats.summary.labels.contains("result-count") mustBe false
       }
 
       "when the method returns a ref" >> {
-        expect {
-          2.of(logger).info(line.capture, any[Array[AnyRef]])
-        }
-
         bobProxy.name mustEqual "bob"
-        val fields = line.captured.split(" ")
-        fields(w3cFields.indexOf("result-count")).toInt mustEqual 1
+        stats.summary.labels.contains("result-count") mustBe true
+        stats.summary.labels("result-count").toInt mustEqual 1
       }
 
       "when the method returns an array" >> {
-        expect {
-          2.of(logger).info(line.capture, any[Array[AnyRef]])
-        }
-
         bobProxy.nameParts.toList mustEqual List("bob", "marley")
-        val fields = line.captured.split(" ")
-        fields(w3cFields.indexOf("result-count")).toInt mustEqual 2
+        stats.summary.labels.contains("result-count") mustBe true
+        stats.summary.labels("result-count").toInt mustEqual 2
       }
 
       "when the method returns a seq" >> {
-        expect {
-          2.of(logger).info(line.capture, any[Array[AnyRef]])
-        }
-
         bobProxy.nameParts.toList mustEqual List("bob", "marley")
-        val fields = line.captured.split(" ")
-        fields(w3cFields.indexOf("result-count")).toInt mustEqual 2
+        stats.summary.labels.contains("result-count") mustBe true
+        stats.summary.labels("result-count").toInt mustEqual 2
       }
-    }
-
-    "replace spaces and newlines in arguments to w3c logs" in {
-      val line = capturingParam[String]
-      expect {
-        2.of(logger).info(line.capture, any[Array[AnyRef]])
-      }
-
-      robProxy.setName("rob bob\nlob")
-      line.captured must include("rob_bob_lob")
     }
 
     "only logs methods from the specified set" in {
-      val line = capturingParam[String]
-      expect {
-        2.of(logger).info(line.capture, any[Array[AnyRef]])
-      }
-
       filteredBobProxy.name
       filteredBobProxy.nameParts
 
-      line.captured must include("name")
-      line.captured mustNot include("nameParts")
+      stats.summary.labels.contains("operation") mustBe true
+      stats.summary.labels("operation") must include("Bob:name")
+      stats.summary.labels("operation") mustNot include("Bob:nameParts")
     }
   }
 }

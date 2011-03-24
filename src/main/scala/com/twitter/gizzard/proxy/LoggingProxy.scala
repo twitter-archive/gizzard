@@ -3,18 +3,18 @@ package proxy
 
 import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
-import com.twitter.ostrich.stats.{Stats, StatsProvider, W3CStats}
+import com.twitter.ostrich.stats.{Stats, StatsProvider, TransactionalStatsCollection}
 
 
 /**
  * Wrap an object's method calls in a logger that sends the method name, arguments, and elapsed
- * time to a W3CStats logger.
+ * time to a transactional logger.
  */
 object LoggingProxy {
-  def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T =
+  def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, obj: T)(implicit manifest: Manifest[T]): T =
     apply(stats, logger, name, Set(), obj)
 
-  def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, methods: Set[String], obj: T)(implicit manifest: Manifest[T]): T = {
+  def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, methods: Set[String], obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       if (methods.size == 0 || methods.contains(method.name)) {
         val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
