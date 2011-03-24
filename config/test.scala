@@ -2,6 +2,7 @@ import com.twitter.gizzard.config._
 import com.twitter.querulous.config._
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import com.twitter.conversions.time._
+import com.twitter.logging.config._
 
 object Priority extends Enumeration {
   val High, Medium, Low = Value
@@ -53,32 +54,17 @@ new GizzardServer {
     Priority.Low.id    -> new TestScheduler("low")
   )
 
-
-  logging = new LogConfigString("""
-level = "error"
-throttle_period_msec = 60000
-truncate_stack_traces = 0
-throttle_rate = 10
-roll = "never"
-
-exception {
-  roll = "never"
-  format = "exception_json"
-}
-
-w3c {
-  node = "w3c"
-  use_parents = false
-  level = "debug"
-  roll = "never"
-  format = "bare"
-}
-
-bad_jobs {
-  node = "bad_jobs"
-  use_parents = false
-  level = "info"
-  roll = "never"
-}
-""")
+  loggers = List(
+    new LoggerConfig {
+      level = Level.ERROR
+    }, new LoggerConfig {
+      node = "w3c"
+      useParents = false
+      level = Level.DEBUG
+    }, new LoggerConfig {
+      node = "bad_jobs"
+      useParents = false
+      level = Level.INFO
+    }
+  )
 }

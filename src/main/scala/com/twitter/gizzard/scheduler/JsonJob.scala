@@ -1,9 +1,9 @@
 package com.twitter.gizzard
 package scheduler
 
-import com.twitter.ostrich.{StatsProvider, W3CStats}
+import com.twitter.ostrich.stats.{StatsProvider, W3CStats}
 import org.codehaus.jackson.map.ObjectMapper
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import java.util.{Map => JMap, List => JList}
 
 import proxy.LoggingProxy

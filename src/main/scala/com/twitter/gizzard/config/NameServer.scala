@@ -2,9 +2,8 @@ package com.twitter.gizzard.config
 
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
-import com.twitter.querulous.config.{Connection, QueryEvaluator, ConfiggyConnection, ConfiggyQueryEvaluator}
+import com.twitter.querulous.config.{Connection, QueryEvaluator}
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
-import net.lag.configgy.ConfigMap
 
 import com.twitter.gizzard
 import com.twitter.gizzard.nameserver
@@ -35,11 +34,10 @@ object Memory extends Replica {
 
 class JobRelay {
   var priority: Int     = 0
-  var framed: Boolean   = true
   var timeout: Duration = 1.seconds
   var retries: Int      = 3
 
-  def apply() = new nameserver.JobRelayFactory(priority, framed, timeout, retries)
+  def apply() = new nameserver.JobRelayFactory(priority, timeout, retries)
 }
 
 object NoJobRelay extends JobRelay {
