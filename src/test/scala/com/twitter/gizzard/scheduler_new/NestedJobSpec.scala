@@ -2,7 +2,6 @@ package com.twitter.gizzard
 package scheduler
 
 import scala.collection.mutable
-import com.twitter.json.Json
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 

@@ -5,6 +5,7 @@ import java.lang.reflect
 import scala.reflect.Manifest
 import com.twitter.ostrich.stats.W3CStats
 import com.twitter.logging.Logger
+import com.thoughtworks.paranamer._
 
 
 /**
@@ -16,6 +17,8 @@ import com.twitter.logging.Logger
  * to invoke the inner method call.
  */
 object Proxy {
+  private lazy val paranamer = new CachingParanamer(new AdaptiveParanamer(new BytecodeReadingParanamer, new AnnotationParanamer))
+
   def apply[T <: AnyRef](obj: T)(f: MethodCall[T] => Object): T = {
     val cls = obj.getClass
     val invocationHandler = new reflect.InvocationHandler {
@@ -55,6 +58,13 @@ object Proxy {
     }
 
     def name = method.getName
+    def argumentNames: Seq[String] = {
+      try { 
+        paranamer.lookupParameterNames(method).toSeq
+      } catch {
+        case ex: ParameterNamesNotFoundException => Nil
+      }
+    }
   }
 }
 

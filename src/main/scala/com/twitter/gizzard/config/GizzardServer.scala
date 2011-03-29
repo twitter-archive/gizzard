@@ -1,7 +1,10 @@
-package com.twitter.gizzard.config
+package com.twitter.gizzard
+package config
 
+import com.twitter.logging.Logger
 import com.twitter.logging.config.LoggerConfig
 import com.twitter.querulous.config.QueryEvaluator
+import com.twitter.ostrich.stats.{Stats, JsonStats}
 import com.twitter.util._
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
@@ -13,6 +16,22 @@ trait GizzardServer {
 
   var manager: Manager         = new Manager with TThreadServer
   var jobInjector: JobInjector = new JobInjector with THsHaServer
+
+  var stats: StatsCollection = new StatsCollection { } 
+}
+
+trait StatsCollection {
+  var slowQueryThreshold: Duration = 2.seconds
+  var slowQueryLoggerName: String = "slow-query"
+
+  var sampledQueryRate: Double = .20
+  var sampledQueryLoggerName: String = "sampled-query"
+
+  def apply[T <: AnyRef](obj: T)(implicit manifest: Manifest[T]): T = {
+    val slowQueryCollection = new JsonStats(Logger.get(slowQueryLoggerName))
+    val sampledQueryCollection = new JsonStats(Logger.get(sampledQueryLoggerName))
+    proxy.LoggingProxy(Stats, slowQueryCollection, slowQueryThreshold, sampledQueryCollection, sampledQueryRate, "name", obj)
+  }
 }
 
 trait Manager extends TServer {

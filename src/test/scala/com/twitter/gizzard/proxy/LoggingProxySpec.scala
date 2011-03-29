@@ -3,6 +3,7 @@ package proxy
 
 import com.twitter.ostrich.stats.{TransactionalStatsCollection, StatsSummary, DevNullStats}
 import com.twitter.logging.Logger
+import com.twitter.util.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
@@ -85,6 +86,43 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       stats.summary.labels.contains("operation") mustBe true
       stats.summary.labels("operation") must include("Bob:name")
       stats.summary.labels("operation") mustNot include("Bob:nameParts")
+    }
+  }
+
+  "New School Logging Proxy" should {
+    val bob = new Named {
+      def name = "bob"
+      def nameParts = Seq("bob", "marley").toArray
+      def namePartsSeq = Seq("bob", "marley")
+    }
+
+    val rob = new Namer {
+      def setName(name: String) {}
+      def setNameSlow(name: String) { Thread.sleep(100) }
+    }
+
+    val slowStats = new FakeLogger
+    val slowDuration = 5.millis
+    val sampledStats = new FakeLogger
+    val sampledRate = 1
+    val bobProxy = LoggingProxy[Named](DevNullStats, slowStats, slowDuration, sampledStats, sampledRate, "test", bob)
+    val robProxy = LoggingProxy[Namer](DevNullStats, slowStats, slowDuration, sampledStats, sampledRate, "test", rob)
+
+    doAfter {
+      slowStats.reset
+      sampledStats.reset
+    }
+
+    "log stats on a proxied object" in {
+      bobProxy.name mustEqual "bob"
+      val labels = sampledStats.summary.labels
+      labels("method") mustEqual "name"
+    }
+
+    "log method names" in {
+      robProxy.setName("hello")
+      val labels = sampledStats.summary.labels
+      labels("argument/0") mustEqual "hello"
     }
   }
 }

@@ -4,6 +4,7 @@ package proxy
 import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
 import com.twitter.ostrich.stats.{Stats, StatsProvider, TransactionalStatsCollection}
+import java.util.Random
 
 
 /**
@@ -11,6 +12,8 @@ import com.twitter.ostrich.stats.{Stats, StatsProvider, TransactionalStatsCollec
  * time to a transactional logger.
  */
 object LoggingProxy {
+  val rand = new Random
+
   def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, obj: T)(implicit manifest: Manifest[T]): T =
     apply(stats, logger, name, Set(), obj)
 
@@ -45,5 +48,31 @@ object LoggingProxy {
         method()
       }
     }
+  }
+
+  def apply[T <: AnyRef](stats: StatsProvider, slowQueryLogger: TransactionalStatsCollection, slowQueryDuration: Duration, sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
+    Proxy(obj) { method =>
+      val (rv, duration) = Duration.inMilliseconds { method() }
+
+      val boundStats = populateStats(duration, name, method) _
+      if (duration >= slowQueryDuration) slowQueryLogger { boundStats(_) }
+
+      val i = rand.nextFloat()
+      if (i < sampledQueryRate) sampledQueryLogger { boundStats(_) }
+
+      rv
+    }
+  }
+
+  private def populateStats[T <: AnyRef](duration: Duration, name: String, method: Proxy.MethodCall[T])(stats: StatsProvider) {
+    stats.setLabel("timestamp", Time.now.inMillis.toString)
+    stats.setLabel("name", name)
+    stats.setLabel("method", method.name)
+    if (method.args != null) {
+      val names = method.argumentNames
+      val zipped = if (names.length > 0) method.args.zip(names) else method.args.zipWithIndex
+      zipped.foreach { case (value, name) => stats.setLabel("argument/"+name, value.toString) }
+    }
+    stats.addMetric("duration", duration.inMilliseconds.toInt)
   }
 }

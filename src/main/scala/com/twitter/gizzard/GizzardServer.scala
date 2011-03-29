@@ -64,6 +64,7 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
   lazy val jobInjectorThriftServer = config.jobInjector(new thrift.JobInjector.Processor(jobInjectorServer))
 
+  def loggingProxy[T <: AnyRef](obj: T)(implicit manifest: Manifest[T]) = config.stats(obj)
 
   def startGizzard() {
     nameServer.reload()
