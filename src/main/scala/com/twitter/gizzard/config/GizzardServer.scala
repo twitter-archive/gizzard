@@ -22,10 +22,10 @@ trait GizzardServer {
 
 trait StatsCollection {
   var slowQueryThreshold: Duration = 2.seconds
-  var slowQueryLoggerName: String = "slow-query"
+  var slowQueryLoggerName: String = "slow_query"
 
-  var sampledQueryRate: Double = .20
-  var sampledQueryLoggerName: String = "sampled-query"
+  var sampledQueryRate: Double = 0.0
+  var sampledQueryLoggerName: String = "sampled_query"
 
   def apply[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     val slowQueryCollection = new JsonStats(Logger.get(slowQueryLoggerName))
