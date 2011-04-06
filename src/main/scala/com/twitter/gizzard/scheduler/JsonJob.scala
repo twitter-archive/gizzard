@@ -1,12 +1,9 @@
 package com.twitter.gizzard
 package scheduler
 
-import com.twitter.ostrich.stats.{StatsProvider, W3CStats}
 import org.codehaus.jackson.map.ObjectMapper
 import com.twitter.logging.Logger
 import java.util.{Map => JMap, List => JList}
-
-import proxy.LoggingProxy
 
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
@@ -90,16 +87,6 @@ class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob(jobs) with JsonJo
 class JsonJobLogger(logger: Logger) extends JobConsumer {
   def put(job: JsonJob) = logger.error(job.toString)
 }
-
-/*class LoggingJsonJobParser(
-  jsonJobParser: JsonJobParser, stats: StatsProvider, logger: W3CStats)
-  extends JsonJobParser {
-
-  def apply(json: Map[String, Any]): JsonJob = {
-    val job = jsonJobParser(json)
-    LoggingProxy(stats, logger, job.loggingName, Set("apply"), job)
-  }
-}*/
 
 /**
  * A parser that can reconstitute a JsonJob from a map of key/values. Usually registered with a

@@ -5,10 +5,14 @@ import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
 import scala.collection.mutable.Queue
 import scala.util.matching.Regex
+import com.twitter.ostrich.stats.{Stats, JsonStats, StatsProvider}
+import com.twitter.logging.Logger
 import com.twitter.util.Duration
 
 import thrift.conversions.Sequences._
 import nameserver.JobRelay
+
+import proxy.JobLoggingProxy
 
 
 class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
@@ -35,6 +39,18 @@ extends JsonCodec(unparsable) {
       }
     }
   }
+}
+
+class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec(codec.unparsableJobHandler) {
+  private val proxyFactory = {
+    val sampledQueryCollection = new JsonStats(Logger.get(conf.sampledQueryLoggerName))
+    val slowQueryCollection = new JsonStats(Logger.get(conf.slowQueryLoggerName))
+    new JobLoggingProxy[JsonJob](Stats, slowQueryCollection, conf.slowQueryThreshold, sampledQueryCollection, conf.sampledQueryRate)
+  }
+
+  override def +=(item: (Regex, JsonJobParser)) = codec += item
+  override def +=(r: Regex, p: JsonJobParser)   = codec += ((r, p))
+  override def inflate(json: Map[String, Any]): JsonJob = proxyFactory(codec.inflate(json))
 }
 
 class ReplicatedJob(jobs: Iterable[JsonJob]) extends JsonNestedJob(jobs) {
