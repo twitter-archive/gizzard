@@ -25,8 +25,10 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
   // setup logging
 
   protected def configureLogging { Logger.configure(config.loggers) }
-  protected val log = Logger.get(getClass)
   configureLogging
+
+  protected val log = Logger.get(getClass)
+  protected val exceptionLog = Logger.get("exception")
 
   // nameserver/shard wiring
 

@@ -51,7 +51,8 @@ class ReplicatingShard[S <: Shard](
   def rebuildableReadOperation[A](method: (S => Option[A]))(rebuild: (S, S) => Unit) =
     rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
 
-  lazy val log = Logger.get
+  lazy val log = Logger.get(getClass.getName)
+  lazy val exceptionLog = Logger.get("exception")
 
   protected def unwrapException(exception: Throwable): Throwable = {
     exception match {
@@ -123,7 +124,8 @@ class ReplicatingShard[S <: Shard](
           case e: ShardRejectedOperationException =>
             failover(f, remainder)
           case e: ShardException =>
-            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
+            exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
+//            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             failover(f, remainder)
         }
       }
@@ -152,7 +154,8 @@ class ReplicatingShard[S <: Shard](
           case e: ShardRejectedOperationException =>
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
           case e: ShardException =>
-            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
+            exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
+//            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }
     }

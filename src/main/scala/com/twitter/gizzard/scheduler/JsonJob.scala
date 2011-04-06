@@ -91,7 +91,7 @@ class JsonJobLogger(logger: Logger) extends JobConsumer {
   def put(job: JsonJob) = logger.error(job.toString)
 }
 
-class LoggingJsonJobParser(
+/*class LoggingJsonJobParser(
   jsonJobParser: JsonJobParser, stats: StatsProvider, logger: W3CStats)
   extends JsonJobParser {
 
@@ -99,7 +99,7 @@ class LoggingJsonJobParser(
     val job = jsonJobParser(json)
     LoggingProxy(stats, logger, job.loggingName, Set("apply"), job)
   }
-}
+}*/
 
 /**
  * A parser that can reconstitute a JsonJob from a map of key/values. Usually registered with a

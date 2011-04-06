@@ -19,10 +19,11 @@ import scala.collection.JavaConversions._
  *
  * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
  */
-class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
+ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
   private val mapper = new ObjectMapper
 
   protected val log = Logger.get(getClass.getName)
+  protected val exceptionLog = Logger.get("exception")
   protected val processors = {
     val p = mutable.Map.empty[Regex, JsonJobParser]
     p += (("JsonNestedJob".r, new JsonNestedJobParser(this)))
@@ -44,8 +45,9 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
       inflate(scalaMap)
     } catch {
       case e =>
-        log.error(e, "Unparsable JsonJob; dropping: " + e.toString)
-        unparsableJobHandler(data)
+//        exceptionLog.error(e, "Unparsable JsonJob; dropping: " + unparsableJobToString(data))
+//        log.error(e, "Unparsable JsonJob; dropping: " + e.toString)
+//        unparsableJobHandler(data)
         throw new UnparsableJsonException("Unparsable json", e)
     }
   }

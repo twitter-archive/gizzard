@@ -5,6 +5,7 @@ import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
 import com.twitter.ostrich.stats.{Stats, StatsProvider, TransactionalStatsCollection}
 import java.util.Random
+import scheduler.JsonJob
 
 
 /**
@@ -74,5 +75,25 @@ object LoggingProxy {
       zipped.foreach { case (value, name) => stats.setLabel("argument/"+name, value.toString) }
     }
     stats.addMetric("duration", duration.inMilliseconds.toInt)
+  }
+}
+
+class JobLoggingProxy[T <: JsonJob](implicit manifest: Manifest[T], sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double) {
+  private val proxy = new ProxyFactory[T]
+
+  def apply(stats: StatsProvider, job: T): T = {
+    proxy(job) { method =>
+      val (rv, duration) = Duration.inMilliseconds { method() }
+
+      val i = LoggingProxy.rand.nextFloat()
+      if (i < sampledQueryRate) sampledQueryLogger { tstats =>
+        stats.setLabel("timestamp", Time.now.inMillis.toString)
+        stats.setLabel("name", job.loggingName)
+        stats.setLabel("job", job.toJson)
+        stats.addMetric("duration", duration.inMilliseconds.toInt)
+      }
+
+      rv
+    }
   }
 }

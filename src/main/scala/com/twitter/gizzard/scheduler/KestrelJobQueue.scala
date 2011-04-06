@@ -84,7 +84,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   def checkExpiration(flushLimit: Int) {
     val count = queue.discardExpired(flushLimit)
     if (count > 0) {
-      log.info("Replaying %d error jobs from %s.", count, queueName)
+//      log.info("Replaying %d error jobs from %s.", count, queueName)
     }
   }
 

@@ -36,6 +36,7 @@ class JobScheduler(val name: String,
       extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
+  private val exceptionLog = Logger.get("exception")
   var workerThreads: Iterable[BackgroundProcess] = Nil
   @volatile var running = false
   private var _activeThreads = new AtomicInteger
@@ -50,7 +51,8 @@ class JobScheduler(val name: String,
         checkExpiredJobs()
       } catch {
         case e: Throwable =>
-          log.error(e, "Error replaying %s errors!", name)
+          exceptionLog.error(e, "Error replaying %s errors", name)
+//          log.error(e, "Error replaying %s errors!", name)
       }
     }
   }
@@ -78,7 +80,7 @@ class JobScheduler(val name: String,
       queue.start()
       errorQueue.start()
       running = true
-      log.info("Starting JobScheduler: %s", queue)
+      log.debug("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
       workerThreads.foreach { _.start() }
       retryTask.start()
@@ -86,14 +88,14 @@ class JobScheduler(val name: String,
   }
 
   def pause() {
-    log.info("Pausing work in JobScheduler: %s", queue)
+    log.debug("Pausing work in JobScheduler: %s", queue)
     queue.pause()
     errorQueue.pause()
     shutdownWorkerThreads()
   }
 
   def resume() = {
-    log.info("Resuming work in JobScheduler: %s", queue)
+    log.debug("Resuming work in JobScheduler: %s", queue)
     queue.resume()
     errorQueue.resume()
     workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
@@ -102,7 +104,7 @@ class JobScheduler(val name: String,
 
   def shutdown() {
     if(running) {
-      log.info("Shutting down JobScheduler: %s", queue)
+      log.debug("Shutting down JobScheduler: %s", queue)
       queue.shutdown()
       errorQueue.shutdown()
       shutdownWorkerThreads()
@@ -153,7 +155,8 @@ class JobScheduler(val name: String,
             errorQueue.put(job)
           case e =>
             Stats.incr("job-error-count")
-            log.error(e, "Error in Job: %s - %s", job, e)
+            exceptionLog.error(e, "Job: %s", job)
+//            log.error(e, "Error in Job: %s - %s", job, e)
             job.errorCount += 1
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {
