@@ -18,8 +18,8 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   val rpcclient  = "com.twitter" % "rpcclient" % "1.2.0-gizzardRC5"
 
   val thrift     = "thrift" % "libthrift" % "0.5.0"
-  val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"
-  val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
+  val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.7"
+  val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.7"
 
   val slf4j      = "org.slf4j" % "slf4j-jdk14" % "1.5.2" //intransitive
   val slf4jApi   = "org.slf4j" % "slf4j-api"   % "1.5.2" //intransitive
