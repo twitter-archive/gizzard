@@ -29,6 +29,7 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   protected val log = Logger.get(getClass)
   protected val exceptionLog = Logger.get("exception")
+  def loggingProxy[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]) = config.stats(name, obj)
 
   // nameserver/shard wiring
 
@@ -66,8 +67,6 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
   lazy val jobInjectorThriftServer = config.jobInjector(new thrift.JobInjector.Processor(jobInjectorServer))
-
-  def loggingProxy[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]) = config.stats(name, obj)
 
   def startGizzard() {
     nameServer.reload()

@@ -4,7 +4,7 @@ package config
 import com.twitter.logging.Logger
 import com.twitter.logging.config.LoggerConfig
 import com.twitter.querulous.config.QueryEvaluator
-import com.twitter.ostrich.stats.{Stats, JsonStats}
+import com.twitter.ostrich.stats.JsonStats
 import com.twitter.util._
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
@@ -30,7 +30,7 @@ trait StatsCollection {
   def apply[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     val slowQueryCollection = new JsonStats(Logger.get(slowQueryLoggerName))
     val sampledQueryCollection = new JsonStats(Logger.get(sampledQueryLoggerName))
-    proxy.LoggingProxy(Stats, slowQueryCollection, slowQueryThreshold, sampledQueryCollection, sampledQueryRate, name, obj)
+    proxy.LoggingProxy(slowQueryCollection, slowQueryThreshold, sampledQueryCollection, sampledQueryRate, name, obj)
   }
 }
 

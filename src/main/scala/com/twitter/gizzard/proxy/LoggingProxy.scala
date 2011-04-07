@@ -3,7 +3,8 @@ package proxy
 
 import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
-import com.twitter.ostrich.stats.{Stats, StatsProvider, TransactionalStatsCollection}
+import com.twitter.gizzard.Stats
+import com.twitter.ostrich.stats.{StatsProvider, TransactionalStatsCollection}
 import java.util.Random
 import scheduler.JsonJob
 
@@ -15,10 +16,7 @@ import scheduler.JsonJob
 object LoggingProxy {
   val rand = new Random
 
-  def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, obj: T)(implicit manifest: Manifest[T]): T =
-    apply(stats, logger, name, Set(), obj)
-
-  def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, methods: Set[String], obj: T)(implicit manifest: Manifest[T]): T = {
+  /*def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, methods: Set[String], obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       if (methods.size == 0 || methods.contains(method.name)) {
         val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
@@ -49,62 +47,56 @@ object LoggingProxy {
         method()
       }
     }
-  }
+  } */
 
-  def apply[T <: AnyRef](stats: StatsProvider, slowQueryLogger: TransactionalStatsCollection, slowQueryDuration: Duration, sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double, name: String, obj: T)(implicit manifest: Manifest[T]): T = {
+  def apply[T <: AnyRef](
+    slowQueryLogger: TransactionalStatsCollection, slowQueryDuration: Duration,
+    sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double,
+    name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
-      val (rv, duration) = Duration.inMilliseconds { method() }
-
-      val boundStats = populateStats(duration, name, method) _
-      if (duration >= slowQueryDuration) slowQueryLogger { boundStats(_) }
-
+      val ((rv, duration), summary) = Stats.withTransaction {
+        Stats.transaction.setLabel("timestamp", Time.now.inMillis.toString)
+        Stats.transaction.setLabel("name", name)
+        Stats.transaction.setLabel("method", method.name)
+        if (method.args != null) {
+          val names = method.argumentNames
+          val zipped = if (names.length > 0) method.args.zip(names) else method.args.zipWithIndex
+          zipped.foreach { case (value, name) => Stats.transaction.setLabel("argument/"+name, value.toString) }
+        }
+        val (rv, duration) = Duration.inMilliseconds { method() }
+        Stats.transaction.addMetric("duration", duration.inMilliseconds.toInt)
+        Stats.global.addMetric(method+"_timing", duration.inMilliseconds.toInt)
+        (rv, duration)
+      }
+      if (duration >= slowQueryDuration) slowQueryLogger.write(summary)
       val i = rand.nextFloat()
-      if (i < sampledQueryRate) sampledQueryLogger { boundStats(_) }
+      if (i < sampledQueryRate) sampledQueryLogger.write(summary)
 
       rv
     }
   }
-
-  private def populateStats[T <: AnyRef](duration: Duration, name: String, method: Proxy.MethodCall[T])(stats: StatsProvider) {
-    stats.setLabel("timestamp", Time.now.inMillis.toString)
-    stats.setLabel("name", name)
-    stats.setLabel("method", method.name)
-    if (method.args != null) {
-      val names = method.argumentNames
-      val zipped = if (names.length > 0) method.args.zip(names) else method.args.zipWithIndex
-      zipped.foreach { case (value, name) => stats.setLabel("argument/"+name, value.toString) }
-    }
-    stats.addMetric("duration", duration.inMilliseconds.toInt)
-  }
 }
 
 class JobLoggingProxy[T <: JsonJob](
-  stats: StatsProvider,
   slowQueryLogger: TransactionalStatsCollection, slowQueryThreshold: Duration,
   sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double)(implicit manifest: Manifest[T]) {
   private val proxy = new ProxyFactory[T]
 
   def apply(job: T): T = {
     proxy(job) { method =>
-      val (rv, duration) = Duration.inMilliseconds { method() }
-
+      val ((rv, duration), summary) = Stats.withTransaction {
+        Stats.transaction.setLabel("timestamp", Time.now.inMillis.toString)
+        Stats.transaction.setLabel("name", job.loggingName)
+        Stats.transaction.setLabel("job", job.toJson)
+        val (rv, duration) = Duration.inMilliseconds { method() }
+        Stats.transaction.addMetric("duration", duration.inMilliseconds.toInt)
+        Stats.global.addMetric(job.loggingName+"_timing", duration.inMilliseconds.toInt)
+        (rv, duration)
+      }
+      if (duration >= slowQueryThreshold) slowQueryLogger.write(summary)
       val i = LoggingProxy.rand.nextFloat()
-      if (i < sampledQueryRate) sampledQueryLogger { tstats =>
-        populateStats(duration, job, tstats)
-      }
-
-      if (duration >= slowQueryThreshold) slowQueryLogger { tstats => 
-        populateStats(duration, job, tstats)
-      }
-
+      if (i < sampledQueryRate) sampledQueryLogger.write(summary)
       rv
     }
-  }
-
-  private def populateStats[T <: JsonJob](duration: Duration, job: T, provider: StatsProvider) {
-    provider.setLabel("timestamp", Time.now.inMillis.toString)
-    provider.setLabel("name", job.loggingName)
-    provider.setLabel("job", job.toJson)
-    provider.addMetric("duration", duration.inMilliseconds.toInt)
   }
 }

@@ -3,7 +3,6 @@ package proxy
 
 import java.lang.reflect
 import scala.reflect.Manifest
-import com.twitter.ostrich.stats.W3CStats
 import com.twitter.logging.Logger
 import com.thoughtworks.paranamer._
 
