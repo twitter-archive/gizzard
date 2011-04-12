@@ -55,7 +55,7 @@ made *eventually consistent* by requiring that all write-operations are
 idempotent *and* commutative and as operations fail (because of, e.g., a network
 partition) they are retried at a later time.
 
-A very simple sample use of Gizzard is [Rowz](http://github.com/nkallen/Rowz),
+A very simple sample use of Gizzard is [Rowz](http://github.com/twitter/Rowz),
 a distributed key-value store. To get up-and-running with Gizzard quickly,
 clone Rows and start customizing!
 
@@ -172,7 +172,7 @@ because a retry later strategy can apply operations out-of-order (as, for
 instance, when newer jobs are applied before older failed jobs are retried).
 In most cases this is an easy requirement. A demonstration of commutative,
 idempotent writes is given in the Gizzard demo app,
-[Rowz](http://github.com/nkallen/Rowz).
+[Rowz](http://github.com/twitter/Rowz).
 
 ### Winged migrations
 
