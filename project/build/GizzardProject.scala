@@ -1,7 +1,10 @@
 import sbt._
 import com.twitter.sbt._
 
-class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) with DefaultRepos with SubversionPublisher {
+class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info)
+with CompileThriftJava
+with DefaultRepos
+with SubversionPublisher {
 
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
