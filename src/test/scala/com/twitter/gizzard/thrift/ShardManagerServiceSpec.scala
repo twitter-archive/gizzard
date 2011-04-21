@@ -8,17 +8,16 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import shards.{Busy, Shard}
-import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
+import scheduler.{JobScheduler, PrioritizingJobScheduler, JsonJob}
 
 
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer    = mock[nameserver.NameServer[Shard]]
-  val copier        = mock[CopyJobFactory[Shard]]
+  //val copier        = mock[CopyJobFactory[Shard]]
   val scheduler     = mock[PrioritizingJobScheduler]
   val subScheduler  = mock[JobScheduler]
-  val copyScheduler = mock[JobScheduler]
-  val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler, null, 0, null)
+  val manager       = new ManagerService(nameServer, scheduler, null, 0, null)
 
   val shard = mock[Shard]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
@@ -109,18 +108,18 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       manager.mark_shard_busy(thriftShardInfo1.id, Busy.Busy.id)
     }
 
-    "copy_shard" in {
-      val shardId1 = new shards.ShardId("hostname1", "table1")
-      val shardId2 = new shards.ShardId("hostname2", "table2")
-      val copyJob = mock[CopyJob[Shard]]
-
-      expect {
-        one(copier).apply(shardId1, shardId2) willReturn copyJob
-        one(copyScheduler).put(copyJob)
-      }
-
-      manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
-    }
+    //"copy_shard" in {
+    //  val shardId1 = new shards.ShardId("hostname1", "table1")
+    //  val shardId2 = new shards.ShardId("hostname2", "table2")
+    //  val copyJob = mock[CopyJob[Shard]]
+    //
+    //  expect {
+    //    one(copier).apply(shardId1, shardId2) willReturn copyJob
+    //    one(copyScheduler).put(copyJob)
+    //  }
+    //
+    //  manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
+    //}
 
     "set_forwarding" in {
       expect {

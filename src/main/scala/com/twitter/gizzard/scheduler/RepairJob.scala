@@ -6,10 +6,11 @@ import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
-import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException, Cursorable}
 
 trait Repairable[T] {
   def similar(other: T): Int
+  def shouldRepair(other: T): Boolean
 }
 
 object RepairJob {
@@ -56,17 +57,15 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
 
   override def shouldReplicate = false
 
-  def label(): String
-
   def finish() {
-    log.info("[%s] - finished for (type %s) for %s", label,
+    log.info("[Repair] - finished for (type %s) for %s",
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
-      log.info("[%s] - shard block (type %s): state=%s", label,
+      log.info("[Repair] - shard block (type %s): state=%s",
                getClass.getName.split("\\.").last, toMap)
       val shardObjs = shardIds.map(nameServer.findShardById(_))
       shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Busy))
@@ -77,16 +76,16 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
       }
     } catch {
       case e: NonExistentShard =>
-        log.error("[%s] - failed because one of the shards doesn't exist. Terminating the repair.", label)
+        log.error("[Repair] - failed because one of the shards doesn't exist. Terminating the repair.")
       case e: ShardDatabaseTimeoutException =>
-        log.warning("[%s] - failed to get a database connection; retrying.", label)
+        log.warning("[Repair] - failed to get a database connection; retrying.")
         scheduler.put(priority, this)
       case e: ShardTimeoutException if (count > RepairJob.MIN_COPY) =>
-        log.warning("[%s] - block copy timed out; trying a smaller block size.", label)
+        log.warning("[Repair] - block copy timed out; trying a smaller block size.")
         count = (count * 0.9).toInt
         scheduler.put(priority, this)
       case e: Throwable =>
-        log.warning(e, "[%s] - stopped due to exception: %s", label, e)
+        log.warning(e, "[Repair] - stopped due to exception: %s", e)
         throw e
     }
   }
@@ -102,7 +101,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   }
 
   private def gaugeName = {
-    "x-"+label.toLowerCase+"-" + shardIds.mkString("-")
+    "x-repair-" + shardIds.mkString("-")
   }
 
   def repair(shards: Seq[S])
@@ -110,39 +109,45 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   def serialize: Map[String, Any]
 }
 
-abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
+abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Cursorable[C]](shardIds: Seq[ShardId], cursor: C, count: Int,
     nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
 
   private val log = Logger.get(getClass.getName)
 
   def nextRepair(lowestCursor: C): Option[RepairJob[S]]
 
-  def scheduleDifferent(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
-
-  def scheduleMissing(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
+  def scheduleItem(missing: Boolean, list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
 
   def scheduleBulk(otherShards: Seq[S], items: Seq[R]): Unit
-
-  def cursorAtEnd(cursor: C): Boolean
-
-  def lowestCursor(c1: C, c2: C): C
 
   def smallestList(listCursors: Seq[(S, ListBuffer[R], C)]) = {
     listCursors.filter(!_._2.isEmpty).reduceLeft((list1, list2) => if (list1._2(0).similar(list2._2(0)) < 0) list1 else list2)
   }
 
-  def shouldSchedule(original:R, suspect: R): Boolean
+  def select(shard: S, cursor: C, count: Int): (Seq[R], C)
 
-  def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
+  def repair(shards: Seq[S]) = {
+    val tableIds = shards.map(shard => nameServer.getRootForwardings(shard.shardInfo.id).head.tableId)
+
+    val listCursors = shards.map( (shard) => {
+      val (seq, newCursor) = select(shard, cursor, count)
+      val list = new ListBuffer[R]()
+      list ++= seq
+      (shard, list, newCursor)
+    })
+    repairListCursor(listCursors, tableIds)
+  }
+
+  private def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
     if (!tableIds.forall((id) => id == tableIds(0))) {
       throw new RuntimeException("tableIds didn't match")
     } else if (nameServer.getCommonShardId(shardIds) == None) {
       throw new RuntimeException("these shardIds don't have a common ancestor")
     } else {
-      while (listCursors.forall(lc => !lc._2.isEmpty || cursorAtEnd(lc._3)) && listCursors.exists(lc => !lc._2.isEmpty)) {
+      while (listCursors.forall(lc => !lc._2.isEmpty || lc._3.atEnd) && listCursors.exists(lc => !lc._2.isEmpty)) {
         val tableId = tableIds(0)
         val firstList = smallestList(listCursors)
-        val finishedLists = listCursors.filter(lc => cursorAtEnd(lc._3) && lc._2.isEmpty)
+        val finishedLists = listCursors.filter(lc => lc._3.atEnd && lc._2.isEmpty)
         if (finishedLists.size == listCursors.size - 1) {
           scheduleBulk(finishedLists.map(_._1), firstList._2)
           firstList._2.clear
@@ -152,21 +157,21 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardI
           val similarLists = listCursors.filter(!_._2.isEmpty).filter(_._1 != firstList._1).filter(_._2(0).similar(firstItem) == 0)
           if (similarLists.size != (listCursors.size - 1) ) {
             firstEnqueued = true
-            scheduleMissing(firstList, tableId, firstItem)
+            scheduleItem(true, firstList, tableId, firstItem)
           }
           for (list <- similarLists) {
-            val listItem = list._2.remove(0)
-            if (shouldSchedule(firstItem, listItem)) {
+            val similarItem = list._2.remove(0)
+            if (firstItem.shouldRepair(similarItem)) {
               if (!firstEnqueued) {
                 firstEnqueued = true
-                scheduleDifferent(firstList, tableId, firstItem)
+                scheduleItem(false, firstList, tableId, firstItem)
               }
-              scheduleDifferent(list, tableId, listItem)
+              scheduleItem(false, list, tableId, similarItem)
             }
           }
         }
       }
-      val nextCursor = listCursors.map(_._3).reduceLeft((c1, c2) => lowestCursor(c1, c2))
+      val nextCursor = listCursors.map(_._3).reduceLeft((c1, c2) => if (c1.compare(c2) <= 0) c1 else c2)
       this.nextJob = nextRepair(nextCursor)
     }
   }
