@@ -1,9 +1,11 @@
 package com.twitter.gizzard
 
-import com.codahale.jerkson.Json.generate
+import com.twitter.json.Json
 import com.twitter.logging.Formatter
 import scala.collection.mutable
+import scala.collection.JavaConversions
 import java.util.logging.LogRecord
+
 
 /**
  * Formatter that logs a line as structured json.
@@ -24,7 +26,7 @@ object JsonFormatter extends Formatter {
       map += ("exception" -> populateExceptionFields(thrown))
     }
 
-    generate(map.toMap).toString + "\n"
+    Json.build(map.toMap).toString + "\n"
   }
 
   private def populateExceptionFields(thrown: Throwable): Map[String, Any] = {

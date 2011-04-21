@@ -25,8 +25,6 @@ class GizzardProject(info: ProjectInfo)
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"
   val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
 
-  val paranamer  = "com.thoughtworks.paranamer" % "paranamer" % "2.3"
-
   val slf4j      = "org.slf4j" % "slf4j-jdk14" % "1.5.2" //intransitive
   val slf4jApi   = "org.slf4j" % "slf4j-api"   % "1.5.2" //intransitive
 

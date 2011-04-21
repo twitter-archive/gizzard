@@ -1,21 +1,25 @@
 package com.twitter.gizzard
 
-import com.twitter.ostrich.stats.{DevNullStats, StatsCollection, Stats => OStats, StatsSummary}
+import com.twitter.ostrich.stats.{DevNullStats, StatsCollection, Stats => OStats, StatsSummary, StatsProvider}
 
 object Stats {
   val global = OStats
-  val internal = OStats.make("internal")
+  val internal = new StatsCollection
 
-  def transaction = {
+  def transaction: StatsProvider = {
     val t = tl.get()
     if (t == null) DevNullStats else t
   }
 
   def beginTransaction() {
-    setTransaction(new StatsCollection)
+    transaction match {
+      case DevNullStats => setTransaction(new StatsCollection)
+      case t: StatsCollection => t.clearAll()
+    }
   }
 
   def endTransaction() {
+    transaction.clearAll()
     tl.set(null)
   }
 
@@ -33,3 +37,14 @@ object Stats {
 
   private val tl = new ThreadLocal[StatsCollection]
 }
+/*
+class TransactionalStatsCollection {
+  private val collection: mutable.Map[String, Any]
+
+  def setLabel(name: String, value: String) {
+    collection(name) = value
+  }
+
+
+  def toMap: Map[String, Any] = collection.toMap
+}*/

@@ -59,13 +59,11 @@ object LoggingProxy {
         Stats.transaction.setLabel("name", name)
         Stats.transaction.setLabel("method", method.name)
         if (method.args != null) {
-          val names = method.argumentNames
-          val zipped = if (names.length > 0) method.args.zip(names) else method.args.zipWithIndex
+          val zipped = method.args.zipWithIndex
           zipped.foreach { case (value, name) => Stats.transaction.setLabel("argument/"+name, value.toString) }
         }
         val (rv, duration) = Duration.inMilliseconds { method() }
         Stats.transaction.addMetric("duration", duration.inMilliseconds.toInt)
-        Stats.global.addMetric(method+"_timing", duration.inMilliseconds.toInt)
         (rv, duration)
       }
       if (duration >= slowQueryDuration) slowQueryLogger.write(summary)
@@ -90,7 +88,6 @@ class JobLoggingProxy[T <: JsonJob](
         Stats.transaction.setLabel("job", job.toJson)
         val (rv, duration) = Duration.inMilliseconds { method() }
         Stats.transaction.addMetric("duration", duration.inMilliseconds.toInt)
-        Stats.global.addMetric(job.loggingName+"_timing", duration.inMilliseconds.toInt)
         (rv, duration)
       }
       if (duration >= slowQueryThreshold) slowQueryLogger.write(summary)
