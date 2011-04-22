@@ -108,19 +108,6 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       manager.mark_shard_busy(thriftShardInfo1.id, Busy.Busy.id)
     }
 
-    //"copy_shard" in {
-    //  val shardId1 = new shards.ShardId("hostname1", "table1")
-    //  val shardId2 = new shards.ShardId("hostname2", "table2")
-    //  val copyJob = mock[CopyJob[Shard]]
-    //
-    //  expect {
-    //    one(copier).apply(shardId1, shardId2) willReturn copyJob
-    //    one(copyScheduler).put(copyJob)
-    //  }
-    //
-    //  manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
-    //}
-
     "set_forwarding" in {
       expect {
         one(nameServer).setForwarding(forwarding)
