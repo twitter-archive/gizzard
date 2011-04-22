@@ -96,7 +96,6 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf)
 
   val readWriteShardAdapter = new TestReadWriteAdapter(_)
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
-  //val copyPriority          = Priority.Low.id
 
   def repairPriority          = Priority.High.id
   val repairFactory           = new TestRepairFactory(nameServer, jobScheduler)
