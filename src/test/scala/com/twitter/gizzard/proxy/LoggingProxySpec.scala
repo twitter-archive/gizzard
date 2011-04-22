@@ -19,7 +19,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     def setName(name: String)
   }
 
-  class FakeLogger extends TransactionalStatsCollection {
+/*  class FakeLogger extends TransactionalStatsCollection {
     var summary: StatsSummary = null
     def write(s: StatsSummary) {
       summary = s
@@ -27,6 +27,17 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 
     def reset {
       summary = null
+    }
+  } */
+
+  class FakeTransactionalStatsConsumer extends TransactionalStatsConsumer {
+    var stats: TransactionalStatsProvider = null
+    def apply(s: TransactionalStatsProvider) {
+      stats = s
+    }
+
+    def reset {
+      stats = null
     }
   }
 
@@ -101,28 +112,23 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       def setNameSlow(name: String) { Thread.sleep(100) }
     }
 
-    val slowStats = new FakeLogger
-    val slowDuration = 5.millis
-    val sampledStats = new FakeLogger
-    val sampledRate = 1
-    val bobProxy = LoggingProxy[Named](slowStats, slowDuration, sampledStats, sampledRate, "test", bob)
-    val robProxy = LoggingProxy[Namer](slowStats, slowDuration, sampledStats, sampledRate, "test", rob)
+    val sampledStats = new FakeTransactionalStatsConsumer
+    val sampledLoggingConsumer = new SampledTransactionalStatsConsumer(sampledStats, 1)
+//    val slowStats = new FakeLogger
+//    val slowDuration = 5.millis
+//    val sampledStats = new FakeLogger
+//    val sampledRate = 1
+    val bobProxy = LoggingProxy[Named](Seq(sampledLoggingConsumer), "test", bob)
+    val robProxy = LoggingProxy[Namer](Seq(sampledLoggingConsumer), "test", rob)
 
     doAfter {
-      slowStats.reset
+//      slowStats.reset
       sampledStats.reset
     }
 
-    "log stats on a proxied object" in {
-      bobProxy.name mustEqual "bob"
-      val labels = sampledStats.summary.labels
-      labels("method") mustEqual "name"
-    }
-
-    "log method names" in {
-      robProxy.setName("hello")
-      val labels = sampledStats.summary.labels
-      labels("argument/0") mustEqual "hello"
+    "log a trace" in {
+      bobProxy.name
+      println(sampledStats.stats)
     }
   }
 }

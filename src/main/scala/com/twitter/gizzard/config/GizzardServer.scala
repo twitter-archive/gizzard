@@ -21,16 +21,17 @@ trait GizzardServer {
 }
 
 trait StatsCollection {
-  var slowQueryThreshold: Duration = 2.seconds
-  var slowQueryLoggerName: String = "slow_query"
+//  var slowQueryThreshold: Duration = 2.seconds
+//  var slowQueryLoggerName: String = "slow_query"
 
   var sampledQueryRate: Double = 0.0
   var sampledQueryLoggerName: String = "sampled_query"
 
   def apply[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]): T = {
-    val slowQueryCollection = new JsonStats(Logger.get(slowQueryLoggerName))
-    val sampledQueryCollection = new JsonStats(Logger.get(sampledQueryLoggerName))
-    proxy.LoggingProxy(slowQueryCollection, slowQueryThreshold, sampledQueryCollection, sampledQueryRate, name, obj)
+    val sampledQueryConsumer = new SampledTransactionalStatsConsumer(
+      new LoggingTransactionalStatsConsumer(Logger.get(sampledQueryLoggerName)), sampledQueryRate)
+//    val slowQueryCollection = new JsonStats(Logger.get(slowQueryLoggerName))
+    proxy.LoggingProxy(Seq(sampledQueryConsumer), name, obj)
   }
 }
 

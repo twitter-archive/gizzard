@@ -12,8 +12,6 @@ import com.twitter.util.Duration
 import thrift.conversions.Sequences._
 import nameserver.JobRelay
 
-import proxy.JobLoggingProxy
-
 
 class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
 extends JsonCodec(unparsable) {
@@ -42,15 +40,18 @@ extends JsonCodec(unparsable) {
 }
 
 class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec(codec.unparsableJobHandler) {
-  private val proxyFactory = {
+/*  private val proxyFactory = {
     val sampledQueryCollection = new JsonStats(Logger.get(conf.sampledQueryLoggerName))
     val slowQueryCollection = new JsonStats(Logger.get(conf.slowQueryLoggerName))
+
+
+    conf("jobs", 
     new JobLoggingProxy[JsonJob](slowQueryCollection, conf.slowQueryThreshold, sampledQueryCollection, conf.sampledQueryRate)
-  }
+  } */
 
   override def +=(item: (Regex, JsonJobParser)) = codec += item
   override def +=(r: Regex, p: JsonJobParser)   = codec += ((r, p))
-  override def inflate(json: Map[String, Any]): JsonJob = proxyFactory(codec.inflate(json))
+  override def inflate(json: Map[String, Any]): JsonJob = conf("jobs", codec.inflate(json))
 }
 
 class ReplicatedJob(jobs: Iterable[JsonJob]) extends JsonNestedJob(jobs) {

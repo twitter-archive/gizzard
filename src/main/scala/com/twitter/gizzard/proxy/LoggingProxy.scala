@@ -50,32 +50,16 @@ object LoggingProxy {
   } */
 
   def apply[T <: AnyRef](
-    slowQueryLogger: TransactionalStatsCollection, slowQueryDuration: Duration,
-    sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double,
-    name: String, obj: T)(implicit manifest: Manifest[T]): T = {
+    consumers: Seq[TransactionalStatsConsumer], name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
-      val ((rv, duration), summary) = Stats.withTransaction {
-        Stats.transaction.setLabel("timestamp", Time.now.inMillis.toString)
-        Stats.transaction.setLabel("name", name)
-        Stats.transaction.setLabel("method", method.name)
-        if (method.args != null) {
-          val zipped = method.args.zipWithIndex
-          zipped.foreach { case (value, name) => Stats.transaction.setLabel("argument/"+name, value.toString) }
-        }
-        val (rv, duration) = Duration.inMilliseconds { method() }
-        Stats.transaction.addMetric("duration", duration.inMilliseconds.toInt)
-        (rv, duration)
-      }
-      if (duration >= slowQueryDuration) slowQueryLogger.write(summary)
-      val i = rand.nextFloat()
-      if (i < sampledQueryRate) sampledQueryLogger.write(summary)
-
+      val (rv, t) = Stats.withTransaction { method() }
+      consumers.map { _(t) }
       rv
     }
   }
 }
 
-class JobLoggingProxy[T <: JsonJob](
+/*class JobLoggingProxy[T <: JsonJob](
   slowQueryLogger: TransactionalStatsCollection, slowQueryThreshold: Duration,
   sampledQueryLogger: TransactionalStatsCollection, sampledQueryRate: Double)(implicit manifest: Manifest[T]) {
   private val proxy = new ProxyFactory[T]
@@ -96,4 +80,4 @@ class JobLoggingProxy[T <: JsonJob](
       rv
     }
   }
-}
+} */
