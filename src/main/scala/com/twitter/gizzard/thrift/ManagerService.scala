@@ -99,9 +99,6 @@ class ManagerService[S <: shards.Shard](nameServer: NameServer[S], scheduler: Pr
   def mark_shard_busy(id: ShardId, busy: Int) = {
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   }
-  //def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-  //  wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
-  //}
 
   def list_tables(): JList[java.lang.Integer] = wrapEx(nameServer.listTables)
 
