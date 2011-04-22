@@ -49,12 +49,13 @@ object Stats {
 
 case class TraceRecord(id: Long, timestamp: Time, message: String)
 
-trait TransactionalStatsProvider extends StatsProvider {
+trait TransactionalStatsProvider {
   def record(message: => String)
   def toSeq: Seq[TraceRecord]
   def createChild(): TransactionalStatsProvider
   def children: Seq[TransactionalStatsProvider]
   def id: Long
+  def clearAll()
 }
 
 trait TransactionalStatsConsumer {
@@ -91,7 +92,7 @@ class SampledTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, sa
   }
 }
 
-class TransactionalStatsCollection(val id: Long) extends StatsCollection with TransactionalStatsProvider {
+class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvider {
   private val messages = new mutable.ArrayBuffer[TraceRecord]()
   private val childs = new mutable.ArrayBuffer[TransactionalStatsCollection]()
 
@@ -107,23 +108,15 @@ class TransactionalStatsCollection(val id: Long) extends StatsCollection with Tr
     childs += rv
     rv
   }
+
+  def clearAll() {
+    messages.clear()
+    childs.clear()
+  }
 }
 
 object DevNullTransactionalStats extends TransactionalStatsProvider {
-  def addGauge(name: String)(gauge: => Double) = ()
-  def clearGauge(name: String) = ()
-  def setLabel(name: String, value: String) = ()
-  def clearLabel(name: String) = ()
-  def getCounter(name: String) = new Counter()
-  def getMetric(name: String) = new Metric()
-  def getGauge(name: String) = None
-  def getLabel(name: String) = None
-  def getCounters() = Map.empty
-  def getMetrics() = Map.empty
-  def getGauges() = Map.empty
-  def getLabels() = Map.empty
-  def clearAll() = ()
-
+  def clearAll() {}
   def record(message: => String) {}
   def toSeq = Seq()
   def createChild() = DevNullTransactionalStats
