@@ -28,7 +28,6 @@ object Stats {
   }
 
   def endTransaction() {
-    transaction.clearAll()
     tl.set(null)
   }
 
@@ -49,14 +48,6 @@ object Stats {
 
 case class TraceRecord(id: Long, timestamp: Time, message: String)
 
-trait TransactionalStatsProvider {
-  def record(message: => String)
-  def toSeq: Seq[TraceRecord]
-  def createChild(): TransactionalStatsProvider
-  def children: Seq[TransactionalStatsProvider]
-  def id: Long
-  def clearAll()
-}
 
 trait TransactionalStatsConsumer {
   def apply(t: TransactionalStatsProvider)
@@ -90,6 +81,15 @@ class SampledTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, sa
     val x = SampledTransactionalStatsConsumer.rng.nextFloat()
     if (x < sampleRate) consumer(t)
   }
+}
+
+trait TransactionalStatsProvider {
+  def record(message: => String)
+  def toSeq: Seq[TraceRecord]
+  def createChild(): TransactionalStatsProvider
+  def children: Seq[TransactionalStatsProvider]
+  def id: Long
+  def clearAll()
 }
 
 class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvider {

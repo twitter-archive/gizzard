@@ -19,17 +19,6 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     def setName(name: String)
   }
 
-/*  class FakeLogger extends TransactionalStatsCollection {
-    var summary: StatsSummary = null
-    def write(s: StatsSummary) {
-      summary = s
-    }
-
-    def reset {
-      summary = null
-    }
-  } */
-
   class FakeTransactionalStatsConsumer extends TransactionalStatsConsumer {
     var stats: TransactionalStatsProvider = null
     def apply(s: TransactionalStatsProvider) {
@@ -101,10 +90,22 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
   } */
 
   "New School Logging Proxy" should {
+    val future = new Future("test", 1, 1, 1.second, 1.second)
+
     val bob = new Named {
-      def name = "bob"
+      def name = {
+        Stats.transaction.record("ack")
+        "bob"
+      }
       def nameParts = Seq("bob", "marley").toArray
-      def namePartsSeq = Seq("bob", "marley")
+      def namePartsSeq = {
+        Stats.transaction.record("before thread")
+        val f = future {
+          Stats.transaction.record("in thread")
+          Seq("bob", "marley")
+        }
+        f.get()
+      }
     }
 
     val rob = new Namer {
@@ -128,7 +129,13 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 
     "log a trace" in {
       bobProxy.name
-      println(sampledStats.stats)
+      sampledStats.stats.toSeq.map { _.message } mustEqual List("ack")
+    }
+
+    "log a trace across threads" in {
+      bobProxy.namePartsSeq
+      sampledStats.stats.toSeq.map { _.message } mustEqual List("before thread")
+      sampledStats.stats.children.map { _.toSeq.map { _.message } } mustEqual List(List("in thread"))
     }
   }
 }
