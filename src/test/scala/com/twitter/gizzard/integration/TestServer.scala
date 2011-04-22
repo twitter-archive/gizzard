@@ -74,7 +74,7 @@ package object config {
           Priority.Low.id  -> new TestJobScheduler { val name = queueBase+"_low" }
         )
 
-        def repairPriority = Priority.Low.id
+        def repairPriority = Priority.High.id
 
         jobInjector.port = iPort
         manager.port     = mPort
@@ -98,14 +98,13 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf)
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
   //val copyPriority          = Priority.Low.id
 
-  def repairPriority          = Priority.Low.id
-  //val repairFactory           = new TestRepairFactory(nameServer, jobScheduler(Priority.Low.id))
+  def repairPriority          = Priority.High.id
+  val repairFactory           = new TestRepairFactory(nameServer, jobScheduler)
 
   shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
 
+  jobCodec += ("Repair".r -> new TestRepairParser(nameServer, jobScheduler))
   jobCodec += ("Put".r  -> new PutParser(nameServer.findCurrentForwarding(0, _)))
-  //jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
-
 
   // service listener
 
@@ -149,24 +148,23 @@ extends thrift.TestServer.Iface {
 
 case class TestResult(id: Int, value: String, count: Int) extends Repairable[TestResult] {
   def similar(other: TestResult) = {
-    id.compare(other.id) match {
-      case x if x != 0 => x
-      case _ => value.compare(other.value)
-    }
+    id.compare(other.id)
   }
   def shouldRepair(other: TestResult) = {
-    similar(other) == 0 && count != other.count
+    similar(other) == 0 && value != other.value
   }
 }
 
 object TestCursor {
-  val Start = new TestCursor(-1)
-  val End = new TestCursor(0)
+  val StartPosition = -1
+  val EndPosition = 0
+  val Start = new TestCursor(StartPosition)
+  val End = new TestCursor(EndPosition)
 }
 
 case class TestCursor(position: Int) extends Cursorable[TestCursor] {
-  def atStart = position == -1
-  def atEnd = position == 0
+  def atStart = position == TestCursor.StartPosition
+  def atEnd = position == TestCursor.EndPosition
   def compare(other: TestCursor) = {
     (atEnd, other.atEnd) match {
       case (true, true) => 0
@@ -233,6 +231,7 @@ extends TestShard {
 
   private def asResult(r: ResultSet) = new TestResult(r.getInt("id"), r.getString("value"), r.getInt("count"))
 
+  override def toString = shardInfo.toString
   def put(key: Int, value: String) { evaluator.execute(putSql, key, value) }
   def putAll(kvs: Seq[(Int, String)]) {
     evaluator.executeBatch(putSql) { b => for ((k,v) <- kvs) b(k,v) }
@@ -273,19 +272,21 @@ extends RepairJobFactory[TestShard] {
 }
 
 class TestRepair(shardIds: Seq[ShardId], cursor: TestCursor, count: Int,
-    nameServer: NameServer[TestShard], scheduler: PrioritizingJobScheduler) extends MultiShardRepair[TestShard, TestResult, TestCursor](shardIds, cursor, count, nameServer, scheduler, Priority.Low.id) {
+    nameServer: NameServer[TestShard], scheduler: PrioritizingJobScheduler) extends MultiShardRepair[TestShard, TestResult, TestCursor](shardIds, cursor, count, nameServer, scheduler, Priority.High.id) {
 
   def select(shard: TestShard, cursor: TestCursor, count: Int) = shard.getAll(cursor, count)
   def scheduleBulk(otherShards: Seq[TestShard], items: Seq[TestResult]) = { 
     otherShards.foreach(_.putAll(items.map{i => (i.id, i.value)}))
   }
   def scheduleItem(missing: Boolean, list: (TestShard, ListBuffer[TestResult], TestCursor), tableId: Int, item: TestResult) = {
-    scheduler.put(Priority.Low.id, new PutJob(item.id, item.value, nameServer.findCurrentForwarding(0, _)))
+    scheduler.put(Priority.High.id, new PutJob(item.id, item.value, nameServer.findCurrentForwarding(0, _)))
   }
   def nextRepair(lowestCursor: TestCursor) = {
     if (lowestCursor.atEnd) None else Some(new TestRepair(shardIds, lowestCursor, count, nameServer, scheduler))
   }
-  def serialize = Map("cursor" -> cursor.position)
+  def serialize = {
+    Map("cursor" -> cursor.position)
+  }
 }
 
 class TestRepairParser(ns: NameServer[TestShard], s: PrioritizingJobScheduler)

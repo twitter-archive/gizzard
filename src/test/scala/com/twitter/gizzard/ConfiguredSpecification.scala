@@ -25,7 +25,9 @@ trait IntegrationSpecification extends Specification {
   trait TestServerFacts {
     def enum: Int; def nsDatabaseName: String; def databaseName: String
     def basePort: Int; def injectorPort: Int; def managerPort: Int
-    def sqlShardInfo: shards.ShardInfo; def forwarding: nameserver.Forwarding
+    def sqlShardInfos: Seq[shards.ShardInfo]
+    def replicatingShardInfo: shards.ShardInfo
+    def forwarding: nameserver.Forwarding
     def kestrelQueues: Seq[String]
   }
 
@@ -39,9 +41,17 @@ trait IntegrationSpecification extends Specification {
       val basePort       = port
       val injectorPort   = port + 1
       val managerPort    = port + 2
-      val sqlShardInfo = shards.ShardInfo(shards.ShardId("localhost", "t0_0"),
-                                          "TestShard", "int", "int", shards.Busy.Normal)
-      val forwarding = nameserver.Forwarding(0, 0, sqlShardInfo.id)
+      val sqlShardInfos = shards.ShardInfo(shards.ShardId("localhost", "t0_1"),
+                                          "TestShard", "int", "int", shards.Busy.Normal) ::
+                          shards.ShardInfo(shards.ShardId("localhost", "t0_2"),
+                                          "TestShard", "int", "int", shards.Busy.Normal) ::
+                          shards.ShardInfo(shards.ShardId("localhost", "t0_3"),
+                                          "TestShard", "int", "int", shards.Busy.Normal) :: Nil
+
+      val replicatingShardInfo = shards.ShardInfo(shards.ShardId("localhost", "replicating_0"),
+                                          "com.twitter.gizzard.shards.ReplicatingShard", "", "", shards.Busy.Normal)
+
+      val forwarding = nameserver.Forwarding(0, 0, replicatingShardInfo.id)
       val kestrelQueues = Seq("gizzard_test_"+name+"_high_queue",
                               "gizzard_test_"+name+"_high_queue_errors",
                               "gizzard_test_"+name+"_low_queue",
@@ -85,7 +95,9 @@ trait IntegrationSpecification extends Specification {
       createTestServerDBs(s)
       s.nameServer.rebuildSchema()
       s.nameServer.setForwarding(s.forwarding)
-      s.nameServer.createShard(s.sqlShardInfo)
+      s.nameServer.createShard(s.replicatingShardInfo)
+      s.sqlShardInfos.foreach(s.nameServer.createShard(_))
+      s.sqlShardInfos.foreach(info => s.nameServer.addLink(s.replicatingShardInfo.id, info.id, 1))
       s.nameServer.reload()
     }
   }

@@ -12,10 +12,8 @@ import config.{GizzardServer => ServerConfig}
 abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   def readWriteShardAdapter: ReadWriteShard[S] => S
-  def repairFactory: RepairJobFactory[S] = null
-  def diffFactory: RepairJobFactory[S] = null
+  def repairFactory: RepairJobFactory[S]
   def jobPriorities: Seq[Int]
-  //def copyPriority: Int
   def repairPriority: Int
   def start(): Unit
   def shutdown(quiesce: Boolean): Unit
@@ -31,7 +29,6 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
   val replicationFuture: Option[Future] = None
   lazy val shardRepo    = new BasicShardRepository[S](readWriteShardAdapter, replicationFuture)
   lazy val nameServer   = config.nameServer(shardRepo)
-
 
   // job wiring
 
@@ -51,8 +48,7 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
     nameServer,
     jobScheduler,
     repairFactory,
-    repairPriority,
-    diffFactory)
+    repairPriority)
 
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
