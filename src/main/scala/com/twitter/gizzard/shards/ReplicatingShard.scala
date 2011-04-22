@@ -13,148 +13,102 @@ import com.twitter.util.Duration
 import net.lag.logging.Logger
 
 
-class ReplicatingShardFactory[S <: Shard](
-      readWriteShardAdapter: ReadWriteShard[S] => S,
-      future: Option[Future])
-  extends shards.ShardFactory[S] {
-
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[S]) =
-    readWriteShardAdapter(new ReplicatingShard(
+class ReplicatingShardFactory[T](future: Option[Future]) extends RoutingNodeFactory[T] {
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[RoutingNode[T]]) = {
+    new ReplicatingShard(
       shardInfo,
       weight,
       replicas,
       new LoadBalancer(replicas),
       future
-    ))
-
-  def materialize(shardInfo: shards.ShardInfo) = ()
+    )
+  }
 }
 
-class ReplicatingShard[S <: Shard](
-      val shardInfo: ShardInfo,
-      val weight: Int,
-      val children: Seq[S],
-      val loadBalancer: (() => Seq[S]),
-      val future: Option[Future])
-  extends ReadWriteShard[S] {
-
-  def readAllOperation[A](method: (S => A)) = fanout(method(_), children)
-  def readOperation[A](method: (S => A)) = failover(method(_), loadBalancer())
-
-  def writeOperation[A](method: (S => A)) = {
-    fanout(method, children).map {
-      case Left(ex)      => throw ex
-      case Right(result) => result
-    }.headOption.getOrElse(throw new ShardBlackHoleException(shardInfo.id))
-  }
-
-  def rebuildableReadOperation[A](method: (S => Option[A]))(rebuild: (S, S) => Unit) =
-    rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
+class ReplicatingShard[T](
+  val shardInfo: ShardInfo,
+  val weight: Int,
+  val children: Seq[RoutingNode[T]],
+  val loadBalancer: (() => Seq[RoutingNode[T]]),
+  val future: Option[Future])
+extends RoutingNode[T] {
 
   lazy val log = Logger.get
 
-  protected def unwrapException(exception: Throwable): Throwable = {
-    exception match {
-      case e: ExecutionException =>
-        unwrapException(e.getCause)
-      case e: UndeclaredThrowableException =>
-        // fondly known as JavaOutrageException
-        unwrapException(e.getCause)
-      case e =>
-        e
-    }
-  }
+  def readAllOperation[A](f: T => A) = fanout(children)(_.readAllOperation(f))
 
-  protected def fanoutFuture[A](method: (S => A), replicas: Seq[S], future: Future) = {
-    val results = new mutable.ArrayBuffer[Either[Throwable,A]]()
+  def readOperation[A](f: T => A) = failover(loadBalancer())(_.readOperation(f))
 
-    replicas.map { replica => (replica, future(method(replica))) }.foreach { case (replica, futureTask) =>
+  def writeOperation[A](f: T => A) = {
+    val allResults = fanout(children) { c =>
       try {
-        results += Right(futureTask.get(future.timeout.inMillis, TimeUnit.MILLISECONDS))
+        Seq(Right(c.writeOperation(f)))
       } catch {
-        case e: Exception =>
-          unwrapException(e) match {
-            case e: ShardBlackHoleException =>
-              // nothing.
-            case e: TimeoutException =>
-              results += Left(new ReplicatingShardTimeoutException(replica.shardInfo.id, e))
-            case e =>
-              results += Left(e)
-          }
+        case e => normalizeException(e, shardInfo.id).map(Left(_)).toSeq
       }
+    } map {
+      case Left(e) => throw e
+      case Right(result) => result
     }
 
-    results
-  }
-
-  protected def fanoutSerial[A](method: (S => A), replicas: Seq[S]) = {
-    val results = new mutable.ArrayBuffer[Either[Throwable,A]]()
-
-    replicas.foreach { replica =>
-      try {
-        results += Right(method(replica))
-      } catch {
-        case e: ShardBlackHoleException =>
-          // nothing.
-        case e: TimeoutException =>
-          results += Left(new ReplicatingShardTimeoutException(replica.shardInfo.id, e))
-        case e => results += Left(e)
-      }
+    allResults.headOption getOrElse {
+      throw new ShardBlackHoleException(shardInfo.id)
     }
-
-    results
   }
 
-  protected def fanout[A](method: (S => A), replicas: Seq[S]) = {
+  protected def fanout[A](replicas: Seq[RoutingNode[T]])(f: RoutingNode[T] => Seq[Either[Throwable,A]]) = {
     future match {
-      case None => fanoutSerial(method, replicas)
-      case Some(f) => fanoutFuture(method, replicas, f)
+      case None => replicas flatMap f
+      case Some(future) => {
+        replicas.map { r => Pair(r, future(f(r))) } flatMap { case (replica, task) =>
+          try {
+            task.get(future.timeout.inMillis, TimeUnit.MILLISECONDS)
+          } catch {
+            case e => normalizeException(e, replica.shardInfo.id).map(Left(_)).toSeq
+          }
+        }
+      }
     }
   }
 
-  protected def failover[A](f: S => A, replicas: Seq[S]): A = {
-    replicas match {
-      case Seq() =>
-        throw new ShardOfflineException(shardInfo.id)
-      case Seq(shard, remainder @ _*) =>
-        try {
-          f(shard)
-        } catch {
-          case e: ShardRejectedOperationException =>
-            failover(f, remainder)
-          case e: ShardException =>
-            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
-            failover(f, remainder)
-        }
+  protected def failover[A](replicas: Seq[RoutingNode[T]])(f: RoutingNode[T] => A): A = {
+    replicas foreach { replica =>
+      try {
+        return f(replica)
+      } catch {
+        case e: ShardRejectedOperationException => ()
+        case e: ShardException => log.warning(e, "Error on %s: %s", replica.shardInfo.id, e)
       }
+    }
+
+    throw new ShardOfflineException(shardInfo.id)
   }
 
-  protected def rebuildableFailover[A](f: S => Option[A], rebuild: (S, S) => Unit,
-                                       replicas: Seq[S], toRebuild: List[S],
-                                       everSuccessful: Boolean): Option[A] = {
-    replicas match {
-      case Seq() =>
-        if (everSuccessful) {
-          None
-        } else {
-          throw new ShardOfflineException(shardInfo.id)
-        }
-      case Seq(shard, remainder @ _*) =>
-        try {
-          f(shard) match {
-            case None =>
-              rebuildableFailover(f, rebuild, remainder, shard :: toRebuild, true)
-            case Some(answer) =>
-              toRebuild.foreach { destShard => rebuild(shard, destShard) }
-              Some(answer)
-          }
+  protected[shards] def rebuildRead[A](toRebuild: List[T])(f: (T, Seq[T]) => Option[A]): Either[List[T],A] = {
+    val start: Either[List[T],A] = Left(toRebuild)
+    var everSuccessful           = false
+
+    val rv = (children foldLeft start) { (result, replica) =>
+      result match {
+        case Right(rv)       => return Right(rv)
+        case Left(toRebuild) => try {
+          val next = replica.rebuildRead(toRebuild)(f)
+          everSuccessful = true
+          next
         } catch {
-          case e: ShardRejectedOperationException =>
-            rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
-          case e: ShardException =>
-            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
-            rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
+          case e: ShardRejectedOperationException => Left(toRebuild)
+          case e: ShardException => {
+            log.warning(e, "Error on %s: %s", replica.shardInfo.id, e)
+            Left(toRebuild)
+          }
         }
+      }
+    }
+
+    if (!everSuccessful) {
+      throw new ShardOfflineException(shardInfo.id)
+    } else {
+      rv
     }
   }
 }

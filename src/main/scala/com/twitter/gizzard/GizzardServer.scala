@@ -5,13 +5,11 @@ import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
 import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
-import shards.{Shard, ReadWriteShard}
 import config.{GizzardServer => ServerConfig}
 
 
-abstract class GizzardServer[S <: Shard](config: ServerConfig) {
+abstract class GizzardServer[S](config: ServerConfig) {
 
-  def readWriteShardAdapter: ReadWriteShard[S] => S
   def copyFactory: CopyJobFactory[S]
   def repairFactory: RepairJobFactory[S] = null
   def diffFactory: RepairJobFactory[S] = null
@@ -30,7 +28,7 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
   // nameserver/shard wiring
 
   val replicationFuture: Option[Future] = None
-  lazy val shardRepo    = new BasicShardRepository[S](readWriteShardAdapter, replicationFuture)
+  lazy val shardRepo    = new BasicShardRepository[S](replicationFuture)
   lazy val nameServer   = config.nameServer(shardRepo)
 
 

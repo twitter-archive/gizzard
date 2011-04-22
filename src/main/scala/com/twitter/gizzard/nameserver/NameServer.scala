@@ -39,9 +39,9 @@ object TreeUtils {
   }
 }
 
-class NameServer[S <: shards.Shard](
+class NameServer[T](
   nameServerShard: Shard,
-  shardRepository: ShardRepository[S],
+  shardRepository: ShardRepository[T],
   jobRelayFactory: JobRelayFactory,
   val mappingFunction: Long => Long) {
 
@@ -123,7 +123,7 @@ class NameServer[S <: shards.Shard](
     log.info("Loading name server configuration is done.")
   }
 
-  def findShardById(id: ShardId, weight: Int): S = {
+  def findShardById(id: ShardId, weight: Int): RoutingNode[T] = {
     val (shardInfo, downwardLinks) = shardInfos.get(id).map { info =>
       // either pull shard and links from our internal data structures...
       (info, getChildren(id))
@@ -138,7 +138,7 @@ class NameServer[S <: shards.Shard](
   }
 
   @throws(classOf[NonExistentShard])
-  def findShardById(id: ShardId): S = findShardById(id, 1)
+  def findShardById(id: ShardId): RoutingNode[T] = findShardById(id, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
     if(forwardings == null) throw new NameserverUninitialized
@@ -184,7 +184,7 @@ class NameServer[S <: shards.Shard](
     ids.map(getRootShardIds).reduceLeft((s1, s2) => s1.filter(s2.contains)).toSeq.headOption
   }
 
-  @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) = nameServerShard.createShard(shardInfo, repository)
+  @throws(classOf[shards.ShardException]) def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) = nameServerShard.createShard(shardInfo, repository)
   @throws(classOf[shards.ShardException]) def getShard(id: ShardId) = nameServerShard.getShard(id)
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId) = nameServerShard.deleteShard(id)
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int) = nameServerShard.addLink(upId, downId, weight)

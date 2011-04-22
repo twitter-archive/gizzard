@@ -17,19 +17,14 @@ import com.twitter.gizzard.nameserver.FailingOverLoadBalancer
  */
 
 
-class FailingOverShardFactory[ConcreteShard <: Shard](
-    readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard,
-    future: Option[Future])
-  extends ShardFactory[ConcreteShard] {
-
-  def instantiate(info: shards.ShardInfo, weight: Int, replicas: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReplicatingShard(
+class FailingOverShardFactory[T](future: Option[Future]) extends RoutingNodeFactory[T] {
+  def instantiate(info: shards.ShardInfo, weight: Int, replicas: Seq[RoutingNode[T]]) = {
+    new ReplicatingShard(
       info,
       weight,
       replicas,
       new FailingOverLoadBalancer(replicas),
       future
-    ))
-
-  def materialize(shardInfo: shards.ShardInfo) = ()
+    )
+  }
 }

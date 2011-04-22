@@ -1,27 +1,19 @@
 package com.twitter.gizzard
 package shards
 
-import scala.collection.mutable
 
-
-class WriteOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends shards.ShardFactory[ConcreteShard] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new WriteOnlyShard(shardInfo, weight, children))
-  def materialize(shardInfo: shards.ShardInfo) = ()
+class WriteOnlyShardFactory[T] extends RoutingNodeFactory[T] {
+  def instantiate(shardInfo: shards.ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
+    new WriteOnlyShard(shardInfo, weight, children)
+  }
 }
 
-class WriteOnlyShard[ConcreteShard <: Shard]
-  (val shardInfo: ShardInfo, val weight: Int, val children: Seq[ConcreteShard])
-  extends ReadWriteShard[ConcreteShard] {
+class WriteOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+extends PassThroughNode[T](shardInfo, weight, children) {
 
-  val shard = children.head
-  private def throwException = throw new ShardRejectedOperationException("shard is write-only", shardInfo.id)
+  private def exception = new ShardRejectedOperationException("shard is write-only", shardInfo.id)
 
-  def readAllOperation[A](method: (ConcreteShard => A)) = try { throwException } catch { case e => Seq(Left(e)) }
-  def readOperation[A](method: (ConcreteShard => A))    = throwException
-
-  def writeOperation[A](method: (ConcreteShard => A)) = method(shard)
-
-  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
-    throwException
+  override def readAllOperation[A](method: T => A) = Seq(Left(exception))
+  override def readOperation[A](method: T => A)    = throw exception
+  override def rebuildableReadOperation[A](method: T => Option[A])(rebuild: (T, T) => Unit) = throw exception
 }

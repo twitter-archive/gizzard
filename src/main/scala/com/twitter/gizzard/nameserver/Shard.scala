@@ -4,8 +4,8 @@ package nameserver
 import scala.collection.mutable
 import shards._
 
-trait Shard extends shards.Shard {
-  @throws(classOf[shards.ShardException]) def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S])
+trait Shard {
+  @throws(classOf[shards.ShardException]) def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T])
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
   @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId)

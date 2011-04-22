@@ -1,28 +1,17 @@
 package com.twitter.gizzard
 package shards
 
-import scala.collection.mutable
 
-
-class ReadOnlyShardFactory[ConcreteShard <: Shard](readWriteShardAdapter: ReadWriteShard[ConcreteShard] => ConcreteShard) extends ShardFactory[ConcreteShard] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[ConcreteShard]) =
-    readWriteShardAdapter(new ReadOnlyShard(shardInfo, weight, children))
-  def materialize(shardInfo: ShardInfo) = ()
+class ReadOnlyShardFactory[T] extends RoutingNodeFactory[T] {
+  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
+    new ReadOnlyShard(shardInfo, weight, children)
+  }
 }
 
-class ReadOnlyShard[ConcreteShard <: Shard]
-  (val shardInfo: ShardInfo, val weight: Int, val children: Seq[ConcreteShard])
-  extends ReadWriteShard[ConcreteShard] {
+class ReadOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+extends PassThroughNode[T](shardInfo, weight, children) {
 
-  val shard = children.head
-
-  def readAllOperation[A](method: (ConcreteShard => A)) = Seq(try { Right(method(shard)) } catch { case e => Left(e) })
-
-  def readOperation[A](method: (ConcreteShard => A)) = method(shard)
-
-  def writeOperation[A](method: (ConcreteShard => A)) =
+  override def writeOperation[A](method: T => A) = {
     throw new ShardRejectedOperationException("shard is read-only", shardInfo.id)
-
-  def rebuildableReadOperation[A](method: (ConcreteShard => Option[A]))(rebuild: (ConcreteShard, ConcreteShard) => Unit) =
-    method(shard)
+  }
 }
