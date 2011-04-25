@@ -15,16 +15,18 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
   Stats.global.addGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
 
   def apply[A](a: => A) = {
-    val trans = Stats.transactionOpt.map { _.createChild }
+//    val trans = Stats.transactionOpt.map { _.createChild }
 
     val future = new FutureTask(new Callable[A] {
       val startTime = Time.now
       def call = {
-        trans.foreach { t => Stats.setTransaction(t) }
+//        trans.foreach { t => Stats.setTransaction(t) }
         if (Time.now - startTime > timeout) {
           Stats.internal.incr("future-" + name + "-timeout")
           throw new TimeoutException("future spent too long in queue")
         }
+        val rv = a
+//        Stats.endTransaction()
         a
       }
     })

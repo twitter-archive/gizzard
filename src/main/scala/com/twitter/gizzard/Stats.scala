@@ -48,7 +48,6 @@ object Stats {
 
 case class TraceRecord(id: Long, timestamp: Time, message: String)
 
-
 trait TransactionalStatsConsumer {
   def apply(t: TransactionalStatsProvider)
 }
@@ -97,7 +96,7 @@ class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvi
   private val childs = new mutable.ArrayBuffer[TransactionalStatsCollection]()
 
   def record(message: => String) {
-    messages += TraceRecord(0L, Time.now, message)
+    messages += TraceRecord(id, Time.now, message)
   }
 
   def toSeq = messages.toSeq
