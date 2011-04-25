@@ -11,13 +11,13 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler, RepairJobFactory}
+import com.twitter.gizzard.scheduler.{JsonJob, JobScheduler, PrioritizingJobScheduler, RepairJobFactory}
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler, copyScheduler: JobScheduler, repairer: RepairJobFactory[S], repairPriority: Int, differ: RepairJobFactory[S]) extends Manager.Iface {
+class ManagerService[S <: shards.Shard](nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, repairer: RepairJobFactory[S], repairPriority: Int) extends Manager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -99,9 +99,6 @@ class ManagerService[S <: shards.Shard](nameServer: NameServer[S], copier: CopyJ
   def mark_shard_busy(id: ShardId, busy: Int) = {
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   }
-  def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
-  }
 
   def list_tables(): JList[java.lang.Integer] = wrapEx(nameServer.listTables)
 
@@ -109,12 +106,6 @@ class ManagerService[S <: shards.Shard](nameServer: NameServer[S], copier: CopyJ
 
   def repair_shard(shardIds: JList[ShardId]) = {
     wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler]).put(repairPriority, repairer(
-      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
-    )))
-  }
-
-  def diff_shards(shardIds: JList[ShardId]) = {
-    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler]).put(repairPriority, differ(
       shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
     )))
   }
