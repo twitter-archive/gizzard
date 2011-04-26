@@ -9,7 +9,7 @@ import scala.collection.mutable
 import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.util.Duration
+import com.twitter.util.{Time, Duration}
 import com.twitter.logging.Logger
 
 
@@ -118,15 +118,22 @@ class ReplicatingShard[S <: Shard](
       case Seq() =>
         throw new ShardOfflineException(shardInfo.id)
       case Seq(shard, remainder @ _*) =>
+        val start = Time.now
         try {
+          Stats.transaction.record("Reading from: " + shard.toString)
           f(shard)
         } catch {
           case e: ShardRejectedOperationException =>
+            Stats.transaction.record("Rejected operation: "+e)
             failover(f, remainder)
           case e: ShardException =>
+            Stats.transaction.record("Failed read: "+e)
             exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
 //            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             failover(f, remainder)
+        } finally {
+          val duration = Time.now-start
+          Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
         }
       }
   }
