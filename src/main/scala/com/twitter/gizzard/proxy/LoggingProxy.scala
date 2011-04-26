@@ -52,7 +52,12 @@ object LoggingProxy {
   def apply[T <: AnyRef](
     consumers: Seq[TransactionalStatsConsumer], name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
-      val (rv, t) = Stats.withTransaction { method() }
+      val (rv, t) = Stats.withTransaction { 
+        val (rv, duration) = Duration.inMilliseconds { method() }
+        Stats.transaction.record("Total duration: "+duration)
+        Stats.transaction.set("duration", duration)
+        rv
+      }
       consumers.map { _(t) }
       rv
     }

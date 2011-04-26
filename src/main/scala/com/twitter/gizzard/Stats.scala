@@ -22,7 +22,7 @@ object Stats {
 
   def beginTransaction() {
     transactionOpt match {
-      case None => setTransaction(new TransactionalStatsCollection(0L))
+      case None => setTransaction(new TransactionalStatsCollection(rng.nextInt(Integer.MAX_VALUE)))
       case Some(t) => t.clearAll()
     }
   }
@@ -44,6 +44,7 @@ object Stats {
   }
 
   private val tl = new ThreadLocal[TransactionalStatsProvider]
+  private val rng = new Random
 }
 
 case class TraceRecord(id: Long, timestamp: Time, message: String)
@@ -60,10 +61,12 @@ class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsC
     t.toSeq.map { record =>
        buf.append("  ["+record.timestamp.inMillis+"] "+record.message+"\n")
     }
-    buf.append("  Children:\n")
-    t.children.map { child =>
-      child.toSeq.map { record =>
-        buf.append("    ["+record.timestamp.inMillis+"] "+record.message+"\n")
+    if (t.children.size > 0) {
+      buf.append("  Children:\n")
+      t.children.map { child =>
+        child.toSeq.map { record =>
+          buf.append("    ["+record.timestamp.inMillis+"] "+record.message+"\n")
+        }
       }
     }
     log.info(buf.toString)
@@ -74,16 +77,28 @@ object SampledTransactionalStatsConsumer {
   val rng = new Random
 }
 
-class SampledTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, sampleRate: Double)
-  extends TransactionalStatsConsumer {
+abstract class ConditionalTransactionalStatsConsumer(
+  consumer: TransactionalStatsConsumer,
+  f: TransactionalStatsProvider => Boolean) extends TransactionalStatsConsumer {
   def apply(t: TransactionalStatsProvider) {
-    val x = SampledTransactionalStatsConsumer.rng.nextFloat()
-    if (x < sampleRate) consumer(t)
+    if (f(t)) consumer(t)
   }
 }
 
+class SampledTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, sampleRate: Double)
+  extends ConditionalTransactionalStatsConsumer(consumer, { t =>
+    SampledTransactionalStatsConsumer.rng.nextFloat() < sampleRate
+  })
+
+class SlowTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, threshold: Long)
+  extends ConditionalTransactionalStatsConsumer(consumer, { t =>
+    t.get("duration").map { _.asInstanceOf[Long] > threshold }.getOrElse(false)
+  })
+
 trait TransactionalStatsProvider {
   def record(message: => String)
+  def set(key: String, value: AnyRef)
+  def get(key: String): Option[AnyRef]
   def toSeq: Seq[TraceRecord]
   def createChild(): TransactionalStatsProvider
   def children: Seq[TransactionalStatsProvider]
@@ -94,10 +109,14 @@ trait TransactionalStatsProvider {
 class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvider {
   private val messages = new mutable.ArrayBuffer[TraceRecord]()
   private val childs = new mutable.ArrayBuffer[TransactionalStatsCollection]()
+  private val vars = new mutable.HashMap[String, AnyRef]
 
   def record(message: => String) {
     messages += TraceRecord(id, Time.now, message)
   }
+
+  def set(key: String, value: AnyRef) { vars.put(key, value) }
+  def get(key: String) = { vars.get(key) }
 
   def toSeq = messages.toSeq
   def children = childs.toSeq
@@ -121,6 +140,8 @@ object DevNullTransactionalStats extends TransactionalStatsProvider {
   def createChild() = DevNullTransactionalStats
   def children = Seq()
   def id = 0L
+  def set(key: String, value: AnyRef) {}
+  def get(key: String) = None
 }
 
 /*
