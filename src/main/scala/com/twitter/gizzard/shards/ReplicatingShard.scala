@@ -119,22 +119,25 @@ class ReplicatingShard[S <: Shard](
         throw new ShardOfflineException(shardInfo.id)
       case Seq(shard, remainder @ _*) =>
         val start = Time.now
-        try {
+        val rv = try {
           Stats.transaction.record("Reading from: " + shard.toString)
           f(shard)
         } catch {
           case e: ShardRejectedOperationException =>
             Stats.transaction.record("Rejected operation: "+e)
+            val duration = Time.now-start
+            Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
             failover(f, remainder)
           case e: ShardException =>
             Stats.transaction.record("Failed read: "+e)
+            val duration = Time.now-start
+            Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
             exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
-//            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             failover(f, remainder)
-        } finally {
-          val duration = Time.now-start
-          Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
         }
+        val duration = Time.now-start
+        Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
+        rv
       }
   }
 
