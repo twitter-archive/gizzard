@@ -27,8 +27,10 @@ object Stats {
     }
   }
 
-  def endTransaction() {
+  def endTransaction() = {
+    val old = tl.get()
     tl.set(null)
+    old
   }
 
   def setTransaction(collection: TransactionalStatsProvider) {
@@ -38,8 +40,7 @@ object Stats {
   def withTransaction[T <: Any](f: => T): (T, TransactionalStatsProvider) = {
     beginTransaction()
     val rv = f
-    val t = transaction
-    endTransaction()
+    val t = endTransaction()
     (rv, t)
   }
 
@@ -61,12 +62,10 @@ class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsC
     t.toSeq.map { record =>
        buf.append("  ["+record.timestamp.inMillis+"] "+record.message+"\n")
     }
-    if (t.children.size > 0) {
-      buf.append("  Children:\n")
-      t.children.map { child =>
-        child.toSeq.map { record =>
-          buf.append("    ["+record.timestamp.inMillis+"] "+record.message+"\n")
-        }
+    t.children.map { child =>
+      buf.append("  Child Thread "+child.id+":\n")
+      child.toSeq.map { record =>
+        buf.append("    ["+record.timestamp.inMillis+"] "+record.message+"\n")
       }
     }
     log.info(buf.toString)
@@ -122,7 +121,7 @@ class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvi
   def children = childs.toSeq
 
   def createChild() = {
-    val rv = new TransactionalStatsCollection(id)
+    val rv = new TransactionalStatsCollection(childs.size+1)
     childs += rv
     rv
   }

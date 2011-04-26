@@ -5,7 +5,6 @@ import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
 import com.twitter.gizzard.Stats
 import com.twitter.ostrich.stats.{StatsProvider, TransactionalStatsCollection}
-import java.util.Random
 import scheduler.JsonJob
 
 
@@ -14,8 +13,6 @@ import scheduler.JsonJob
  * time to a transactional logger.
  */
 object LoggingProxy {
-  val rand = new Random
-
   /*def apply[T <: AnyRef](stats: StatsProvider, logger: TransactionalStatsCollection, name: String, methods: Set[String], obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       if (methods.size == 0 || methods.contains(method.name)) {
@@ -52,14 +49,22 @@ object LoggingProxy {
   def apply[T <: AnyRef](
     consumers: Seq[TransactionalStatsConsumer], name: String, obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
-      val (rv, t) = Stats.withTransaction { 
-        val (rv, duration) = Duration.inMilliseconds { method() }
-        Stats.transaction.record("Total duration: "+duration)
-        Stats.transaction.set("duration", duration)
-        rv
+      Stats.beginTransaction()
+      val startTime = Time.now
+      try {
+        method()
+      } catch {
+        case e: Exception =>
+          Stats.transaction.record("Caught exception: " + e.toString())
+          Stats.transaction.set("exception", e)
+          throw e
+      } finally {
+        val duration = Time.now - startTime
+        Stats.transaction.record("Total duration: "+duration.inMillis)
+        Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
+        val t = Stats.endTransaction()
+        consumers.map { _(t) }
       }
-      consumers.map { _(t) }
-      rv
     }
   }
 }

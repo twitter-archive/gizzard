@@ -97,7 +97,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
         Stats.transaction.record("ack")
         "bob"
       }
-      def nameParts = Seq("bob", "marley").toArray
+      def nameParts = throw new Exception("yarrg!")
       def namePartsSeq = {
         Stats.transaction.record("before thread")
         val f = future {
@@ -129,13 +129,26 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 
     "log a trace" in {
       bobProxy.name
-      sampledStats.stats.toSeq.map { _.message } mustEqual List("ack")
+      val messages = sampledStats.stats.toSeq.map { _.message }
+      messages(0) mustEqual "ack"
+      messages(1) must startWith("Total duration:")
     }
 
     "log a trace across threads" in {
       bobProxy.namePartsSeq
-      sampledStats.stats.toSeq.map { _.message } mustEqual List("before thread")
-      sampledStats.stats.children.map { _.toSeq.map { _.message } } mustEqual List(List("in thread"))
+      val messages = sampledStats.stats.toSeq.map { _.message }
+      messages(0) mustEqual "before thread"
+      messages(1) must startWith("Total duration:")
+      val children = sampledStats.stats.children.map { _.toSeq.map { _.message } }
+      children(0)(0) mustEqual "in thread"
+      children(0)(1) must startWith("Total duration:")
+    }
+
+    "log exceptions" in {
+      bobProxy.nameParts must throwA[Exception]
+      val messages = sampledStats.stats.toSeq.map { _.message }
+      messages(0) mustEqual "Caught exception: java.lang.Exception: yarrg!"
+      messages(1) must startWith("Total duration:")
     }
   }
 }

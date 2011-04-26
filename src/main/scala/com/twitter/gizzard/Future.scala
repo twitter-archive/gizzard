@@ -25,9 +25,19 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
           Stats.internal.incr("future-" + name + "-timeout")
           throw new TimeoutException("future spent too long in queue")
         }
-        val rv = a
-        Stats.endTransaction()
-        rv
+
+        val threadExecTime = Time.now
+        try {
+          a
+        } catch {
+          case e: Exception =>
+            Stats.transaction.record("Caught exception: "+e)
+            throw e
+        } finally { 
+          val duration = Time.now - threadExecTime
+          Stats.transaction.record("Total duration: "+duration.inMillis)
+          Stats.endTransaction()
+        }
       }
     })
     executor.execute(future)
