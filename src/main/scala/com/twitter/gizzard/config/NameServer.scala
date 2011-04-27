@@ -67,8 +67,7 @@ trait NameServer {
     val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val loadBalancer  = new nameserver.LoadBalancer(replicaNodes)
     val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes, loadBalancer, None)
-    val shard         = new nameserver.ReadWriteShardAdapter(replicating)
 
-    new nameserver.NameServer(shard, shardRepository, jobRelay(), getMappingFunction())
+    new nameserver.NameServer(replicating, shardRepository, jobRelay(), getMappingFunction())
   }
 }

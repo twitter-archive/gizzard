@@ -8,9 +8,9 @@ import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 import com.twitter.gizzard
-import nameserver.NameServer
-import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException}
-import scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
+import com.twitter.gizzard.nameserver.NameServer
+import com.twitter.gizzard.shards.{RoutingNode, ShardId, ShardInfo, ShardException, ShardTimeoutException}
+import com.twitter.gizzard.scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
 
 package object config {
   import com.twitter.gizzard.config._
@@ -90,21 +90,21 @@ object Priority extends Enumeration {
 class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf) {
 
   // shard/nameserver/scheduler wiring
-
-  val readWriteShardAdapter = new TestReadWriteAdapter(_)
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
   val copyPriority          = Priority.Low.id
   val copyFactory           = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
   shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
 
-  jobCodec += ("Put".r  -> new PutParser(nameServer.findCurrentForwarding(0, _)))
+  def findForwarding(id: Long) = new TestShardAdapter(nameServer.findCurrentForwarding(0, id))
+
+  jobCodec += ("Put".r  -> new PutParser(findForwarding))
   jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
 
 
   // service listener
 
-  val testService = new TestServerIFace(nameServer.findCurrentForwarding(0, _), jobScheduler)
+  val testService = new TestServerIFace(findForwarding, jobScheduler)
 
   lazy val testThriftServer = {
     val processor = new thrift.TestServer.Processor(testService)
@@ -142,25 +142,23 @@ extends thrift.TestServer.Iface {
 
 // Shard Definitions
 
-trait TestShard extends shards.Shard {
+trait TestShard {
   def put(key: Int, value: String): Unit
   def putAll(kvs: Seq[(Int, String)]): Unit
   def get(key: Int): Option[(Int, String, Int)]
   def getAll(key: Int, count: Int): Seq[(Int, String, Int)]
 }
 
-class TestReadWriteAdapter(s: shards.ReadWriteShard[TestShard])
-extends shards.ReadWriteShardAdapter(s) with TestShard {
+class TestShardAdapter(s: shards.RoutingNode[TestShard]) extends TestShard {
   def put(k: Int, v: String)         = s.writeOperation(_.put(k,v))
   def putAll(kvs: Seq[(Int,String)]) = s.writeOperation(_.putAll(kvs))
   def get(k: Int)                    = s.readOperation(_.get(k))
   def getAll(k:Int, c: Int)          = s.readOperation(_.getAll(k,c))
 }
 
-class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection)
-extends shards.ShardFactory[TestShard] {
-  def instantiate(info: ShardInfo, weight: Int, children: Seq[TestShard]) =
-    new SqlShard(qeFactory(conn.withHost(info.hostname)), info, weight, children)
+class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
+
+  def instantiate(info: ShardInfo) = new SqlShard(qeFactory(conn.withHost(info.hostname)), info)
 
   def materialize(info: ShardInfo) {
     val ddl =
@@ -181,16 +179,12 @@ extends shards.ShardFactory[TestShard] {
   }
 }
 
-class SqlShard(
-  evaluator: QueryEvaluator,
-  val shardInfo: ShardInfo,
-  val weight: Int,
-  val children: Seq[TestShard])
-extends TestShard {
+class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo) extends TestShard {
+
   private val table = shardInfo.tablePrefix
 
-  private val putSql = """insert into %s (id, value, count) values (?,?,1) on duplicate key
-                          update value = values(value), count = count+1""".format(table)
+  private val putSql  = """insert into %s (id, value, count) values (?,?,1) on duplicate key
+                           update value = values(value), count = count+1""".format(table)
   private val getSql    = "select * from " + table + " where id = ?"
   private val getAllSql = "select * from " + table + " where id > ? limit ?"
 
@@ -236,7 +230,8 @@ extends CopyJobParser[TestShard] {
 class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
                ns: NameServer[TestShard], s: JobScheduler)
 extends CopyJob[TestShard](srcId, destId, count, ns, s) {
-  def copyPage(src: TestShard, dest: TestShard, count: Int) = {
+  def copyPage(srcNode: RoutingNode[TestShard], destNode: RoutingNode[TestShard], count: Int) = {
+    val List(src, dest) = List(srcNode, destNode).map(new TestShardAdapter(_))
     val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
 
     if (rows.isEmpty) {

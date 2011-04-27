@@ -6,11 +6,11 @@ import org.specs.mock.{ClassMocker, JMocker}
 import shards.{ShardException,ShardInfo}
 
 class NestableShardFactory extends shards.ShardFactory[Shard] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[Shard]) = new NestableShard(shardInfo, weight, children)
+  def instantiate(shardInfo: ShardInfo) = new NestableShard(shardInfo)
   def materialize(shardInfo: ShardInfo) = ()
 }
 
-class NestableShard(val shardInfo: shards.ShardInfo, val weight:Int, val children: Seq[fake.Shard]) extends Shard {
+class NestableShard(val shardInfo: shards.ShardInfo) extends Shard {
   val map = new mutable.HashMap[String, String]
 
   def get(key: String) = {

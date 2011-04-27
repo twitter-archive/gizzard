@@ -28,8 +28,9 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
   }
 })
 
-class SqlExceptionWrappingProxyFactory[S <: shards.Shard](implicit manifest: Manifest[S]) extends ExceptionHandlingProxyFactory[S]({ (shard, e) =>
-  val id = shard.shardInfo.id
+class SqlExceptionWrappingProxyFactory[T <: AnyRef : Manifest](id: ShardId) extends ExceptionHandlingProxyFactory[T]({ (shard, e) =>
+  val manifest = implicitly[Manifest[T]]
+
   e match {
     case e: SqlQueryTimeoutException =>
       throw new shards.ShardTimeoutException(e.timeout, id, e)

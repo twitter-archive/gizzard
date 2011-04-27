@@ -5,6 +5,8 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import scala.util.Random
 
+import com.twitter.gizzard.shards.RoutingNode
+
 
 // FIXME: these tests kinda suck in theory. Ideally, we'd test based on
 //        a fuzzy expectation of the distribution of responses.
@@ -13,9 +15,9 @@ import scala.util.Random
 object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "LoadBalancer" should {
     val random = new Random(0)
-    val shard1 = mock[shards.Shard]
-    val shard2 = mock[shards.Shard]
-    val shard3 = mock[shards.Shard]
+    val shard1 = mock[RoutingNode[AnyRef]]
+    val shard2 = mock[RoutingNode[AnyRef]]
+    val shard3 = mock[RoutingNode[AnyRef]]
 
     "with a zero weight" in {
       expect {
@@ -42,9 +44,9 @@ object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassM
 object FailingOverLoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "FailingOverLoadBalancer" should {
     val random = new Random(0)
-    val shard1 = mock[shards.Shard]
-    val shard2 = mock[shards.Shard]
-    val shard3 = mock[shards.Shard]
+    val shard1 = mock[RoutingNode[AnyRef]]
+    val shard2 = mock[RoutingNode[AnyRef]]
+    val shard3 = mock[RoutingNode[AnyRef]]
 
     "returns 1 online followed by randomly ordered offlines followed by rest of onlines" in {
       expect {

@@ -1,18 +1,25 @@
 package com.twitter.gizzard
 package scheduler
 
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
+import com.twitter.gizzard.shards.RoutingNode
 
-class FakeCopy(val sourceShardId: shards.ShardId, val destinationShardId: shards.ShardId, count: Int,
-               nameServer: nameserver.NameServer[shards.Shard], scheduler: JobScheduler)(nextCopy: => Option[FakeCopy])
-      extends CopyJob[shards.Shard](sourceShardId, destinationShardId, count, nameServer, scheduler) {
+class FakeCopy(
+  val sourceShardId: shards.ShardId,
+  val destinationShardId: shards.ShardId,
+  count: Int,
+  nameServer: nameserver.NameServer[AnyRef],
+  scheduler: JobScheduler,
+  nextCopy: => Option[FakeCopy])
+extends CopyJob[AnyRef](sourceShardId, destinationShardId, count, nameServer, scheduler) {
+
   def serialize = Map("cursor" -> 1)
 
   @throws(classOf[Exception])
-  def copyPage(sourceShard: shards.Shard, destinationShard: shards.Shard, count: Int) = nextCopy
+  def copyPage(sourceShard: RoutingNode[AnyRef], destinationShard: RoutingNode[AnyRef], count: Int) = nextCopy
 
   override def equals(that: Any) = that match {
     case that: FakeCopy =>
@@ -29,11 +36,11 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val destinationShardInfo = shards.ShardInfo(destinationShardId, "FakeShard", "", "", shards.Busy.Normal)
     val count = CopyJob.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
-    val nameServer = mock[nameserver.NameServer[shards.Shard]]
+    val nameServer = mock[nameserver.NameServer[AnyRef]]
     val jobScheduler = mock[JobScheduler]
-    val makeCopy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(_)
-    val shard1 = mock[shards.Shard]
-    val shard2 = mock[shards.Shard]
+    def makeCopy(next: => Option[FakeCopy]) = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler, next)
+    val shard1 = mock[RoutingNode[AnyRef]]
+    val shard2 = mock[RoutingNode[AnyRef]]
 
     "toMap" in {
       val copy = makeCopy(Some(nextCopy))
@@ -133,7 +140,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
 
         "after too many retries" in {
           val count = CopyJob.MIN_COPY - 1
-          val copy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler)(throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
+          val copy = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler, throw new shards.ShardTimeoutException(100.milliseconds, sourceShardId))
 
           expect {
             one(nameServer).getShard(destinationShardId) willReturn destinationShardInfo

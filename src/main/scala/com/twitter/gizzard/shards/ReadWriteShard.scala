@@ -58,6 +58,8 @@ extends RoutingNode[T] {
 
 
 class LeafRoutingNode[T](val shardInfo: ShardInfo, val weight: Int, shard: T) extends RoutingNode[T] {
+  def this(weight: Int, shard: T) = this(new ShardInfo(new ShardId("", ""), "", "", "", Busy.Normal), weight, shard)
+
   val children: Seq[RoutingNode[T]] = Seq()
 
   def readAllOperation[A](f: T => A) = Seq(try { Right(f(shard)) } catch { case e => Left(e) })
