@@ -3,7 +3,7 @@ package com.twitter.gizzard.config
 import net.lag.configgy
 import net.lag.configgy.Configgy
 import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 
 trait Logging {
   def apply(): Unit

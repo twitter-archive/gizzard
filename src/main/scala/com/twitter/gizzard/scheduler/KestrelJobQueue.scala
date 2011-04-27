@@ -2,7 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import com.twitter.ostrich.{Stats, StatsProvider}
 import com.twitter.util.{Duration, Time}
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import net.lag.logging.Logger
 
