@@ -3,7 +3,7 @@ package com.twitter.gizzard
 import java.util.concurrent._
 import scala.collection.mutable
 import com.twitter.util.Time
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import thrift.conversions.Sequences._

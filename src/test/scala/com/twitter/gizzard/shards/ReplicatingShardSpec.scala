@@ -1,7 +1,7 @@
 package com.twitter.gizzard
 package shards
 
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import net.lag.logging.Logger
 import org.specs.Specification
 import org.specs.mock.JMocker

@@ -1,7 +1,7 @@
 package com.twitter.gizzard
 package nameserver
 
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
