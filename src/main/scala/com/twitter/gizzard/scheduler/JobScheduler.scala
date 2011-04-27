@@ -4,7 +4,7 @@ package scheduler
 import java.util.Random
 import com.twitter.ostrich.{BackgroundProcess, Stats}
 import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import net.lag.configgy.ConfigMap
 import net.lag.kestrel.PersistentQueue
 import net.lag.logging.Logger
