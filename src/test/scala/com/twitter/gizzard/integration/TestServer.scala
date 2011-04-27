@@ -15,7 +15,7 @@ import com.twitter.gizzard.scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobPar
 package object config {
   import com.twitter.gizzard.config._
   import com.twitter.querulous.config._
-  import com.twitter.util.TimeConversions._
+  import com.twitter.conversions.time._
   import com.twitter.util.Duration
 
   trait TestDBConnection extends Connection {

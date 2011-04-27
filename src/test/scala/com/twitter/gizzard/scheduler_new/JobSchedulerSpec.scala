@@ -2,7 +2,7 @@ package com.twitter.gizzard
 package scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import shards.{ShardId, ShardRejectedOperationException}
