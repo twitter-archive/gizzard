@@ -147,7 +147,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     "log exceptions" in {
       bobProxy.nameParts must throwA[Exception]
       val messages = sampledStats.stats.toSeq.map { _.message }
-      messages(0) mustEqual "Caught exception: java.lang.Exception: yarrg!"
+      messages(0) mustEqual "Request failed with exception: java.lang.Exception: yarrg!"
       messages(1) must startWith("Total duration:")
     }
   }

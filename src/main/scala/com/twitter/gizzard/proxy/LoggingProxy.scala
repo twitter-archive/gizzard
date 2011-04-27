@@ -55,7 +55,7 @@ object LoggingProxy {
         method()
       } catch {
         case e: Exception =>
-          Stats.transaction.record("Caught exception: " + e.toString())
+          Stats.transaction.record("Request failed with exception: " + e.toString())
           Stats.transaction.set("exception", e)
           throw e
       } finally {
