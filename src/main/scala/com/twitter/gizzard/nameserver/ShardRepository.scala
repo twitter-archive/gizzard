@@ -17,6 +17,10 @@ class ShardRepository[T] {
     nodeFactories += (className -> factory)
   }
 
+  def addRoutingNode(className: String, cons: (ShardInfo, Int, Seq[RoutingNode[T]]) => RoutingNode[T]) {
+    addRoutingNode(className, new ConstructorRoutingNodeFactory(cons))
+  }
+
   def find(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
     factory(shardInfo.className).instantiate(shardInfo, weight, children)
   }
@@ -48,10 +52,10 @@ extends ShardRepository[T] {
   def setupPackage(packageName: String) {
     val prefix = if (packageName == "") packageName else packageName + "."
 
-    addRoutingNode(prefix + "ReadOnlyShard",    new shards.ReadOnlyShardFactory[T])
-    addRoutingNode(prefix + "BlockedShard",     new shards.BlockedShardFactory[T])
-    addRoutingNode(prefix + "WriteOnlyShard",   new shards.WriteOnlyShardFactory[T])
-    addRoutingNode(prefix + "BlackHoleShard",   new shards.BlackHoleShardFactory[T])
+    addRoutingNode(prefix + "ReadOnlyShard", ReadOnlyShard[T] _)
+    addRoutingNode(prefix + "BlockedShard", BlockedShard[T] _)
+    addRoutingNode(prefix + "WriteOnlyShard", WriteOnlyShard[T] _)
+    addRoutingNode(prefix + "BlackHoleShard", BlackHoleShard[T] _)
     addRoutingNode(prefix + "ReplicatingShard", new shards.ReplicatingShardFactory[T](replicationFuture))
     addRoutingNode(prefix + "FailingOverShard", new shards.FailingOverShardFactory[T](replicationFuture))
   }

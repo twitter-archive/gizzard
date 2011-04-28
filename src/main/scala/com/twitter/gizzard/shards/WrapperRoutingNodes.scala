@@ -3,8 +3,7 @@ package com.twitter.gizzard.shards
 
 // Base class for all read/write flow wrapper shards
 
-class WrapperRoutingNode[T](val shardInfo: ShardInfo, val weight: Int, val children: Seq[RoutingNode[T]])
-extends RoutingNode[T] {
+abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
 
   val inner = children.head
 
@@ -20,14 +19,7 @@ extends RoutingNode[T] {
 
 // BlockedShard. Refuse and fail all traffic.
 
-class BlockedShardFactory[T] extends RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    new BlockedShard(shardInfo, weight, children)
-  }
-}
-
-class BlockedShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
-extends WrapperRoutingNode[T](shardInfo, weight, children) {
+case class BlockedShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) extends WrapperRoutingNode[T] {
 
   protected def exception = new ShardRejectedOperationException("shard is offline", shardInfo.id)
 
@@ -44,32 +36,24 @@ extends WrapperRoutingNode[T](shardInfo, weight, children) {
 
 // BlackHoleShard. Silently refuse all traffic.
 
-class BlackHoleShardFactory[T] extends RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    new BlackHoleShard(shardInfo, weight, children)
-  }
-}
+case class BlackHoleShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) extends WrapperRoutingNode[T] {
 
-class BlackHoleShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
-extends BlockedShard[T](shardInfo, weight, children) {
-
-  override protected def exception = throw new ShardBlackHoleException(shardInfo.id)
+  protected def exception = throw new ShardBlackHoleException(shardInfo.id)
 
   override def readAllOperation[A](method: T => A) = Seq[Either[Throwable,A]]()
+  override def readOperation[A](method: T => A)    = throw exception
+  override def writeOperation[A](method: T => A)   = throw exception
+
+  override protected[shards] def rebuildRead[A](toRebuild: List[T])(f: (T, Seq[T]) => Option[A]) = {
+    throw exception
+  }
 }
 
 
 
 // WriteOnlyShard. Fail all read traffic.
 
-class WriteOnlyShardFactory[T] extends RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    new WriteOnlyShard(shardInfo, weight, children)
-  }
-}
-
-class WriteOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
-extends WrapperRoutingNode[T](shardInfo, weight, children) {
+case class WriteOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) extends WrapperRoutingNode[T] {
 
   private def exception = new ShardRejectedOperationException("shard is write-only", shardInfo.id)
 
@@ -82,14 +66,7 @@ extends WrapperRoutingNode[T](shardInfo, weight, children) {
 
 // ReadOnlyShard. Fail all write traffic.
 
-class ReadOnlyShardFactory[T] extends RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    new ReadOnlyShard(shardInfo, weight, children)
-  }
-}
-
-class ReadOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
-extends WrapperRoutingNode[T](shardInfo, weight, children) {
+case class ReadOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) extends WrapperRoutingNode[T] {
 
   override def writeOperation[A](method: T => A) = {
     throw new ShardRejectedOperationException("shard is read-only", shardInfo.id)

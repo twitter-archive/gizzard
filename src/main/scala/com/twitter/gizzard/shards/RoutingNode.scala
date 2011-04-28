@@ -9,6 +9,12 @@ abstract class RoutingNodeFactory[T] {
   def materialize(shardInfo: ShardInfo) {}
 }
 
+// Turn case class or other generic constructors into node factories.
+class ConstructorRoutingNodeFactory[T](constructor: (ShardInfo, Int, Seq[RoutingNode[T]]) => RoutingNode[T])
+extends RoutingNodeFactory[T] {
+  def instantiate(info: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = constructor(info, weight, children)
+}
+
 abstract class RoutingNode[T] {
   def shardInfo: ShardInfo
   def weight: Int
