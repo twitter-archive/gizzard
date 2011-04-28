@@ -3,8 +3,8 @@ package proxy
 
 import java.lang.reflect
 import scala.reflect.Manifest
-import com.twitter.ostrich.W3CStats
-import net.lag.logging.Logger
+import com.twitter.ostrich.stats.W3CStats
+import com.twitter.logging.Logger
 
 
 /**

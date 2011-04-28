@@ -3,7 +3,7 @@ package com.twitter.gizzard.config
 import com.twitter.util.{Duration, StorageUnit}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import net.lag.kestrel.PersistentQueue
 import net.lag.kestrel.config.QueueConfig
 

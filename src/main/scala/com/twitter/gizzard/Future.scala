@@ -3,7 +3,7 @@ package com.twitter.gizzard
 import scala.collection.SeqProxy
 import scala.collection.generic.CanBuildFrom
 import java.util.concurrent._
-import com.twitter.ostrich.Stats
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 
@@ -13,7 +13,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
   var executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
     TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
 
-  Stats.makeGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
+  Stats.addGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
 
   def apply[A](a: => A) = {
     val future = new FutureTask(new Callable[A] {

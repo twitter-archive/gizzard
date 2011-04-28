@@ -5,7 +5,6 @@ import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.util.Time
 import com.twitter.conversions.time._
-import net.lag.configgy.{ConfigMap, Configgy}
 import org.specs.Specification
 
 

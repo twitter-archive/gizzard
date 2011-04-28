@@ -11,21 +11,15 @@ import org.apache.thrift._
 import org.apache.thrift.protocol._
 import org.apache.thrift.transport._
 import org.apache.thrift.server._
-import com.twitter.ostrich.Stats
+import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
-import net.lag.configgy.ConfigMap
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 object TSelectorServer {
   val log = Logger.get(getClass.getName)
 
   val cache = new mutable.HashMap[String, ThreadPoolExecutor]()
-
-  def makeThreadPoolExecutor(config: ConfigMap): ThreadPoolExecutor = {
-    makeThreadPoolExecutor(config("name"), config.getInt("stop_timeout", 60), config("min_threads").toInt,
-      config.getInt("max_threads", Int.MaxValue))
-  }
 
   def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int): ThreadPoolExecutor = {
     cache.get(name) foreach { executor =>
@@ -38,8 +32,8 @@ object TSelectorServer {
     val queue = new LinkedBlockingQueue[Runnable]
     val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
                                           queue, new NamedPoolThreadFactory(name))
-    Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
-    Stats.makeGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
+    Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.addGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
     cache(name) = executor
     executor
   }
@@ -51,12 +45,6 @@ object TSelectorServer {
     socket.socket().bind(new InetSocketAddress(port), 8192)
     log.info("Starting %s (%s) on port %d", name, processor.getClass.getName, port)
     new TSelectorServer(name, processor, socket, executor, timeout, idleTimeout)
-  }
-
-  def apply(name: String, port: Int, config: ConfigMap, processor: TProcessor): TSelectorServer = {
-    val clientTimeout = config("client_timeout_msec").toInt.milliseconds
-    val idleTimeout = config("idle_timeout_sec").toInt.seconds
-    apply(name, port, processor, makeThreadPoolExecutor(config), clientTimeout, idleTimeout)
   }
 }
 
@@ -81,7 +69,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   val clientMap = new mutable.HashMap[SelectableChannel, Client]
   val registerQueue = new ConcurrentLinkedQueue[SocketChannel]
 
-  Stats.makeGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
+  Stats.addGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
 
   def isRunning = running
 
@@ -204,7 +192,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
         } else {
           key.cancel()
           execute {
-            val (_, duration) = Stats.duration {
+            val (_, duration) = Duration.inMilliseconds {
               val client = clientMap.synchronized { clientMap(key.channel) }
               client.activity = Time.now
               try {

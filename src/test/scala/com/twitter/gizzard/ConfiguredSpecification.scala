@@ -2,9 +2,12 @@ package com.twitter.gizzard
 
 import java.io.File
 import org.specs.Specification
-import net.lag.configgy.Configgy
+import com.twitter.logging.Logger
 import com.twitter.querulous.evaluator.QueryEvaluator
-import com.twitter.rpcclient.{PooledClient, ThriftConnection}
+import com.twitter.finagle.builder.ClientBuilder
+import java.net.InetSocketAddress
+import org.apache.thrift.protocol.TBinaryProtocol
+import com.twitter.finagle.thrift.ThriftClientFramedCodec
 import com.twitter.util.Eval
 
 import com.twitter.gizzard
@@ -16,7 +19,7 @@ import testserver.config.TestServerConfig
 trait ConfiguredSpecification extends Specification {
   noDetailedDiffs()
   val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
-  config.logging()
+  Logger.configure(config.loggers)
 }
 
 trait IntegrationSpecification extends Specification {
@@ -73,11 +76,16 @@ trait IntegrationSpecification extends Specification {
   def testServerClient(s: WithFacts) = {
     val i = s.enum
     val port = 8000 + (i - 1) * 3
-    new PooledClient[testserver.thrift.TestServer.Iface] {
-      val name = "testclient" + i
-      def createConnection =
-        new ThriftConnection[testserver.thrift.TestServer.Client]("localhost", port, true)
-    }.proxy
+    val client = new testserver.thrift.TestServer.ServiceToClient(ClientBuilder()
+        .hosts(new InetSocketAddress("localhost", port))
+        .codec(ThriftClientFramedCodec())
+        .build(),
+        new TBinaryProtocol.Factory())
+
+    new testserver.thrift.TestServer.Iface {
+      def put(key: Int, value: String) { client.put(key, value)() }
+      def get(key: Int) = client.get(key)()
+    }
   }
 
   def setupServers(servers: WithFacts*) {
