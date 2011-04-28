@@ -2,7 +2,7 @@ package com.twitter.gizzard.config
 
 import java.util.concurrent.ThreadPoolExecutor
 import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import org.apache.thrift
 import com.twitter.gizzard
 

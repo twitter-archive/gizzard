@@ -1,12 +1,10 @@
 import sbt._
 import com.twitter.sbt._
 
-class GizzardProject(info: ProjectInfo)
-  extends StandardLibraryProject(info)
-  with DefaultRepos
-  with SubversionPublisher
-  with CompileThriftFinagle
-{
+class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info)
+with CompileThriftFinagle
+with DefaultRepos
+with SubversionPublisher {
 
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
@@ -20,9 +18,9 @@ class GizzardProject(info: ProjectInfo)
   val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.2.6"
   val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.2.6"
 
-  val thrift     = "thrift"               % "libthrift"          % "0.5.0"
-  val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"
-  val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.1"
+  val thrift     = "thrift" % "libthrift" % "0.5.0"
+  val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.7"
+  val jacksonMap = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.7"
 
   val slf4j      = "org.slf4j" % "slf4j-jdk14" % "1.5.2" //intransitive
   val slf4jApi   = "org.slf4j" % "slf4j-api"   % "1.5.2" //intransitive

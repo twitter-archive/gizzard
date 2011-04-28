@@ -4,7 +4,7 @@ package test
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.util.Time
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import org.specs.Specification
 
 

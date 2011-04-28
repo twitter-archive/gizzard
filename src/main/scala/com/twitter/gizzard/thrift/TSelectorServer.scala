@@ -13,7 +13,7 @@ import org.apache.thrift.transport._
 import org.apache.thrift.server._
 import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 
 object TSelectorServer {

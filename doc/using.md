@@ -3,7 +3,7 @@
 The source-code to Gizzard is on github: [http://github.com/twitter/gizzard](http://github.com/twitter/gizzard).
 
 A sample application that uses Gizzard, called Rowz, is also available:
-[http://github.com/nkallen/Rowz](http://github.com/nkallen/Rowz). The best way
+[http://github.com/twitter/Rowz](http://github.com/twitter/Rowz). The best way
 to get started with Gizzard is to clone Rowz and customize.
 
 ## Building
@@ -25,14 +25,10 @@ My `~/bin/sbt` looks like this:
     #!/bin/bash
     java -server -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256m -Xmx1024m -jar `dirname $0`/sbt-launch-0.7.4.jar "$@"
 
-Apache Thrift 0.2.0 is pre-requisite for building java stubs of the thrift
+Apache Thrift 0.5.0 is pre-requisite for building java stubs of the thrift
 IDL. It can't be installed via jar, so you'll need to install it separately
 before you build. It can be found on the apache incubator site:
 [http://incubator.apache.org/thrift/](http://incubator.apache.org/thrift/).
-This project is still getting its legs, so it can be hard to find the right
-version. If you have trouble with the mirrors, version 0.2.0 should be hosted
-here:
-[http://www.apache.org/dist/incubator/thrift/0.2.0-incubating/](http://www.apache.org/dist/incubator/thrift/0.2.0-incubating/).
 
 In addition, the tests require a local MySQL instance to be running, and for
 `DB_USERNAME` and `DB_PASSWORD` environment variables to contain login info
@@ -48,7 +44,7 @@ implementation of the maven dependency fetcher) and build a jar in `dist/`.
     <dependency>
         <groupId>com.twitter</groupId>
         <artifactId>gizzard</artifactId>
-        <version>1.0</version>
+        <version>2.1.6</version>
     </dependency>
 
 It may require you to add the "scala-tools" maven repo to your repo list. The
@@ -58,7 +54,7 @@ nest repo is located here:
 
 ### Sbt
 
-    val gizzard = "com.twitter" % "gizzard" % "1.5.0"
+    val gizzard = "com.twitter" % "gizzard" % "2.1.6"
 
 You will need to add a reference to the "scala-tools" repo if it isn't already
 there:
