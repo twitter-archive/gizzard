@@ -28,7 +28,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   val factory = new ShardFactory[UserShard] {
-    def instantiate(shardInfo: ShardInfo) = {
+    def instantiate(shardInfo: ShardInfo, weight: Int) = {
       new UserShard(shardInfo)
     }
 
@@ -47,7 +47,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
       reset(queryEvaluator)
-      nameServerShard = new LeafRoutingNode(1, new SqlShard(queryEvaluator))
+      nameServerShard = new LeafRoutingNode(new SqlShard(queryEvaluator), 1)
       nameServer = new NameServer(nameServerShard, shardRepository, NullJobRelayFactory, mapping)
       nameServer.reload()
 

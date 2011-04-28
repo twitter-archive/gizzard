@@ -7,5 +7,5 @@ class FakeReadWriteShard[T](
   shard: T,
   shardInfo: ShardInfo,
   weight: Int,
-  override val children: Seq[RoutingNode[T]])
-extends LeafRoutingNode[T](shardInfo, weight, shard)
+  children: Seq[RoutingNode[T]])
+extends LeafRoutingNode[T](shard, shardInfo, weight)

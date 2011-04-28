@@ -158,7 +158,9 @@ class TestShardAdapter(s: shards.RoutingNode[TestShard]) extends TestShard {
 
 class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
 
-  def instantiate(info: ShardInfo) = new SqlShard(qeFactory(conn.withHost(info.hostname)), info)
+  def instantiate(info: ShardInfo, weight: Int) = {
+    new SqlShard(qeFactory(conn.withHost(info.hostname)), info)
+  }
 
   def materialize(info: ShardInfo) {
     val ddl =

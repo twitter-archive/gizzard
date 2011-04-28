@@ -15,7 +15,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
-    val List(node1, node2, node3) = List(shard1, shard2, shard3).map(new LeafRoutingNode(1, _))
+    val List(node1, node2, node3) = List(shard1, shard2, shard3).map(new LeafRoutingNode(_, 1))
 
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val shards = List(node1, node2)
@@ -168,7 +168,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val shardInfo = new ShardInfo("fake", "fake", "localhost")
       val mock1 = mock[EnufShard]
       val mock2 = mock[EnufShard]
-      val List(node1, node2) = List(mock1, mock2).map(new LeafRoutingNode(1, _))
+      val List(node1, node2) = List(mock1, mock2).map(new LeafRoutingNode(_, 1))
       val shards = List(node1, node2)
       val loadBalancer = () => shards
       val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future))
