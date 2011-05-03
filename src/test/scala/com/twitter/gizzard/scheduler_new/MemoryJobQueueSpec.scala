@@ -1,5 +1,6 @@
 package com.twitter.gizzard.scheduler
 
+import java.util.concurrent.TimeoutException
 import scala.collection.mutable
 import com.twitter.util.Time
 import com.twitter.util.TimeConversions._
@@ -60,9 +61,13 @@ object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with Clas
       "full" in {
         queue.put(job1)
         queue.put(job2)
-        (0 until 19).foreach { n => queue.put(job3) }
+        try {
+          (0 until 19).foreach { n => queue.put(job3) }
+        } catch {
+          case e: TimeoutException => {}
+        }
         queue.size mustEqual 20
-        queue.get() must beSome[Ticket[Job]].which { _.job eq job2 }
+        queue.get() must beSome[Ticket[Job]].which { _.job eq job1 }
       }
     }
 

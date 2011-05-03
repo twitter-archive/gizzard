@@ -1,7 +1,7 @@
 package com.twitter.gizzard.scheduler
 
 import java.util.{ArrayList => JArrayList}
-import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, TimeoutException}
 import scala.collection.jcl
 import com.twitter.ostrich.Stats
 import com.twitter.util.{Duration, Time}
@@ -34,9 +34,8 @@ class MemoryJobQueue[J <: Job](queueName: String, maxSize: Int) extends JobQueue
   var expireDuration = 0.seconds
 
   def put(job: J) {
-    while (!queue.offer((job, Time.now + expireDuration))) {
-      queue.poll(TIMEOUT, TimeUnit.MILLISECONDS)
-      Stats.incr(queueName + "_discarded")
+    if (!queue.offer((job, Time.now + expireDuration))) {
+      throw new TimeoutException("queue full")
     }
   }
 
