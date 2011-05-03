@@ -35,6 +35,18 @@ extends RoutingNode[T] {
 
   lazy val log = Logger.get
 
+  override def skipShard(ss: ShardId*) = {
+    val filtered = children.filterNot(ss.toSet.contains)
+
+    if (filtered.isEmpty) {
+      BlackHoleShard(shardInfo, weight, children)
+    } else if (filtered.size == children.size) {
+      this
+    } else {
+      new ReplicatingShard[T](shardInfo, weight, filtered, new LoadBalancer(filtered), future)
+    }
+  }
+
   def readAllOperation[A](f: T => A) = fanout(children)(_.readAllOperation(f))
 
   def readOperation[A](f: T => A) = failover(loadBalancer())(_.readOperation(f))

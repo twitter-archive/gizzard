@@ -5,7 +5,7 @@ package com.twitter.gizzard.shards
 
 abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
 
-  val inner = children.head
+  lazy val inner = children.head
 
   def readAllOperation[A](f: T => A) = inner.readAllOperation(f)
   def readOperation[A](f: T => A) = inner.readOperation(f)
@@ -15,7 +15,6 @@ abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
     inner.rebuildRead(toRebuild)(f)
   }
 }
-
 
 // BlockedShard. Refuse and fail all traffic.
 
