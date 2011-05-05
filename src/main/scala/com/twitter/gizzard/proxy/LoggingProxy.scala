@@ -63,6 +63,13 @@ object LoggingProxy {
         Stats.transaction.record("Total duration: "+duration.inMillis)
         Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
         val t = Stats.endTransaction()
+
+        if (t.tags.size > 0) {
+          val opName = t.tags.toSeq.sorted.mkString(",")
+          Stats.global.incr("operation-"+opName+"-count")
+          Stats.global.addMetric("operation-"+opName, duration.inMilliseconds.toInt)
+        }
+
         consumers.map { _(t) }
       }
     }

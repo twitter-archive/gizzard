@@ -58,7 +58,12 @@ class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsC
   def apply(t: TransactionalStatsProvider) {
     val buf = new StringBuilder
 
-    buf.append("Trace "+t.id+"\n")
+    buf.append("Trace "+t.id)
+    if (t.tags.size > 0) {
+      val tags = t.tags.toSeq.sorted.mkString(", ")
+      buf.append(" (tags: "+tags+")")
+    }
+    buf.append("\n")
     t.toSeq.map { record =>
        buf.append("  ["+record.timestamp.inMillis+"] "+record.message+"\n")
     }
@@ -103,12 +108,15 @@ trait TransactionalStatsProvider {
   def children: Seq[TransactionalStatsProvider]
   def id: Long
   def clearAll()
+  def tag(tag: String)
+  def tags: Set[String]
 }
 
 class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvider {
-  private val messages = new mutable.ArrayBuffer[TraceRecord]()
-  private val childs = new mutable.ArrayBuffer[TransactionalStatsCollection]()
+  private val messages = new mutable.ArrayBuffer[TraceRecord]
+  private val childs = new mutable.ArrayBuffer[TransactionalStatsCollection]
   private val vars = new mutable.HashMap[String, AnyRef]
+  private val tagSet = new mutable.HashSet[String]
 
   def record(message: => String) {
     messages += TraceRecord(id, Time.now, message)
@@ -130,6 +138,9 @@ class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvi
     messages.clear()
     childs.clear()
   }
+
+  def tag(tag: String) { tagSet += tag }
+  def tags = tagSet.toSet
 }
 
 object DevNullTransactionalStats extends TransactionalStatsProvider {
@@ -141,6 +152,8 @@ object DevNullTransactionalStats extends TransactionalStatsProvider {
   def id = 0L
   def set(key: String, value: AnyRef) {}
   def get(key: String) = None
+  def tag(tag: String) {}
+  def tags = Set()
 }
 
 /*

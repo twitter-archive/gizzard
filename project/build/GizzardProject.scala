@@ -18,8 +18,8 @@ class GizzardProject(info: ProjectInfo)
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
   val ostrich         = "com.twitter" % "ostrich"          % "4.0.3-json-SNAPSHOT"
-  val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.2.1"
-  val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.2.1"
+  val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.2.6"
+  val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.2.6"
 
   val thrift     = "thrift"               % "libthrift"          % "0.5.0"
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.1"
