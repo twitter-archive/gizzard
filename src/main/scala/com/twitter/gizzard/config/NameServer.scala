@@ -2,7 +2,7 @@ package com.twitter.gizzard.config
 
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
-import com.twitter.querulous.config.{Connection, QueryEvaluator, ConfiggyConnection, ConfiggyQueryEvaluator}
+import com.twitter.querulous.config.{Connection, QueryEvaluator}
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import net.lag.configgy.ConfigMap
 
