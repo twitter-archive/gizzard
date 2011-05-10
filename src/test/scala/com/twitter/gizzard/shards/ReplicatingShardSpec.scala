@@ -11,7 +11,6 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
-//    val shard3 = mock[fake.Shard]
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val shards = List(shard1, shard2)
     val loadBalancer = () => shards

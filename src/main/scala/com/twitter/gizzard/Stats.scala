@@ -59,9 +59,8 @@ class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsC
     val buf = new StringBuilder
 
     buf.append("Trace "+t.id)
-    if (t.tags.size > 0) {
-      val tags = t.tags.toSeq.sorted.mkString(", ")
-      buf.append(" (tags: "+tags+")")
+    t.name.foreach { name =>
+      buf.append(" (name: "+name+")")
     }
     buf.append("\n")
     t.toSeq.map { record =>
@@ -103,20 +102,20 @@ trait TransactionalStatsProvider {
   def record(message: => String)
   def set(key: String, value: AnyRef)
   def get(key: String): Option[AnyRef]
+
+  def name_=(name: String)
+  def name: Option[String]
   def toSeq: Seq[TraceRecord]
   def createChild(): TransactionalStatsProvider
   def children: Seq[TransactionalStatsProvider]
   def id: Long
   def clearAll()
-  def tag(tag: String)
-  def tags: Set[String]
 }
 
 class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvider {
   private val messages = new mutable.ArrayBuffer[TraceRecord]
   private val childs = new mutable.ArrayBuffer[TransactionalStatsCollection]
   private val vars = new mutable.HashMap[String, AnyRef]
-  private val tagSet = new mutable.HashSet[String]
 
   def record(message: => String) {
     messages += TraceRecord(id, Time.now, message)
@@ -124,6 +123,9 @@ class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvi
 
   def set(key: String, value: AnyRef) { vars.put(key, value) }
   def get(key: String) = { vars.get(key) }
+
+  def name: Option[String] = { vars.get("name").map { _.asInstanceOf[String] } }
+  def name_=(n: String) { vars("name") = n }
 
   def toSeq = messages.toSeq
   def children = childs.toSeq
@@ -138,32 +140,17 @@ class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvi
     messages.clear()
     childs.clear()
   }
-
-  def tag(tag: String) { tagSet += tag }
-  def tags = tagSet.toSet
 }
 
 object DevNullTransactionalStats extends TransactionalStatsProvider {
   def clearAll() {}
   def record(message: => String) {}
+  def name = None
+  def name_=(name: String) {}
   def toSeq = Seq()
   def createChild() = DevNullTransactionalStats
   def children = Seq()
   def id = 0L
   def set(key: String, value: AnyRef) {}
   def get(key: String) = None
-  def tag(tag: String) {}
-  def tags = Set()
 }
-
-/*
-class TransactionalStatsCollection {
-  private val collection: mutable.Map[String, Any]
-
-  def setLabel(name: String, value: String) {
-    collection(name) = value
-  }
-
-
-  def toMap: Map[String, Any] = collection.toMap
-}*/

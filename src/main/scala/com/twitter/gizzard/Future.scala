@@ -33,7 +33,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
           case e: Exception =>
             Stats.transaction.record("Caught exception: "+e)
             throw e
-        } finally { 
+        } finally {
           val duration = Time.now - threadExecTime
           Stats.transaction.record("Total duration: "+duration.inMillis)
           Stats.endTransaction()
