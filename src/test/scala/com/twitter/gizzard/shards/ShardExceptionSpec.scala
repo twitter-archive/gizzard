@@ -2,13 +2,13 @@ package com.twitter.gizzard
 package shards
 
 import com.twitter.conversions.time._
-import net.lag.logging.{GenericFormatter, Logger, StringHandler}
 import org.specs.Specification
 import org.specs.mock.JMocker
+import com.twitter.logging.{Logger, StringHandler, BareFormatter}
 
 object ShardExceptionSpec extends ConfiguredSpecification with JMocker {
   "ShardException" should {
-    val handler = new StringHandler(new GenericFormatter(""))
+    val handler = new StringHandler(BareFormatter, None)
     val log = Logger.get("shard_exception_spec")
     log.addHandler(handler)
 
@@ -21,7 +21,7 @@ object ShardExceptionSpec extends ConfiguredSpecification with JMocker {
             log.error(e, "Aie! " + e)
         }
 
-        handler.toString.split("\n").toList mustEqual
+        handler.get.split("\n").toList mustEqual
           List("Aie! com.twitter.gizzard.shards.ShardTimeoutException: Timeout (100 msec): localhost/table1")
       }
 
@@ -38,7 +38,7 @@ object ShardExceptionSpec extends ConfiguredSpecification with JMocker {
             log.error(e, "Aie! " + e)
         }
 
-        handler.toString.split("\n").toList mustEqual
+        handler.get.split("\n").toList mustEqual
           List("Aie! com.twitter.gizzard.shards.ShardTimeoutException: Timeout (100 msec): localhost/table1")
       }
     }

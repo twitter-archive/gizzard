@@ -1,6 +1,6 @@
 package com.twitter.gizzard.scheduler
 
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 /**
  * Wrapper for JsonJob that logs jobs after they are successfully executed.

@@ -12,6 +12,8 @@ import com.twitter.gizzard.nameserver.NameServer
 import com.twitter.gizzard.shards.{RoutingNode, ShardId, ShardInfo, ShardException, ShardTimeoutException}
 import com.twitter.gizzard.scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
 
+import com.twitter.logging.config._
+
 package object config {
   import com.twitter.gizzard.config._
   import com.twitter.querulous.config._
@@ -39,6 +41,19 @@ package object config {
     def server: TServer
     def databaseConnection: Connection
     val queryEvaluator = TestQueryEvaluator
+    loggers = List(
+      new LoggerConfig {
+        level = Level.ERROR
+      }, new LoggerConfig {
+        node = "w3c"
+        useParents = false
+        level = Level.DEBUG
+      }, new LoggerConfig {
+        node = "bad_jobs"
+        useParents = false
+        level = Level.INFO
+      }
+    )
   }
 
   trait TestJobScheduler extends Scheduler {

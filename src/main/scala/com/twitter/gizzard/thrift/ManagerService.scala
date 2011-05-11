@@ -13,7 +13,7 @@ import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler, RepairJobFactory}
 import com.twitter.gizzard.nameserver._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import java.util.{List => JList}
 
 

@@ -3,8 +3,8 @@ package com.twitter.gizzard.thrift
 import java.net.{ServerSocket, Socket, SocketTimeoutException}
 import java.util.concurrent.{CountDownLatch, ExecutorService, SynchronousQueue, ThreadPoolExecutor, TimeUnit}
 import com.twitter.gizzard.NamedPoolThreadFactory
-import com.twitter.ostrich.Stats
-import net.lag.logging.Logger
+import com.twitter.ostrich.stats.Stats
+import com.twitter.logging.Logger
 import org.apache.thrift.{TProcessor, TProcessorFactory}
 import org.apache.thrift.protocol.{TBinaryProtocol, TProtocol, TProtocolFactory}
 import org.apache.thrift.server.TServer
@@ -34,7 +34,7 @@ object TThreadServer {
     val executor = new ThreadPoolExecutor(minThreads, Int.MaxValue, 60, TimeUnit.SECONDS, queue,
       new NamedPoolThreadFactory(name))
 
-    Stats.makeGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
 
     executor
   }
@@ -122,7 +122,8 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
   }
 
   private def process(client: Socket) {
-    val transport = new TSocket(client)
+    val socket = new TSocket(client)
+    val transport = new TFramedTransport(socket)
     val processor = processorFactory.getProcessor(transport)
     val protocol = protocolFactory.getProtocol(transportFactory.getTransport(transport))
     while (running && processor.process(protocol, protocol)) {

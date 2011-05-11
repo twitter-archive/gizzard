@@ -21,7 +21,7 @@ import java.io._
 import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.channels.FileChannel
 import com.twitter.actors.Actor._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import com.twitter.util.Time
 
 case class BrokenItemException(lastValidPosition: Long, cause: Throwable) extends IOException(cause)

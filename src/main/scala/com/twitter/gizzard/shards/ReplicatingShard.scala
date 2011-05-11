@@ -10,7 +10,7 @@ import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.util.Duration
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 
 
 class ReplicatingShardFactory[T](future: Option[Future]) extends RoutingNodeFactory[T] {

@@ -2,7 +2,7 @@ package com.twitter.gizzard
 
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
-import net.lag.logging.Logger
+import com.twitter.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
 import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
 import config.{GizzardServer => ServerConfig}
@@ -22,8 +22,8 @@ abstract class GizzardServer[S](config: ServerConfig) {
 
   // setup logging
 
-  config.logging()
-  protected val log = Logger.get(getClass.getName)
+  Logger.configure(config.loggers)
+  protected val log = Logger.get(getClass)
 
   // nameserver/shard wiring
 

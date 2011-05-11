@@ -8,7 +8,6 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import net.lag.logging.Logger
 
 class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
 
