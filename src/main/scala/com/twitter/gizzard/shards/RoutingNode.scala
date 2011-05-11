@@ -24,13 +24,11 @@ abstract class RoutingNode[T] {
   def readOperation[A](f: T => A): A
   def writeOperation[A](f: T => A): A
 
-
   def skipShard(ss: ShardId*): RoutingNode[T] = if (ss.toSet.contains(shardInfo.id)) {
-    BlackHoleShard(shardInfo, weight, children)
+    BlackHoleShard(shardInfo, weight, Seq(this))
   } else {
     this
   }
-
 
   protected[shards] def rebuildRead[A](toRebuild: List[T])(f: (T, Seq[T]) => Option[A]): Either[List[T],A]
 

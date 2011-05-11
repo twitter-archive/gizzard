@@ -15,7 +15,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
-    val List(node1, node2, node3) = List(shard1, shard2, shard3).map(new LeafRoutingNode(_, 1))
+    val List(node1, node2, node3) = List(shard1, shard2, shard3).zipWithIndex map { case (s, i) =>
+      new LeafRoutingNode(s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
+    }
 
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val shards = List(node1, node2)
@@ -23,6 +25,14 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     def loadBalancer() = shards
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
     var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future))
+
+    "filters shards" in {
+      expect {
+        one(shard2).get("name").willReturn(Some("bob"))
+      }
+
+      replicatingShard.skipShard(ShardId("fake", "shard1")).readOperation(_.get("name")) mustEqual Some("bob")
+    }
 
     "read failover" in {
       "when shard1 throws an exception" in {

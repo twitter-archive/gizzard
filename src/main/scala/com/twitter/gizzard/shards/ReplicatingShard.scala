@@ -36,10 +36,11 @@ extends RoutingNode[T] {
   lazy val log = Logger.get
 
   override def skipShard(ss: ShardId*) = {
-    val filtered = children.filterNot(ss.toSet.contains)
+    val toSkip = ss.toSet
+    val filtered = children.filterNot { c => toSkip contains c.shardInfo.id }
 
     if (filtered.isEmpty) {
-      BlackHoleShard(shardInfo, weight, children)
+      BlackHoleShard(shardInfo, weight, Seq(this))
     } else if (filtered.size == children.size) {
       this
     } else {
