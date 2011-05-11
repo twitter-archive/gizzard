@@ -8,28 +8,28 @@ import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
 import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException, Cursorable}
 
-trait Repairable[T] {
+trait Entity[T] {
   def similar(other: T): Int
-  def shouldRepair(other: T): Boolean
+  def isSchedulable(other: T): Boolean
 }
 
-object RepairJob {
+object CopyJob {
   val MIN_COPY = 500
 }
 
 /**
- * A factory for creating a new repair job (with default count and a starting cursor) from a source
+ * A factory for creating a new copy job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait RepairJobFactory[S <: Shard] extends (Seq[ShardId] => RepairJob[S])
+trait CopyJobFactory[S <: Shard] extends (Seq[ShardId] => CopyJob[S])
 
 /**
- * A parser that creates a repair job out of json. The basic attributes (source shard ID, destination)
+ * A parser that creates a copy job out of json. The basic attributes (source shard ID, destination)
  * shard ID, count) are parsed out first, and the remaining attributes are passed to
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
-trait RepairJobParser[S <: Shard] extends JsonJobParser {
-  def deserialize(attributes: Map[String, Any], shardIds: Seq[ShardId], count: Int): RepairJob[S]
+trait CopyJobParser[S <: Shard] extends JsonJobParser {
+  def deserialize(attributes: Map[String, Any], shardIds: Seq[ShardId], count: Int): CopyJob[S]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
@@ -40,15 +40,15 @@ trait RepairJobParser[S <: Shard] extends JsonJobParser {
 }
 
 /**
- * A json-encodable job that represents the state of a repair one a shard.
+ * A json-encodable job that represents the state of a copy one a shard.
  *
  * The 'toMap' implementation encodes the source and destination shard IDs, and the count of items.
  * Other shard-specific data (like the cursor) can be encoded in 'serialize'.
  *
- * 'repair' is called to do the actual data repair. It should return a new Some[RepairJob] representing
+ * 'copy' is called to do the actual data copy. It should return a new Some[CopyJob] representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
+abstract case class CopyJob[S <: Shard](shardIds: Seq[ShardId],
                                        var count: Int,
                                        nameServer: NameServer[S],
                                        scheduler: PrioritizingJobScheduler,
@@ -58,34 +58,34 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   override def shouldReplicate = false
 
   def finish() {
-    log.info("[Repair] - finished for (type %s) for %s",
+    log.info("[Copy] - finished for (type %s) for %s",
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
-      log.info("[Repair] - shard block (type %s): state=%s",
+      log.info("[Copy] - shard block (type %s): state=%s",
                getClass.getName.split("\\.").last, toMap)
       val shardObjs = shardIds.map(nameServer.findShardById(_))
       shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Busy))
-      repair(shardObjs)
+      copy(shardObjs)
       this.nextJob match {
         case None => shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Normal))
         case _ =>
       }
     } catch {
       case e: NonExistentShard =>
-        log.error("[Repair] - failed because one of the shards doesn't exist. Terminating the repair.")
+        log.error("[Copy] - failed because one of the shards doesn't exist. Terminating the copy.")
       case e: ShardDatabaseTimeoutException =>
-        log.warning("[Repair] - failed to get a database connection; retrying.")
+        log.warning("[Copy] - failed to get a database connection; retrying.")
         scheduler.put(priority, this)
-      case e: ShardTimeoutException if (count > RepairJob.MIN_COPY) =>
-        log.warning("[Repair] - block copy timed out; trying a smaller block size.")
+      case e: ShardTimeoutException if (count > CopyJob.MIN_COPY) =>
+        log.warning("[Copy] - block copy timed out; trying a smaller block size.")
         count = (count * 0.9).toInt
         scheduler.put(priority, this)
       case e: Throwable =>
-        log.warning(e, "[Repair] - stopped due to exception: %s", e)
+        log.warning(e, "[Copy] - stopped due to exception: %s", e)
         throw e
     }
   }
@@ -101,20 +101,20 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   }
 
   private def gaugeName = {
-    "x-repair-" + shardIds.mkString("-")
+    "x-copy-" + shardIds.mkString("-")
   }
 
-  def repair(shards: Seq[S])
+  def copy(shards: Seq[S])
 
   def serialize: Map[String, Any]
 }
 
-abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Cursorable[C]](shardIds: Seq[ShardId], cursor: C, count: Int,
-    nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
+abstract class MultiShardCopy[S <: Shard, R <: Entity[R], C <: Cursorable[C]](shardIds: Seq[ShardId], cursor: C, count: Int,
+    nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, priority: Int) extends CopyJob(shardIds, count, nameServer, scheduler, priority) {
 
   private val log = Logger.get(getClass.getName)
 
-  def nextRepair(lowestCursor: C): Option[RepairJob[S]]
+  def nextCopy(lowestCursor: C): Option[CopyJob[S]]
 
   def scheduleItem(missing: Boolean, list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
 
@@ -126,7 +126,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Cursorable[
 
   def select(shard: S, cursor: C, count: Int): (Seq[R], C)
 
-  def repair(shards: Seq[S]) = {
+  def copy(shards: Seq[S]) = {
     val tableIds = shards.map(shard => nameServer.getRootForwardings(shard.shardInfo.id).head.tableId)
 
     val listCursors = shards.map( (shard) => {
@@ -135,10 +135,10 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Cursorable[
       list ++= seq
       (shard, list, newCursor)
     })
-    repairListCursor(listCursors, tableIds)
+    copyListCursor(listCursors, tableIds)
   }
 
-  private def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
+  private def copyListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
     if (!tableIds.forall((id) => id == tableIds(0))) {
       throw new RuntimeException("tableIds didn't match")
     } else if (nameServer.getCommonShardId(shardIds) == None) {
@@ -161,7 +161,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Cursorable[
           }
           for (list <- similarLists) {
             val similarItem = list._2.remove(0)
-            if (firstItem.shouldRepair(similarItem)) {
+            if (firstItem.isSchedulable(similarItem)) {
               if (!firstEnqueued) {
                 firstEnqueued = true
                 scheduleItem(false, firstList, tableId, firstItem)
@@ -172,7 +172,7 @@ abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Cursorable[
         }
       }
       val nextCursor = listCursors.map(_._3).reduceLeft((c1, c2) => if (c1.compare(c2) <= 0) c1 else c2)
-      this.nextJob = nextRepair(nextCursor)
+      this.nextJob = nextCopy(nextCursor)
     }
   }
 }
