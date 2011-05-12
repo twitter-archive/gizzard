@@ -5,8 +5,8 @@ import scala.collection.JavaConversions._
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import testserver.thrift.TestResult
 
-class RepairSpec extends IntegrationSpecification with ConfiguredSpecification {
-  "Repair" should {
+class CopySpec extends IntegrationSpecification with ConfiguredSpecification {
+  "Copy" should {
     val servers = List(1, 2, 3).map(testServer)
     val clients = servers.map(testServerClient)
 
@@ -45,7 +45,7 @@ class RepairSpec extends IntegrationSpecification with ConfiguredSpecification {
       list.add(new com.twitter.gizzard.thrift.ShardId(shard1id.hostname, shard1id.tablePrefix))
       list.add(new com.twitter.gizzard.thrift.ShardId(shard2id.hostname, shard2id.tablePrefix))
       list.add(new com.twitter.gizzard.thrift.ShardId(shard3id.hostname, shard3id.tablePrefix))
-      server1.managerServer.repair_shard(list)
+      server1.managerServer.copy_shard(list)
       
       def listElemenets(list: Seq[com.twitter.gizzard.testserver.TestResult]) = {
         list.map((e) => (e.id, e.value))

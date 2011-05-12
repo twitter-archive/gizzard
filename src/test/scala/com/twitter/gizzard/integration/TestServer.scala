@@ -11,7 +11,7 @@ import collection.mutable.ListBuffer
 import com.twitter.gizzard
 import nameserver.NameServer
 import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException, Cursorable}
-import scheduler.{JobScheduler, JsonJob, JsonJobParser, PrioritizingJobScheduler, Repairable, MultiShardRepair, RepairJobFactory, RepairJobParser}
+import scheduler.{JobScheduler, JsonJob, JsonJobParser, PrioritizingJobScheduler, Entity, MultiShardCopy, CopyJobFactory, CopyJobParser}
 
 package object config {
   import com.twitter.gizzard.config._
@@ -74,7 +74,7 @@ package object config {
           Priority.Low.id  -> new TestJobScheduler { val name = queueBase+"_low" }
         )
 
-        def repairPriority = Priority.High.id
+        def copyPriority = Priority.High.id
 
         jobInjector.port = iPort
         manager.port     = mPort
@@ -97,12 +97,12 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf)
   val readWriteShardAdapter = new TestReadWriteAdapter(_)
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
 
-  def repairPriority          = Priority.High.id
-  val repairFactory           = new TestRepairFactory(nameServer, jobScheduler)
+  def copyPriority          = Priority.High.id
+  val copyFactory           = new TestCopyFactory(nameServer, jobScheduler)
 
   shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
 
-  jobCodec += ("Repair".r -> new TestRepairParser(nameServer, jobScheduler))
+  jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler))
   jobCodec += ("Put".r  -> new PutParser(nameServer.findCurrentForwarding(0, _)))
 
   // service listener
@@ -145,11 +145,11 @@ extends thrift.TestServer.Iface {
 
 // Shard Definitions
 
-case class TestResult(id: Int, value: String, count: Int) extends Repairable[TestResult] {
+case class TestResult(id: Int, value: String, count: Int) extends Entity[TestResult] {
   def similar(other: TestResult) = {
     id.compare(other.id)
   }
-  def shouldRepair(other: TestResult) = {
+  def isSchedulable(other: TestResult) = {
     similar(other) == 0 && value != other.value
   }
 }
@@ -259,19 +259,15 @@ class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends Jso
   def apply() { forwarding(key).put(key, value) }
 }
 
-// class MetadataRepair(shardIds: Seq[ShardId], cursor: Cursor, count: Int,
-//     nameServer: NameServer[Shard], scheduler: PrioritizingJobScheduler)
-//   extends MultiShardRepair[Shard, Metadata, Cursor](shardIds, cursor, count, nameServer, scheduler, Repair.PRIORITY) {
-
-class TestRepairFactory(ns: NameServer[TestShard], s: PrioritizingJobScheduler)
-extends RepairJobFactory[TestShard] {
+class TestCopyFactory(ns: NameServer[TestShard], s: PrioritizingJobScheduler)
+extends CopyJobFactory[TestShard] {
   def apply(shardIds: Seq[ShardId]) = {
-    new TestRepair(shardIds, TestCursor.Start, 500, ns, s)
+    new TestCopy(shardIds, TestCursor.Start, 500, ns, s)
   }
 }
 
-class TestRepair(shardIds: Seq[ShardId], cursor: TestCursor, count: Int,
-    nameServer: NameServer[TestShard], scheduler: PrioritizingJobScheduler) extends MultiShardRepair[TestShard, TestResult, TestCursor](shardIds, cursor, count, nameServer, scheduler, Priority.High.id) {
+class TestCopy(shardIds: Seq[ShardId], cursor: TestCursor, count: Int,
+    nameServer: NameServer[TestShard], scheduler: PrioritizingJobScheduler) extends MultiShardCopy[TestShard, TestResult, TestCursor](shardIds, cursor, count, nameServer, scheduler, Priority.High.id) {
 
   def select(shard: TestShard, cursor: TestCursor, count: Int) = shard.getAll(cursor, count)
   def scheduleBulk(otherShards: Seq[TestShard], items: Seq[TestResult]) = { 
@@ -280,18 +276,18 @@ class TestRepair(shardIds: Seq[ShardId], cursor: TestCursor, count: Int,
   def scheduleItem(missing: Boolean, list: (TestShard, ListBuffer[TestResult], TestCursor), tableId: Int, item: TestResult) = {
     scheduler.put(Priority.High.id, new PutJob(item.id, item.value, nameServer.findCurrentForwarding(0, _)))
   }
-  def nextRepair(lowestCursor: TestCursor) = {
-    if (lowestCursor.atEnd) None else Some(new TestRepair(shardIds, lowestCursor, count, nameServer, scheduler))
+  def nextCopy(lowestCursor: TestCursor) = {
+    if (lowestCursor.atEnd) None else Some(new TestCopy(shardIds, lowestCursor, count, nameServer, scheduler))
   }
   def serialize = {
     Map("cursor" -> cursor.position)
   }
 }
 
-class TestRepairParser(ns: NameServer[TestShard], s: PrioritizingJobScheduler)
-extends RepairJobParser[TestShard] {
+class TestCopyParser(ns: NameServer[TestShard], s: PrioritizingJobScheduler)
+extends CopyJobParser[TestShard] {
   def deserialize(m: Map[String, Any], shardIds: Seq[ShardId], count: Int) = {
     val cursor = new TestCursor(m("cursor").asInstanceOf[Int])
-    new TestRepair(shardIds, cursor, count, ns, s)
+    new TestCopy(shardIds, cursor, count, ns, s)
   }
 }
