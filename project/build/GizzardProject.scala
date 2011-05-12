@@ -6,7 +6,7 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
 
-  val querulous  = "com.twitter" % "querulous" % "2.1.0"
+  val querulous  = "com.twitter" % "querulous" % "2.1.1"
   val configgy   = "net.lag"     % "configgy" % "2.0.2"
 
   //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
