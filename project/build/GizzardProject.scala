@@ -9,7 +9,7 @@ with SubversionPublisher {
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
 
-  val querulous  = "com.twitter" % "querulous" % "2.1.2"
+  val querulous  = "com.twitter" % "querulous" % "2.1.4"
 
   //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
   // remove when moved to libkestrel
@@ -31,8 +31,8 @@ with SubversionPublisher {
   val objenesis = "org.objenesis" % "objenesis"    % "1.1"    % "test"
   val jmock     = "org.jmock"     % "jmock"        % "2.4.0"  % "test"
   val hamcrest  = "org.hamcrest"  % "hamcrest-all" % "1.1"    % "test"
-  val asm       = "asm"           % "asm"          %  "1.5.3" % "test"
-  val cglib     = "cglib"         % "cglib"        % "2.1_3"  % "test"
+  val asm       = "asm"           % "asm"          % "1.5.3"  % "test"
+  val cglib     = "cglib"         % "cglib"        % "2.2"    % "test"
 
   override def pomExtra =
     <licenses>
