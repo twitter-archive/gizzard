@@ -6,7 +6,7 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
 
-  val querulous  = "com.twitter" % "querulous" % "2.1.2"
+  val querulous  = "com.twitter" % "querulous" % "2.1.4"
   val configgy   = "net.lag"     % "configgy" % "2.0.2"
 
   //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
@@ -30,8 +30,8 @@ class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info) wit
   val objenesis = "org.objenesis" % "objenesis"    % "1.1"    % "test"
   val jmock     = "org.jmock"     % "jmock"        % "2.4.0"  % "test"
   val hamcrest  = "org.hamcrest"  % "hamcrest-all" % "1.1"    % "test"
-  val asm       = "asm"           % "asm"          %  "1.5.3" % "test"
-  val cglib     = "cglib"         % "cglib"        % "2.1_3"  % "test"
+  val asm       = "asm"           % "asm"          % "1.5.3"  % "test"
+  val cglib     = "cglib"         % "cglib"        % "2.2"    % "test"
 
   override def pomExtra =
     <licenses>
