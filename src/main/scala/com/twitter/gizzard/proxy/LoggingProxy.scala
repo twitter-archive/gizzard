@@ -13,7 +13,8 @@ import scheduler.JsonJob
  * time to a transactional logger.
  */
 class LoggingProxy[T <: AnyRef](
-  consumers: Seq[TransactionalStatsConsumer], name: Option[String])(implicit manifest: Manifest[T]) {
+  consumers: Seq[TransactionalStatsConsumer], statGrouping: String, name: Option[String])(implicit manifest: Manifest[T]) {
+
   private val proxy = new ProxyFactory[T]
 
   def apply(obj: T): T = {
@@ -25,41 +26,28 @@ class LoggingProxy[T <: AnyRef](
         method()
       } catch {
         case e: Exception =>
-          Stats.transaction.record("Request failed with exception: " + e.toString())
+          Stats.transaction.record("Transaction failed with exception: " + e.toString())
           Stats.transaction.set("exception", e)
-          Stats.global.incr(namePrefix+"request-failed")
+          Stats.global.incr(namePrefix+statGrouping+"-failed")
           Stats.transaction.name.foreach { opName =>
-            Stats.global.incr(namePrefix+"operation-"+opName+"-request-failed")
+            Stats.global.incr(namePrefix+"operation-"+opName+"-failed")
           }
           throw e
       } finally {
-        Stats.global.incr(namePrefix+"request-total")
+        Stats.global.incr(namePrefix+statGrouping+"-total")
 
         val duration = Time.now - startTime
         Stats.transaction.record("Total duration: "+duration.inMillis)
         Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
 
         Stats.transaction.name.foreach { opName =>
-          Stats.global.incr(namePrefix+"operation-"+opName+"-count")
+          Stats.global.incr(namePrefix+"operation-"+opName+"-total")
           Stats.global.addMetric(namePrefix+"operation-"+opName, duration.inMilliseconds.toInt)
         }
 
         val t = Stats.endTransaction()
         consumers.map { _(t) }
       }
-    }
-  }
-}
-
-class JobLoggingProxy[T <: JsonJob](
-  consumers: Seq[TransactionalStatsConsumer], name: String)(implicit manifest: Manifest[T]) {
-  private val proxy = new ProxyFactory[T]
-
-  def apply(job: T): T = {
-    proxy(job) { method =>
-      val (rv, t) = Stats.withTransaction { method() }
-      consumers.map { _(t) }
-      rv
     }
   }
 }

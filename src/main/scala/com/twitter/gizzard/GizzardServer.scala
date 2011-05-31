@@ -5,6 +5,7 @@ import com.twitter.util.TimeConversions._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
 import scheduler._
+import proxy.LoggingProxy
 import shards.{Shard, ReadWriteShard}
 import config.{GizzardServer => ServerConfig}
 
@@ -29,7 +30,7 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   protected val log = Logger.get(getClass)
   protected val exceptionLog = Logger.get("exception")
-  protected def makeLoggingProxy[T <: AnyRef]() = config.stats()
+  protected def makeLoggingProxy[T <: AnyRef]()(implicit manifest: Manifest[T]): LoggingProxy[T] = config.stats[T]()
 
   // nameserver/shard wiring
 

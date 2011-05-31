@@ -7,6 +7,7 @@ import com.twitter.querulous.config.QueryEvaluator
 import com.twitter.util._
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
+
 import proxy.LoggingProxy
 
 trait GizzardServer {
@@ -30,13 +31,18 @@ trait StatsCollection {
   var sampledQueryRate: Double = 0.0
   var sampledQueryLoggerName: String = "sampled_query"
 
-  def apply[T <: AnyRef]()(implicit manifest: Manifest[T]): LoggingProxy[T] = {
+  private def makeStatsConsumers = {
     val sampledQueryConsumer = new SampledTransactionalStatsConsumer(
       new LoggingTransactionalStatsConsumer(Logger.get(sampledQueryLoggerName)), sampledQueryRate)
     val slowQueryConsumer = new SlowTransactionalStatsConsumer(
       new LoggingTransactionalStatsConsumer(Logger.get(slowQueryLoggerName)), slowQueryThreshold.inMillis)
-    new proxy.LoggingProxy(Seq(sampledQueryConsumer, slowQueryConsumer), name)
+    Seq(sampledQueryConsumer, slowQueryConsumer)
   }
+
+  def apply[T <: AnyRef](statGrouping: String)(implicit manifest: Manifest[T]): LoggingProxy[T] = {
+    new proxy.LoggingProxy(makeStatsConsumers, statGrouping, name)
+  }
+  def apply[T <: AnyRef]()(implicit manifest: Manifest[T]): LoggingProxy[T] = apply("request")
 }
 
 trait Manager extends TServer {

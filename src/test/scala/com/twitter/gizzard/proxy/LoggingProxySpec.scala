@@ -119,9 +119,9 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 //    val slowDuration = 5.millis
 //    val sampledStats = new FakeLogger
 //    val sampledRate = 1
-    val bobProxyFactory = new LoggingProxy[Named](Seq(sampledLoggingConsumer), None)
+    val bobProxyFactory = new LoggingProxy[Named](Seq(sampledLoggingConsumer), "request", None)
     val bobProxy = bobProxyFactory(bob)
-    val robProxyFactory = new LoggingProxy[Namer](Seq(sampledLoggingConsumer), None)
+    val robProxyFactory = new LoggingProxy[Namer](Seq(sampledLoggingConsumer), "request", None)
     val robProxy = robProxyFactory(rob)
 
     doAfter {
@@ -149,7 +149,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     "log exceptions" in {
       bobProxy.nameParts must throwA[Exception]
       val messages = sampledStats.stats.toSeq.map { _.message }
-      messages(0) mustEqual "Request failed with exception: java.lang.Exception: yarrg!"
+      messages(0) mustEqual "Transaction failed with exception: java.lang.Exception: yarrg!"
       messages(1) must startWith("Total duration:")
     }
   }

@@ -8,7 +8,7 @@ import scala.util.matching.Regex
 import com.twitter.ostrich.stats.StatsProvider
 import com.twitter.logging.Logger
 import com.twitter.util.Duration
-import proxy.{JobLoggingProxy, LoggingProxy}
+import proxy.LoggingProxy
 
 import thrift.conversions.Sequences._
 import nameserver.JobRelay
@@ -41,9 +41,7 @@ extends JsonCodec(unparsable) {
 }
 
 class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec(codec.unparsableJobHandler) {
-  private val proxyFactory = {
-    new JobLoggingProxy[JsonJob](Seq(), "stupid")
-  }
+  private val proxyFactory = conf[JsonJob]("jobs")
 
   override def +=(item: (Regex, JsonJobParser)) = codec += item
   override def +=(r: Regex, p: JsonJobParser)   = codec += ((r, p))
