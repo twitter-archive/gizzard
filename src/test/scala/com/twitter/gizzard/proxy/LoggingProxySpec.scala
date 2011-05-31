@@ -119,8 +119,10 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 //    val slowDuration = 5.millis
 //    val sampledStats = new FakeLogger
 //    val sampledRate = 1
-    val bobProxy = LoggingProxy[Named](Seq(sampledLoggingConsumer), "test", bob)
-    val robProxy = LoggingProxy[Namer](Seq(sampledLoggingConsumer), "test", rob)
+    val bobProxyFactory = new LoggingProxy[Named](Seq(sampledLoggingConsumer), None)
+    val bobProxy = bobProxyFactory(bob)
+    val robProxyFactory = new LoggingProxy[Namer](Seq(sampledLoggingConsumer), None)
+    val robProxy = robProxyFactory(rob)
 
     doAfter {
 //      slowStats.reset

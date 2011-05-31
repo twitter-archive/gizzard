@@ -29,14 +29,13 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   protected val log = Logger.get(getClass)
   protected val exceptionLog = Logger.get("exception")
-  def loggingProxy[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]) = config.stats(name, obj)
+  protected def makeLoggingProxy[T <: AnyRef]() = config.stats()
 
   // nameserver/shard wiring
 
   val replicationFuture: Option[Future] = None
   lazy val shardRepo    = new BasicShardRepository[S](readWriteShardAdapter, replicationFuture)
   lazy val nameServer   = config.nameServer(shardRepo)
-
 
   // job wiring
 

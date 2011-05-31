@@ -7,6 +7,7 @@ import com.twitter.querulous.config.QueryEvaluator
 import com.twitter.util._
 import com.twitter.util.Duration
 import com.twitter.util.TimeConversions._
+import proxy.LoggingProxy
 
 trait GizzardServer {
   var loggers: List[LoggerConfig] = Nil
@@ -20,18 +21,21 @@ trait GizzardServer {
 }
 
 trait StatsCollection {
+  var name: Option[String] = None
+  def name_=(n: String) { name = Some(n) }
+
   var slowQueryThreshold: Duration = 2.seconds
   var slowQueryLoggerName: String = "slow_query"
 
   var sampledQueryRate: Double = 0.0
   var sampledQueryLoggerName: String = "sampled_query"
 
-  def apply[T <: AnyRef](name: String, obj: T)(implicit manifest: Manifest[T]): T = {
+  def apply[T <: AnyRef]()(implicit manifest: Manifest[T]): LoggingProxy[T] = {
     val sampledQueryConsumer = new SampledTransactionalStatsConsumer(
       new LoggingTransactionalStatsConsumer(Logger.get(sampledQueryLoggerName)), sampledQueryRate)
     val slowQueryConsumer = new SlowTransactionalStatsConsumer(
       new LoggingTransactionalStatsConsumer(Logger.get(slowQueryLoggerName)), slowQueryThreshold.inMillis)
-    proxy.LoggingProxy(Seq(sampledQueryConsumer, slowQueryConsumer), name, obj)
+    new proxy.LoggingProxy(Seq(sampledQueryConsumer, slowQueryConsumer), name)
   }
 }
 
