@@ -20,7 +20,7 @@ import scala.collection.JavaConversions._
  *
  * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
  */
- class JsonCodec(private[scheduler] val unparsableJobHandler: Array[Byte] => Unit) {
+class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
   private val mapper = new ObjectMapper
 
   protected val log = Logger.get(getClass.getName)
@@ -87,7 +87,7 @@ import scala.collection.JavaConversions._
   }
 }
 
-class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec(codec.unparsableJobHandler) {
+class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec({ _ => }) {
   private val proxyFactory = conf[JsonJob]("jobs")
 
   override def +=(item: (Regex, JsonJobParser)) = codec += item
