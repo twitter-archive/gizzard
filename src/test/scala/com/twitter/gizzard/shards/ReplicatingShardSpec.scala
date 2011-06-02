@@ -20,11 +20,10 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       new LeafRoutingNode(s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
     }
 
-    val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val shards = List(node1, node2)
 
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, () => shards, Some(future))
+    var replicatingShard = ReplicatingShard(replicatingShardInfo, 1, shards)
 
     "filters shards" in {
       expect {
@@ -139,8 +138,6 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       }
 
       "in series" in {
-        var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, () => shards, None)
-
         "normal" in {
           expect {
             one(shard1).put("name", "carol")
@@ -164,7 +161,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = List(blackhole(node1), node2)
-          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, None)
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
           holed.write.foreach(_.put("name", "alice"))
         }
 
@@ -175,7 +172,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = shards.map(blackhole)
-          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, None)
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
           holed.write.foreach(_.put("name", "alice"))
         }
       }
@@ -192,7 +189,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val mock2 = mock[EnufShard]
       val List(node1, node2) = List(mock1, mock2).map(new LeafRoutingNode(_, 1))
       val shards = List(node1, node2)
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, () => shards, Some(future))
+      val shard = ReplicatingShard[EnufShard](shardInfo, 1, shards)
 
       "first shard has data" in {
         expect {

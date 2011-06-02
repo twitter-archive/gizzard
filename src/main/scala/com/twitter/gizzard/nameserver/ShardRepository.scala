@@ -56,7 +56,7 @@ extends ShardRepository[T] {
     addRoutingNode(prefix + "BlockedShard", BlockedShard[T] _)
     addRoutingNode(prefix + "WriteOnlyShard", WriteOnlyShard[T] _)
     addRoutingNode(prefix + "BlackHoleShard", BlackHoleShard[T] _)
-    addRoutingNode(prefix + "ReplicatingShard", new shards.ReplicatingShardFactory[T](replicationFuture))
-    addRoutingNode(prefix + "FailingOverShard", new shards.FailingOverShardFactory[T](replicationFuture))
+    addRoutingNode(prefix + "SlaveShard", SlaveShard[T] _)
+    addRoutingNode(prefix + "ReplicatingShard", ReplicatingShard[T] _)
   }
 }

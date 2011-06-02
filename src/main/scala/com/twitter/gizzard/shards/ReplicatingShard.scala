@@ -1,39 +1,15 @@
-package com.twitter.gizzard
-package shards
+package com.twitter.gizzard.shards
 
-import java.lang.reflect.UndeclaredThrowableException
-import java.sql.SQLException
-import java.util.Random
-import java.util.concurrent.{ExecutionException, TimeoutException, TimeUnit}
-import scala.collection.mutable
-import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
-import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.util.Duration
-import com.twitter.logging.Logger
 
 
-class ReplicatingShardFactory[T](future: Option[Future]) extends RoutingNodeFactory[T] {
-  def instantiate(shardInfo: shards.ShardInfo, weight: Int, replicas: Seq[RoutingNode[T]]) = {
-    new ReplicatingShard(
-      shardInfo,
-      weight,
-      replicas,
-      new LoadBalancer(replicas),
-      future
-    )
-  }
-}
-
-class ReplicatingShard[T](
+case class ReplicatingShard[T](
   val shardInfo: ShardInfo,
   val weight: Int,
-  val children: Seq[RoutingNode[T]],
-  val loadBalancer: (() => Seq[RoutingNode[T]]),
-  val future: Option[Future])
+  val children: Seq[RoutingNode[T]])
 extends RoutingNode[T] {
 
-  import RoutingNode._
+  protected def loadBalancer = new LoadBalancer(children)
 
   protected[shards] def collectedShards = loadBalancer() flatMap { _.collectedShards }
 
@@ -46,7 +22,7 @@ extends RoutingNode[T] {
     } else if (filtered.size == children.size) {
       this
     } else {
-      new ReplicatingShard[T](shardInfo, weight, filtered, new LoadBalancer(filtered), future)
+      new ReplicatingShard[T](shardInfo, weight, filtered)
     }
   }
 }

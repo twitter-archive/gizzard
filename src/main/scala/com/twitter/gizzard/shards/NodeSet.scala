@@ -96,8 +96,10 @@ extends NodeIterable[T] {
     new NodeSet(rootInfo, activeFiltered, blockedFiltered)
   }
 
+  def filterNot(f: (ShardInfo, Option[T]) => Boolean) = filter { (i, s) => !f(i, s) }
+
   def skip(ss: ShardId*) = {
     val set = ss.toSet
-    filter { (info, _) => set contains info.id }
+    filterNot { (info, _) => set contains info.id }
   }
 }
