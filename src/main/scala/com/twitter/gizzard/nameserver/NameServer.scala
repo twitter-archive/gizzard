@@ -69,9 +69,9 @@ class NameServer[T](
     familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
   }
 
-  def dumpStructure(tableIds: Seq[Int]) = nameServerShard.readOperation(_.dumpStructure(tableIds))
+  def dumpStructure(tableIds: Seq[Int]) = nameServerShard.read.any(_.dumpStructure(tableIds))
 
-  private def currentState() = nameServerShard.readOperation(_.currentState())
+  private def currentState() = nameServerShard.read.any(_.currentState())
 
   private def recreateInternalShardState() {
     val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
@@ -111,7 +111,7 @@ class NameServer[T](
 
   def reload() {
     log.info("Loading name server configuration...")
-    nameServerShard.writeOperation(_.reload())
+    nameServerShard.write.foreach(_.reload())
 
     val newRemoteClusters = mutable.Map[String, List[Host]]()
 
@@ -190,151 +190,151 @@ class NameServer[T](
   }
 
   @throws(classOf[shards.ShardException])
-  def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) = {
-    nameServerShard.writeOperation(_.createShard(shardInfo, repository))
+  def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) {
+    nameServerShard.write.foreach(_.createShard(shardInfo, repository))
   }
 
   @throws(classOf[shards.ShardException])
   def getShard(id: ShardId) = {
-    nameServerShard.readOperation(_.getShard(id))
+    nameServerShard.read.any(_.getShard(id))
   }
 
   @throws(classOf[shards.ShardException])
-  def deleteShard(id: ShardId) = {
-    nameServerShard.writeOperation(_.deleteShard(id))
+  def deleteShard(id: ShardId) {
+    nameServerShard.write.foreach(_.deleteShard(id))
   }
 
   @throws(classOf[shards.ShardException])
-  def addLink(upId: ShardId, downId: ShardId, weight: Int) = {
-    nameServerShard.writeOperation(_.addLink(upId, downId, weight))
+  def addLink(upId: ShardId, downId: ShardId, weight: Int) {
+    nameServerShard.write.foreach(_.addLink(upId, downId, weight))
   }
 
   @throws(classOf[shards.ShardException])
-  def removeLink(upId: ShardId, downId: ShardId) = {
-    nameServerShard.writeOperation(_.removeLink(upId, downId))
+  def removeLink(upId: ShardId, downId: ShardId) {
+    nameServerShard.write.foreach(_.removeLink(upId, downId))
   }
 
   @throws(classOf[shards.ShardException])
   def listUpwardLinks(id: ShardId) = {
-    nameServerShard.readOperation(_.listUpwardLinks(id))
+    nameServerShard.read.any(_.listUpwardLinks(id))
   }
 
   @throws(classOf[shards.ShardException])
   def listDownwardLinks(id: ShardId) = {
-    nameServerShard.readOperation(_.listDownwardLinks(id))
+    nameServerShard.read.any(_.listDownwardLinks(id))
   }
 
   @throws(classOf[shards.ShardException])
   def listLinks() = {
-    nameServerShard.readOperation(_.listLinks())
+    nameServerShard.read.any(_.listLinks())
   }
 
   @throws(classOf[shards.ShardException])
-  def markShardBusy(id: ShardId, busy: Busy.Value) = {
-    nameServerShard.writeOperation(_.markShardBusy(id, busy))
+  def markShardBusy(id: ShardId, busy: Busy.Value) {
+    nameServerShard.write.foreach(_.markShardBusy(id, busy))
   }
 
   @throws(classOf[shards.ShardException])
-  def setForwarding(forwarding: Forwarding) = {
-    nameServerShard.writeOperation(_.setForwarding(forwarding))
+  def setForwarding(forwarding: Forwarding) {
+    nameServerShard.write.foreach(_.setForwarding(forwarding))
   }
 
   @throws(classOf[shards.ShardException])
-  def replaceForwarding(oldId: ShardId, newId: ShardId) = {
-    nameServerShard.writeOperation(_.replaceForwarding(oldId, newId))
+  def replaceForwarding(oldId: ShardId, newId: ShardId) {
+    nameServerShard.write.foreach(_.replaceForwarding(oldId, newId))
   }
 
   @throws(classOf[shards.ShardException])
   def getForwarding(tableId: Int, baseId: Long) = {
-    nameServerShard.readOperation(_.getForwarding(tableId, baseId))
+    nameServerShard.read.any(_.getForwarding(tableId, baseId))
   }
 
   @throws(classOf[shards.ShardException])
   def getForwardingForShard(id: ShardId) = {
-    nameServerShard.readOperation(_.getForwardingForShard(id))
+    nameServerShard.read.any(_.getForwardingForShard(id))
   }
 
   @throws(classOf[shards.ShardException])
   def getForwardings() = {
-    nameServerShard.readOperation(_.getForwardings())
+    nameServerShard.read.any(_.getForwardings())
   }
 
   @throws(classOf[shards.ShardException])
   def shardsForHostname(hostname: String) = {
-    nameServerShard.readOperation(_.shardsForHostname(hostname))
+    nameServerShard.read.any(_.shardsForHostname(hostname))
   }
 
   @throws(classOf[shards.ShardException])
   def listShards() = {
-    nameServerShard.readOperation(_.listShards())
+    nameServerShard.read.any(_.listShards())
   }
 
   @throws(classOf[shards.ShardException])
   def getBusyShards() = {
-    nameServerShard.readOperation(_.getBusyShards())
+    nameServerShard.read.any(_.getBusyShards())
   }
 
   @throws(classOf[shards.ShardException])
-  def rebuildSchema() = {
-    nameServerShard.writeOperation(_.rebuildSchema())
+  def rebuildSchema() {
+    nameServerShard.write.foreach(_.rebuildSchema())
   }
 
   @throws(classOf[shards.ShardException])
-  def removeForwarding(f: Forwarding) = {
-    nameServerShard.writeOperation(_.removeForwarding(f))
+  def removeForwarding(f: Forwarding) {
+    nameServerShard.write.foreach(_.removeForwarding(f))
   }
 
   @throws(classOf[shards.ShardException])
   def listHostnames() = {
-    nameServerShard.readOperation(_.listHostnames())
+    nameServerShard.read.any(_.listHostnames())
   }
 
   @throws(classOf[shards.ShardException])
   def listTables() = {
-    nameServerShard.readOperation(_.listTables())
+    nameServerShard.read.any(_.listTables())
   }
 
 
   // Remote Host Management
 
   @throws(classOf[shards.ShardException])
-  def addRemoteHost(h: Host) = {
-    nameServerShard.writeOperation(_.addRemoteHost(h))
+  def addRemoteHost(h: Host) {
+    nameServerShard.write.foreach(_.addRemoteHost(h))
   }
 
   @throws(classOf[shards.ShardException])
-  def removeRemoteHost(h: String, p: Int) = {
-    nameServerShard.writeOperation(_.removeRemoteHost(h, p))
+  def removeRemoteHost(h: String, p: Int) {
+    nameServerShard.write.foreach(_.removeRemoteHost(h, p))
   }
 
   @throws(classOf[shards.ShardException])
-  def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value) = {
-    nameServerShard.writeOperation(_.setRemoteHostStatus(h, p, s))
+  def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value) {
+    nameServerShard.write.foreach(_.setRemoteHostStatus(h, p, s))
   }
 
   @throws(classOf[shards.ShardException])
-  def setRemoteClusterStatus(c: String, s: HostStatus.Value) = {
-    nameServerShard.writeOperation(_.setRemoteClusterStatus(c, s))
+  def setRemoteClusterStatus(c: String, s: HostStatus.Value) {
+    nameServerShard.write.foreach(_.setRemoteClusterStatus(c, s))
   }
 
 
   @throws(classOf[shards.ShardException])
   def getRemoteHost(h: String, p: Int) = {
-    nameServerShard.readOperation(_.getRemoteHost(h, p))
+    nameServerShard.read.any(_.getRemoteHost(h, p))
   }
 
   @throws(classOf[shards.ShardException])
   def listRemoteClusters() = {
-    nameServerShard.readOperation(_.listRemoteClusters())
+    nameServerShard.read.any(_.listRemoteClusters())
   }
 
   @throws(classOf[shards.ShardException])
   def listRemoteHosts() = {
-    nameServerShard.readOperation(_.listRemoteHosts())
+    nameServerShard.read.any(_.listRemoteHosts())
   }
 
   @throws(classOf[shards.ShardException])
   def listRemoteHostsInCluster(c: String) = {
-    nameServerShard.readOperation(_.listRemoteHostsInCluster(c))
+    nameServerShard.read.any(_.listRemoteHostsInCluster(c))
   }
 }

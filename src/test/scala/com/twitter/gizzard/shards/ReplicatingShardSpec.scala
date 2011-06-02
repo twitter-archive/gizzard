@@ -5,6 +5,7 @@ import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
+import com.twitter.util.{Return, Throw}
 
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
@@ -30,7 +31,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         one(shard2).get("name").willReturn(Some("bob"))
       }
 
-      replicatingShard.skip(ShardId("fake", "shard1")).readOperation(_.get("name")) mustEqual Some("bob")
+      replicatingShard.skip(ShardId("fake", "shard1")).read.any(_.get("name")) mustEqual Some("bob")
     }
 
     "read failover" in {
@@ -41,7 +42,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard1).get("name").willThrow(exception) then
           one(shard2).get("name").willReturn(Some("bob"))
         }
-        replicatingShard.readOperation(_.get("name")) mustEqual Some("bob")
+        replicatingShard.read.any(_.get("name")) mustEqual Some("bob")
       }
 
       "when all shards throw an exception" in {
@@ -51,7 +52,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard1).get("name") willThrow exception
           one(shard2).get("name") willThrow exception
         }
-        replicatingShard.readOperation(_.get("name")) must throwA[ShardException]
+        replicatingShard.read.any(_.get("name")) must throwA[ShardException]
       }
     }
 
@@ -59,7 +60,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       expect {
         one(shard1).get("name").willReturn(Some("ted"))
       }
-      replicatingShard.readOperation(_.get("name")) mustEqual Some("ted")
+      replicatingShard.read.any(_.get("name")) mustEqual Some("ted")
     }
 
     "read all shards" in {
@@ -69,7 +70,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard2).get("name") willReturn Some("bob")
         }
 
-        replicatingShard.readAllOperation(_.get("name")) must haveTheSameElementsAs(List(Right(Some("joe")), Right(Some("bob"))))
+        replicatingShard.read.all(_.get("name")) must haveTheSameElementsAs(List(Return(Some("joe")), Return(Some("bob"))))
       }
 
       "when one fails" in {
@@ -80,7 +81,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard2).get("name") willReturn Some("bob")
         }
 
-        replicatingShard.readAllOperation(_.get("name")) must haveTheSameElementsAs(List(Left(ex), Right(Some("bob"))))
+        replicatingShard.read.all(_.get("name")) must haveTheSameElementsAs(List(Throw(ex), Return(Some("bob"))))
       }
 
       "when all fail" in {
@@ -92,7 +93,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard2).get("name") willThrow ex2
         }
 
-        replicatingShard.readAllOperation(_.get("name")) must haveTheSameElementsAs(List(Left(ex1), Left(ex2)))
+        replicatingShard.read.all(_.get("name")) must haveTheSameElementsAs(List(Throw(ex1), Throw(ex2)))
       }
     }
 
@@ -103,7 +104,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "alice")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.writeOperation(_.put("name", "alice"))
+          replicatingShard.write.foreach(_.put("name", "alice"))
         }
 
         "when the first one fails" in {
@@ -111,23 +112,29 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "alice") willThrow new ShardException("o noes")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.writeOperation(_.put("name", "alice")) must throwA[Exception]
+          replicatingShard.write.foreach(_.put("name", "alice")) must throwA[Exception]
         }
 
         "when one replica is black holed" in {
           expect {
+            never(shard1).put("name", "alice")
             one(shard2).put("name", "alice")
           }
 
           val ss = List(blackhole(node1), node2)
           val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, Some(future))
-          holed.writeOperation(_.put("name", "alice"))
+          holed.write.foreach(_.put("name", "alice"))
         }
 
         "when all replicas are black holed" in {
+          expect {
+            never(shard1).put("name", "alice")
+            never(shard2).put("name", "alice")
+          }
+
           val ss = shards.map(blackhole)
           val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, Some(future))
-          holed.writeOperation(_.put("name", "alice")) must throwA[ShardBlackHoleException]
+          holed.write.foreach(_.put("name", "alice"))
         }
       }
 
@@ -139,7 +146,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "carol")
             one(shard2).put("name", "carol")
           }
-          replicatingShard.writeOperation(_.put("name", "carol"))
+          replicatingShard.write.foreach(_.put("name", "carol"))
         }
 
         "with an exception" in {
@@ -147,23 +154,29 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "carol") willThrow new ShardException("o noes")
             one(shard2).put("name", "carol")
           }
-          replicatingShard.writeOperation(_.put("name", "carol")) must throwA[ShardException]
+          replicatingShard.write.foreach(_.put("name", "carol")) must throwA[ShardException]
         }
 
         "when one replica is black holed" in {
           expect {
+            never(shard1).put("name", "alice")
             one(shard2).put("name", "alice")
           }
 
           val ss = List(blackhole(node1), node2)
           val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, None)
-          holed.writeOperation(_.put("name", "alice"))
+          holed.write.foreach(_.put("name", "alice"))
         }
 
         "with all black holes" in {
+          expect {
+            never(shard1).put("name", "alice")
+            never(shard2).put("name", "alice")
+          }
+
           val ss = shards.map(blackhole)
           val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, None)
-          holed.writeOperation(_.put("name", "alice")) must throwA[ShardBlackHoleException]
+          holed.write.foreach(_.put("name", "alice"))
         }
       }
     }

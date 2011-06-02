@@ -165,10 +165,10 @@ trait TestShard {
 }
 
 class TestShardAdapter(s: shards.RoutingNode[TestShard]) extends TestShard {
-  def put(k: Int, v: String)         = s.writeOperation(_.put(k,v))
-  def putAll(kvs: Seq[(Int,String)]) = s.writeOperation(_.putAll(kvs))
-  def get(k: Int)                    = s.readOperation(_.get(k))
-  def getAll(k:Int, c: Int)          = s.readOperation(_.getAll(k,c))
+  def put(k: Int, v: String)         = s.write.foreach(_.put(k,v))
+  def putAll(kvs: Seq[(Int,String)]) = s.write.foreach(_.putAll(kvs))
+  def get(k: Int)                    = s.read.any(_.get(k))
+  def getAll(k:Int, c: Int)          = s.read.any(_.getAll(k,c))
 }
 
 class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
