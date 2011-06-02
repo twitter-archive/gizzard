@@ -40,16 +40,6 @@ extends JsonCodec(unparsable) {
   }
 }
 
-class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec(codec.unparsableJobHandler) {
-  private val proxyFactory = conf[JsonJob]("jobs")
-
-  override def +=(item: (Regex, JsonJobParser)) = codec += item
-  override def +=(r: Regex, p: JsonJobParser)   = codec += ((r, p))
-  override def inflate(json: Map[String, Any]): JsonJob = {
-    proxyFactory(codec.inflate(json))
-  }
-}
-
 class ReplicatedJob(jobs: Iterable[JsonJob]) extends JsonNestedJob(jobs) {
   override val shouldReplicate = false
 }
