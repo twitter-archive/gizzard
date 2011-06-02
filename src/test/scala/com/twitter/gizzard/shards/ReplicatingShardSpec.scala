@@ -8,6 +8,8 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
+  def blackhole[T](n: RoutingNode[T]) = new BlackHoleShard(new ShardInfo("", "", ""), 1, Seq(n))
+
   "ReplicatingShard" should {
     val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
@@ -20,16 +22,15 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
     val shards = List(node1, node2)
 
-    def loadBalancer() = shards
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future))
+    var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, () => shards, Some(future))
 
     "filters shards" in {
       expect {
         one(shard2).get("name").willReturn(Some("bob"))
       }
 
-      replicatingShard.skipShard(ShardId("fake", "shard1")).readOperation(_.get("name")) mustEqual Some("bob")
+      replicatingShard.skip(ShardId("fake", "shard1")).readOperation(_.get("name")) mustEqual Some("bob")
     }
 
     "read failover" in {
@@ -115,23 +116,23 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
         "when one replica is black holed" in {
           expect {
-            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
             one(shard2).put("name", "alice")
           }
-          replicatingShard.writeOperation(_.put("name", "alice"))
+
+          val ss = List(blackhole(node1), node2)
+          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, Some(future))
+          holed.writeOperation(_.put("name", "alice"))
         }
 
         "when all replicas are black holed" in {
-          expect {
-            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
-          }
-          replicatingShard.writeOperation(_.put("name", "alice")) must throwA[ShardBlackHoleException]
+          val ss = shards.map(blackhole)
+          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, Some(future))
+          holed.writeOperation(_.put("name", "alice")) must throwA[ShardBlackHoleException]
         }
       }
 
       "in series" in {
-        var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None)
+        var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards, () => shards, None)
 
         "normal" in {
           expect {
@@ -149,20 +150,20 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           replicatingShard.writeOperation(_.put("name", "carol")) must throwA[ShardException]
         }
 
-        "with a black hole" in {
+        "when one replica is black holed" in {
           expect {
-            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).put("name", "carol")
+            one(shard2).put("name", "alice")
           }
-          replicatingShard.writeOperation(_.put("name", "carol"))
+
+          val ss = List(blackhole(node1), node2)
+          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, None)
+          holed.writeOperation(_.put("name", "alice"))
         }
 
         "with all black holes" in {
-          expect {
-            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
-          }
-          replicatingShard.writeOperation(_.put("name", "carol")) must throwA[ShardBlackHoleException]
+          val ss = shards.map(blackhole)
+          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, None)
+          holed.writeOperation(_.put("name", "alice")) must throwA[ShardBlackHoleException]
         }
       }
     }
@@ -178,8 +179,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val mock2 = mock[EnufShard]
       val List(node1, node2) = List(mock1, mock2).map(new LeafRoutingNode(_, 1))
       val shards = List(node1, node2)
-      val loadBalancer = () => shards
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future))
+      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, () => shards, Some(future))
 
       "first shard has data" in {
         expect {

@@ -3,14 +3,14 @@ package com.twitter.gizzard.shards
 
 class LeafRoutingNode[T](shard: T, val shardInfo: ShardInfo, val weight: Int) extends RoutingNode[T] {
 
+  import RoutingNode._
+
   val children = Nil
 
   // convenience constructor for manual creation.
   def this(shard: T, weight: Int) = this(shard, new ShardInfo("", "", ""), weight)
 
-  def readAllOperation[A](f: T => A) = Seq(try { Right(f(shard)) } catch { case e => Left(e) })
-  def readOperation[A](f: T => A) = f(shard)
-  def writeOperation[A](f: T => A) = f(shard)
+  protected[shards] def collectedShards = Seq(Leaf(shardInfo, Allow, Allow, shard))
 
   protected[shards] def rebuildRead[A](toRebuild: List[T])(f: (T, Seq[T]) => Option[A]) = {
     f(shard, toRebuild) match {
