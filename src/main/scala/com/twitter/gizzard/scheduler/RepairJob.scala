@@ -1,8 +1,7 @@
 package com.twitter.gizzard
 package scheduler
 
-import com.twitter.ostrich.stats.Stats
-import com.twitter.conversions.time._
+import com.twitter.util.TimeConversions._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
@@ -61,7 +60,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   def finish() {
     log.info("[%s] - finished for (type %s) for %s", label,
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
-    Stats.clearGauge(gaugeName)
+    Stats.internal.clearGauge(gaugeName)
   }
 
   def apply() {
@@ -98,7 +97,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   }
 
   def incrGauge = {
-    Stats.setGauge(gaugeName, Stats.getGauge(gaugeName).getOrElse(0.0) + 1)
+    Stats.internal.setGauge(gaugeName, Stats.internal.getGauge(gaugeName).getOrElse(0.0) + 1)
   }
 
   private def gaugeName = {

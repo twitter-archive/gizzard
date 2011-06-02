@@ -3,7 +3,6 @@ package com.twitter.gizzard
 import scala.collection.SeqProxy
 import scala.collection.generic.CanBuildFrom
 import java.util.concurrent._
-import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 
@@ -13,17 +12,32 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
   var executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
     TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
 
-  Stats.addGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
+  Stats.global.addGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
 
   def apply[A](a: => A) = {
+    val trans = Stats.transactionOpt.map { _.createChild }
+
     val future = new FutureTask(new Callable[A] {
       val startTime = Time.now
       def call = {
+        trans.foreach { t => Stats.setTransaction(t) }
         if (Time.now - startTime > timeout) {
-          Stats.incr("future-" + name + "-timeout")
+          Stats.internal.incr("future-" + name + "-timeout")
           throw new TimeoutException("future spent too long in queue")
         }
-        a
+
+        val threadExecTime = Time.now
+        try {
+          a
+        } catch {
+          case e: Exception =>
+            Stats.transaction.record("Caught exception: "+e)
+            throw e
+        } finally {
+          val duration = Time.now - threadExecTime
+          Stats.transaction.record("Total duration: "+duration.inMillis)
+          trans.foreach { t => Stats.endTransaction() }
+        }
       }
     })
     executor.execute(future)

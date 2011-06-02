@@ -1,9 +1,9 @@
-package com.twitter.gizzard.thrift
+package com.twitter.gizzard
+package thrift
 
 import java.net.{ServerSocket, Socket, SocketTimeoutException}
 import java.util.concurrent.{CountDownLatch, ExecutorService, SynchronousQueue, ThreadPoolExecutor, TimeUnit}
 import com.twitter.gizzard.NamedPoolThreadFactory
-import com.twitter.ostrich.stats.Stats
 import com.twitter.logging.Logger
 import org.apache.thrift.{TProcessor, TProcessorFactory}
 import org.apache.thrift.protocol.{TBinaryProtocol, TProtocol, TProtocolFactory}
@@ -34,7 +34,7 @@ object TThreadServer {
     val executor = new ThreadPoolExecutor(minThreads, Int.MaxValue, 60, TimeUnit.SECONDS, queue,
       new NamedPoolThreadFactory(name))
 
-    Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.internal.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
 
     executor
   }

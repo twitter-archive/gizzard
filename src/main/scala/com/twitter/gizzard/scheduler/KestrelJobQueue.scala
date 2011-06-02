@@ -1,6 +1,6 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
-import com.twitter.ostrich.stats.{Stats, StatsProvider}
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 import net.lag.kestrel.{PersistentQueue, QItem}
@@ -17,8 +17,8 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   private val log = Logger.get(getClass.getName)
   val TIMEOUT = 100
 
-  Stats.addGauge(queueName + "_items") { size }
-  Stats.addGauge(queueName + "_age") { age }
+  Stats.global.addGauge(queueName + "_items") { size }
+  Stats.global.addGauge(queueName + "_age") { age }
 
   def name = queueName
   def size = queue.length.toInt
@@ -47,7 +47,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   def isShutdown = queue.isClosed
 
   def put(job: JsonJob) {
-    if (!Stats.timeMicros("kestrel-put-usec") { queue.add(codec.flatten(job)) }) {
+    if (!Stats.global.timeMicros("kestrel-put-usec") { queue.add(codec.flatten(job)) }) {
       throw new Exception("Unable to add job to queue")
     }
   }
@@ -84,7 +84,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   def checkExpiration(flushLimit: Int) {
     val count = queue.discardExpired(flushLimit)
     if (count > 0) {
-      log.info("Replaying %d error jobs from %s.", count, queueName)
+      log.debug("Replaying %d error jobs from %s.", count, queueName)
     }
   }
 

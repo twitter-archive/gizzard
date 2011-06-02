@@ -4,8 +4,7 @@ package nameserver
 import java.util.TreeMap
 import scala.collection.mutable
 import com.twitter.util.Time
-import com.twitter.conversions.time._
-import com.twitter.querulous.StatsCollector
+import com.twitter.util.TimeConversions._
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import com.twitter.logging.Logger
 import shards._

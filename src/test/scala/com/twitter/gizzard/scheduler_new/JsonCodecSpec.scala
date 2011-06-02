@@ -4,7 +4,6 @@ package scheduler
 import scala.collection.mutable
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import com.twitter.json.Json
 
 class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JsonCodec" should {

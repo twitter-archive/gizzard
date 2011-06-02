@@ -9,7 +9,7 @@ import scala.collection.mutable
 import scala.util.Sorting
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.util.Duration
+import com.twitter.util.{Time, Duration}
 import com.twitter.logging.Logger
 
 
@@ -51,7 +51,8 @@ class ReplicatingShard[S <: Shard](
   def rebuildableReadOperation[A](method: (S => Option[A]))(rebuild: (S, S) => Unit) =
     rebuildableFailover(method, rebuild, loadBalancer(), Nil, false)
 
-  lazy val log = Logger.get
+  lazy val log = Logger.get(getClass.getName)
+  lazy val exceptionLog = Logger.get("exception")
 
   protected def unwrapException(exception: Throwable): Throwable = {
     exception match {
@@ -117,13 +118,24 @@ class ReplicatingShard[S <: Shard](
       case Seq() =>
         throw new ShardOfflineException(shardInfo.id)
       case Seq(shard, remainder @ _*) =>
+        val start = Time.now
         try {
-          f(shard)
+          Stats.transaction.record("Reading from: " + shard.toString)
+          val rv = f(shard)
+          val duration = Time.now-start
+          Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
+          rv
         } catch {
           case e: ShardRejectedOperationException =>
+            Stats.transaction.record("Rejected operation: "+e)
+            val duration = Time.now-start
+            Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
             failover(f, remainder)
           case e: ShardException =>
-            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
+            Stats.transaction.record("Failed read: "+e)
+            val duration = Time.now-start
+            Stats.transaction.record("Total time on "+shard+": "+duration.inMillis)
+            exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
             failover(f, remainder)
         }
       }
@@ -152,7 +164,7 @@ class ReplicatingShard[S <: Shard](
           case e: ShardRejectedOperationException =>
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
           case e: ShardException =>
-            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
+            exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }
     }

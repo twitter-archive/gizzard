@@ -5,8 +5,10 @@ import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
 import scala.collection.mutable.Queue
 import scala.util.matching.Regex
-import com.twitter.util.Duration
+import com.twitter.ostrich.stats.StatsProvider
 import com.twitter.logging.Logger
+import com.twitter.util.Duration
+import proxy.LoggingProxy
 
 import thrift.conversions.Sequences._
 import nameserver.JobRelay

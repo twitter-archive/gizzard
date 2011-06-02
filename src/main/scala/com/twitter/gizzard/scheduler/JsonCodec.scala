@@ -1,8 +1,8 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
 import scala.collection.mutable
 import scala.util.matching.Regex
-import com.twitter.json.Json
 import com.twitter.logging.Logger
 import org.codehaus.jackson.map.ObjectMapper
 import java.util.{Map => JMap, List => JList}
@@ -24,6 +24,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
   private val mapper = new ObjectMapper
 
   protected val log = Logger.get(getClass.getName)
+  protected val exceptionLog = Logger.get("exception")
   protected val processors = {
     val p = mutable.Map.empty[Regex, JsonJobParser]
     p += (("JsonNestedJob".r, new JsonNestedJobParser(this)))
@@ -45,7 +46,6 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
       inflate(scalaMap)
     } catch {
       case e =>
-        log.error(e, "Unparsable JsonJob; dropping: " + e.toString)
         unparsableJobHandler(data)
         throw new UnparsableJsonException("Unparsable json", e)
     }
@@ -86,3 +86,14 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
     }.toMap
   }
 }
+
+class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec({ _ => }) {
+  private val proxyFactory = conf[JsonJob]("jobs")
+
+  override def +=(item: (Regex, JsonJobParser)) = codec += item
+  override def +=(r: Regex, p: JsonJobParser)   = codec += ((r, p))
+  override def inflate(json: Map[String, Any]): JsonJob = {
+    proxyFactory(codec.inflate(json))
+  }
+}
+

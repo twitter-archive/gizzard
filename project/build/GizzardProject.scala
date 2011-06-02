@@ -9,12 +9,13 @@ with SubversionPublisher {
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
 
-  val querulous  = "com.twitter" % "querulous" % "2.1.4"
+  val querulous  = "com.twitter" % "querulous" % "2.1.5"
 
   //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
   // remove when moved to libkestrel
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
+  val ostrich         = "com.twitter" % "ostrich"          % "4.2.2"
   val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.3.2"
   val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.3.2"
 

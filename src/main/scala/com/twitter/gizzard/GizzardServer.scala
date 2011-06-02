@@ -4,7 +4,8 @@ import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, BasicShardRepository}
-import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
+import scheduler._
+import proxy.LoggingProxy
 import shards.{Shard, ReadWriteShard}
 import config.{GizzardServer => ServerConfig}
 
@@ -24,8 +25,12 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   // setup logging
 
-  Logger.configure(config.loggers)
+  protected def configureLogging { Logger.configure(config.loggers) }
+  configureLogging
+
   protected val log = Logger.get(getClass)
+  protected val exceptionLog = Logger.get("exception")
+  protected def makeLoggingProxy[T <: AnyRef]()(implicit manifest: Manifest[T]): LoggingProxy[T] = config.queryStats[T]()
 
   // nameserver/shard wiring
 
@@ -33,14 +38,13 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
   lazy val shardRepo    = new BasicShardRepository[S](readWriteShardAdapter, replicationFuture)
   lazy val nameServer   = config.nameServer(shardRepo)
 
-
   // job wiring
 
   def logUnparsableJob(j: Array[Byte]) {
     log.error("Unparsable job: %s", new String(j) )
   }
 
-  lazy val jobCodec     = new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob)
+  lazy val jobCodec     = new LoggingJsonCodec(new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob), config.jobStats)
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
     p -> config.jobQueues(p)(jobCodec)
   } toMap)
@@ -63,7 +67,6 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
   lazy val jobInjectorThriftServer = config.jobInjector(new thrift.JobInjector.Processor(jobInjectorServer))
-
 
   def startGizzard() {
     nameServer.reload()
