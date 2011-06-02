@@ -15,23 +15,30 @@ extends RoutingNodeFactory[T] {
   def instantiate(info: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = constructor(info, weight, children)
 }
 
+
 abstract class RoutingNode[T] {
   def shardInfo: ShardInfo
   def weight: Int
   def children: Seq[RoutingNode[T]]
 
-  def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]]
-  def readOperation[A](f: T => A): A
-  def writeOperation[A](f: T => A): A
-
-  def skipShard(ss: ShardId*): RoutingNode[T] = if (ss.toSet.contains(shardInfo.id)) {
+  def skip(ss: ShardId*): RoutingNode[T] = if (ss.toSet.contains(shardInfo.id)) {
     BlackHoleShard(shardInfo, weight, Seq(this))
   } else {
     this
   }
 
+  @deprecated("use read.all instead")
+  def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]]
+
+  @deprecated("use read.any instead")
+  def readOperation[A](f: T => A): A
+
+  @deprecated("use write.all instead")
+  def writeOperation[A](f: T => A): A
+
   protected[shards] def rebuildRead[A](toRebuild: List[T])(f: (T, Seq[T]) => Option[A]): Either[List[T],A]
 
+  @deprecated("reimplement using read.iterator instead")
   def rebuildableReadOperation[A](f: T => Option[A])(rebuild: (T, T) => Unit): Option[A] = {
     rebuildRead(Nil) { (shard, toRebuild) =>
       val result = f(shard)
