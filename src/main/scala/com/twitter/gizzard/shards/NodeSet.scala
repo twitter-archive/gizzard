@@ -90,6 +90,10 @@ class NodeSet[T](
   val blockedShards: Seq[ShardInfo])
 extends NodeIterable[T] {
 
+  def par(implicit cfg: ParConfig = ParConfig.default): NodeSet[T] = {
+    new ParNodeSet(rootInfo, activeShards, blockedShards, cfg.pool, cfg.timeout)
+  }
+
   def filter(f: (ShardInfo, Option[T]) => Boolean) = {
     val activeFiltered  = activeShards filter { case (i, s) => f(i, Some(s)) }
     val blockedFiltered = blockedShards filter { i => f(i, None) }

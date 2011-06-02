@@ -103,7 +103,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "alice")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.write.foreach(_.put("name", "alice"))
+          replicatingShard.write.par.foreach(_.put("name", "alice"))
         }
 
         "when the first one fails" in {
@@ -111,7 +111,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "alice") willThrow new ShardException("o noes")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.write.foreach(_.put("name", "alice")) must throwA[Exception]
+          replicatingShard.write.par.foreach(_.put("name", "alice")) must throwA[Exception]
         }
 
         "when one replica is black holed" in {
@@ -121,8 +121,8 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = List(blackhole(node1), node2)
-          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, Some(future))
-          holed.write.foreach(_.put("name", "alice"))
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          holed.write.par.foreach(_.put("name", "alice"))
         }
 
         "when all replicas are black holed" in {
@@ -132,8 +132,8 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = shards.map(blackhole)
-          val holed = new ReplicatingShard(replicatingShardInfo, 1, ss, () => ss, Some(future))
-          holed.write.foreach(_.put("name", "alice"))
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          holed.write.par.foreach(_.put("name", "alice"))
         }
       }
 
