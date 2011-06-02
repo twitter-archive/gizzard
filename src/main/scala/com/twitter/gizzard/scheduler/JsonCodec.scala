@@ -45,9 +45,7 @@ import scala.collection.JavaConversions._
       inflate(scalaMap)
     } catch {
       case e =>
-//        exceptionLog.error(e, "Unparsable JsonJob; dropping: " + unparsableJobToString(data))
-//        log.error(e, "Unparsable JsonJob; dropping: " + e.toString)
-//        unparsableJobHandler(data)
+        unparsableJobHandler(data)
         throw new UnparsableJsonException("Unparsable json", e)
     }
   }

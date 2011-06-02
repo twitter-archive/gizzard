@@ -165,7 +165,6 @@ class ReplicatingShard[S <: Shard](
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
           case e: ShardException =>
             exceptionLog.warning(e, "Error on %s", shard.shardInfo.id)
-//            log.warning(e, "Error on %s: %s", shard.shardInfo.id, e)
             rebuildableFailover(f, rebuild, remainder, toRebuild, everSuccessful)
         }
     }
