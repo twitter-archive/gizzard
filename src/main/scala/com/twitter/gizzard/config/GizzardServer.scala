@@ -18,7 +18,12 @@ trait GizzardServer {
   var manager: Manager         = new Manager with TThreadServer
   var jobInjector: JobInjector = new JobInjector with THsHaServer
 
-  var stats: StatsCollection = new StatsCollection { }
+  var queryStats: StatsCollection = new StatsCollection { }
+  var jobStats: StatsCollection = new StatsCollection {
+    slowQueryThreshold = 1.minute
+    slowQueryLoggerName = "slow_job"
+    sampledQueryLoggerName = "sampled_job"
+  }
 }
 
 trait StatsCollection {

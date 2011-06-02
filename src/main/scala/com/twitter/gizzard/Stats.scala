@@ -11,40 +11,40 @@ object Stats {
   val internal = new StatsCollection
 
   def transaction: TransactionalStatsProvider = {
-    val t = tl.get()
-    if (t == null) DevNullTransactionalStats else t
+    transactionOpt.getOrElse(DevNullTransactionalStats)
   }
 
-  def transactionOpt = {
-    val t = tl.get()
-    if (t == null) None else Some(t)
-  }
+  def transactionOpt = tl.get().headOption
 
   def beginTransaction() {
-    transactionOpt match {
-      case None => setTransaction(new TransactionalStatsCollection(rng.nextInt(Integer.MAX_VALUE)))
-      case Some(t) => t.clearAll()
+    val newTransaction = transactionOpt match {
+      case Some(t) => t.createChild()
+      case None => new TransactionalStatsCollection(rng.nextInt(Integer.MAX_VALUE))
     }
+    setTransaction(newTransaction)
   }
 
   def endTransaction() = {
-    val old = tl.get()
-    tl.set(null)
-    old
+    transactionOpt match {
+      case Some(t) => tl.get().pop()
+      case None => DevNullTransactionalStats
+    }
   }
 
   def setTransaction(collection: TransactionalStatsProvider) {
-    tl.set(collection)
+    tl.get().push(collection)
   }
 
   def withTransaction[T <: Any](f: => T): (T, TransactionalStatsProvider) = {
     beginTransaction()
-    val rv = f
+    val rv = try { f } catch { case e => { endTransaction(); throw e } }
     val t = endTransaction()
     (rv, t)
   }
 
-  private val tl = new ThreadLocal[TransactionalStatsProvider]
+  private val tl = new ThreadLocal[mutable.Stack[TransactionalStatsProvider]] {
+    override def initialValue() = new mutable.Stack[TransactionalStatsProvider]()
+  }
   private val rng = new Random
 }
 
@@ -139,6 +139,7 @@ class TransactionalStatsCollection(val id: Long) extends TransactionalStatsProvi
   def clearAll() {
     messages.clear()
     childs.clear()
+    vars.clear()
   }
 }
 

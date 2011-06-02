@@ -36,7 +36,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
         } finally {
           val duration = Time.now - threadExecTime
           Stats.transaction.record("Total duration: "+duration.inMillis)
-          Stats.endTransaction()
+          trans.foreach { t => Stats.endTransaction() }
         }
       }
     })
