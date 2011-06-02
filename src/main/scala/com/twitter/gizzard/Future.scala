@@ -4,7 +4,7 @@ import scala.collection.SeqProxy
 import scala.collection.generic.CanBuildFrom
 import java.util.concurrent._
 import com.twitter.util.{Duration, Time}
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 
 class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
              val timeout: Duration) {

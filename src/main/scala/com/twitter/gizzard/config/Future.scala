@@ -1,9 +1,8 @@
 package com.twitter.gizzard.config
 
-import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
-
+import com.twitter.conversions.time._
 import com.twitter.gizzard
+
 
 class Future {
   var poolSize    = 1

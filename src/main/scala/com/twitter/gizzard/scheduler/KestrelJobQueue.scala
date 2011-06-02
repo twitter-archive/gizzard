@@ -2,7 +2,7 @@ package com.twitter.gizzard
 package scheduler
 
 import com.twitter.util.{Duration, Time}
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import com.twitter.logging.Logger
 

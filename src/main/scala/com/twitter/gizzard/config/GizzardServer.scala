@@ -6,7 +6,7 @@ import com.twitter.logging.config.LoggerConfig
 import com.twitter.querulous.config.QueryEvaluator
 import com.twitter.util._
 import com.twitter.util.Duration
-import com.twitter.util.TimeConversions._
+import com.twitter.conversions.time._
 
 import proxy.LoggingProxy
 
