@@ -9,7 +9,7 @@ case class ReplicatingShard[T](
   val children: Seq[RoutingNode[T]])
 extends RoutingNode[T] {
 
-  protected def loadBalancer = new LoadBalancer(children)
+  protected def loadBalancer() = new LoadBalancer(children).apply()
 
   protected[shards] def collectedShards = loadBalancer() flatMap { _.collectedShards }
 
