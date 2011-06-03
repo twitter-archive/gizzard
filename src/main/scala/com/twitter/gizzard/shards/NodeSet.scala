@@ -1,5 +1,6 @@
 package com.twitter.gizzard.shards
 
+import scala.annotation.tailrec
 import scala.collection.generic.CanBuild
 import com.twitter.util.{Try, Throw, Future}
 
@@ -32,26 +33,27 @@ trait NodeIterable[T] {
 
   def containsBlocked = !blockedShards.isEmpty
 
-  def anyOption[R](f: T => R): Option[R] = _any(f, iterator)
+  def anyOption[R](f: T => R): Option[R] = _any(iterator, s => Try(f(s)) ).toOption
+
+  def tryAny[R](f: T => Try[R]): Try[R] = _any(iterator, f)
 
   def any[R](f: T => R): R = {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       throw new ShardBlackHoleException(rootInfo.id)
     }
 
-    _any(f, iterator).getOrElse(throw new ShardOfflineException(rootInfo.id))
+    _any(iterator, s => Try(f(s)) ).apply()
   }
 
-  protected final def _any[R](f: T => R, iter: Iterator[T]): Option[R] = {
-    while (iter.hasNext) {
-      try {
-        return Some(f(iter.next))
-      } catch {
-        case e: ShardException => ()
+  @tailrec protected final def _any[R](iter: Iterator[T], f: T => Try[R]): Try[R] = {
+    if (iter.hasNext) {
+      f(iter.next) match {
+        case rv if rv.isReturn => rv
+        case _ => _any(iter, f)
       }
+    } else {
+      Throw(new ShardOfflineException(rootInfo.id))
     }
-
-    None
   }
 
   // XXX: it would be nice to have a way to implement all in terms of fmap. :(
@@ -63,8 +65,12 @@ trait NodeIterable[T] {
   }
 
   def all[R, That](f: T => R)(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
+    tryAll { s => Try(f(s)) }
+  }
+
+  def tryAll[R, That](f: T => Try[R])(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
     val b = bf()
-    for ((i, s) <- activeShards) b += Try(f(s))
+    for ((i, s) <- activeShards) b += f(s)
     for (s <- blockedShards)     b += Throw(new ShardOfflineException(s.id))
     b.result
   }
