@@ -1,7 +1,7 @@
 package com.twitter.gizzard.shards
 
 import scala.collection.generic.CanBuild
-import com.twitter.util.{Try, Throw}
+import com.twitter.util.{Try, Throw, Future}
 
 // For read or write, three node states:
 // - normal: should apply normally
@@ -50,6 +50,14 @@ trait NodeIterable[T] {
     }
 
     throw new ShardOfflineException(rootInfo.id)
+  }
+
+  // XXX: it would be nice to have a way to implement all in terms of fmap. :(
+  def fmap[R, That](f: T => Future[R])(implicit bf: CanBuild[Future[R], That] = Seq.canBuildFrom[Future[R]]): That = {
+    val b = bf()
+    for ((i, s) <- activeShards) b += f(s)
+    for (s <- blockedShards)     b += Future.exception(new ShardOfflineException(s.id))
+    b.result
   }
 
   def all[R, That](f: T => R)(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
