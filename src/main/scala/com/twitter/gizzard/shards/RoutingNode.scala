@@ -3,6 +3,7 @@ package com.twitter.gizzard.shards
 import java.lang.reflect.UndeclaredThrowableException
 import java.util.concurrent.{ExecutionException, TimeoutException}
 import com.twitter.util.{Try, Return, Throw}
+import com.twitter.logging.Logger
 
 
 abstract class RoutingNodeFactory[T] {
@@ -32,6 +33,8 @@ abstract class RoutingNode[T] {
 
   import RoutingNode._
 
+  protected val log = Logger.get
+
   protected[shards] def collectedShards: Seq[Leaf[T]]
 
   protected def nodeSetFromCollected(filter: Leaf[T] => Behavior) = {
@@ -52,13 +55,15 @@ abstract class RoutingNode[T] {
   }
 
   @deprecated("use read.all instead")
-  def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]] = read.all(f) map {
+  def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]] = read.all(f) map { f => Try(f()) } map {
     case Return(r) => Right(r)
     case Throw(e)  => Left(e)
   }
 
   @deprecated("use read.any instead")
-  def readOperation[A](f: T => A) = read.any(f)
+  def readOperation[A](f: T => A) = read.tryAny { shard =>
+    Try(f(shard)) onFailure { e => logException(e, shard) }
+  }
 
   @deprecated("use write.all instead")
   def writeOperation[A](f: T => A) = {
@@ -88,7 +93,7 @@ abstract class RoutingNode[T] {
           return result
         }
       } catch {
-        case e: ShardException => () // XXX: log error
+        case e => logException(e, shard)
       }
     }
 
@@ -99,12 +104,18 @@ abstract class RoutingNode[T] {
     }
   }
 
-  protected def normalizeException(ex: Throwable, shardId: ShardId): Option[Throwable] = ex match {
+  protected def logException(e: Throwable, shard: T) {
+    val shardId    = (collectedShards find { l => l.shard == shard }).get.info.id
+    val normalized = normalizeException(e, shardId)
+
+    log.warning(e, "Error on %s: %s", shardId, e)
+  }
+
+  protected def normalizeException(ex: Throwable, shardId: ShardId): Throwable = ex match {
     case e: ExecutionException => normalizeException(e.getCause, shardId)
     // fondly known as JavaOutrageException
     case e: UndeclaredThrowableException => normalizeException(e.getCause, shardId)
-    case e: ShardBlackHoleException => None
-    case e: TimeoutException => Some(new ReplicatingShardTimeoutException(shardId, e))
-    case e => Some(e)
+    case e: TimeoutException => new ReplicatingShardTimeoutException(shardId, e)
+    case e => e
   }
 }
