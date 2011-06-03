@@ -32,24 +32,26 @@ trait NodeIterable[T] {
 
   def containsBlocked = !blockedShards.isEmpty
 
+  def anyOption[R](f: T => R): Option[R] = _any(f, iterator)
+
   def any[R](f: T => R): R = {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       throw new ShardBlackHoleException(rootInfo.id)
     }
 
-    _any(f, iterator)
+    _any(f, iterator).getOrElse(throw new ShardOfflineException(rootInfo.id))
   }
 
-  protected final def _any[R](f: T => R, iter: Iterator[T]): R = {
+  protected final def _any[R](f: T => R, iter: Iterator[T]): Option[R] = {
     while (iter.hasNext) {
       try {
-        return f(iter.next)
+        return Some(f(iter.next))
       } catch {
         case e: ShardException => ()
       }
     }
 
-    throw new ShardOfflineException(rootInfo.id)
+    None
   }
 
   // XXX: it would be nice to have a way to implement all in terms of fmap. :(
