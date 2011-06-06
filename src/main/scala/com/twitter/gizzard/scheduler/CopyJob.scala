@@ -6,7 +6,7 @@ import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
-import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException, Cursorable}
+import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 trait Entity[T] {
   def similar(other: T): Int
@@ -109,10 +109,12 @@ abstract case class CopyJob[S <: Shard](shardIds: Seq[ShardId],
   def serialize: Map[String, Any]
 }
 
-abstract class MultiShardCopy[S <: Shard, R <: Entity[R], C <: Cursorable[C]](shardIds: Seq[ShardId], cursor: C, count: Int,
+abstract class MultiShardCopy[S <: Shard, R <: Entity[R], C <: Ordered[C]](shardIds: Seq[ShardId], cursor: C, count: Int,
     nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, priority: Int) extends CopyJob(shardIds, count, nameServer, scheduler, priority) {
 
   private val log = Logger.get(getClass.getName)
+
+  def cursorAtEnd(cursor :C): Boolean
 
   def nextCopy(lowestCursor: C): Option[CopyJob[S]]
 
@@ -144,10 +146,10 @@ abstract class MultiShardCopy[S <: Shard, R <: Entity[R], C <: Cursorable[C]](sh
     } else if (nameServer.getCommonShardId(shardIds) == None) {
       throw new RuntimeException("these shardIds don't have a common ancestor")
     } else {
-      while (listCursors.forall(lc => !lc._2.isEmpty || lc._3.atEnd) && listCursors.exists(lc => !lc._2.isEmpty)) {
+      while (listCursors.forall(lc => !lc._2.isEmpty || cursorAtEnd(lc._3)) && listCursors.exists(lc => !lc._2.isEmpty)) {
         val tableId = tableIds(0)
         val firstList = smallestList(listCursors)
-        val finishedLists = listCursors.filter(lc => lc._3.atEnd && lc._2.isEmpty)
+        val finishedLists = listCursors.filter(lc => cursorAtEnd(lc._3) && lc._2.isEmpty)
         if (finishedLists.size == listCursors.size - 1) {
           scheduleBulk(finishedLists.map(_._1), firstList._2)
           firstList._2.clear

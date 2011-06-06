@@ -10,7 +10,7 @@ import collection.mutable.ListBuffer
 
 import com.twitter.gizzard
 import nameserver.NameServer
-import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException, Cursorable}
+import shards.{ShardId, ShardInfo, ShardException, ShardTimeoutException}
 import scheduler.{JobScheduler, JsonJob, JsonJobParser, PrioritizingJobScheduler, Entity, MultiShardCopy, CopyJobFactory, CopyJobParser}
 
 package object config {
@@ -161,7 +161,7 @@ object TestCursor {
   val End = new TestCursor(EndPosition)
 }
 
-case class TestCursor(position: Int) extends Cursorable[TestCursor] {
+case class TestCursor(position: Int) extends Ordered[TestCursor] {
   def atStart = position == TestCursor.StartPosition
   def atEnd = position == TestCursor.EndPosition
   def compare(other: TestCursor) = {
@@ -268,6 +268,8 @@ extends CopyJobFactory[TestShard] {
 
 class TestCopy(shardIds: Seq[ShardId], cursor: TestCursor, count: Int,
     nameServer: NameServer[TestShard], scheduler: PrioritizingJobScheduler) extends MultiShardCopy[TestShard, TestResult, TestCursor](shardIds, cursor, count, nameServer, scheduler, Priority.High.id) {
+
+  def cursorAtEnd(c: TestCursor) = c.atEnd
 
   def select(shard: TestShard, cursor: TestCursor, count: Int) = shard.getAll(cursor, count)
   def scheduleBulk(otherShards: Seq[TestShard], items: Seq[TestResult]) = { 
