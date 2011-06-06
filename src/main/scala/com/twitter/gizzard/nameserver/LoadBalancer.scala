@@ -3,20 +3,21 @@ package nameserver
 
 import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
+import com.twitter.gizzard.shards.RoutingNode
 
-class LoadBalancer[ConcreteShard <: shards.Shard](
-      random: Random,
-      replicas: Seq[ConcreteShard])
-  extends (() => Seq[ConcreteShard]) {
+class LoadBalancer[T](
+  random: Random,
+  replicas: Seq[RoutingNode[T]])
+extends (() => Seq[RoutingNode[T]]) {
 
-  def this(replicas: Seq[ConcreteShard]) = this(new Random, replicas)
+  def this(replicas: Seq[RoutingNode[T]]) = this(new Random, replicas)
 
   def apply() = sort(replicas)
 
-  protected def sort(replicas: Seq[ConcreteShard]): List[ConcreteShard] =
+  protected def sort(replicas: Seq[RoutingNode[T]]): List[RoutingNode[T]] =
     sort(replicas.foldLeft(0)(_ + _.weight), replicas)
 
-  protected def sort(totalWeight: Int, replicas: Seq[ConcreteShard]): List[ConcreteShard] = replicas match {
+  protected def sort(totalWeight: Int, replicas: Seq[RoutingNode[T]]): List[RoutingNode[T]] = replicas match {
     case Seq() => Nil
     case Seq(first, rest @ _*) =>
       val remainingWeight = totalWeight - first.weight
@@ -31,12 +32,12 @@ class LoadBalancer[ConcreteShard <: shards.Shard](
   }
 }
 
-class FailingOverLoadBalancer[ConcreteShard <: shards.Shard](
-      random: Random,
-      replicas: Seq[ConcreteShard])
-  extends LoadBalancer[ConcreteShard](random, replicas) {
+class FailingOverLoadBalancer[T](
+  random: Random,
+  replicas: Seq[RoutingNode[T]])
+extends LoadBalancer[T](random, replicas) {
 
-  def this(replicas: Seq[ConcreteShard]) = this(new Random, replicas)
+  def this(replicas: Seq[RoutingNode[T]]) = this(new Random, replicas)
 
   val keepWarmFalloverRate = 0.01
 
@@ -53,8 +54,8 @@ class FailingOverLoadBalancer[ConcreteShard <: shards.Shard](
     }
   }
 
-  private def randomize(replicas: Seq[ConcreteShard]) = {
-    val buffer = new ArrayBuffer[ConcreteShard]
+  private def randomize(replicas: Seq[RoutingNode[T]]) = {
+    val buffer = new ArrayBuffer[RoutingNode[T]]
     buffer ++= replicas
 
     def swap(a: Int, b: Int) {

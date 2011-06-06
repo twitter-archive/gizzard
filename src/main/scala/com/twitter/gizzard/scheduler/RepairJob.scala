@@ -6,7 +6,7 @@ import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer
-import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards.{RoutingNode, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 trait Repairable[T] {
   def similar(other: T): Int
@@ -20,15 +20,15 @@ object RepairJob {
  * A factory for creating a new repair job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait RepairJobFactory[S <: Shard] extends (Seq[ShardId] => RepairJob[S])
+trait RepairJobFactory[T] extends (Seq[ShardId] => RepairJob[T])
 
 /**
  * A parser that creates a repair job out of json. The basic attributes (source shard ID, destination)
  * shard ID, count) are parsed out first, and the remaining attributes are passed to
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
-trait RepairJobParser[S <: Shard] extends JsonJobParser {
-  def deserialize(attributes: Map[String, Any], shardIds: Seq[ShardId], count: Int): RepairJob[S]
+trait RepairJobParser[T] extends JsonJobParser {
+  def deserialize(attributes: Map[String, Any], shardIds: Seq[ShardId], count: Int): RepairJob[T]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
@@ -47,11 +47,11 @@ trait RepairJobParser[S <: Shard] extends JsonJobParser {
  * 'repair' is called to do the actual data repair. It should return a new Some[RepairJob] representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
-                                       var count: Int,
-                                       nameServer: NameServer[S],
-                                       scheduler: PrioritizingJobScheduler,
-                                       priority: Int) extends JsonJob {
+abstract case class RepairJob[T](shardIds: Seq[ShardId],
+                                 var count: Int,
+                                 nameServer: NameServer[T],
+                                 scheduler: PrioritizingJobScheduler,
+                                 priority: Int) extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
   override def shouldReplicate = false
@@ -105,35 +105,35 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
     "x-"+label.toLowerCase+"-" + shardIds.mkString("-")
   }
 
-  def repair(shards: Seq[S])
+  def repair(shards: Seq[RoutingNode[T]])
 
   def serialize: Map[String, Any]
 }
 
-abstract class MultiShardRepair[S <: Shard, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
-    nameServer: NameServer[S], scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
+abstract class MultiShardRepair[T, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
+    nameServer: NameServer[T], scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
 
   private val log = Logger.get(getClass.getName)
 
-  def nextRepair(lowestCursor: C): Option[RepairJob[S]]
+  def nextRepair(lowestCursor: C): Option[RepairJob[T]]
 
-  def scheduleDifferent(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
+  def scheduleDifferent(list: (RoutingNode[T], ListBuffer[R], C), tableId: Int, item: R): Unit
 
-  def scheduleMissing(list: (S, ListBuffer[R], C), tableId: Int, item: R): Unit
+  def scheduleMissing(list: (RoutingNode[T], ListBuffer[R], C), tableId: Int, item: R): Unit
 
-  def scheduleBulk(otherShards: Seq[S], items: Seq[R]): Unit
+  def scheduleBulk(otherShards: Seq[RoutingNode[T]], items: Seq[R]): Unit
 
   def cursorAtEnd(cursor: C): Boolean
 
   def lowestCursor(c1: C, c2: C): C
 
-  def smallestList(listCursors: Seq[(S, ListBuffer[R], C)]) = {
+  def smallestList(listCursors: Seq[(RoutingNode[T], ListBuffer[R], C)]) = {
     listCursors.filter(!_._2.isEmpty).reduceLeft((list1, list2) => if (list1._2(0).similar(list2._2(0)) < 0) list1 else list2)
   }
 
   def shouldSchedule(original:R, suspect: R): Boolean
 
-  def repairListCursor(listCursors: Seq[(S, ListBuffer[R], C)], tableIds: Seq[Int]) = {
+  def repairListCursor(listCursors: Seq[(RoutingNode[T], ListBuffer[R], C)], tableIds: Seq[Int]) = {
     if (!tableIds.forall((id) => id == tableIds(0))) {
       throw new RuntimeException("tableIds didn't match")
     } else if (nameServer.getCommonShardId(shardIds) == None) {

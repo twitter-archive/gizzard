@@ -50,7 +50,7 @@ trait NameServer {
   def replicas: Seq[Replica]
   var jobRelay: JobRelay = new JobRelay
 
-  protected def getMappingFunction: (Long => Long) = {
+  protected def getMappingFunction(): (Long => Long) = {
     mappingFunction match {
       case gizzard.config.ByteSwapper => nameserver.ByteSwapper
       case gizzard.config.Identity => { n => n }
@@ -58,13 +58,12 @@ trait NameServer {
     }
   }
 
-  def apply[S <: shards.Shard](shardRepository: nameserver.ShardRepository[S]) = {
-    val replicaShards = replicas.map(_.apply())
-    val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
-    val loadBalancer  = new nameserver.LoadBalancer(replicaShards)
-    val shard  = new nameserver.ReadWriteShardAdapter(
-      new shards.ReplicatingShard(shardInfo, 0, replicaShards, loadBalancer, None))
+  def apply[T](shardRepository: nameserver.ShardRepository[T]) = {
+    val replicaNodes  = replicas map { replica => new shards.LeafRoutingNode(replica(), 1) }
 
-    new nameserver.NameServer(shard, shardRepository, jobRelay(), getMappingFunction)
+    val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
+    val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes)
+
+    new nameserver.NameServer(replicating, shardRepository, jobRelay(), getMappingFunction())
   }
 }

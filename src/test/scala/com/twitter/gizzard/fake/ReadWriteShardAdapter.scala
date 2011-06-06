@@ -1,10 +1,9 @@
 package com.twitter.gizzard
 package fake
 
-class ReadWriteShardAdapter(shard: shards.ReadWriteShard[Shard])
-  extends shards.ReadWriteShardAdapter(shard) with Shard {
+import com.twitter.gizzard.shards.RoutingNode
 
-  def getAll(k: String) = shard.readAllOperation(_.get(k))
-  def get(k: String) = shard.readOperation(_.get(k))
-  def put(k: String, v: String) = shard.writeOperation(_.put(k, v))
+class ReadWriteShardAdapter(node: RoutingNode[Shard]) extends Shard {
+  def get(k: String) = node.read.any(_.get(k))
+  def put(k: String, v: String) = node.write.map(_.put(k, v)).head
 }

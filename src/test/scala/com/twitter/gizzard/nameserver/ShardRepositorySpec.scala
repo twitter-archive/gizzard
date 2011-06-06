@@ -5,38 +5,45 @@ import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
+import com.twitter.gizzard.shards.{RoutingNode, ShardInfo}
+
 
 object ShardRepositorySpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "BasicShardRepository" should {
+    val info = new ShardInfo("", "", "")
     val future = mock[Future]
-    val shard = mock[shards.Shard]
-    val constructor = { (shard: shards.ReadWriteShard[shards.Shard]) => shard }
-    val repository = new BasicShardRepository(constructor, Some(future))
+    val shard = Seq(mock[RoutingNode[AnyRef]])
+    val repository = new BasicShardRepository[AnyRef](Some(future))
 
     "find a read-only shard" in {
-      repository.factory("ReadOnlyShard") must haveClass[shards.ReadOnlyShardFactory[shards.Shard]]
-      repository.factory("com.twitter.gizzard.shards.ReadOnlyShard") must haveClass[shards.ReadOnlyShardFactory[shards.Shard]]
+      repository.factory("ReadOnlyShard").instantiate(info, 1, shard) must haveClass[shards.ReadOnlyShard[AnyRef]]
+      repository.factory("com.twitter.gizzard.shards.ReadOnlyShard").instantiate(info, 1, shard) must haveClass[shards.ReadOnlyShard[AnyRef]]
       repository.factory("com.example.bogis.ReadOnlyShard") must throwA[NoSuchElementException]
     }
     "find a write-only shard" in {
-      repository.factory("WriteOnlyShard") must haveClass[shards.WriteOnlyShardFactory[shards.Shard]]
-      repository.factory("com.twitter.gizzard.shards.WriteOnlyShard") must haveClass[shards.WriteOnlyShardFactory[shards.Shard]]
+      repository.factory("WriteOnlyShard").instantiate(info, 1, shard) must haveClass[shards.WriteOnlyShard[AnyRef]]
+      repository.factory("com.twitter.gizzard.shards.WriteOnlyShard").instantiate(info, 1, shard) must haveClass[shards.WriteOnlyShard[AnyRef]]
       repository.factory("com.example.bogis.WriteOnlyShard") must throwA[NoSuchElementException]
     }
     "find a blocked shard" in {
-      repository.factory("BlockedShard") must haveClass[shards.BlockedShardFactory[shards.Shard]]
-      repository.factory("com.twitter.gizzard.shards.BlockedShard") must haveClass[shards.BlockedShardFactory[shards.Shard]]
+      repository.factory("BlockedShard").instantiate(info, 1, shard) must haveClass[shards.BlockedShard[AnyRef]]
+      repository.factory("com.twitter.gizzard.shards.BlockedShard").instantiate(info, 1, shard) must haveClass[shards.BlockedShard[AnyRef]]
       repository.factory("com.example.bogis.BlockedShard") must throwA[NoSuchElementException]
     }
-    "find a replicating shard" in {
-      repository.factory("ReplicatingShard") must haveClass[shards.ReplicatingShardFactory[shards.Shard]]
-      repository.factory("com.twitter.gizzard.shards.ReplicatingShard") must haveClass[shards.ReplicatingShardFactory[shards.Shard]]
-      repository.factory("com.example.bogis.ReplicatingShard") must throwA[NoSuchElementException]
+    "find a blackhole shard" in {
+      repository.factory("BlackHoleShard").instantiate(info, 1, shard) must haveClass[shards.BlackHoleShard[AnyRef]]
+      repository.factory("com.twitter.gizzard.shards.BlackHoleShard").instantiate(info, 1, shard) must haveClass[shards.BlackHoleShard[AnyRef]]
+      repository.factory("com.example.bogis.BlackHoleShard") must throwA[NoSuchElementException]
     }
-    "find a failing over shard" in {
-      repository.factory("FailingOverShard") must haveClass[shards.FailingOverShardFactory[shards.Shard]]
-      repository.factory("com.twitter.gizzard.shards.FailingOverShard") must haveClass[shards.FailingOverShardFactory[shards.Shard]]
-      repository.factory("com.example.bogis.FailingOverShard") must throwA[NoSuchElementException]
+    "find a slave shard" in {
+      repository.factory("SlaveShard").instantiate(info, 1, shard) must haveClass[shards.SlaveShard[AnyRef]]
+      repository.factory("com.twitter.gizzard.shards.SlaveShard").instantiate(info, 1, shard) must haveClass[shards.SlaveShard[AnyRef]]
+      repository.factory("com.example.bogis.SlaveShard") must throwA[NoSuchElementException]
+    }
+    "find a replicating shard" in {
+      repository.factory("ReplicatingShard").instantiate(info, 1, shard) must haveClass[shards.ReplicatingShard[AnyRef]]
+      repository.factory("com.twitter.gizzard.shards.ReplicatingShard").instantiate(info, 1, shard) must haveClass[shards.ReplicatingShard[AnyRef]]
+      repository.factory("com.example.bogis.ReplicatingShard") must throwA[NoSuchElementException]
     }
   }
 }

@@ -5,16 +5,19 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
 import com.twitter.gizzard
+import com.twitter.gizzard.shards.LeafRoutingNode
 
 
 object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val nameServerShard = mock[Shard]
-    var shardRepository = mock[ShardRepository[shards.Shard]]
+    val nameServerShard = mock[nameserver.Shard]
+    val routingNode     = new LeafRoutingNode(nameServerShard, 1)
+
+    var shardRepository = mock[ShardRepository[AnyRef]]
     val mappingFunction = (n: Long) => n
-    var nameServer: NameServer[shards.Shard] = null
+    var nameServer: NameServer[AnyRef] = null
 
     val shardInfos = (1 until 5).toList.map { id =>
       new shards.ShardInfo(shards.ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
@@ -29,7 +32,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
                            new Host("host2", 7777, "c1", HostStatus.Normal),
                            new Host("host3", 7777, "c2", HostStatus.Normal))
 
-    var shard = mock[shards.Shard]
+    val shard = mock[AnyRef]
+    val node  = new LeafRoutingNode(shard, 1)
 
     doBefore {
       expect {
@@ -38,8 +42,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).currentState()    willReturn Seq(nameServerState)
       }
 
-      nameServer = new NameServer[gizzard.shards.Shard](
-        nameServerShard,
+      nameServer = new NameServer[AnyRef](
+        routingNode,
         shardRepository,
         NullJobRelayFactory,
         mappingFunction)
@@ -71,30 +75,30 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "find current forwarding" in {
       expect {
-        one(shardRepository).find(shardInfos(1), 1, List()) willReturn shard
+        one(shardRepository).find(shardInfos(1), 1, List()) willReturn node
       }
 
-      nameServer.findCurrentForwarding(1, 2) mustEqual shard
+      nameServer.findCurrentForwarding(1, 2) mustEqual node
     }
 
     "find forwardings" in {
       expect {
-        one(shardRepository).find(shardInfos(3), 1, List()) willReturn shard
-        one(shardRepository).find(shardInfos(0), 1, List()) willReturn shard
-        one(shardRepository).find(shardInfos(1), 1, List()) willReturn shard
-        one(shardRepository).find(shardInfos(2), 1, List(shard)) willReturn shard
+        one(shardRepository).find(shardInfos(3), 1, List()) willReturn node
+        one(shardRepository).find(shardInfos(0), 1, List()) willReturn node
+        one(shardRepository).find(shardInfos(1), 1, List()) willReturn node
+        one(shardRepository).find(shardInfos(2), 1, List(node)) willReturn node
       }
 
-      nameServer.findForwardings(1) mustEqual List(shard, shard, shard)
+      nameServer.findForwardings(1) mustEqual List(node, node, node)
     }
 
     "find shard by id" in {
       expect {
-        one(shardRepository).find(shardInfos(3), 1, List()) willReturn shard
-        one(shardRepository).find(shardInfos(2), 1, List(shard)) willReturn shard
+        one(shardRepository).find(shardInfos(3), 1, List()) willReturn node
+        one(shardRepository).find(shardInfos(2), 1, List(node)) willReturn node
       }
 
-      nameServer.findShardById(shardInfos(2).id) mustEqual shard
+      nameServer.findShardById(shardInfos(2).id) mustEqual node
     }
 
     "find shard by id with a shard not attached to a forwarding" in {
@@ -103,10 +107,10 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       expect {
         one(nameServerShard).getShard(floatingShard.id) willReturn floatingShard
         one(nameServerShard).listDownwardLinks(floatingShard.id) willReturn List[shards.LinkInfo]()
-        one(shardRepository).find(floatingShard, 1, List()) willReturn shard
+        one(shardRepository).find(floatingShard, 1, List()) willReturn node
       }
 
-      nameServer.findShardById(floatingShard.id) mustEqual shard
+      nameServer.findShardById(floatingShard.id) mustEqual node
     }
 
     "create shard" in {

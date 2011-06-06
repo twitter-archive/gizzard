@@ -5,7 +5,7 @@ import com.twitter.ostrich.stats.Stats
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
-import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards.{RoutingNode, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 object CopyJob {
   val MIN_COPY = 500
@@ -15,16 +15,16 @@ object CopyJob {
  * A factory for creating a new copy job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait CopyJobFactory[S <: Shard] extends ((ShardId, ShardId) => CopyJob[S])
+trait CopyJobFactory[T] extends ((ShardId, ShardId) => CopyJob[T])
 
 /**
  * A parser that creates a copy job out of json. The basic attributes (source shard ID, destination)
  * shard ID, and count) are parsed out first, and the remaining attributes are passed to
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
-trait CopyJobParser[S <: Shard] extends JsonJobParser {
+trait CopyJobParser[T] extends JsonJobParser {
   def deserialize(attributes: Map[String, Any], sourceId: ShardId,
-                  destinationId: ShardId, count: Int): CopyJob[S]
+                  destinationId: ShardId, count: Int): CopyJob[T]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
@@ -43,11 +43,11 @@ trait CopyJobParser[S <: Shard] extends JsonJobParser {
  * 'copyPage' is called to do the actual data copying. It should return a new CopyJob representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class CopyJob[S <: Shard](sourceId: ShardId,
-                                        destinationId: ShardId,
-                                        var count: Int,
-                                        nameServer: NameServer[S],
-                                        scheduler: JobScheduler)
+abstract case class CopyJob[T](sourceId: ShardId,
+                               destinationId: ShardId,
+                               var count: Int,
+                               nameServer: NameServer[T],
+                               scheduler: JobScheduler)
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
 
@@ -123,7 +123,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
     "x-copying-" + sourceId + "-" + destinationId
   }
 
-  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[CopyJob[S]]
+  def copyPage(sourceShard: RoutingNode[T], destinationShard: RoutingNode[T], count: Int): Option[CopyJob[T]]
 
   def serialize: Map[String, Any]
 }
