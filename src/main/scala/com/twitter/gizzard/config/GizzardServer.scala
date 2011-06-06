@@ -20,32 +20,49 @@ trait GizzardServer {
 
   var queryStats: StatsCollection = new StatsCollection { }
   var jobStats: StatsCollection = new StatsCollection {
-    slowQueryThreshold = 1.minute
-    slowQueryLoggerName = "slow_job"
-    sampledQueryLoggerName = "sampled_job"
+    consumers = Seq(new SlowTransactionalStatsConsumer {
+      threshold = 1.minute
+      consumer.loggerName = "slow_job"
+    })
   }
+}
+
+trait TransactionalStatsConsumer {
+  def apply(): com.twitter.gizzard.TransactionalStatsConsumer
+}
+
+trait LoggingTransactionalStatsConsumer extends TransactionalStatsConsumer {
+  def loggerName: String
+  def apply() = { new com.twitter.gizzard.LoggingTransactionalStatsConsumer(loggerName) }
+}
+
+trait ConditionalTransactionalStatsConsumer extends TransactionalStatsConsumer {
+  def test: TransactionalStatsProvider => Boolean
+  def consumer: TransactionalStatsConsumer
+
+  def apply() = { new com.twitter.gizzard.ConditionalTransactionalStatsConsumer(consumer(), test) }
+}
+
+trait SlowTransactionalStatsConsumer extends TransactionalStatsConsumer {
+  var threshold: Duration = 2.seconds
+  var consumer = new LoggingTransactionalStatsConsumer { var loggerName = "slow_query" }
+  def apply() = { new com.twitter.gizzard.SlowTransactionalStatsConsumer(consumer(), threshold) }
+}
+
+trait SampledTransactionalStatsConsumer extends TransactionalStatsConsumer {
+  var sampleRate: Double = 0.001
+  var consumer = new LoggingTransactionalStatsConsumer { var loggerName = "sampled_query" }
+  def apply() = { new com.twitter.gizzard.SampledTransactionalStatsConsumer(consumer(), sampleRate) }
 }
 
 trait StatsCollection {
   var name: Option[String] = None
   def name_=(n: String) { name = Some(n) }
 
-  var slowQueryThreshold: Duration = 2.seconds
-  var slowQueryLoggerName: String = "slow_query"
-
-  var sampledQueryRate: Double = 0.0
-  var sampledQueryLoggerName: String = "sampled_query"
-
-  private def makeStatsConsumers = {
-    val sampledQueryConsumer = new SampledTransactionalStatsConsumer(
-      new LoggingTransactionalStatsConsumer(Logger.get(sampledQueryLoggerName)), sampledQueryRate)
-    val slowQueryConsumer = new SlowTransactionalStatsConsumer(
-      new LoggingTransactionalStatsConsumer(Logger.get(slowQueryLoggerName)), slowQueryThreshold.inMillis)
-    Seq(sampledQueryConsumer, slowQueryConsumer)
-  }
+  var consumers: Seq[TransactionalStatsConsumer] = Seq(new SlowTransactionalStatsConsumer {})
 
   def apply[T <: AnyRef](statGrouping: String)(implicit manifest: Manifest[T]): LoggingProxy[T] = {
-    new proxy.LoggingProxy(makeStatsConsumers, statGrouping, name)
+    new proxy.LoggingProxy(consumers.map { _() }, statGrouping, name)
   }
   def apply[T <: AnyRef]()(implicit manifest: Manifest[T]): LoggingProxy[T] = apply("request")
 }

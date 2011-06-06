@@ -55,6 +55,8 @@ trait TransactionalStatsConsumer {
 }
 
 class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsConsumer {
+  def this(logName: String) = this(Logger.get(logName))
+
   def apply(t: TransactionalStatsProvider) {
     val buf = new StringBuilder
 
@@ -80,7 +82,7 @@ object SampledTransactionalStatsConsumer {
   val rng = new Random
 }
 
-abstract class ConditionalTransactionalStatsConsumer(
+class ConditionalTransactionalStatsConsumer(
   consumer: TransactionalStatsConsumer,
   f: TransactionalStatsProvider => Boolean) extends TransactionalStatsConsumer {
   def apply(t: TransactionalStatsProvider) {
