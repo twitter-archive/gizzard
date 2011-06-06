@@ -17,7 +17,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   val queryEvaluator = evaluator(config.nameServer)
   materialize(config.nameServer)
 
-  class UserShard(val shardInfo: ShardInfo, val weight: Int, val children: Seq[Shard]) extends Shard {
+  class UserShard(val shardInfo: ShardInfo) {
     val data = new mutable.HashMap[Int, String]
 
     def setName(id: Int, name: String) {
@@ -28,18 +28,16 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   val factory = new ShardFactory[UserShard] {
-    def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[UserShard]) = {
-      new UserShard(shardInfo, weight, children)
+    def instantiate(shardInfo: ShardInfo, weight: Int) = {
+      new UserShard(shardInfo)
     }
 
-    def materialize(shardInfo: ShardInfo) {
-      // nothing.
-    }
+    def materialize(shardInfo: ShardInfo) {}
   }
 
   "Shards" should {
     var shardRepository: ShardRepository[UserShard] = null
-    var nameServerShard: nameserver.Shard = null
+    var nameServerShard: RoutingNode[nameserver.Shard] = null
     var nameServer: NameServer[UserShard] = null
 
     var mapping = (a: Long) => a
@@ -49,7 +47,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
       shardRepository += (("com.example.UserShard", factory))
       shardRepository += (("com.example.SqlShard", factory))
       reset(queryEvaluator)
-      nameServerShard = new SqlShard(queryEvaluator)
+      nameServerShard = new LeafRoutingNode(new SqlShard(queryEvaluator), 1)
       nameServer = new NameServer(nameServerShard, shardRepository, NullJobRelayFactory, mapping)
       nameServer.reload()
 

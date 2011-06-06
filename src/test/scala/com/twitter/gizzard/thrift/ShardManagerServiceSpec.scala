@@ -7,20 +7,20 @@ import org.specs.Specification
 import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
-import shards.{Busy, Shard}
+import shards.{Busy, RoutingNode}
 import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
 
 
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val nameServer    = mock[nameserver.NameServer[Shard]]
-  val copier        = mock[CopyJobFactory[Shard]]
+  val nameServer    = mock[nameserver.NameServer[AnyRef]]
+  val copier        = mock[CopyJobFactory[AnyRef]]
   val scheduler     = mock[PrioritizingJobScheduler]
   val subScheduler  = mock[JobScheduler]
   val copyScheduler = mock[JobScheduler]
   val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler, null, 0, null)
 
-  val shard = mock[Shard]
+  val shard = mock[RoutingNode[AnyRef]]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
     "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id)
   val shardInfo1 = new shards.ShardInfo(new shards.ShardId("hostname", "table_prefix"),
@@ -112,7 +112,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
-      val copyJob = mock[CopyJob[Shard]]
+      val copyJob = mock[CopyJob[AnyRef]]
 
       expect {
         one(copier).apply(shardId1, shardId2) willReturn copyJob

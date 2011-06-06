@@ -100,7 +100,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   // Forwardings/Shard Management Write Methods
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
+  def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) {
     try {
       queryEvaluator.transaction { transaction =>
         transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",

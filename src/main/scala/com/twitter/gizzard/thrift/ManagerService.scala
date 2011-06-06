@@ -17,7 +17,7 @@ import com.twitter.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler, copyScheduler: JobScheduler, repairer: RepairJobFactory[S], repairPriority: Int, differ: RepairJobFactory[S]) extends Manager.Iface {
+class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler, copyScheduler: JobScheduler, repairer: RepairJobFactory[S], repairPriority: Int, differ: RepairJobFactory[S]) extends Manager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {

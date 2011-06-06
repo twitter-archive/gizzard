@@ -5,42 +5,63 @@ import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
+import com.twitter.util.{Return, Throw}
+
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
+  def blackhole[T](n: RoutingNode[T]) = new BlackHoleShard(new ShardInfo("", "", ""), 1, Seq(n))
+
   "ReplicatingShard" should {
     val shardId = ShardId("fake", "shard")
     val shard1 = mock[fake.Shard]
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
-    val future = new Future("Future!", 1, 1, 1.second, 1.second)
-    val shards = List(shard1, shard2)
-    val loadBalancer = () => shards
+    val List(node1, node2, node3) = List(shard1, shard2, shard3).zipWithIndex map { case (s, i) =>
+      new LeafRoutingNode(s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
+    }
+
+    val shards = List(node1, node2)
+
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, Some(future)))
+    var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards) {
+      override protected def loadBalancer() = children.toList
+    }
+
+    "filters shards" in {
+      expect {
+        one(shard2).get("name").willReturn(Some("bob"))
+      }
+
+      replicatingShard.skip(ShardId("fake", "shard1")).read.any(_.get("name")) mustEqual Some("bob")
+    }
 
     "read failover" in {
       "when shard1 throws an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
         expect {
-          one(shard1).shardInfo.willReturn(shard1Info)
           one(shard1).get("name").willThrow(exception) then
           one(shard2).get("name").willReturn(Some("bob"))
         }
-        replicatingShard.get("name") mustEqual Some("bob")
+        replicatingShard.read.any(_.get("name")) mustEqual Some("bob")
       }
 
       "when all shards throw an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
         expect {
-          one(shard1).shardInfo willReturn shard1Info
-          one(shard2).shardInfo willReturn shard1Info
           one(shard1).get("name") willThrow exception
           one(shard2).get("name") willThrow exception
         }
-        replicatingShard.get("name") must throwA[ShardException]
+        replicatingShard.read.any(_.get("name")) must throwA[ShardException]
       }
+    }
+
+    "reads happen to shards in order" in {
+      expect {
+        one(shard1).get("name").willReturn(Some("ted"))
+      }
+      replicatingShard.read.any(_.get("name")) mustEqual Some("ted")
     }
 
     "read all shards" in {
@@ -50,7 +71,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard2).get("name") willReturn Some("bob")
         }
 
-        replicatingShard.getAll("name") must haveTheSameElementsAs(List(Right(Some("joe")), Right(Some("bob"))))
+        replicatingShard.read.all(_.get("name")) must haveTheSameElementsAs(List(Return(Some("joe")), Return(Some("bob"))))
       }
 
       "when one fails" in {
@@ -61,7 +82,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard2).get("name") willReturn Some("bob")
         }
 
-        replicatingShard.getAll("name") must haveTheSameElementsAs(List(Left(ex), Right(Some("bob"))))
+        replicatingShard.read.all(_.get("name")) must haveTheSameElementsAs(List(Throw(ex), Return(Some("bob"))))
       }
 
       "when all fail" in {
@@ -73,7 +94,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           one(shard2).get("name") willThrow ex2
         }
 
-        replicatingShard.getAll("name") must haveTheSameElementsAs(List(Left(ex1), Left(ex2)))
+        replicatingShard.read.all(_.get("name")) must haveTheSameElementsAs(List(Throw(ex1), Throw(ex2)))
       }
     }
 
@@ -84,7 +105,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "alice")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.put("name", "alice")
+          replicatingShard.write.par.foreach(_.put("name", "alice"))
         }
 
         "when the first one fails" in {
@@ -92,35 +113,39 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "alice") willThrow new ShardException("o noes")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.put("name", "alice") must throwA[Exception]
+          replicatingShard.write.par.foreach(_.put("name", "alice")) must throwA[Exception]
         }
 
         "when one replica is black holed" in {
           expect {
-            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            never(shard1).put("name", "alice")
             one(shard2).put("name", "alice")
           }
-          replicatingShard.put("name", "alice")
+
+          val ss = List(blackhole(node1), node2)
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          holed.write.par.foreach(_.put("name", "alice"))
         }
 
         "when all replicas are black holed" in {
           expect {
-            one(shard1).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).put("name", "alice") willThrow new ShardBlackHoleException(shardId)
+            never(shard1).put("name", "alice")
+            never(shard2).put("name", "alice")
           }
-          replicatingShard.put("name", "alice") must throwA[ShardBlackHoleException]
+
+          val ss = shards.map(blackhole)
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          holed.write.par.foreach(_.put("name", "alice"))
         }
       }
 
       "in series" in {
-        var replicatingShard = new fake.ReadWriteShardAdapter(new ReplicatingShard(replicatingShardInfo, 1, shards, loadBalancer, None))
-
         "normal" in {
           expect {
             one(shard1).put("name", "carol")
             one(shard2).put("name", "carol")
           }
-          replicatingShard.put("name", "carol")
+          replicatingShard.write.foreach(_.put("name", "carol"))
         }
 
         "with an exception" in {
@@ -128,36 +153,35 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
             one(shard1).put("name", "carol") willThrow new ShardException("o noes")
             one(shard2).put("name", "carol")
           }
-          replicatingShard.put("name", "carol") must throwA[ShardException]
+          replicatingShard.write.foreach(_.put("name", "carol")) must throwA[ShardException]
         }
 
-        "with a black hole" in {
+        "when one replica is black holed" in {
           expect {
-            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).put("name", "carol")
+            never(shard1).put("name", "alice")
+            one(shard2).put("name", "alice")
           }
-          replicatingShard.put("name", "carol")
+
+          val ss = List(blackhole(node1), node2)
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          holed.write.foreach(_.put("name", "alice"))
         }
 
         "with all black holes" in {
           expect {
-            one(shard1).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
-            one(shard2).put("name", "carol") willThrow new ShardBlackHoleException(shardId)
+            never(shard1).put("name", "alice")
+            never(shard2).put("name", "alice")
           }
-          replicatingShard.put("name", "carol") must throwA[ShardBlackHoleException]
+
+          val ss = shards.map(blackhole)
+          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          holed.write.foreach(_.put("name", "alice"))
         }
       }
     }
 
-    "reads happen to shards in order" in {
-      expect {
-        one(shard1).get("name").willReturn(Some("ted"))
-      }
-      replicatingShard.get("name") mustEqual Some("ted")
-    }
-
     "rebuildableFailover" in {
-      trait EnufShard extends Shard {
+      trait EnufShard {
         @throws(classOf[ShardException]) def getPrice: Option[Int]
         @throws(classOf[ShardException]) def setPrice(price: Int)
       }
@@ -165,9 +189,11 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val shardInfo = new ShardInfo("fake", "fake", "localhost")
       val mock1 = mock[EnufShard]
       val mock2 = mock[EnufShard]
-      val shards = List(mock1, mock2)
-      val loadBalancer = () => shards
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards, loadBalancer, Some(future))
+      val List(node1, node2) = List(mock1, mock2).map(new LeafRoutingNode(_, 1))
+      val shards = List(node1, node2)
+      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards) {
+        override protected def loadBalancer() = children.toList
+      }
 
       "first shard has data" in {
         expect {
@@ -181,7 +207,6 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         expect {
           one(mock1).getPrice willThrow new ShardException("oof!")
           one(mock2).getPrice willReturn Some(100)
-          allowing(mock1).shardInfo willReturn shardInfo
         }
 
         shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } mustEqual Some(100)
@@ -210,8 +235,6 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         expect {
           one(mock1).getPrice willThrow new ShardException("oof!")
           one(mock2).getPrice willThrow new ShardException("oof!")
-          allowing(mock1).shardInfo willReturn shardInfo
-          allowing(mock2).shardInfo willReturn shardInfo
         }
 
         shard.rebuildableReadOperation(_.getPrice) { (shard, destShard) => destShard.setPrice(shard.getPrice.get) } must throwA[ShardOfflineException]

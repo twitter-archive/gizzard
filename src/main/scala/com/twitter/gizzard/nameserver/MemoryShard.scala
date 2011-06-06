@@ -39,7 +39,7 @@ class MemoryShard extends Shard {
     dumpStructure(tableIds.toSeq)
   }
 
-  def createShard[S <: shards.Shard](shardInfo: ShardInfo, repository: ShardRepository[S]) {
+  def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) {
     find(shardInfo) match {
       case Some(x) =>
         if (x.className != shardInfo.className ||

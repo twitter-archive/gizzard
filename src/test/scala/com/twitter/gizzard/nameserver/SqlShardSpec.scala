@@ -18,11 +18,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val SQL_SHARD = "com.example.SqlShard"
 
     var nameServer: nameserver.SqlShard = null
-    var shardRepository: ShardRepository[Shard] = null
-    val adapter = { (shard:shards.ReadWriteShard[fake.Shard]) => new fake.ReadWriteShardAdapter(shard) }
+    var shardRepository: ShardRepository[fake.Shard] = null
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
 
-    val repo = new BasicShardRepository[fake.Shard](adapter, Some(future))
+    val repo = new BasicShardRepository[fake.Shard](Some(future))
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
@@ -32,17 +31,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
       reset(config.nameServer)
-      shardRepository = mock[ShardRepository[Shard]]
-    }
-
-    "be wrappable while replicating" in {
-      val nameServerShards = Seq(nameServer)
-      val info = new shards.ShardInfo("com.twitter.gizzard.nameserver.Replicatingnameserver.NameServer", "", "")
-      val replicationFuture = new Future("ReplicationFuture", 1, 1, 1.second, 1.second)
-      val shard: shards.ReadWriteShard[nameserver.Shard] =
-        new shards.ReplicatingShard(info, 0, nameServerShards, new nameserver.LoadBalancer(nameServerShards), Some(replicationFuture))
-      val adapted = new nameserver.ReadWriteShardAdapter(shard)
-      1 mustEqual 1
+      shardRepository = mock[ShardRepository[fake.Shard]]
     }
 
     "be able to dump nameserver structure" in {
