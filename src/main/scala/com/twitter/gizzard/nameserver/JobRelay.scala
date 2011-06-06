@@ -64,8 +64,9 @@ class JobRelayCluster(
   retries: Int)
 extends (Iterable[Array[Byte]] => Unit) {
   val client = new JobInjector.ServiceToClient(ClientBuilder()
-      .hosts(hosts.map { h => new InetSocketAddress(h.hostname, h.port) })
       .codec(ThriftClientFramedCodec())
+      .hosts(hosts.map { h => new InetSocketAddress(h.hostname, h.port) })
+      .hostConnectionLimit(2)
       .retries(retries)
       .connectionTimeout(timeout)
       .requestTimeout(timeout)

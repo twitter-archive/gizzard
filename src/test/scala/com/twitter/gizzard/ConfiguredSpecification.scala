@@ -77,8 +77,9 @@ trait IntegrationSpecification extends Specification {
     val i = s.enum
     val port = 8000 + (i - 1) * 3
     val client = new testserver.thrift.TestServer.ServiceToClient(ClientBuilder()
-        .hosts(new InetSocketAddress("localhost", port))
         .codec(ThriftClientFramedCodec())
+        .hosts(new InetSocketAddress("localhost", port))
+        .hostConnectionLimit(1)
         .build(),
         new TBinaryProtocol.Factory())
 
