@@ -1,28 +1,34 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
-import shards._
+import com.twitter.gizzard.shards._
 
 
-class ShardRepository[T] {
-  private val nodeFactories = mutable.Map[String, RoutingNodeFactory[T]]()
+class ExistingShardFactory(message: String) extends ShardException(message)
 
-  def +=(item: (String, ShardFactory[T])) {
+class ShardRepository {
+  private val nodeFactories = mutable.Map[String, RoutingNodeFactory[Any]]()
+
+  private[nameserver] def +=[T](item: (String, ShardFactory[T])) {
     val (className, shardFactory) = item
-    nodeFactories += (className -> new LeafRoutingNodeFactory(shardFactory))
+
+    if (nodeFactories contains className) {
+      throw new ExistingShardFactory("Factory for "+className+" already defined!")
+    } else {
+      nodeFactories += (className -> new LeafRoutingNodeFactory(shardFactory.asInstanceOf[ShardFactory[Any]]))
+    }
   }
 
-  def addRoutingNode(className: String, factory: RoutingNodeFactory[T]) {
+  def addRoutingNode(className: String, factory: RoutingNodeFactory[Any]) {
     nodeFactories += (className -> factory)
   }
 
-  def addRoutingNode(className: String, cons: (ShardInfo, Int, Seq[RoutingNode[T]]) => RoutingNode[T]) {
+  def addRoutingNode(className: String, cons: (ShardInfo, Int, Seq[RoutingNode[Any]]) => RoutingNode[Any]) {
     addRoutingNode(className, new ConstructorRoutingNodeFactory(cons))
   }
 
-  def find(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    factory(shardInfo.className).instantiate(shardInfo, weight, children)
+  def find[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
+    factory(shardInfo.className).instantiate(shardInfo, weight, children.asInstanceOf[Seq[RoutingNode[Any]]])
   }
 
   def create(shardInfo: ShardInfo) {
@@ -43,8 +49,7 @@ class ShardRepository[T] {
  * A ShardRepository that is pre-seeded with read-only, write-only, replicating, and blocked
  * shard types.
  */
-class BasicShardRepository[T](replicationFuture: Option[Future])
-extends ShardRepository[T] {
+class BasicShardRepository extends ShardRepository {
 
   setupPackage("com.twitter.gizzard.shards")
   setupPackage("")
@@ -52,11 +57,11 @@ extends ShardRepository[T] {
   def setupPackage(packageName: String) {
     val prefix = if (packageName == "") packageName else packageName + "."
 
-    addRoutingNode(prefix + "ReadOnlyShard", ReadOnlyShard[T] _)
-    addRoutingNode(prefix + "BlockedShard", BlockedShard[T] _)
-    addRoutingNode(prefix + "WriteOnlyShard", WriteOnlyShard[T] _)
-    addRoutingNode(prefix + "BlackHoleShard", BlackHoleShard[T] _)
-    addRoutingNode(prefix + "SlaveShard", SlaveShard[T] _)
-    addRoutingNode(prefix + "ReplicatingShard", ReplicatingShard[T] _)
+    addRoutingNode(prefix + "ReadOnlyShard", ReadOnlyShard[Any] _)
+    addRoutingNode(prefix + "BlockedShard", BlockedShard[Any] _)
+    addRoutingNode(prefix + "WriteOnlyShard", WriteOnlyShard[Any] _)
+    addRoutingNode(prefix + "BlackHoleShard", BlackHoleShard[Any] _)
+    addRoutingNode(prefix + "SlaveShard", SlaveShard[Any] _)
+    addRoutingNode(prefix + "ReplicatingShard", ReplicatingShard[Any] _)
   }
 }

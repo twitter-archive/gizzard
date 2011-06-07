@@ -8,14 +8,9 @@ import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, Prioritizi
 import config.{GizzardServer => ServerConfig}
 
 
-abstract class GizzardServer[S](config: ServerConfig) {
-
-  def copyFactory: CopyJobFactory[S]
-  def repairFactory: RepairJobFactory[S] = null
-  def diffFactory: RepairJobFactory[S] = null
+abstract class GizzardServer(config: ServerConfig) {
   def jobPriorities: Seq[Int]
   def copyPriority: Int
-  def repairPriority: Int = copyPriority
   def start(): Unit
   def shutdown(quiesce: Boolean): Unit
   def shutdown() { shutdown(false) }
@@ -27,9 +22,7 @@ abstract class GizzardServer[S](config: ServerConfig) {
 
   // nameserver/shard wiring
 
-  val replicationFuture: Option[Future] = None
-  lazy val shardRepo    = new BasicShardRepository[S](replicationFuture)
-  lazy val nameServer   = config.nameServer(shardRepo)
+  lazy val nameServer   = config.nameServer(new BasicShardRepository)
 
 
   // job wiring
@@ -48,15 +41,7 @@ abstract class GizzardServer[S](config: ServerConfig) {
 
   // service wiring
 
-  lazy val managerServer = new thrift.ManagerService(
-    nameServer,
-    copyFactory,
-    jobScheduler,
-    copyScheduler,
-    repairFactory,
-    repairPriority,
-    diffFactory)
-
+  lazy val managerServer       = new thrift.ManagerService(nameServer, jobScheduler, copyPriority)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)

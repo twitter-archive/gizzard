@@ -8,7 +8,7 @@ import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 import com.twitter.gizzard
-import com.twitter.gizzard.nameserver.NameServer
+import com.twitter.gizzard.nameserver.{NameServer, Forwarder}
 import com.twitter.gizzard.shards.{RoutingNode, ShardId, ShardInfo, ShardException, ShardTimeoutException}
 import com.twitter.gizzard.scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
 
@@ -102,17 +102,21 @@ object Priority extends Enumeration {
   val High, Low = Value
 }
 
-class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf) {
+class TestServer(conf: config.TestServer) extends GizzardServer(conf) {
 
   // shard/nameserver/scheduler wiring
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
   val copyPriority          = Priority.Low.id
   val copyFactory           = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
-  shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+  val forwarder: Forwarder[TestShard] = nameServer newForwarder { f =>
+    f.validTables = Seq(0)
+    f.copyFactory = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
-  def findForwarding(id: Long) = new TestShardAdapter(nameServer.findCurrentForwarding(0, id))
+    f += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+  }
 
+  def findForwarding(id: Long) = new TestShardAdapter(forwarder(0, id))
   jobCodec += ("Put".r  -> new PutParser(findForwarding))
   jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
 
@@ -230,12 +234,12 @@ class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends Jso
   def apply() { forwarding(key).put(key, value) }
 }
 
-class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler)
+class TestCopyFactory(ns: NameServer, s: JobScheduler)
 extends CopyJobFactory[TestShard] {
   def apply(src: ShardId, dest: ShardId) = new TestCopy(src, dest, 0, 500, ns, s)
 }
 
-class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler)
+class TestCopyParser(ns: NameServer, s: JobScheduler)
 extends CopyJobParser[TestShard] {
   def deserialize(m: Map[String, Any], src: ShardId, dest: ShardId, count: Int) = {
     val cursor = m("cursor").asInstanceOf[Int]
@@ -245,7 +249,7 @@ extends CopyJobParser[TestShard] {
 }
 
 class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
-               ns: NameServer[TestShard], s: JobScheduler)
+               ns: NameServer, s: JobScheduler)
 extends CopyJob[TestShard](srcId, destId, count, ns, s) {
   def copyPage(srcNode: RoutingNode[TestShard], destNode: RoutingNode[TestShard], count: Int) = {
     val List(src, dest) = List(srcNode, destNode).map(new TestShardAdapter(_))

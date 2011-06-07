@@ -39,9 +39,9 @@ object TreeUtils {
   }
 }
 
-class NameServer[T](
-  nameServerShard: RoutingNode[nameserver.Shard],
-  shardRepository: ShardRepository[T],
+class NameServer(
+  nameServerShard: RoutingNode[com.twitter.gizzard.nameserver.Shard],
+  val shardRepository: ShardRepository,
   jobRelayFactory: JobRelayFactory,
   val mappingFunction: Long => Long) {
 
@@ -56,6 +56,46 @@ class NameServer[T](
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
   @volatile var jobRelay: JobRelay = NullJobRelay
+
+
+  val forwarders = mutable.Seq[Forwarder[Any]]()
+
+  def newForwarder[T](configBuilder: ForwarderBuilder[T] => Unit) = {
+    val builder = new ForwarderBuilder[T](this, shardRepository)
+    configBuilder(builder)
+    val manager = builder.build()
+    forwarders :+ manager
+    manager
+  }
+
+  def newCopyJob(from: ShardId, to: ShardId): CopyJob[Any] = {
+    val manager = forwarderForShardIds(Seq(from, to))
+    manager.newCopyJob(from, to)
+  }
+
+  def newRepairJob(ids: Seq[ShardId]): RepairJob[Any] = {
+    val manager = forwarderForShardIds(ids)
+    manager.newRepairJob(ids)
+  }
+
+  def newDiffJob(ids: Seq[ShardId]): RepairJob[Any] = {
+    val manager = forwarderForShardIds(ids)
+    manager.newDiffJob(ids)
+  }
+
+  private def forwarderForShardIds(ids: Seq[ShardId]) = {
+    val manager = forwarders find { _ containsShard ids.head } getOrElse {
+      throw new InvalidShard("Error in server configuration. Invalid shard found!")
+    }
+
+    if (ids forall { manager containsShard _ }) {
+      manager
+    } else {
+      throw new InvalidShard("Incompatible shard types found!")
+    }
+  }
+
+
 
   @throws(classOf[ShardException])
   def createShard(shardInfo: ShardInfo) {
@@ -125,7 +165,7 @@ class NameServer[T](
     log.info("Loading name server configuration is done.")
   }
 
-  def findShardById(id: ShardId, weight: Int): RoutingNode[T] = {
+  def findShardById[T](id: ShardId, weight: Int): RoutingNode[T] = {
     val (shardInfo, downwardLinks) = shardInfos.get(id).map { info =>
       // either pull shard and links from our internal data structures...
       (info, getChildren(id))
@@ -136,11 +176,12 @@ class NameServer[T](
 
     val children = downwardLinks.map(l => findShardById(l.downId, l.weight)).toList
 
-    shardRepository.find(shardInfo, weight, children)
+    // XXX: cast!
+    shardRepository.find(shardInfo, weight, children).asInstanceOf[RoutingNode[T]]
   }
 
   @throws(classOf[NonExistentShard])
-  def findShardById(id: ShardId): RoutingNode[T] = findShardById(id, 1)
+  def findShardById[T](id: ShardId): RoutingNode[T] = findShardById(id, 1)
 
   def findCurrentForwarding(tableId: Int, id: Long) = {
     if(forwardings == null) throw new NameserverUninitialized

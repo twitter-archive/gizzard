@@ -15,9 +15,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val nameServerShard = mock[nameserver.Shard]
     val routingNode     = new LeafRoutingNode(nameServerShard, 1)
 
-    var shardRepository = mock[ShardRepository[AnyRef]]
+    var shardRepository = mock[ShardRepository]
     val mappingFunction = (n: Long) => n
-    var nameServer: NameServer[AnyRef] = null
+    var nameServer: NameServer = null
 
     val shardInfos = (1 until 5).toList.map { id =>
       new shards.ShardInfo(shards.ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
@@ -32,7 +32,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
                            new Host("host2", 7777, "c1", HostStatus.Normal),
                            new Host("host3", 7777, "c2", HostStatus.Normal))
 
-    val shard = mock[AnyRef]
+    val shard = mock[Any]
     val node  = new LeafRoutingNode(shard, 1)
 
     doBefore {
@@ -42,7 +42,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).currentState()    willReturn Seq(nameServerState)
       }
 
-      nameServer = new NameServer[AnyRef](
+      nameServer = new NameServer(
         routingNode,
         shardRepository,
         NullJobRelayFactory,

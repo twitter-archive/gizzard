@@ -18,10 +18,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val SQL_SHARD = "com.example.SqlShard"
 
     var nameServer: nameserver.SqlShard = null
-    var shardRepository: ShardRepository[fake.Shard] = null
+    var shardRepository: ShardRepository = null
     val future = new Future("Future!", 1, 1, 1.second, 1.second)
 
-    val repo = new BasicShardRepository[fake.Shard](Some(future))
+    val repo = new BasicShardRepository
     repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
@@ -31,7 +31,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       nameServer = new SqlShard(queryEvaluator)
       nameServer.rebuildSchema()
       reset(config.nameServer)
-      shardRepository = mock[ShardRepository[fake.Shard]]
+      shardRepository = mock[ShardRepository]
     }
 
     "be able to dump nameserver structure" in {

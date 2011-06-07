@@ -13,7 +13,7 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val SQL_SHARD = "com.example.SqlShard"
 
     var nameServer: MemoryShard = null
-    var shardRepository: ShardRepository[Shard] = null
+    var shardRepository: ShardRepository = null
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
@@ -27,7 +27,7 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     doBefore {
       nameServer = new MemoryShard()
-      shardRepository = mock[ShardRepository[Shard]]
+      shardRepository = mock[ShardRepository]
     }
 
     "create" in {

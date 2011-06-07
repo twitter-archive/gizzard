@@ -11,7 +11,7 @@ class FakeCopy(
   val sourceShardId: shards.ShardId,
   val destinationShardId: shards.ShardId,
   count: Int,
-  nameServer: nameserver.NameServer[AnyRef],
+  nameServer: nameserver.NameServer,
   scheduler: JobScheduler,
   nextCopy: => Option[FakeCopy])
 extends CopyJob[AnyRef](sourceShardId, destinationShardId, count, nameServer, scheduler) {
@@ -36,7 +36,7 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
     val destinationShardInfo = shards.ShardInfo(destinationShardId, "FakeShard", "", "", shards.Busy.Normal)
     val count = CopyJob.MIN_COPY + 1
     val nextCopy = mock[FakeCopy]
-    val nameServer = mock[nameserver.NameServer[AnyRef]]
+    val nameServer = mock[nameserver.NameServer]
     val jobScheduler = mock[JobScheduler]
     def makeCopy(next: => Option[FakeCopy]) = new FakeCopy(sourceShardId, destinationShardId, count, nameServer, jobScheduler, next)
     val shard1 = mock[RoutingNode[AnyRef]]

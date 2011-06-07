@@ -36,19 +36,22 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   "Shards" should {
-    var shardRepository: ShardRepository[UserShard] = null
+    var shardRepository: ShardRepository = null
     var nameServerShard: RoutingNode[nameserver.Shard] = null
-    var nameServer: NameServer[UserShard] = null
+    var nameServer: NameServer = null
 
     var mapping = (a: Long) => a
 
     doBefore {
-      shardRepository = new ShardRepository
-      shardRepository += (("com.example.UserShard", factory))
-      shardRepository += (("com.example.SqlShard", factory))
       reset(queryEvaluator)
       nameServerShard = new LeafRoutingNode(new SqlShard(queryEvaluator), 1)
-      nameServer = new NameServer(nameServerShard, shardRepository, NullJobRelayFactory, mapping)
+      nameServer = new NameServer(nameServerShard, new ShardRepository, NullJobRelayFactory, mapping)
+
+      val forwarder = nameServer.newForwarder[UserShard] { f =>
+        f += ("com.example.UserShard" -> factory)
+        f += ("com.example.SqlShard" -> factory)
+      }
+
       nameServer.reload()
 
       nameServer.createShard(shardInfo1)

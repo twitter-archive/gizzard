@@ -52,7 +52,7 @@ trait CopyJobParser[T] extends JsonJobParser {
 abstract case class CopyJob[T](sourceId: ShardId,
                                destinationId: ShardId,
                                var count: Int,
-                               nameServer: NameServer[T],
+                               nameServer: NameServer,
                                scheduler: JobScheduler)
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
@@ -84,8 +84,9 @@ abstract case class CopyJob[T](sourceId: ShardId,
 
       } else {
 
-        val sourceShard = nameServer.findShardById(sourceId)
-        val destinationShard = nameServer.findShardById(destinationId)
+        // XXX: get rid of the cast here by hooking off of the forwardingManager or equivalent
+        val sourceShard      = nameServer.findShardById(sourceId).asInstanceOf[RoutingNode[T]]
+        val destinationShard = nameServer.findShardById(destinationId).asInstanceOf[RoutingNode[T]]
 
         log.info("Copying shard block (type %s) from %s to %s: state=%s",
                  getClass.getName.split("\\.").last, sourceId, destinationId, toMap)

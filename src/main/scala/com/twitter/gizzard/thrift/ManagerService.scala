@@ -17,7 +17,7 @@ import com.twitter.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler, copyScheduler: JobScheduler, repairer: RepairJobFactory[S], repairPriority: Int, differ: RepairJobFactory[S]) extends Manager.Iface {
+class ManagerService(nameServer: NameServer, scheduler: PrioritizingJobScheduler, adminJobPriority: Int) extends Manager.Iface {
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -100,7 +100,7 @@ class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], sc
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   }
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
+    wrapEx(scheduler.put(adminJobPriority, nameServer.newCopyJob(sourceId.fromThrift, destinationId.fromThrift)))
   }
 
   def list_tables(): JList[java.lang.Integer] = wrapEx(nameServer.listTables)
@@ -108,15 +108,11 @@ class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], sc
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(nameServer.dumpStructure(tableIds.toList).map(_.toThrift))
 
   def repair_shard(shardIds: JList[ShardId]) = {
-    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler]).put(repairPriority, repairer(
-      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
-    )))
+    wrapEx(scheduler.put(adminJobPriority, nameServer.newRepairJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift))))
   }
 
   def diff_shards(shardIds: JList[ShardId]) = {
-    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler]).put(repairPriority, differ(
-      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
-    )))
+    wrapEx(scheduler.put(adminJobPriority, nameServer.newDiffJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift))))
   }
 
   // Job Scheduler Management
