@@ -26,30 +26,30 @@ import com.twitter.util.{Try, Throw, Future}
 // withInfo -> RoutingNode[(T, ShardInfo)]
 
 
-trait NodeIterable[T] {
+trait NodeIterable[+T] {
   def rootInfo: ShardInfo
   def activeShards: Seq[(ShardInfo, T)]
   def blockedShards: Seq[ShardInfo]
 
   def containsBlocked = !blockedShards.isEmpty
 
-  def anyOption[R](f: T => R): Option[R] = _any(iterator, s => Try(f(s)) ).toOption
+  def anyOption[R](f: T => R): Option[R] = _any(iterator) { s: T => Try(f(s)) }.toOption
 
-  def tryAny[R](f: T => Try[R]): Try[R] = _any(iterator, f)
+  def tryAny[R](f: T => Try[R]): Try[R] = _any(iterator)(f)
 
   def any[R](f: T => R): R = {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       throw new ShardBlackHoleException(rootInfo.id)
     }
 
-    _any(iterator, s => Try(f(s)) ).apply()
+    _any(iterator) { s: T => Try(f(s)) }.apply()
   }
 
-  @tailrec protected final def _any[R](iter: Iterator[T], f: T => Try[R]): Try[R] = {
+  @tailrec protected final def _any[T1 >: T, R](iter: Iterator[T1])(f: T1 => Try[R]): Try[R] = {
     if (iter.hasNext) {
       f(iter.next) match {
         case rv if rv.isReturn => rv
-        case _ => _any(iter, f)
+        case _ => _any(iter)(f)
       }
     } else {
       Throw(new ShardOfflineException(rootInfo.id))
@@ -100,7 +100,7 @@ trait NodeIterable[T] {
   }
 }
 
-class NodeSet[T](
+class NodeSet[+T](
   val rootInfo: ShardInfo, // XXX: replace with forwarding id.
   val activeShards: Seq[(ShardInfo, T)],
   val blockedShards: Seq[ShardInfo])
