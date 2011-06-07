@@ -8,13 +8,14 @@ import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import com.twitter.gizzard
 import com.twitter.gizzard.nameserver
 import com.twitter.gizzard.shards
-import com.twitter.gizzard.shards.{ReplicatingShard, ShardInfo}
 
 
-trait MappingFunction
-object ByteSwapper extends MappingFunction
-object Identity extends MappingFunction
-object Fnv1a64 extends MappingFunction
+trait MappingFunction extends (() => Long => Long)
+
+object ByteSwapper extends MappingFunction { def apply() = nameserver.ByteSwapper }
+object Identity extends MappingFunction { def apply() = identity _ }
+object Fnv1a64 extends MappingFunction { def apply() = nameserver.FnvHasher }
+object Hash extends MappingFunction { def apply() = nameserver.FnvHasher }
 
 trait Replica {
   def apply(): nameserver.Shard
@@ -46,17 +47,9 @@ object NoJobRelay extends JobRelay {
 
 
 trait NameServer {
-  var mappingFunction: MappingFunction = Identity
+  var mappingFunction: MappingFunction = Hash
   def replicas: Seq[Replica]
   var jobRelay: JobRelay = new JobRelay
-
-  protected def getMappingFunction(): (Long => Long) = {
-    mappingFunction match {
-      case gizzard.config.ByteSwapper => nameserver.ByteSwapper
-      case gizzard.config.Identity => { n => n }
-      case gizzard.config.Fnv1a64 => nameserver.FnvHasher
-    }
-  }
 
   def apply[T](shardRepository: nameserver.ShardRepository[T]) = {
     val replicaNodes  = replicas map { replica => shards.LeafRoutingNode(replica()) }
@@ -64,6 +57,6 @@ trait NameServer {
     val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes)
 
-    new nameserver.NameServer(replicating, shardRepository, jobRelay(), getMappingFunction())
+    new nameserver.NameServer(replicating, shardRepository, jobRelay(), mappingFunction())
   }
 }
