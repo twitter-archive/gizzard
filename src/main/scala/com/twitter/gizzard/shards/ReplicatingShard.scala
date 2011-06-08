@@ -11,7 +11,7 @@ extends RoutingNode[T] {
 
   protected def loadBalancer() = new LoadBalancer(children).apply()
 
-  protected[shards] def collectedShards = loadBalancer() flatMap { _.collectedShards }
+  protected[shards] def collectedShards(readOnly: Boolean) = loadBalancer() flatMap { _.collectedShards(readOnly) }
 
   override def skip(ss: ShardId*) = {
     val toSkip = ss.toSet

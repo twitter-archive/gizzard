@@ -12,9 +12,10 @@ import nameserver.{IdGenerator, NameServer, SqlShard, ShardRepository, NullJobRe
 
 
 object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
-  val shardInfo1 = new ShardInfo("com.example.UserShard", "table1", "localhost")
-  val shardInfo2 = new ShardInfo("com.example.UserShard", "table2", "localhost")
+  val shardInfo1     = new ShardInfo("com.example.UserShard", "table1", "localhost")
+  val shardInfo2     = new ShardInfo("com.example.UserShard", "table2", "localhost")
   val queryEvaluator = evaluator(config.nameServer)
+
   materialize(config.nameServer)
 
   class UserShard(val shardInfo: ShardInfo) {
@@ -28,28 +29,26 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   val factory = new ShardFactory[UserShard] {
-    def instantiate(shardInfo: ShardInfo, weight: Int) = {
-      new UserShard(shardInfo)
-    }
-
+    def instantiate(shardInfo: ShardInfo, weight: Int)         = new UserShard(shardInfo)
+    def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = new UserShard(shardInfo)
     def materialize(shardInfo: ShardInfo) {}
   }
 
   "Shards" should {
-    var shardRepository: ShardRepository = null
+    var shardRepository: ShardRepository               = null
     var nameServerShard: RoutingNode[nameserver.Shard] = null
-    var nameServer: NameServer = null
+    var nameServer: NameServer                         = null
 
     var mapping = (a: Long) => a
 
     doBefore {
       reset(queryEvaluator)
-      nameServerShard = new LeafRoutingNode(new SqlShard(queryEvaluator), 1)
-      nameServer = new NameServer(nameServerShard, NullJobRelayFactory, mapping)
+      nameServerShard = LeafRoutingNode(new SqlShard(queryEvaluator))
+      nameServer      = new NameServer(nameServerShard, NullJobRelayFactory, mapping)
 
       val forwarder = nameServer.newForwarder[UserShard] { f =>
         f += ("com.example.UserShard" -> factory)
-        f += ("com.example.SqlShard" -> factory)
+        f += ("com.example.SqlShard"  -> factory)
       }
 
       nameServer.reload()

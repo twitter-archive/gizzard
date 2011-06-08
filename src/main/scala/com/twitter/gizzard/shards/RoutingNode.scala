@@ -35,18 +35,21 @@ abstract class RoutingNode[T] {
 
   protected val log = Logger.get
 
-  protected[shards] def collectedShards: Seq[Leaf[T]]
+  protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
 
-  protected def nodeSetFromCollected(filter: Leaf[T] => Behavior) = {
-    val m = collectedShards groupBy filter
+  protected def nodeSetFromCollected(readOnly: Boolean) = {
+    val m = collectedShards(readOnly) groupBy { l =>
+      if (readOnly) l.readBehavior else l.writeBehavior
+    }
+
     val active  = m.getOrElse(Allow, Nil) map { l => (l.info, l.shard) }
     val blocked = m.getOrElse(Deny, Nil) map { _.info }
     new NodeSet(shardInfo, active, blocked)
   }
 
-  def read = nodeSetFromCollected { _.readBehavior }
+  def read = nodeSetFromCollected(true)
 
-  def write = nodeSetFromCollected { _.writeBehavior }
+  def write = nodeSetFromCollected(false)
 
   def skip(ss: ShardId*): RoutingNode[T] = if (ss.toSet.contains(shardInfo.id)) {
     BlackHoleShard(shardInfo, weight, Seq(this))
@@ -105,7 +108,7 @@ abstract class RoutingNode[T] {
   }
 
   protected def logException(e: Throwable, shard: T) {
-    val shardId    = (collectedShards find { l => l.shard == shard }).get.info.id
+    val shardId    = (collectedShards(false) find { l => l.shard == shard }).get.info.id
     val normalized = normalizeException(e, shardId)
 
     log.warning(e, "Error on %s: %s", shardId, e)

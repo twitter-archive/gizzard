@@ -162,6 +162,7 @@ class NameServer(
     log.info("Loading name server configuration is done.")
   }
 
+  @throws(classOf[NonExistentShard])
   def findShardById[T](id: ShardId, weight: Int): RoutingNode[T] = {
     val (shardInfo, downwardLinks) = shardInfos.get(id).map { info =>
       // either pull shard and links from our internal data structures...
@@ -180,6 +181,7 @@ class NameServer(
   @throws(classOf[NonExistentShard])
   def findShardById[T](id: ShardId): RoutingNode[T] = findShardById(id, 1)
 
+  @throws(classOf[NonExistentShard])
   def findCurrentForwarding[T](tableId: Int, id: Long): RoutingNode[T] = {
     if(forwardings == null) throw new NameserverUninitialized
     val shardInfo = forwardings.get(tableId) flatMap { bySourceIds =>
@@ -196,6 +198,7 @@ class NameServer(
     findShardById(shardInfo.id)
   }
 
+  @throws(classOf[NonExistentShard])
   def findForwardings[T](tableId: Int): Seq[RoutingNode[T]] = {
     import scala.collection.JavaConversions._
 
