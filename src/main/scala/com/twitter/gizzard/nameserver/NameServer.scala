@@ -183,7 +183,7 @@ class NameServer(
   @throws(classOf[NonExistentShard])
   def findShardById[T](id: ShardId): RoutingNode[T] = findShardById(id, 1)
 
-  def findCurrentForwarding(tableId: Int, id: Long) = {
+  def findCurrentForwarding[T](tableId: Int, id: Long): RoutingNode[T] = {
     if(forwardings == null) throw new NameserverUninitialized
     val shardInfo = forwardings.get(tableId) flatMap { bySourceIds =>
       val item = bySourceIds.floorEntry(mappingFunction(id))
@@ -199,16 +199,14 @@ class NameServer(
     findShardById(shardInfo.id)
   }
 
-  def findForwardings(tableId: Int) = {
+  def findForwardings[T](tableId: Int): Seq[RoutingNode[T]] = {
     import scala.collection.JavaConversions._
 
     if(forwardings == null) throw new NameserverUninitialized
     forwardings.get(tableId) map { bySourceIds =>
-      val shards = bySourceIds.values map { shardInfo =>
-        findShardById(shardInfo.id)
-      }
-
-      shards.toList
+      bySourceIds.values map {
+        info => findShardById[T](info.id)
+      } toSeq
     } getOrElse {
       throw new NonExistentShard("No shards for tableId: %s".format(tableId))
     }

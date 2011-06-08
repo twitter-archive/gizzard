@@ -30,14 +30,22 @@ extends ((Int, Long) => RoutingNode[T]) {
 
   def find(tableId: Int, baseId: Long) = {
     if(isValidTableId(tableId)) {
-      cast(nameServer.findCurrentForwarding(tableId, baseId))
+      nameServer.findCurrentForwarding[T](tableId, baseId)
+    } else {
+      throw new InvalidTableId(tableId)
+    }
+  }
+
+  def findAll(tableId: Int) = {
+    if(isValidTableId(tableId)) {
+      nameServer.findForwardings[T](tableId)
     } else {
       throw new InvalidTableId(tableId)
     }
   }
 
   def findShardById(id: ShardId) = {
-    cast(nameServer.findShardById(id))
+    nameServer.findShardById[T](id)
   }
 
   // XXX: copy, repair and diff live here for now, but it's a bit
@@ -45,12 +53,6 @@ extends ((Int, Long) => RoutingNode[T]) {
   def newCopyJob(from: ShardId, to: ShardId) = copyFactory(from, to)
   def newRepairJob(ids: Seq[ShardId])        = repairFactory(ids)
   def newDiffJob(ids: Seq[ShardId])          = diffFactory(ids)
-
-  // helpers
-
-  private def cast(r: RoutingNode[_]): RoutingNode[T] = {
-    r.asInstanceOf[RoutingNode[T]]
-  }
 }
 
 class ForwarderBuilder[T] private[nameserver] (ns: NameServer, repo: ShardRepository) {
