@@ -14,7 +14,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     val nameServerShard              = mock[nameserver.Shard]
     var nameServer: NameServer       = null
-    val shardRepo                    = new BasicShardRepository
     var forwarder: Forwarder[AnyRef] = null
 
     val shardInfos = (1 until 5).toList map { id =>
@@ -48,7 +47,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).currentState()    willReturn Seq(nameServerState)
       }
 
-      nameServer = new NameServer(new LeafRoutingNode(nameServerShard, 1), shardRepo, NullJobRelayFactory, identity)
+      nameServer = new NameServer(new LeafRoutingNode(nameServerShard, 1), NullJobRelayFactory, identity)
       forwarder = nameServer.newForwarder[AnyRef] { f =>
         f += (SQL_SHARD -> shardFactory)
       }
@@ -61,7 +60,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         val replicas    = List(gizzard.config.Memory)
       }
 
-      val ns = config(new ShardRepository)
+      val ns = config()
 
       // mapping function should be FNV1A-64:
       ns.mappingFunction(0) mustEqual 632747166973704645L
@@ -124,8 +123,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "create shard" in {
       expect {
-//        one(nameServerShard).createShard(shardInfos(0), shardRepo) willThrow new InvalidShard
-        one(nameServerShard).createShard(shardInfos(0), shardRepo)
+        one(nameServerShard).createShard(shardInfos(0))
+        one(shardFactory).materialize(shardInfos(0))
       }
       nameServer.createShard(shardInfos(0)) mustNot throwA[InvalidShard]
     }
