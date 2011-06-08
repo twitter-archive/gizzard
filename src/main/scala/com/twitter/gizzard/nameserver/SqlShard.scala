@@ -100,7 +100,7 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
 
   // Forwardings/Shard Management Write Methods
 
-  def createShard(shardInfo: ShardInfo, repository: ShardRepository) {
+  def createShard(shardInfo: ShardInfo) {
     try {
       queryEvaluator.transaction { transaction =>
         transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",
@@ -115,7 +115,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                              "source_type, destination_type) VALUES (?, ?, ?, ?, ?)",
                              shardInfo.hostname, shardInfo.tablePrefix, shardInfo.className,
                              shardInfo.sourceType, shardInfo.destinationType)
-          repository.create(shardInfo)
         }
       }
 

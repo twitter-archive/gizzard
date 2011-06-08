@@ -22,7 +22,7 @@ abstract class GizzardServer(config: ServerConfig) {
 
   // nameserver/shard wiring
 
-  lazy val nameServer   = config.nameServer(new BasicShardRepository)
+  lazy val nameServer = config.nameServer()
 
 
   // job wiring

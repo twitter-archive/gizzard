@@ -51,12 +51,12 @@ trait NameServer {
   def replicas: Seq[Replica]
   var jobRelay: JobRelay = new JobRelay
 
-  def apply[T](shardRepository: nameserver.ShardRepository) = {
+  def apply[T]() = {
     val replicaNodes  = replicas map { replica => new shards.LeafRoutingNode(replica(), 1) }
 
     val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes)
 
-    new nameserver.NameServer(replicating, shardRepository, jobRelay(), mappingFunction())
+    new nameserver.NameServer(replicating, jobRelay(), mappingFunction())
   }
 }

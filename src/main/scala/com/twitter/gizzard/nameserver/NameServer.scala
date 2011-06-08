@@ -41,9 +41,10 @@ object TreeUtils {
 
 class NameServer(
   nameServerShard: RoutingNode[com.twitter.gizzard.nameserver.Shard],
-  val shardRepository: ShardRepository,
   jobRelayFactory: JobRelayFactory,
   val mappingFunction: Long => Long) {
+
+  val shardRepository = new BasicShardRepository
 
   private val log = Logger.get(getClass.getName)
 
@@ -94,7 +95,8 @@ class NameServer(
 
   @throws(classOf[ShardException])
   def createShard(shardInfo: ShardInfo) {
-    createShard(shardInfo, shardRepository)
+    nameServerShard.write foreach { _.createShard(shardInfo) }
+    shardRepository.create(shardInfo)
   }
 
   def getShardInfo(id: ShardId) = shardInfos(id)
@@ -221,11 +223,6 @@ class NameServer(
 
   def getCommonShardId(ids: Seq[ShardId]) = {
     ids.map(getRootShardIds).reduceLeft((s1, s2) => s1.filter(s2.contains)).toSeq.headOption
-  }
-
-  @throws(classOf[ShardException])
-  def createShard(shardInfo: ShardInfo, repository: ShardRepository) {
-    nameServerShard.write.foreach(_.createShard(shardInfo, repository))
   }
 
   @throws(classOf[ShardException])

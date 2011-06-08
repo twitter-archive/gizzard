@@ -5,7 +5,7 @@ import scala.collection.mutable
 import shards._
 
 trait Shard {
-  @throws(classOf[shards.ShardException]) def createShard(shardInfo: ShardInfo, repository: ShardRepository)
+  @throws(classOf[shards.ShardException]) def createShard(shardInfo: ShardInfo)
   @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
   @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
   @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId)
