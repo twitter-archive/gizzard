@@ -118,4 +118,17 @@ abstract class RoutingNode[T] {
     case e: TimeoutException => new ReplicatingShardTimeoutException(shardId, e)
     case e => e
   }
+
+  // equals overrides
+
+  override def equals(other: Any) = other match {
+    case n: RoutingNode[_] => {
+      (shardInfo == n.shardInfo) &&
+      (weight    == n.weight)    &&
+      (children  == n.children)
+    }
+    case _ => false
+  }
+
+  override def hashCode() = children.hashCode
 }

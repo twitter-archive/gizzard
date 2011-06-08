@@ -47,11 +47,6 @@ class NameServer(
 
   private val log = Logger.get(getClass.getName)
 
-  val children = Nil
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.NameServer", "", "")
-  val weight = 1 // hardcode for now
-  val RETRIES = 5
-
   @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
   @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null

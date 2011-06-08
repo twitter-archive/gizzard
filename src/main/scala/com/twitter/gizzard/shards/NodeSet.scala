@@ -2,7 +2,7 @@ package com.twitter.gizzard.shards
 
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuild
-import com.twitter.util.{Try, Throw, Future}
+import com.twitter.util.{Try, Return, Throw, Future}
 
 // For read or write, three node states:
 // - normal: should apply normally
@@ -42,7 +42,8 @@ trait NodeIterable[+T] {
       throw new ShardBlackHoleException(rootInfo.id)
     }
 
-    _any(iterator) { s: T => Try(f(s)) }.apply()
+    // only wrap ShardExceptions in Throw. Allow others to raise naturally
+    _any(iterator) { s: T => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
   }
 
   @tailrec protected final def _any[T1 >: T, R](iter: Iterator[T1])(f: T1 => Try[R]): Try[R] = {
