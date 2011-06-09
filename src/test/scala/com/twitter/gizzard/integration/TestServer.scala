@@ -109,9 +109,9 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf)
   val copyPriority          = Priority.Low.id
   val copyFactory           = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
-  shardRepo += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+  shardRepo += ("TestShard" -> new TestShardFactory(conf.queryEvaluator(), conf.databaseConnection))
 
-  def findForwarding(id: Long) = new TestShardAdapter(nameServer.findCurrentForwarding(0, id))
+  def findForwarding(id: Long) = nameServer.findCurrentForwarding(0, id)
 
   jobCodec += ("Put".r  -> new PutParser(findForwarding))
   jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
@@ -140,7 +140,7 @@ class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf)
 
 // Service Interface
 
-class TestServerIFace(forwarding: Long => TestShard, scheduler: PrioritizingJobScheduler)
+class TestServerIFace(forwarding: Long => RoutingNode[TestShard], scheduler: PrioritizingJobScheduler)
 extends thrift.TestServer.Iface {
   import scala.collection.JavaConversions._
   import com.twitter.gizzard.thrift.conversions.Sequences._
@@ -149,7 +149,7 @@ extends thrift.TestServer.Iface {
     scheduler.put(Priority.High.id, new PutJob(key, value, forwarding))
   }
 
-  def get(key: Int) = forwarding(key).get(key).toList.map(asTestResult)
+  def get(key: Int) = forwarding(key).read.any(_.get(key)).toList.map(asTestResult)
 
   private def asTestResult(t: (Int, String, Int)) = new thrift.TestResult(t._1, t._2, t._3)
 }
@@ -157,26 +157,12 @@ extends thrift.TestServer.Iface {
 
 // Shard Definitions
 
-trait TestShard {
-  def put(key: Int, value: String): Unit
-  def putAll(kvs: Seq[(Int, String)]): Unit
-  def get(key: Int): Option[(Int, String, Int)]
-  def getAll(key: Int, count: Int): Seq[(Int, String, Int)]
-}
-
-class TestShardAdapter(s: shards.RoutingNode[TestShard]) extends TestShard {
-  def put(k: Int, v: String)         = s.write.foreach(_.put(k,v))
-  def putAll(kvs: Seq[(Int,String)]) = s.write.foreach(_.putAll(kvs))
-  def get(k: Int)                    = s.read.any(_.get(k))
-  def getAll(k:Int, c: Int)          = s.read.any(_.getAll(k,c))
-}
-
-class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
+class TestShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
   def newEvaluator(host: String) = qeFactory(conn.withHost(host))
 
-  def instantiate(info: ShardInfo, weight: Int) = new SqlShard(newEvaluator(info.hostname), info, false)
+  def instantiate(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, false)
 
-  def instantiateReadOnly(info: ShardInfo, weight: Int) = new SqlShard(newEvaluator(info.hostname), info, true)
+  def instantiateReadOnly(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, true)
 
   def materialize(info: ShardInfo) {
     val ddl =
@@ -198,7 +184,7 @@ class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extend
 }
 
 // should enforce read/write perms at the db access level
-class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo, readOnly: Boolean) extends TestShard {
+class TestShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo, readOnly: Boolean) {
 
   private val table = shardInfo.tablePrefix
 
@@ -226,15 +212,15 @@ class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo, readOnly: Bo
 
 // Jobs
 
-class PutParser(forwarding: Long => TestShard) extends JsonJobParser {
+class PutParser(forwarding: Long => RoutingNode[TestShard]) extends JsonJobParser {
   def apply(map: Map[String, Any]): JsonJob = {
     new PutJob(map("key").asInstanceOf[Int], map("value").asInstanceOf[String], forwarding)
   }
 }
 
-class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends JsonJob {
+class PutJob(key: Int, value: String, forwarding: Long => RoutingNode[TestShard]) extends JsonJob {
   def toMap = Map("key" -> key, "value" -> value)
-  def apply() { forwarding(key).put(key, value) }
+  def apply() { forwarding(key).write.foreach(_.put(key, value)) }
 }
 
 class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler)
@@ -254,14 +240,14 @@ extends CopyJobParser[TestShard] {
 class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
                ns: NameServer[TestShard], s: JobScheduler)
 extends CopyJob[TestShard](srcId, destId, count, ns, s) {
-  def copyPage(srcNode: RoutingNode[TestShard], destNode: RoutingNode[TestShard], count: Int) = {
-    val List(src, dest) = List(srcNode, destNode).map(new TestShardAdapter(_))
-    val rows = src.getAll(cursor, count).map { case (k,v,c) => (k,v) }
+
+  def copyPage(src: RoutingNode[TestShard], dest: RoutingNode[TestShard], count: Int) = {
+    val rows = src.read.any(_.getAll(cursor, count)) map { case (k,v,c) => (k,v) }
 
     if (rows.isEmpty) {
       None
     } else {
-      dest.putAll(rows)
+      dest.write.foreach(_.putAll(rows))
       Some(new TestCopy(srcId, destId, rows.last._1, count, ns, s))
     }
   }
