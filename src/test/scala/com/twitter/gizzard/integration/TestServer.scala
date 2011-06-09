@@ -112,7 +112,7 @@ class TestServer(conf: config.TestServer) extends GizzardServer(conf) {
     f.validTables = Seq(0)
     f.copyFactory = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
-    f += ("TestShard" -> new SqlShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+    f += ("TestShard" -> new TestShardFactory(conf.queryEvaluator(), conf.databaseConnection))
   }
 
   jobCodec += ("Put".r  -> new PutParser(forwarder(0, _)))
@@ -159,22 +159,12 @@ extends thrift.TestServer.Iface {
 
 // Shard Definitions
 
-trait TestShard {
-  def put(key: Int, value: String): Unit
-  def putAll(kvs: Seq[(Int, String)]): Unit
-  def get(key: Int): Option[(Int, String, Int)]
-  def getAll(key: Int, count: Int): Seq[(Int, String, Int)]
-}
+class TestShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
+  def newEvaluator(host: String) = qeFactory(conn.withHost(host))
 
-class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
+  def instantiate(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, false)
 
-  def instantiate(info: ShardInfo, weight: Int) = {
-    new SqlShard(qeFactory(conn.withHost(info.hostname)), info, false)
-  }
-
-  def instantiateReadOnly(info: ShardInfo, weight: Int) = {
-    new SqlShard(qeFactory(conn.withHost(info.hostname)), info, true)
-  }
+  def instantiateReadOnly(info: ShardInfo, weight: Int) = instantiate(info, weight)
 
   def materialize(info: ShardInfo) {
     val ddl =
@@ -196,7 +186,7 @@ class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extend
 }
 
 // should enforce read/write perms at the db access level
-class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo, readOnly: Boolean) extends TestShard {
+class TestShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo, readOnly: Boolean) {
 
   private val table = shardInfo.tablePrefix
 
