@@ -46,10 +46,12 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
       nameServerShard = LeafRoutingNode(new SqlShard(queryEvaluator))
       nameServer      = new NameServer(nameServerShard, NullJobRelayFactory, mapping)
 
-      val forwarder = nameServer.newForwarder[UserShard] { f =>
-        f += ("com.example.UserShard" -> factory)
-        f += ("com.example.SqlShard"  -> factory)
-      }
+      val forwarder = nameServer.configureMultiTableForwarder[UserShard](
+        _.shardFactories(
+          "com.example.UserShard" -> factory,
+          "com.example.SqlShard"  -> factory
+        )
+      )
 
       nameServer.reload()
 

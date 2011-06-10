@@ -12,9 +12,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val nameServerShard              = mock[nameserver.Shard]
-    var nameServer: NameServer       = null
-    var forwarder: Forwarder[AnyRef] = null
+    val nameServerShard                        = mock[nameserver.Shard]
+    var nameServer: NameServer                 = null
+    var forwarder: MultiTableForwarder[AnyRef] = null
 
     val shardInfos = (1 until 5).toList map { id =>
       new ShardInfo(ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
@@ -48,9 +48,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
 
       nameServer = new NameServer(LeafRoutingNode(nameServerShard), NullJobRelayFactory, identity)
-      forwarder = nameServer.newForwarder[AnyRef] { f =>
-        f += (SQL_SHARD -> shardFactory)
-      }
+      forwarder  = nameServer.configureMultiTableForwarder[AnyRef](
+        _.shardFactories(SQL_SHARD -> shardFactory)
+      )
       nameServer.reload()
     }
 
@@ -94,19 +94,17 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         never(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
       }
 
-      try {
-        forwarder.findAll(1) must haveTheSameElementsAs(List(nodes(0), nodes(1), nodes(2)))
-      } catch { case e => e.printStackTrace }
+      forwarder.findAll(1) must haveTheSameElementsAs(List(nodes(0), nodes(1), nodes(2)))
     }
 
     "find shard by id" in {
       expect {
-        never(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
-        never(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
+        never(shardFactory).instantiate(shardInfos(2), 1)              willReturn shard
+        never(shardFactory).instantiate(shardInfos(3), 1)              willReturn shard
       }
 
-      forwarder.findShardById(shardInfos(2).id)   mustEqual nodes(2)
-      forwarder.findShardById(replicatingInfo.id) mustEqual replNode
+      forwarder.findShardById(shardInfos(2).id)   mustEqual Some(nodes(2))
+      forwarder.findShardById(replicatingInfo.id) mustEqual Some(replNode)
     }
 
     "find shard by id with a shard not attached to a forwarding" in {
@@ -117,7 +115,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).listDownwardLinks(floatingShard.id) willReturn List[LinkInfo]()
       }
 
-      forwarder.findShardById(floatingShard.id) mustEqual new LeafRoutingNode(shardFactory, floatingShard, 1)
+      forwarder.findShardById(floatingShard.id) mustEqual Some(new LeafRoutingNode(shardFactory, floatingShard, 1))
     }
 
     "create shard" in {

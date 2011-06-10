@@ -108,20 +108,19 @@ class TestServer(conf: config.TestServer) extends GizzardServer(conf) {
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
   val copyPriority          = Priority.Low.id
 
-  val forwarder = nameServer.newForwarder[TestShard] { f =>
-    f.validTables = Seq(0)
-    f.copyFactory = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
+  nameServer.configureForwarder[TestShard](
+    _.tableId(0)
+    .shardFactory(new TestShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+    .copyFactory(new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id)))
+  )
 
-    f += ("TestShard" -> new TestShardFactory(conf.queryEvaluator(), conf.databaseConnection))
-  }
-
-  jobCodec += ("Put".r  -> new PutParser(forwarder(0, _)))
+  jobCodec += ("Put".r  -> new PutParser(nameServer.forwarder[TestShard]))
   jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
 
 
   // service listener
 
-  val testService = new TestServerIFace(forwarder(0, _), jobScheduler)
+  val testService = new TestServerIFace(nameServer.forwarder[TestShard], jobScheduler)
 
   lazy val testThriftServer = {
     val processor = new thrift.TestServer.Processor(testService)

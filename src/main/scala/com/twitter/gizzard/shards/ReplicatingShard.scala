@@ -9,9 +9,9 @@ case class ReplicatingShard[T](
   val children: Seq[RoutingNode[T]])
 extends RoutingNode[T] {
 
-  protected def loadBalancer() = new LoadBalancer(children).apply()
-
   protected[shards] def collectedShards(readOnly: Boolean) = loadBalancer() flatMap { _.collectedShards(readOnly) }
+
+  protected def loadBalancer() = new LoadBalancer(children).apply()
 
   override def skip(ss: ShardId*) = {
     val toSkip = ss.toSet

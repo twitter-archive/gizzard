@@ -27,15 +27,18 @@ protected[shards] object RoutingNode {
 }
 
 abstract class RoutingNode[T] {
-  def shardInfo: ShardInfo
-  def weight: Int
-  def children: Seq[RoutingNode[T]]
 
   import RoutingNode._
 
+  def shardType = shardInfo.className // XXX: replace with some other thing
+  def shardInfo: ShardInfo
+  def weight: Int
+  def children: Seq[RoutingNode[T]]
+  protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
+
   protected val log = Logger.get
 
-  protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
+  def shardInfos: Seq[ShardInfo] = children flatMap { _.shardInfos }
 
   protected def nodeSetFromCollected(readOnly: Boolean) = {
     val m = collectedShards(readOnly) groupBy { l =>

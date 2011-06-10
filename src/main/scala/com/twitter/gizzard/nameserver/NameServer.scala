@@ -53,34 +53,58 @@ class NameServer(
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
   @volatile var jobRelay: JobRelay = NullJobRelay
 
+  private val forwarders = mutable.Map[String, Forwarder[_]]()
 
-  val forwarders = mutable.Seq[Forwarder[Any]]()
+  import ForwarderBuilder._
 
-  def newForwarder[T](configBuilder: ForwarderBuilder[T] => Unit) = {
-    val builder = new ForwarderBuilder[T](this, shardRepository)
-    configBuilder(builder)
-    val manager = builder.build()
-    forwarders :+ manager
-    manager
+  def forwarder[T : Manifest]: SingleTableForwarder[T] = {
+    val key = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
+    forwarders(key).asInstanceOf[SingleTableForwarder[T]]
+  }
+
+  def multiTableForwarder[T : Manifest]: MultiTableForwarder[T] = {
+    val key = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
+    forwarders(key).asInstanceOf[MultiTableForwarder[T]]
+  }
+
+  private def registerForwarder(name: String, f: Forwarder[_]) {
+    forwarders(name) = f
+    f.shardFactories foreach { shardRepository += _ }
+  }
+
+  def configureForwarder[T : Manifest](config: SingleTableForwarderBuilder[T, No, No] => SingleTableForwarderBuilder[T, Yes, Yes]) = {
+    val key       = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
+    val forwarder = config(ForwarderBuilder.singleTable[T](this)).build()
+
+    registerForwarder(key, forwarder)
+    forwarder
+  }
+
+  def configureMultiTableForwarder[T : Manifest](config: MultiTableForwarderBuilder[T, Yes, No] => MultiTableForwarderBuilder[T, Yes, Yes]) = {
+    val key       = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
+    val forwarder = config(ForwarderBuilder.multiTable[T](this)).build()
+
+    registerForwarder(key, forwarder)
+    forwarder
   }
 
   def newCopyJob(from: ShardId, to: ShardId): CopyJob[Any] = {
     val manager = forwarderForShardIds(Seq(from, to))
-    manager.newCopyJob(from, to)
+    manager.newCopyJob(from, to).asInstanceOf[CopyJob[Any]]
   }
 
   def newRepairJob(ids: Seq[ShardId]): RepairJob[Any] = {
     val manager = forwarderForShardIds(ids)
-    manager.newRepairJob(ids)
+    manager.newRepairJob(ids).asInstanceOf[RepairJob[Any]]
   }
 
   def newDiffJob(ids: Seq[ShardId]): RepairJob[Any] = {
     val manager = forwarderForShardIds(ids)
-    manager.newDiffJob(ids)
+    manager.newDiffJob(ids).asInstanceOf[RepairJob[Any]]
   }
 
   private def forwarderForShardIds(ids: Seq[ShardId]) = {
-    val manager = forwarders find { _ containsShard ids.head } getOrElse {
+    val manager = forwarders.values find { _ containsShard ids.head } getOrElse {
       throw new InvalidShard("Error in server configuration. Invalid shard found!")
     }
 
@@ -195,7 +219,8 @@ class NameServer(
       throw new NonExistentShard("No shard for address: %s %s".format(tableId, id))
     }
 
-    findShardById(shardInfo.id)
+    // XXX: Cast! :/
+    findShardById(shardInfo.id).asInstanceOf[RoutingNode[T]]
   }
 
   @throws(classOf[NonExistentShard])

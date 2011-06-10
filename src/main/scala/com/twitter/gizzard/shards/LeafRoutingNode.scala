@@ -47,14 +47,16 @@ class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shard
 
   import RoutingNode._
 
+  // convenience constructor for manual creation.
+  def this(factory: ShardFactory[T], weight: Int) = this(factory, new ShardInfo("", "", ""), weight)
+
   val children = Nil
 
   // only one of these will usually be called.
   lazy val readOnlyShard  = factory.instantiateReadOnly(shardInfo, weight)
   lazy val readWriteShard = factory.instantiate(shardInfo, weight)
 
-  // convenience constructor for manual creation.
-  def this(factory: ShardFactory[T], weight: Int) = this(factory, new ShardInfo("", "", ""), weight)
+  override def shardInfos = Seq(shardInfo)
 
   protected[shards] def collectedShards(readOnly: Boolean) = {
     Seq(Leaf(shardInfo, Allow, Allow, if (readOnly) readOnlyShard else readWriteShard))
