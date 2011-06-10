@@ -68,31 +68,28 @@ class NameServer(
 
   def configureForwarder[T : Manifest](config: SingleForwarderBuilder[T, No, No] => SingleForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.singleTable[T]).build(this)
-    singleForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = f
-    f.shardFactories foreach { shardRepository += _ }
+    singleForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = forwarder
+    forwarder.shardFactories foreach { shardRepository += _ }
     forwarder
   }
 
   def configureMultiForwarder[T : Manifest](config: MultiForwarderBuilder[T, Yes, No] => MultiForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.multiTable[T]).build(this)
-    multiForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = f
-    f.shardFactories foreach { shardRepository += _ }
+    multiForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = forwarder
+    forwarder.shardFactories foreach { shardRepository += _ }
     forwarder
   }
 
   def newCopyJob(from: ShardId, to: ShardId): CopyJob[Any] = {
-    val manager = forwarderForShardIds(Seq(from, to))
-    manager.newCopyJob(from, to).asInstanceOf[CopyJob[Any]]
+    forwarderForShardIds(Seq(from, to)).newCopyJob(from, to).asInstanceOf[CopyJob[Any]]
   }
 
   def newRepairJob(ids: Seq[ShardId]): RepairJob[Any] = {
-    val manager = forwarderForShardIds(ids)
-    manager.newRepairJob(ids).asInstanceOf[RepairJob[Any]]
+    forwarderForShardIds(ids).newRepairJob(ids).asInstanceOf[RepairJob[Any]]
   }
 
   def newDiffJob(ids: Seq[ShardId]): RepairJob[Any] = {
-    val manager = forwarderForShardIds(ids)
-    manager.newDiffJob(ids).asInstanceOf[RepairJob[Any]]
+    forwarderForShardIds(ids).newDiffJob(ids).asInstanceOf[RepairJob[Any]]
   }
 
   private def forwarderForShardIds(ids: Seq[ShardId]) = {
