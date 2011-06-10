@@ -74,7 +74,7 @@ class NameServer(
 
   def configureForwarder[T : Manifest](config: SingleTableForwarderBuilder[T, No, No] => SingleTableForwarderBuilder[T, Yes, Yes]) = {
     val key       = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
-    val forwarder = config(ForwarderBuilder.singleTable[T](this)).build()
+    val forwarder = config(ForwarderBuilder.singleTable[T]).build(this)
 
     registerForwarder(key, forwarder)
     forwarder
@@ -82,7 +82,7 @@ class NameServer(
 
   def configureMultiTableForwarder[T : Manifest](config: MultiTableForwarderBuilder[T, Yes, No] => MultiTableForwarderBuilder[T, Yes, Yes]) = {
     val key       = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
-    val forwarder = config(ForwarderBuilder.multiTable[T](this)).build()
+    val forwarder = config(ForwarderBuilder.multiTable[T]).build(this)
 
     registerForwarder(key, forwarder)
     forwarder

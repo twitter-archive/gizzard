@@ -16,17 +16,16 @@ object ForwarderBuilder {
   trait Yes
   trait No
 
-  def singleTable[T : Manifest](ns: NameServer) = new SingleTableForwarderBuilder[T, No, No](ns)
-  def multiTable[T : Manifest](ns: NameServer)  = new MultiTableForwarderBuilder[T, Yes, No](ns)
+  def singleTable[T : Manifest] = new SingleTableForwarderBuilder[T, No, No]
+  def multiTable[T : Manifest]  = new MultiTableForwarderBuilder[T, Yes, No]
 }
 
 import ForwarderBuilder._
 
-abstract class Forwarder[T](config: ForwarderBuilder[T, Yes, Yes]) {
+abstract class Forwarder[T](protected val nameServer: NameServer, config: ForwarderBuilder[T, Yes, Yes]) {
 
   def isValidTableId(id: Int): Boolean
 
-  protected val nameServer = config.nameServer
   val interfaceName  = config.interfaceName
   val shardFactories = config._shardFactories
   val copyFactory    = config._copyFactory
@@ -66,7 +65,8 @@ abstract class Forwarder[T](config: ForwarderBuilder[T, Yes, Yes]) {
   def newDiffJob(ids: Seq[ShardId])          = diffFactory(ids)
 }
 
-class SingleTableForwarder[T](config: SingleTableForwarderBuilder[T, Yes, Yes]) extends Forwarder[T](config)
+class SingleTableForwarder[T](ns: NameServer, config: SingleTableForwarderBuilder[T, Yes, Yes])
+extends Forwarder[T](ns, config)
 with PartialFunction[Long, RoutingNode[T]] {
 
   val tableId = config._tableId
@@ -93,7 +93,8 @@ with PartialFunction[Long, RoutingNode[T]] {
   }
 }
 
-class MultiTableForwarder[T](config: MultiTableForwarderBuilder[T, Yes, Yes]) extends Forwarder[T](config) {
+class MultiTableForwarder[T](ns: NameServer, config: MultiTableForwarderBuilder[T, Yes, Yes])
+extends Forwarder[T](ns, config) {
 
   val tableIdValidator = config._tableIdValidator
 
@@ -118,19 +119,18 @@ class MultiTableForwarder[T](config: MultiTableForwarderBuilder[T, Yes, Yes]) ex
   }
 }
 
-abstract class ForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory](ns: NameServer) {
+abstract class ForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory] {
   val manifest      = implicitly[Manifest[T]]
   val interfaceName = Forwarder.canonicalNameForManifest(manifest)
 
-  protected[nameserver] val nameServer = ns
   protected[nameserver] var _shardFactories: Map[String, ShardFactory[T]] = Map.empty
   protected[nameserver] var _copyFactory: CopyJobFactory[T]     = new NullCopyJobFactory("Copies not supported!")
   protected[nameserver] var _repairFactory: RepairJobFactory[T] = new NullRepairJobFactory("Shard repair not supported!")
   protected[nameserver] var _diffFactory: RepairJobFactory[T]   = new NullRepairJobFactory("Shard diff not supported!")
 }
 
-abstract class AbstractForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory, This[T1 >: T, A, B] <: AbstractForwarderBuilder[T1, A, B, This]](ns: NameServer)
-extends ForwarderBuilder[T, HasTableIds, HasShardFactory](ns) {
+abstract class AbstractForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory, This[T1 >: T, A, B] <: AbstractForwarderBuilder[T1, A, B, This]]
+extends ForwarderBuilder[T, HasTableIds, HasShardFactory] {
   self: This[T, HasTableIds, HasShardFactory] =>
 
   type CurrentConfiguration = This[T, HasTableIds, HasShardFactory]
@@ -164,8 +164,8 @@ extends ForwarderBuilder[T, HasTableIds, HasShardFactory](ns) {
   }
 }
 
-class SingleTableForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory](ns: NameServer)
-extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, SingleTableForwarderBuilder](ns) {
+class SingleTableForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory]
+extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, SingleTableForwarderBuilder] {
 
   protected[nameserver] var _tableId = 0
 
@@ -174,13 +174,13 @@ extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, SingleTableFor
     this.asInstanceOf[TablesConfigured]
   }
 
-  def build()(implicit canBuild: CurrentConfiguration => FullyConfigured) = {
-    new SingleTableForwarder[T](this)
+  def build(ns: NameServer)(implicit canBuild: CurrentConfiguration => FullyConfigured) = {
+    new SingleTableForwarder[T](ns, this)
   }
 }
 
-class MultiTableForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory](ns: NameServer)
-extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, MultiTableForwarderBuilder](ns) {
+class MultiTableForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory]
+extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, MultiTableForwarderBuilder] {
 
   protected[nameserver] var _tableIdValidator: Int => Boolean = { x: Int => true }
 
@@ -189,7 +189,7 @@ extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, MultiTableForw
     this.asInstanceOf[TablesConfigured]
   }
 
-  def build()(implicit canBuild: CurrentConfiguration => FullyConfigured) = {
-    new MultiTableForwarder[T](this)
+  def build(ns: NameServer)(implicit canBuild: CurrentConfiguration => FullyConfigured) = {
+    new MultiTableForwarder[T](ns, this)
   }
 }
