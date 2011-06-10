@@ -16,8 +16,8 @@ object ForwarderBuilder {
   trait Yes
   trait No
 
-  def singleTable[T : Manifest] = new SingleTableForwarderBuilder[T, No, No]
-  def multiTable[T : Manifest]  = new MultiTableForwarderBuilder[T, Yes, No]
+  def singleTable[T : Manifest] = new SingleForwarderBuilder[T, No, No]
+  def multiTable[T : Manifest]  = new MultiForwarderBuilder[T, Yes, No]
 }
 
 import ForwarderBuilder._
@@ -65,7 +65,7 @@ abstract class Forwarder[T](protected val nameServer: NameServer, config: Forwar
   def newDiffJob(ids: Seq[ShardId])          = diffFactory(ids)
 }
 
-class SingleTableForwarder[T](ns: NameServer, config: SingleTableForwarderBuilder[T, Yes, Yes])
+class SingleForwarder[T](ns: NameServer, config: SingleForwarderBuilder[T, Yes, Yes])
 extends Forwarder[T](ns, config)
 with PartialFunction[Long, RoutingNode[T]] {
 
@@ -93,7 +93,7 @@ with PartialFunction[Long, RoutingNode[T]] {
   }
 }
 
-class MultiTableForwarder[T](ns: NameServer, config: MultiTableForwarderBuilder[T, Yes, Yes])
+class MultiForwarder[T](ns: NameServer, config: MultiForwarderBuilder[T, Yes, Yes])
 extends Forwarder[T](ns, config) {
 
   val tableIdValidator = config._tableIdValidator
@@ -164,8 +164,8 @@ extends ForwarderBuilder[T, HasTableIds, HasShardFactory] {
   }
 }
 
-class SingleTableForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory]
-extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, SingleTableForwarderBuilder] {
+class SingleForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory]
+extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, SingleForwarderBuilder] {
 
   protected[nameserver] var _tableId = 0
 
@@ -175,12 +175,12 @@ extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, SingleTableFor
   }
 
   def build(ns: NameServer)(implicit canBuild: CurrentConfiguration => FullyConfigured) = {
-    new SingleTableForwarder[T](ns, this)
+    new SingleForwarder[T](ns, this)
   }
 }
 
-class MultiTableForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory]
-extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, MultiTableForwarderBuilder] {
+class MultiForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory]
+extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, MultiForwarderBuilder] {
 
   protected[nameserver] var _tableIdValidator: Int => Boolean = { x: Int => true }
 
@@ -190,6 +190,6 @@ extends AbstractForwarderBuilder[T, HasTableIds, HasShardFactory, MultiTableForw
   }
 
   def build(ns: NameServer)(implicit canBuild: CurrentConfiguration => FullyConfigured) = {
-    new MultiTableForwarder[T](ns, this)
+    new MultiForwarder[T](ns, this)
   }
 }

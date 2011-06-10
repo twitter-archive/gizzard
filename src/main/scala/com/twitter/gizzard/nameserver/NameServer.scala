@@ -53,38 +53,30 @@ class NameServer(
   @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
   @volatile var jobRelay: JobRelay = NullJobRelay
 
-  private val forwarders = mutable.Map[String, Forwarder[_]]()
+  private val singleForwarders = mutable.Map[String, SingleForwarder[_]]()
+  private val multiForwarders  = mutable.Map[String, MultiForwarder[_]]()
 
   import ForwarderBuilder._
 
-  def forwarder[T : Manifest]: SingleTableForwarder[T] = {
-    val key = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
-    forwarders(key).asInstanceOf[SingleTableForwarder[T]]
+  def forwarder[T : Manifest]: SingleForwarder[T] = {
+    singleForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])).asInstanceOf[SingleForwarder[T]]
   }
 
-  def multiTableForwarder[T : Manifest]: MultiTableForwarder[T] = {
-    val key = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
-    forwarders(key).asInstanceOf[MultiTableForwarder[T]]
+  def multiTableForwarder[T : Manifest]: MultiForwarder[T] = {
+    multiForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])).asInstanceOf[MultiForwarder[T]]
   }
 
-  private def registerForwarder(name: String, f: Forwarder[_]) {
-    forwarders(name) = f
-    f.shardFactories foreach { shardRepository += _ }
-  }
-
-  def configureForwarder[T : Manifest](config: SingleTableForwarderBuilder[T, No, No] => SingleTableForwarderBuilder[T, Yes, Yes]) = {
-    val key       = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
+  def configureForwarder[T : Manifest](config: SingleForwarderBuilder[T, No, No] => SingleForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.singleTable[T]).build(this)
-
-    registerForwarder(key, forwarder)
+    singleForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = f
+    f.shardFactories foreach { shardRepository += _ }
     forwarder
   }
 
-  def configureMultiTableForwarder[T : Manifest](config: MultiTableForwarderBuilder[T, Yes, No] => MultiTableForwarderBuilder[T, Yes, Yes]) = {
-    val key       = Forwarder.canonicalNameForManifest(implicitly[Manifest[T]])
+  def configureMultiForwarder[T : Manifest](config: MultiForwarderBuilder[T, Yes, No] => MultiForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.multiTable[T]).build(this)
-
-    registerForwarder(key, forwarder)
+    multiForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = f
+    f.shardFactories foreach { shardRepository += _ }
     forwarder
   }
 

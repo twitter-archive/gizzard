@@ -14,7 +14,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     val nameServerShard                        = mock[nameserver.Shard]
     var nameServer: NameServer                 = null
-    var forwarder: MultiTableForwarder[AnyRef] = null
+    var forwarder: MultiForwarder[AnyRef] = null
 
     val shardInfos = (1 until 5).toList map { id =>
       new ShardInfo(ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
@@ -48,7 +48,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
 
       nameServer = new NameServer(LeafRoutingNode(nameServerShard), NullJobRelayFactory, identity)
-      forwarder  = nameServer.configureMultiTableForwarder[AnyRef](
+      forwarder  = nameServer.configureMultiForwarder[AnyRef](
         _.shardFactories(SQL_SHARD -> shardFactory)
       )
       nameServer.reload()
