@@ -193,7 +193,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val shardInfo = new ShardInfo("fake", "fake", "localhost")
       val mock1 = mock[EnufShard]
       val mock2 = mock[EnufShard]
-      val List(node1, node2) = List(mock1, mock2).map(LeafRoutingNode(_, 1))
+      val List(node1, node2) = List(mock1, mock2) map { LeafRoutingNode(_) }
       val shards = List(node1, node2)
       val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards) {
         override protected def loadBalancer() = children.toList

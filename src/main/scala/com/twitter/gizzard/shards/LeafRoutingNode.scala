@@ -7,12 +7,6 @@ trait ShardFactory[+T] {
   def materialize(shardInfo: ShardInfo)
 }
 
-private[shards] class WrapperShardFactory[T](readOnlyShard: => T, readWriteShard: => T) extends ShardFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int)         = readWriteShard
-  def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = readOnlyShard
-  def materialize(shardInfo: ShardInfo) {}
-}
-
 class LeafRoutingNodeFactory[T](shardFactory: ShardFactory[T]) extends RoutingNodeFactory[T] {
   def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
     val factory = shardFactory
@@ -25,21 +19,19 @@ class LeafRoutingNodeFactory[T](shardFactory: ShardFactory[T]) extends RoutingNo
 }
 
 object LeafRoutingNode {
+  private class WrapperShardFactory[T](readOnlyShard: => T, readWriteShard: => T) extends ShardFactory[T] {
+    def instantiate(shardInfo: ShardInfo, weight: Int)         = readWriteShard
+    def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = readOnlyShard
+    def materialize(shardInfo: ShardInfo) {}
+  }
+
   // convenience constructors for manual tree creation.
   def apply[T](readOnlyShard: T, readWriteShard: T, info: ShardInfo, weight: Int): LeafRoutingNode[T] = {
     new LeafRoutingNode(new WrapperShardFactory(readOnlyShard, readWriteShard), info, weight)
   }
 
-  def apply[T](readOnlyShard: T, readWriteShard: T, weight: Int): LeafRoutingNode[T] = {
-    apply(readOnlyShard, readWriteShard, new ShardInfo("", "", ""), weight)
-  }
-
-  def apply[T](shard: T, weight: Int): LeafRoutingNode[T] = {
-    apply(shard, shard, weight)
-  }
-
   def apply[T](shard: T): LeafRoutingNode[T] = {
-    apply(shard, 1)
+    apply(shard, shard, new ShardInfo("", "", ""), 1)
   }
 }
 
