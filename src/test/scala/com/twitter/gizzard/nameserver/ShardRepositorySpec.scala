@@ -9,10 +9,10 @@ import com.twitter.gizzard.shards.{RoutingNode, ShardInfo}
 
 
 object ShardRepositorySpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  "BasicShardRepository" should {
+  "ShardRepository" should {
     val info = new ShardInfo("", "", "")
     val shard = Seq(mock[RoutingNode[Any]])
-    val repository = new BasicShardRepository
+    val repository = new ShardRepository
 
     "find a read-only shard" in {
       repository.factory("ReadOnlyShard").instantiate(info, 1, shard) must haveClass[shards.ReadOnlyShard[Any]]

@@ -74,7 +74,7 @@ class ShardRepository {
     }
   }
 
-  private def registerShardfactory(name: String, f: ShardFactory[_]) {
+  private def registerShardfactory[T](name: String, f: ShardFactory[T]) {
     if (nodeFactories contains name) throw new ExistingShardFactory(name)
     nodeFactories(name) = new LeafRoutingNodeFactory[Any](f)
   }
@@ -82,18 +82,18 @@ class ShardRepository {
   private def registerForwarder[T : Manifest](f: Forwarder[T]) {
     val name = Forwarder.nameForInterface[T]
     if (allForwarders contains name) throw new ExistingForwarder(name)
-    f.shardFactories foreach registerShardfactory
+    f.shardFactories foreach { case (n, f) => registerShardfactory(n, f) }
     allForwarders(name) = f
   }
 
   private def setupPackage(packageName: String) {
     val prefix = if (packageName == "") packageName else packageName + "."
 
-    nodeFactories(prefix) = "ReadOnlyShard", ReadOnlyShard[Any] _)
-    nodeFactories(prefix) = "BlockedShard", BlockedShard[Any] _)
-    nodeFactories(prefix) = "WriteOnlyShard", WriteOnlyShard[Any] _)
-    nodeFactories(prefix) = "BlackHoleShard", BlackHoleShard[Any] _)
-    nodeFactories(prefix) = "SlaveShard", SlaveShard[Any] _)
-    nodeFactories(prefix) = "ReplicatingShard", ReplicatingShard[Any] _)
+    nodeFactories(prefix +"ReadOnlyShard")    = new ConstructorRoutingNodeFactory(ReadOnlyShard[Any] _)
+    nodeFactories(prefix +"BlockedShard")     = new ConstructorRoutingNodeFactory(BlockedShard[Any] _)
+    nodeFactories(prefix +"WriteOnlyShard")   = new ConstructorRoutingNodeFactory(WriteOnlyShard[Any] _)
+    nodeFactories(prefix +"BlackHoleShard")   = new ConstructorRoutingNodeFactory(BlackHoleShard[Any] _)
+    nodeFactories(prefix +"SlaveShard")       = new ConstructorRoutingNodeFactory(SlaveShard[Any] _)
+    nodeFactories(prefix +"ReplicatingShard") = new ConstructorRoutingNodeFactory(ReplicatingShard[Any] _)
   }
 }

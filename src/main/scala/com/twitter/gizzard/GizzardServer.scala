@@ -3,9 +3,9 @@ package com.twitter.gizzard
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
-import nameserver.{NameServer, BasicShardRepository}
-import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
-import config.{GizzardServer => ServerConfig}
+import com.twitter.gizzard.nameserver.NameServer
+import com.twitter.gizzard.scheduler.{JobScheduler, PrioritizingJobScheduler, ReplicatingJsonCodec}
+import com.twitter.gizzard.config.{GizzardServer => ServerConfig}
 
 
 abstract class GizzardServer(config: ServerConfig) {
