@@ -11,9 +11,6 @@ import com.twitter.gizzard.config.{GizzardServer => ServerConfig}
 abstract class GizzardServer(config: ServerConfig) {
   def jobPriorities: Seq[Int]
   def copyPriority: Int
-  def start(): Unit
-  def shutdown(quiesce: Boolean): Unit
-  def shutdown() { shutdown(false) }
 
   // setup logging
 
@@ -23,7 +20,6 @@ abstract class GizzardServer(config: ServerConfig) {
   // nameserver/shard wiring
 
   lazy val nameServer = config.nameServer()
-
 
   // job wiring
 
@@ -35,9 +31,6 @@ abstract class GizzardServer(config: ServerConfig) {
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
     p -> config.jobQueues(p)(jobCodec)
   } toMap)
-
-  lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler]
-
 
   // service wiring
 
