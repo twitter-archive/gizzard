@@ -8,11 +8,14 @@ import com.twitter.gizzard.scheduler.{CopyJob, RepairJob}
 class ExistingShardFactory(name: String) extends ShardException("ShardFactory already registered for type '"+ name +"'.")
 class ExistingForwarder(name: String) extends ShardException("Forwarder already registered for interface '"+ name +"'.")
 
-class ForwarderRepository {
-  private val shardRepository  = new BasicShardRepository
+class ShardRepository {
+  private val nodeFactories    = mutable.Map[String, RoutingNodeFactory[Any]]()
   private val allForwarders    = mutable.Map[String, GenericForwarder]()
   private val singleForwarders = mutable.Map[String, SingleForwarder[_]]()
   private val multiForwarders  = mutable.Map[String, MultiForwarder[_]]()
+
+  setupPackage("com.twitter.gizzard.shards")
+  setupPackage("")
 
   def singleTableForwarder[T : Manifest] = {
     singleForwarders(Forwarder.nameForInterface[T]).asInstanceOf[SingleForwarder[T]]
@@ -41,95 +44,56 @@ class ForwarderRepository {
   // XXX: weird methods. better encapsulation needed
 
   def materializeShard(info: ShardInfo) {
-    shardRepository.create(info)
+    factory(info.className).materialize(info)
   }
 
   def instantiateNode[T](info: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    shardRepository.find[T](info, weight, children)
+    factory[T](info.className).instantiate(info, weight, children)
   }
 
   // XXX: Do these copy job related methods belong here?
 
   def newCopyJob(from: ShardId, to: ShardId) = {
-    commonForwarderForShards(Seq(from, to)).newCopyJob(from, to).asInstanceOf[CopyJob[Any]]
+    commonForwarderForShards(Seq(from, to)).newCopyJob(from, to)
   }
 
   def newRepairJob(ids: Seq[ShardId]) = {
-    commonForwarderForShards(ids).newRepairJob(ids).asInstanceOf[RepairJob[Any]]
+    commonForwarderForShards(ids).newRepairJob(ids)
   }
 
   def newDiffJob(ids: Seq[ShardId]) = {
-    commonForwarderForShards(ids).newDiffJob(ids).asInstanceOf[RepairJob[Any]]
+    commonForwarderForShards(ids).newDiffJob(ids)
   }
 
   // helper methods
 
-  private def registerForwarder[T : Manifest](f: Forwarder[T]) {
-    val name = Forwarder.nameForInterface[T]
-    if (allForwarders contains name) throw new ExistingForwarder(name)
-    f.shardFactories foreach { shardRepository += _ }
-    allForwarders(name) = f
-  }
-}
-
-
-class ShardRepository {
-  private val nodeFactories = mutable.Map[String, RoutingNodeFactory[Any]]()
-
-  private[nameserver] def +=[T](item: (String, ShardFactory[T])) {
-    val (className, shardFactory) = item
-
-    if (nodeFactories contains className) {
-      throw new ExistingShardFactory("Factory for "+className+" already defined!")
-    } else {
-      nodeFactories += (className -> new LeafRoutingNodeFactory(shardFactory.asInstanceOf[ShardFactory[Any]]))
-    }
-  }
-
-  def addRoutingNode(className: String, factory: RoutingNodeFactory[Any]) {
-    nodeFactories += (className -> factory)
-  }
-
-  def addRoutingNode(className: String, cons: (ShardInfo, Int, Seq[RoutingNode[Any]]) => RoutingNode[Any]) {
-    addRoutingNode(className, new ConstructorRoutingNodeFactory(cons))
-  }
-
-  def find[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
-    val node = factory(shardInfo.className).instantiate(shardInfo, weight, children.asInstanceOf[Seq[RoutingNode[Any]]])
-    node.asInstanceOf[RoutingNode[T]]
-  }
-
-  def create(shardInfo: ShardInfo) {
-    factory(shardInfo.className).materialize(shardInfo)
-  }
-
-  def factory(className: String) = {
-    nodeFactories.get(className) getOrElse {
+  def factory[T](className: String) = {
+    nodeFactories.get(className) map { _.asInstanceOf[RoutingNodeFactory[T]] } getOrElse {
       val message = "No such class: " + className + "\nValid classes:\n" + nodeFactories.keySet
       throw new NoSuchElementException(message)
     }
   }
 
-  override def toString() = "ShardRepository(" + nodeFactories.toString + ")"
-}
+  private def registerShardfactory(name: String, f: ShardFactory[_]) {
+    if (nodeFactories contains name) throw new ExistingShardFactory(name)
+    nodeFactories(name) = new LeafRoutingNodeFactory[Any](f)
+  }
 
-/**
- * A ShardRepository that is pre-seeded with read-only, write-only, replicating, and blocked
- * shard types.
- */
-class BasicShardRepository extends ShardRepository {
+  private def registerForwarder[T : Manifest](f: Forwarder[T]) {
+    val name = Forwarder.nameForInterface[T]
+    if (allForwarders contains name) throw new ExistingForwarder(name)
+    f.shardFactories foreach registerShardfactory
+    allForwarders(name) = f
+  }
 
-  setupPackage("com.twitter.gizzard.shards")
-  setupPackage("")
-
-  def setupPackage(packageName: String) {
+  private def setupPackage(packageName: String) {
     val prefix = if (packageName == "") packageName else packageName + "."
 
-    addRoutingNode(prefix + "ReadOnlyShard", ReadOnlyShard[Any] _)
-    addRoutingNode(prefix + "BlockedShard", BlockedShard[Any] _)
-    addRoutingNode(prefix + "WriteOnlyShard", WriteOnlyShard[Any] _)
-    addRoutingNode(prefix + "BlackHoleShard", BlackHoleShard[Any] _)
-    addRoutingNode(prefix + "SlaveShard", SlaveShard[Any] _)
-    addRoutingNode(prefix + "ReplicatingShard", ReplicatingShard[Any] _)
+    nodeFactories(prefix) = "ReadOnlyShard", ReadOnlyShard[Any] _)
+    nodeFactories(prefix) = "BlockedShard", BlockedShard[Any] _)
+    nodeFactories(prefix) = "WriteOnlyShard", WriteOnlyShard[Any] _)
+    nodeFactories(prefix) = "BlackHoleShard", BlackHoleShard[Any] _)
+    nodeFactories(prefix) = "SlaveShard", SlaveShard[Any] _)
+    nodeFactories(prefix) = "ReplicatingShard", ReplicatingShard[Any] _)
   }
 }

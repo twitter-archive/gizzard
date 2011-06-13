@@ -43,7 +43,7 @@ class NameServer(
   jobRelayFactory: JobRelayFactory,
   val mappingFunction: Long => Long) {
 
-  val forwarderRepository = new ForwarderRepository
+  val shardRepository = new ShardRepository
 
   private val log = Logger.get(getClass.getName)
 
@@ -58,41 +58,41 @@ class NameServer(
   import ForwarderBuilder._
 
   def forwarder[T : Manifest] = {
-    forwarderRepository.singleTableForwarder[T]
+    shardRepository.singleTableForwarder[T]
   }
 
   def multiTableForwarder[T : Manifest] = {
-    forwarderRepository.multiTableForwarder[T]
+    shardRepository.multiTableForwarder[T]
   }
 
   def configureForwarder[T : Manifest](config: SingleForwarderBuilder[T, No, No] => SingleForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.singleTable[T]).build(this)
-    forwarderRepository.addSingleTableForwarder(forwarder)
+    shardRepository.addSingleTableForwarder(forwarder)
     forwarder
   }
 
   def configureMultiForwarder[T : Manifest](config: MultiForwarderBuilder[T, Yes, No] => MultiForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.multiTable[T]).build(this)
-    forwarderRepository.addMultiTableForwarder(forwarder)
+    shardRepository.addMultiTableForwarder(forwarder)
     forwarder
   }
 
   def newCopyJob(from: ShardId, to: ShardId) = {
-    forwarderRepository.newCopyJob(from, to)
+    shardRepository.newCopyJob(from, to)
   }
 
   def newRepairJob(ids: Seq[ShardId]) = {
-    forwarderRepository.newRepairJob(ids)
+    shardRepository.newRepairJob(ids)
   }
 
   def newDiffJob(ids: Seq[ShardId]) = {
-    forwarderRepository.newDiffJob(ids)
+    shardRepository.newDiffJob(ids)
   }
 
   @throws(classOf[ShardException])
   def createShard(shardInfo: ShardInfo) {
     nameServerShard.write foreach { _.createShard(shardInfo) }
-    forwarderRepository.materializeShard(shardInfo)
+    shardRepository.materializeShard(shardInfo)
   }
 
   def getShardInfo(id: ShardId) = shardInfos(id)
@@ -170,7 +170,7 @@ class NameServer(
 
     val children = downwardLinks.map(l => findShardById[T](l.downId, l.weight)).toList
 
-    forwarderRepository.instantiateNode[T](shardInfo, weight, children)
+    shardRepository.instantiateNode[T](shardInfo, weight, children)
   }
 
   @throws(classOf[NonExistentShard])
