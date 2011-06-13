@@ -8,7 +8,6 @@ import com.twitter.querulous.StatsCollector
 import com.twitter.querulous.evaluator.QueryEvaluatorFactory
 import com.twitter.logging.Logger
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, RepairJob}
 
 
 class NonExistentShard(message: String) extends ShardException(message: String)
@@ -44,7 +43,7 @@ class NameServer(
   jobRelayFactory: JobRelayFactory,
   val mappingFunction: Long => Long) {
 
-  val shardRepository = new BasicShardRepository
+  val forwarderRepository = new ForwarderRepository
 
   private val log = Logger.get(getClass.getName)
 
@@ -58,58 +57,42 @@ class NameServer(
 
   import ForwarderBuilder._
 
-  def forwarder[T : Manifest]: SingleForwarder[T] = {
-    singleForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])).asInstanceOf[SingleForwarder[T]]
+  def forwarder[T : Manifest] = {
+    forwarderRepository.singleTableForwarder[T]
   }
 
-  def multiTableForwarder[T : Manifest]: MultiForwarder[T] = {
-    multiForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])).asInstanceOf[MultiForwarder[T]]
+  def multiTableForwarder[T : Manifest] = {
+    forwarderRepository.multiTableForwarder[T]
   }
 
   def configureForwarder[T : Manifest](config: SingleForwarderBuilder[T, No, No] => SingleForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.singleTable[T]).build(this)
-    singleForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = forwarder
-    forwarder.shardFactories foreach { shardRepository += _ }
+    forwarderRepository.addSingleTableForwarder(forwarder)
     forwarder
   }
 
   def configureMultiForwarder[T : Manifest](config: MultiForwarderBuilder[T, Yes, No] => MultiForwarderBuilder[T, Yes, Yes]) = {
     val forwarder = config(ForwarderBuilder.multiTable[T]).build(this)
-    multiForwarders(Forwarder.nameFromManifest(implicitly[Manifest[T]])) = forwarder
-    forwarder.shardFactories foreach { shardRepository += _ }
+    forwarderRepository.addMultiTableForwarder(forwarder)
     forwarder
   }
 
-  def newCopyJob(from: ShardId, to: ShardId): CopyJob[Any] = {
-    forwarderForShardIds(Seq(from, to)).newCopyJob(from, to).asInstanceOf[CopyJob[Any]]
+  def newCopyJob(from: ShardId, to: ShardId) = {
+    forwarderRepository.newCopyJob(from, to)
   }
 
-  def newRepairJob(ids: Seq[ShardId]): RepairJob[Any] = {
-    forwarderForShardIds(ids).newRepairJob(ids).asInstanceOf[RepairJob[Any]]
+  def newRepairJob(ids: Seq[ShardId]) = {
+    forwarderRepository.newRepairJob(ids)
   }
 
-  def newDiffJob(ids: Seq[ShardId]): RepairJob[Any] = {
-    forwarderForShardIds(ids).newDiffJob(ids).asInstanceOf[RepairJob[Any]]
+  def newDiffJob(ids: Seq[ShardId]) = {
+    forwarderRepository.newDiffJob(ids)
   }
-
-  private def forwarderForShardIds(ids: Seq[ShardId]) = {
-    val manager = forwarders.values find { _ containsShard ids.head } getOrElse {
-      throw new InvalidShard("Error in server configuration. Invalid shard found!")
-    }
-
-    if (ids forall { manager containsShard _ }) {
-      manager
-    } else {
-      throw new InvalidShard("Incompatible shard types found!")
-    }
-  }
-
-
 
   @throws(classOf[ShardException])
   def createShard(shardInfo: ShardInfo) {
     nameServerShard.write foreach { _.createShard(shardInfo) }
-    shardRepository.create(shardInfo)
+    forwarderRepository.materializeShard(shardInfo)
   }
 
   def getShardInfo(id: ShardId) = shardInfos(id)
@@ -185,10 +168,9 @@ class NameServer(
       (getShard(id), listDownwardLinks(id))
     }
 
-    val children = downwardLinks.map(l => findShardById(l.downId, l.weight)).toList
+    val children = downwardLinks.map(l => findShardById[T](l.downId, l.weight)).toList
 
-    // XXX: cast!
-    shardRepository.find(shardInfo, weight, children).asInstanceOf[RoutingNode[T]]
+    forwarderRepository.instantiateNode[T](shardInfo, weight, children)
   }
 
   @throws(classOf[NonExistentShard])
@@ -208,8 +190,7 @@ class NameServer(
       throw new NonExistentShard("No shard for address: %s %s".format(tableId, id))
     }
 
-    // XXX: Cast! :/
-    findShardById(shardInfo.id).asInstanceOf[RoutingNode[T]]
+    findShardById[T](shardInfo.id)
   }
 
   @throws(classOf[NonExistentShard])

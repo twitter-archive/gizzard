@@ -7,9 +7,9 @@ import com.twitter.gizzard.scheduler._
 class InvalidTableId(id: Int) extends NoSuchElementException("Forwarder does not contain table "+ id)
 
 object Forwarder {
-  def canonicalNameForManifest[T](manifest: Manifest[T]) = {
-    manifest.erasure.getName.split("\\.").last
-  }
+  def nameForInterface[T : Manifest] = nameFromManifest(implicitly[Manifest[T]])
+
+  def nameFromManifest[T](manifest: Manifest[T]) = manifest.erasure.getName.split("\\.").last
 }
 
 object ForwarderBuilder {
@@ -22,7 +22,22 @@ object ForwarderBuilder {
 
 import ForwarderBuilder._
 
-abstract class Forwarder[T](protected val nameServer: NameServer, config: ForwarderBuilder[T, Yes, Yes]) {
+trait GenericForwarder {
+  def interfaceName: String
+  def shardTypes: Set[String]
+  def isValidTableId(id: Int): Boolean
+  def isValidShardType(name: String): Boolean
+  def containsShard(id: ShardId): Boolean
+
+  // XXX: copy, repair and diff live here for now, but it's a bit
+  // jank. clean up the admin job situation.
+  def newCopyJob(from: ShardId, to: ShardId): JsonJob
+  def newRepairJob(ids: Seq[ShardId]): JsonJob
+  def newDiffJob(ids: Seq[ShardId]): JsonJob
+}
+
+abstract class Forwarder[T](protected val nameServer: NameServer, config: ForwarderBuilder[T, Yes, Yes])
+extends GenericForwarder {
 
   def isValidTableId(id: Int): Boolean
 
@@ -30,12 +45,10 @@ abstract class Forwarder[T](protected val nameServer: NameServer, config: Forwar
   val shardFactories = config._shardFactories
   val copyFactory    = config._copyFactory
   val repairFactory  = config._repairFactory
-  val diffFactory    = config._diffFactory // XXX: Why is this the same
-                                           // class as repair??? This
-                                           // should not be allowed by
-                                           // types.
+  val diffFactory    = config._diffFactory // XXX: Why is this the same class as repair???
+                                           // This should not be allowed by types.
 
-  val shardTypes = shardFactories.keySet
+  val shardTypes = shardFactories.keys.toSet
 
   def isValidShardType(name: String) = shardTypes contains name
 
@@ -121,7 +134,7 @@ extends Forwarder[T](ns, config) {
 
 abstract class ForwarderBuilder[T : Manifest, HasTableIds, HasShardFactory] {
   val manifest      = implicitly[Manifest[T]]
-  val interfaceName = Forwarder.canonicalNameForManifest(manifest)
+  val interfaceName = Forwarder.nameFromManifest(manifest)
 
   protected[nameserver] var _shardFactories: Map[String, ShardFactory[T]] = Map.empty
   protected[nameserver] var _copyFactory: CopyJobFactory[T]     = new NullCopyJobFactory("Copies not supported!")
