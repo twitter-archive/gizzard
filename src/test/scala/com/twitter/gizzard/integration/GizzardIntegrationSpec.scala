@@ -20,9 +20,9 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     doBefore {
       resetTestServerDBs(servers: _*)
       setupServers(servers: _*)
-      List(server1, server2).foreach(_.nameServer.addRemoteHost(hostFor3))
-      List(server1, server3).foreach(_.nameServer.addRemoteHost(hostFor2))
-      List(server2, server3).foreach(_.nameServer.addRemoteHost(hostFor1))
+      List(server1, server2).foreach(_.nameServer.remoteClusterManager.addRemoteHost(hostFor3))
+      List(server1, server3).foreach(_.nameServer.remoteClusterManager.addRemoteHost(hostFor2))
+      List(server2, server3).foreach(_.nameServer.remoteClusterManager.addRemoteHost(hostFor1))
 
       servers.foreach(_.nameServer.reload())
     }
@@ -74,7 +74,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     "retry unblocked clusters" in {
       startServers(servers: _*)
 
-      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Blocked)
+      server1.nameServer.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Blocked)
       server1.nameServer.reload()
 
       client1.put(1, "foo")
@@ -83,7 +83,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       client2.get(1).toList mustEqual List[TestResult]()
 
-      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.nameServer.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
       server1.nameServer.reload()
       server1.jobScheduler.retryErrors()
 
@@ -93,7 +93,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     "drop blackholed clusters" in {
       startServers(servers: _*)
 
-      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Blackholed)
+      server1.nameServer.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Blackholed)
       server1.nameServer.reload()
 
       client1.put(1, "foo")
@@ -102,7 +102,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       client2.get(1).toList mustEqual List[TestResult]()
 
-      server1.nameServer.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.nameServer.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
       server1.nameServer.reload()
       server1.jobScheduler.retryErrors()
 

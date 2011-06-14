@@ -74,10 +74,10 @@ abstract case class RepairJob[T](shardIds: Seq[ShardId],
                getClass.getName.split("\\.").last, toMap)
       // XXX: get rid of cast here!!!
       val shardObjs = shardIds.map(nameServer.findShardById(_)).map(_.asInstanceOf[RoutingNode[T]])
-      shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Busy))
+      shardIds.foreach(nameServer.shardManager.markShardBusy(_, shards.Busy.Busy))
       repair(shardObjs)
       this.nextJob match {
-        case None => shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Normal))
+        case None => shardIds.foreach(nameServer.shardManager.markShardBusy(_, shards.Busy.Normal))
         case _ =>
       }
     } catch {

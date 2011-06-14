@@ -69,7 +69,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
   }
 
   def finish() {
-    nameServer.markShardBusy(destinationId, shards.Busy.Normal)
+    nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
     Stats.clearGauge(gaugeName)
@@ -77,7 +77,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
 
   def apply() {
     try {
-      if (nameServer.getShard(destinationId).busy == shards.Busy.Cancelled) {
+      if (nameServer.shardManager.getShard(destinationId).busy == shards.Busy.Cancelled) {
         log.info("Copying cancelled for (type %s) from %s to %s",
                  getClass.getName.split("\\.").last, sourceId, destinationId)
         Stats.clearGauge(gaugeName)
@@ -91,7 +91,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
         log.info("Copying shard block (type %s) from %s to %s: state=%s",
                  getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
         // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-        nameServer.markShardBusy(destinationId, shards.Busy.Busy)
+        nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Busy)
 
         this.nextJob = copyPage(sourceShard, destinationShard, count)
         this.nextJob match {
@@ -109,7 +109,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
           scheduler.put(this)
         } else {
           log.error("Shard block copy timed out on minimum block size.")
-          nameServer.markShardBusy(destinationId, shards.Busy.Error)
+          nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Error)
           throw e
         }
       case e: ShardDatabaseTimeoutException =>
@@ -117,7 +117,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
         scheduler.put(this)
       case e: Throwable =>
         log.error(e, "Shard block copy stopped due to exception: %s", e)
-        nameServer.markShardBusy(destinationId, shards.Busy.Error)
+        nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Error)
         throw e
     }
   }

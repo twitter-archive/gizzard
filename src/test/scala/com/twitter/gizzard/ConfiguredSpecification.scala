@@ -93,8 +93,8 @@ trait IntegrationSpecification extends Specification {
     servers.foreach { s =>
       createTestServerDBs(s)
       s.nameServer.rebuildSchema()
-      s.nameServer.setForwarding(s.forwarding)
-      s.nameServer.createShard(s.sqlShardInfo)
+      s.nameServer.shardManager.setForwarding(s.forwarding)
+      s.nameServer.createAndMaterializeShard(s.sqlShardInfo)
       s.nameServer.reload()
     }
   }

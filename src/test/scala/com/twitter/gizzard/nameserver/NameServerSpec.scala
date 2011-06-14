@@ -123,7 +123,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).createShard(shardInfos(0))
         one(shardFactory).materialize(shardInfos(0))
       }
-      nameServer.createShard(shardInfos(0)) mustNot throwA[InvalidShard]
+      nameServer.createAndMaterializeShard(shardInfos(0)) mustNot throwA[InvalidShard]
     }
   }
 }

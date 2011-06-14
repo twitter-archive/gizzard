@@ -55,8 +55,8 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
 
       nameServer.reload()
 
-      nameServer.createShard(shardInfo1)
-      nameServer.createShard(shardInfo2)
+      nameServer.createAndMaterializeShard(shardInfo1)
+      nameServer.createAndMaterializeShard(shardInfo2)
     }
 
     "WriteOnlyShard" in {
