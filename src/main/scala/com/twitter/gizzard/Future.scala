@@ -21,7 +21,9 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
       val startTime = Time.now
       def call = {
         trans.foreach { t => Stats.setTransaction(t) }
-        if (Time.now - startTime > timeout) {
+        val timeInQueue = Time.now - startTime
+        Stats.transaction.record("Time spent in future queue: "+timeInQueue.inMillis)
+        if (timeInQueue > timeout) {
           Stats.internal.incr("future-" + name + "-timeout")
           throw new TimeoutException("future spent too long in queue")
         }
