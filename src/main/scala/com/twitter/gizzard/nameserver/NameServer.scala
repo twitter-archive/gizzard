@@ -10,30 +10,6 @@ class NonExistentShard(message: String) extends ShardException(message: String)
 class InvalidShard(message: String) extends ShardException(message: String)
 class NameserverUninitialized extends ShardException("Please call reload() before operating on the NameServer")
 
-object TreeUtils {
-  protected[nameserver] def mapOfSets[A,B](s: Iterable[A])(getKey: A => B): Map[B,Set[A]] = {
-    s.foldLeft(Map[B,Set[A]]()) { (m, item) =>
-      val key = getKey(item)
-      m + (key -> m.get(key).map(_ + item).getOrElse(Set(item)))
-    }
-  }
-
-  protected[nameserver] def collectFromTree[A,B](roots: Iterable[A])(lookup: A => Iterable[B])(nextKey: B => A): List[B] = {
-
-    // if lookup is a map, just rescue and return an empty list for flatMap
-    def getOrElse(a: A) = try { lookup(a) } catch { case e: NoSuchElementException => Nil }
-
-    if (roots.isEmpty) Nil else {
-      val elems = roots.flatMap(getOrElse).toList
-      elems ++ collectFromTree(elems.map(nextKey))(lookup)(nextKey)
-    }
-  }
-
-  protected[nameserver] def descendantLinks(ids: Set[ShardId])(f: ShardId => Iterable[LinkInfo]): Set[LinkInfo] = {
-    collectFromTree(ids)(f)(_.downId).toSet
-  }
-}
-
 class NameServerSource(shard: RoutingNode[com.twitter.gizzard.nameserver.Shard]) {
   def reload()       { shard.write.foreach(_.reload()) }
   def currentState() = shard.read.any(_.currentState())
