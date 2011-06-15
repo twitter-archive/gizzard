@@ -32,24 +32,9 @@ object Memory extends Replica {
   def apply() = new nameserver.MemoryShard
 }
 
-
-class JobRelay {
-  var priority: Int     = 0
-  var timeout: Duration = 1.seconds
-  var retries: Int      = 3
-
-  def apply() = new nameserver.JobRelayFactory(priority, timeout, retries)
-}
-
-object NoJobRelay extends JobRelay {
-  override def apply() = nameserver.NullJobRelayFactory
-}
-
-
 trait NameServer {
   var mappingFunction: MappingFunction = Hash
   def replicas: Seq[Replica]
-  var jobRelay: JobRelay = new JobRelay
 
   def apply[T]() = {
     val replicaNodes  = replicas map { replica => shards.LeafRoutingNode(replica()) }
@@ -57,6 +42,6 @@ trait NameServer {
     val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes)
 
-    new nameserver.NameServer(replicating, jobRelay(), mappingFunction())
+    new nameserver.NameServer(replicating, mappingFunction())
   }
 }

@@ -11,6 +11,7 @@ trait GizzardServer {
   def jobQueues: Map[Int, Scheduler]
   def nameServer: NameServer
 
+  var jobRelay: JobRelay       = new JobRelay
   var manager: Manager         = new Manager with TThreadServer
   var jobInjector: JobInjector = new JobInjector with THsHaServer
 }

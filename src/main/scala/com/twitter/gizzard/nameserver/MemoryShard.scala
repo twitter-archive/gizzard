@@ -9,9 +9,6 @@ import shards._
  * Useful for tests or stubbing out the partitioning scheme.
  */
 class MemoryShard extends Shard {
-  val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.MemoryShard", "", "")
-  val weight = 1 // hardcode for now
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()

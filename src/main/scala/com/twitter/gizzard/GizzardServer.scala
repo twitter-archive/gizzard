@@ -3,7 +3,7 @@ package com.twitter.gizzard
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
-import com.twitter.gizzard.nameserver.NameServer
+import com.twitter.gizzard.nameserver.{NameServer, RemoteClusterManager}
 import com.twitter.gizzard.scheduler.{JobScheduler, PrioritizingJobScheduler, ReplicatingJsonCodec}
 import com.twitter.gizzard.config.{GizzardServer => ServerConfig}
 
@@ -19,7 +19,9 @@ abstract class GizzardServer(config: ServerConfig) {
 
   // nameserver/shard wiring
 
-  lazy val nameServer = config.nameServer()
+  lazy val nameServer           = config.nameServer()
+  lazy val shardManager         = nameServer.shardManager
+  lazy val remoteClusterManager = new RemoteClusterManager(nameServer.shard, config.jobRelay())
 
   // job wiring
 
@@ -27,14 +29,14 @@ abstract class GizzardServer(config: ServerConfig) {
     log.error("Unparsable job: %s", new String(j) )
   }
 
-  lazy val jobCodec     = new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob)
+  lazy val jobCodec     = new ReplicatingJsonCodec(remoteClusterManager.jobRelay, logUnparsableJob)
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
     p -> config.jobQueues(p)(jobCodec)
   } toMap)
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, jobScheduler, copyPriority)
+  lazy val managerServer       = new thrift.ManagerService(nameServer, shardManager, remoteClusterManager, jobScheduler, copyPriority)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)

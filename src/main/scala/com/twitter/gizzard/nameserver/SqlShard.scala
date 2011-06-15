@@ -71,9 +71,6 @@ CREATE TABLE IF NOT EXISTS hosts (
 }
 
 class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
-  val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
-  val weight = 1 // hardcode for now
 
   private def rowToShardInfo(row: ResultSet) = {
     ShardInfo(ShardId(row.getString("hostname"), row.getString("table_prefix")), row.getString("class_name"),

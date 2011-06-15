@@ -17,11 +17,15 @@ import com.twitter.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService(nameServer: NameServer, scheduler: PrioritizingJobScheduler, adminJobPriority: Int) extends Manager.Iface {
-  val log = Logger.get(getClass.getName)
+class ManagerService(
+  nameServer: NameServer,
+  shardManager: ShardManager,
+  remoteClusterManager: RemoteClusterManager,
+  scheduler: PrioritizingJobScheduler,
+  adminJobPriority: Int)
+extends Manager.Iface {
 
-  lazy val shardManager         = nameServer.shardManager
-  lazy val remoteClusterManager = nameServer.remoteClusterManager
+  val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
     case ex: Throwable =>
@@ -34,9 +38,9 @@ class ManagerService(nameServer: NameServer, scheduler: PrioritizingJobScheduler
   }
   def reload_config() = wrapEx {
     nameServer.reload()
+    remoteClusterManager.reload()
   }
 
-  def rebuild_schema() = wrapEx(nameServer.rebuildSchema())
   def find_current_forwarding(tableId: Int, id: Long) = {
     wrapEx(nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift)
   }

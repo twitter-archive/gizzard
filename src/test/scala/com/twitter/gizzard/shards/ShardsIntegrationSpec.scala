@@ -8,7 +8,7 @@ import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{IdGenerator, NameServer, SqlShard, ShardRepository, NullJobRelayFactory}
+import nameserver.{IdGenerator, NameServer, SqlShard, ShardRepository}
 
 
 object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
@@ -44,7 +44,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
     doBefore {
       reset(queryEvaluator)
       nameServerShard = LeafRoutingNode(new SqlShard(queryEvaluator))
-      nameServer      = new NameServer(nameServerShard, NullJobRelayFactory, mapping)
+      nameServer      = new NameServer(nameServerShard, mapping)
 
       val forwarder = nameServer.configureMultiForwarder[UserShard](
         _.shardFactories(

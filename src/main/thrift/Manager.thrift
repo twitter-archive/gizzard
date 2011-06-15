@@ -58,7 +58,6 @@ struct Host {
 service Manager {
   void reload_updated_forwardings() throws(1: GizzardException ex)
   void reload_config() throws(1: GizzardException ex)
-  void rebuild_schema() throws(1: GizzardException ex)
 
   // operate on the current forwardings in memory
   ShardInfo find_current_forwarding(1: i32 table_id, 2: i64 id) throws(1: GizzardException ex)

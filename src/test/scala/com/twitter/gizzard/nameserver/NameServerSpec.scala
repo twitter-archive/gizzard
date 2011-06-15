@@ -31,10 +31,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     val nameServerState = NameServerState(shardInfos :+ replicatingInfo, linksList, shardForwardings, 1)
 
-    val remoteHosts = List(new Host("host1", 7777, "c1", HostStatus.Normal),
-                           new Host("host2", 7777, "c1", HostStatus.Normal),
-                           new Host("host3", 7777, "c2", HostStatus.Normal))
-
     val shard        = mock[AnyRef]
     var shardFactory = mock[ShardFactory[AnyRef]]
     val nodes        = shardInfos map { new LeafRoutingNode(shardFactory, _, 1) }
@@ -43,11 +39,10 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     doBefore {
       expect {
         one(nameServerShard).reload()
-        one(nameServerShard).listRemoteHosts() willReturn remoteHosts
         one(nameServerShard).currentState()    willReturn Seq(nameServerState)
       }
 
-      nameServer = new NameServer(LeafRoutingNode(nameServerShard), NullJobRelayFactory, identity)
+      nameServer = new NameServer(LeafRoutingNode(nameServerShard), identity)
       forwarder  = nameServer.configureMultiForwarder[AnyRef](
         _.shardFactories(SQL_SHARD -> shardFactory)
       )

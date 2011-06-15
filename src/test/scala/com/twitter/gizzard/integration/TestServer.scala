@@ -40,7 +40,9 @@ package object config {
   trait TestServer extends gizzard.config.GizzardServer {
     def server: TServer
     def databaseConnection: Connection
+
     val queryEvaluator = TestQueryEvaluator
+    jobRelay.priority = Priority.Low.id
     loggers = List(
       new LoggerConfig {
         level = Level.ERROR
@@ -65,8 +67,6 @@ package object config {
   }
 
   class TestNameServer(name: String) extends gizzard.config.NameServer {
-    jobRelay.priority = Priority.Low.id
-
     val replicas = Seq(new Mysql {
       queryEvaluator = TestQueryEvaluator
       val connection = new TestDBConnection {

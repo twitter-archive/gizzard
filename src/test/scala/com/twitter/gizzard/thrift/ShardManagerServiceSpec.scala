@@ -13,12 +13,13 @@ import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobSchedule
 
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val nameServer    = mock[nameserver.NameServer]
-  val shardManager  = mock[nameserver.ShardManager]
-  val copier        = mock[CopyJobFactory[AnyRef]]
-  val scheduler     = mock[PrioritizingJobScheduler]
-  val subScheduler  = mock[JobScheduler]
-  val manager       = new ManagerService(nameServer, scheduler, 0)
+  val nameServer           = mock[nameserver.NameServer]
+  val shardManager         = mock[nameserver.ShardManager]
+  val remoteClusterManager = mock[nameserver.RemoteClusterManager]
+  val copier               = mock[CopyJobFactory[AnyRef]]
+  val scheduler            = mock[PrioritizingJobScheduler]
+  val subScheduler         = mock[JobScheduler]
+  val manager              = new ManagerService(nameServer, shardManager, remoteClusterManager, scheduler, 0)
 
   val shard = mock[RoutingNode[Nothing]]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
@@ -36,10 +37,6 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
   val thriftForwarding = new thrift.Forwarding(tableId, 0, thriftShardInfo1.id)
 
   "ManagerService" should {
-    expect {
-      allowing(nameServer).shardManager willReturn shardManager
-    }
-
     "explode" in {
       expect {
         one(nameServer).createAndMaterializeShard(shardInfo1) willThrow new shards.ShardException("blarg!")
@@ -164,8 +161,16 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "reload_config" in {
       expect {
         one(nameServer).reload()
+        one(remoteClusterManager).reload()
       }
       manager.reload_config()
+    }
+
+    "reload_updated_forwardings" in {
+      expect {
+        one(nameServer).reloadUpdatedForwardings()
+      }
+      manager.reload_updated_forwardings()
     }
 
     "find_current_forwarding" in {
