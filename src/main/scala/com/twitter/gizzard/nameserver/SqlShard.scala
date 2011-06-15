@@ -6,6 +6,7 @@ import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import shards._
 
+
 object SqlShard {
   val SHARDS_DDL = """
 CREATE TABLE IF NOT EXISTS shards (
