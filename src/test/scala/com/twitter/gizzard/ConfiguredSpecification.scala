@@ -95,7 +95,7 @@ trait IntegrationSpecification extends Specification {
       s.nameServer.reload()
       s.remoteClusterManager.reload()
       s.nameServer.shardManager.setForwarding(s.forwarding)
-      s.nameServer.createAndMaterializeShard(s.sqlShardInfo)
+      s.shardManager.createAndMaterializeShard(s.sqlShardInfo)
       s.nameServer.reload()
     }
   }

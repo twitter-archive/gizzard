@@ -4,7 +4,7 @@ import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import com.twitter.gizzard.nameserver.{NameServer, RemoteClusterManager}
-import com.twitter.gizzard.scheduler.{JobScheduler, PrioritizingJobScheduler, ReplicatingJsonCodec}
+import com.twitter.gizzard.scheduler.{JobScheduler, PrioritizingJobScheduler, AdminJobManager, ReplicatingJsonCodec}
 import com.twitter.gizzard.config.{GizzardServer => ServerConfig}
 
 
@@ -22,6 +22,7 @@ abstract class GizzardServer(config: ServerConfig) {
   val nameServer           = config.buildNameServer()
   val remoteClusterManager = config.buildRemoteClusterManager()
   val shardManager         = nameServer.shardManager
+  lazy val adminJobManager = new AdminJobManager(nameServer.shardRepository, shardManager, jobScheduler(copyPriority))
 
   // job wiring
 
@@ -36,7 +37,7 @@ abstract class GizzardServer(config: ServerConfig) {
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, shardManager, remoteClusterManager, jobScheduler, copyPriority)
+  lazy val managerServer       = new thrift.ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, jobScheduler)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)

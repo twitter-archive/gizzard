@@ -11,7 +11,7 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler, RepairJobFactory}
+import com.twitter.gizzard.scheduler._
 import com.twitter.gizzard.nameserver._
 import com.twitter.logging.Logger
 import java.util.{List => JList}
@@ -20,9 +20,9 @@ import java.util.{List => JList}
 class ManagerService(
   nameServer: NameServer,
   shardManager: ShardManager,
+  adminJobManager: AdminJobManager,
   remoteClusterManager: RemoteClusterManager,
-  scheduler: PrioritizingJobScheduler,
-  adminJobPriority: Int)
+  scheduler: PrioritizingJobScheduler)
 extends Manager.Iface {
 
   val log = Logger.get(getClass.getName)
@@ -48,7 +48,7 @@ extends Manager.Iface {
   // Shard Tree Management
 
   // XXX: must be nameserver, in order to materialize. odd exception
-  def create_shard(shard: ShardInfo) = wrapEx(nameServer.createAndMaterializeShard(shard.fromThrift))
+  def create_shard(shard: ShardInfo) = wrapEx(shardManager.createAndMaterializeShard(shard.fromThrift))
 
   def delete_shard(id: ShardId)      = wrapEx(shardManager.deleteShard(id.fromThrift))
 
@@ -114,15 +114,15 @@ extends Manager.Iface {
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(shardManager.dumpStructure(tableIds.toList).map(_.toThrift))
 
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(scheduler.put(adminJobPriority, nameServer.newCopyJob(sourceId.fromThrift, destinationId.fromThrift)))
+    wrapEx(adminJobManager.scheduleCopyJob(sourceId.fromThrift, destinationId.fromThrift))
   }
 
   def repair_shard(shardIds: JList[ShardId]) = {
-    wrapEx(scheduler.put(adminJobPriority, nameServer.newRepairJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift))))
+    wrapEx(adminJobManager.scheduleRepairJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
   }
 
   def diff_shards(shardIds: JList[ShardId]) = {
-    wrapEx(scheduler.put(adminJobPriority, nameServer.newDiffJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift))))
+    wrapEx(adminJobManager.scheduleDiffJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
   }
 
   // Job Scheduler Management

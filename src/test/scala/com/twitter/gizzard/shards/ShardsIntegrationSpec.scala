@@ -32,7 +32,7 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   "Shards" should {
-    var nameServer: NameServer                              = null
+    var nameServer: NameServer = null
 
     doBefore {
       reset(queryEvaluator)
@@ -51,8 +51,8 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
 
       nameServer.reload()
 
-      nameServer.createAndMaterializeShard(shardInfo1)
-      nameServer.createAndMaterializeShard(shardInfo2)
+      nameServer.shardManager.createAndMaterializeShard(shardInfo1)
+      nameServer.shardManager.createAndMaterializeShard(shardInfo2)
     }
 
     "WriteOnlyShard" in {

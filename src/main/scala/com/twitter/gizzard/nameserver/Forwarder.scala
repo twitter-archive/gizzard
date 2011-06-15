@@ -27,7 +27,7 @@ trait GenericForwarder {
   def shardTypes: Set[String]
   def isValidTableId(id: Int): Boolean
   def isValidShardType(name: String): Boolean
-  def containsShard(id: ShardId): Boolean
+  def contains(node: RoutingNode[_]): Boolean
 
   // XXX: copy, repair and diff live here for now, but it's a bit
   // jank. clean up the admin job situation.
@@ -50,21 +50,18 @@ extends GenericForwarder {
 
   val shardTypes = shardFactories.keys.toSet
 
-  def isValidShardType(name: String) = shardTypes contains name
-
-  def containsRoutingNode(node: RoutingNode[_]) = {
-    node.shardInfos forall { shardTypes contains _.className }
+  def isValidShardType(name: String): Boolean = {
+    shardTypes contains name
   }
 
-  def containsShard(id: ShardId): Boolean = {
-    isValidShardType(nameServer.getShardInfo(id).className) &&
-    (nameServer.getRootForwardings(id) map { _.tableId } exists isValidTableId)
+  def contains(node: RoutingNode[_]) = {
+    node.shardInfos forall { shardTypes contains _.className }
   }
 
   def findShardById(id: ShardId): Option[RoutingNode[T]] = {
     try {
       val node = nameServer.findShardById[T](id)
-      if (containsRoutingNode(node)) Some(node) else None
+      if (contains(node)) Some(node) else None
     } catch {
       case e: NonExistentShard       => None
       case e: NoSuchElementException => None

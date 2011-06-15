@@ -8,18 +8,19 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import shards.{Busy, RoutingNode}
-import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
+import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob, AdminJobManager}
 
 
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer           = mock[nameserver.NameServer]
   val shardManager         = mock[nameserver.ShardManager]
+  val adminJobManager      = mock[AdminJobManager]
   val remoteClusterManager = mock[nameserver.RemoteClusterManager]
   val copier               = mock[CopyJobFactory[AnyRef]]
   val scheduler            = mock[PrioritizingJobScheduler]
   val subScheduler         = mock[JobScheduler]
-  val manager              = new ManagerService(nameServer, shardManager, remoteClusterManager, scheduler, 0)
+  val manager              = new ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, scheduler)
 
   val shard = mock[RoutingNode[Nothing]]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
@@ -39,7 +40,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
   "ManagerService" should {
     "explode" in {
       expect {
-        one(nameServer).createAndMaterializeShard(shardInfo1) willThrow new shards.ShardException("blarg!")
+        one(shardManager).createAndMaterializeShard(shardInfo1) willThrow new shards.ShardException("blarg!")
       }
       manager.create_shard(thriftShardInfo1) must throwA[thrift.GizzardException]
     }
@@ -47,7 +48,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "deliver messages for runtime exceptions" in {
       var woot = false
       expect {
-        one(nameServer).createAndMaterializeShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
+        one(shardManager).createAndMaterializeShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
       }
       try{
         manager.create_shard(thriftShardInfo1)
@@ -62,7 +63,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
 
     "create_shard" in {
       expect {
-        one(nameServer).createAndMaterializeShard(shardInfo1)
+        one(shardManager).createAndMaterializeShard(shardInfo1)
       }
       manager.create_shard(thriftShardInfo1)
     }
@@ -113,11 +114,9 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
-      val copyJob = mock[CopyJob[Any]]
 
       expect {
-        one(nameServer).newCopyJob(shardId1, shardId2) willReturn copyJob
-        one(scheduler).put(0, copyJob)
+        one(adminJobManager).scheduleCopyJob(shardId1, shardId2)
       }
 
       manager.copy_shard(shardId1.toThrift, shardId2.toThrift)

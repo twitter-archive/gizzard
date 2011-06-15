@@ -35,10 +35,10 @@ class ShardRepository {
     multiForwarders(Forwarder.nameForInterface[T]) = f
   }
 
-  def commonForwarderForShards(ids: Seq[ShardId]) = {
-    allForwarders.values find { _ containsShard ids.head } flatMap { manager =>
-      if (ids forall { manager containsShard _ }) Some(manager) else None
-    } getOrElse(throw new InvalidShard("Shard ids: "+ ids.mkString(", ") +" refer to shards of incompatible types."))
+  def commonForwarderForShards(infos: Seq[ShardInfo]) = {
+    allForwarders.values find { _ isValidShardType infos.head.className } flatMap { manager =>
+      if (infos forall { i => manager isValidShardType i.className }) Some(manager) else None
+    } getOrElse(throw new InvalidShard("Shard infos: "+ infos.mkString(", ") +" refer to shards of incompatible types."))
   }
 
   // XXX: weird methods. better encapsulation needed
@@ -53,16 +53,16 @@ class ShardRepository {
 
   // XXX: Do these copy job related methods belong here?
 
-  def newCopyJob(from: ShardId, to: ShardId) = {
-    commonForwarderForShards(Seq(from, to)).newCopyJob(from, to)
+  def newCopyJob(from: ShardInfo, to: ShardInfo) = {
+    commonForwarderForShards(Seq(from, to)).newCopyJob(from.id, to.id)
   }
 
-  def newRepairJob(ids: Seq[ShardId]) = {
-    commonForwarderForShards(ids).newRepairJob(ids)
+  def newRepairJob(infos: Seq[ShardInfo]) = {
+    commonForwarderForShards(infos).newRepairJob(infos.map(_.id))
   }
 
-  def newDiffJob(ids: Seq[ShardId]) = {
-    commonForwarderForShards(ids).newDiffJob(ids)
+  def newDiffJob(infos: Seq[ShardInfo]) = {
+    commonForwarderForShards(infos).newDiffJob(infos.map(_.id))
   }
 
   // helper methods

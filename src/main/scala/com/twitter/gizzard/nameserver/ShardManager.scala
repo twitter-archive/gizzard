@@ -3,10 +3,17 @@ package com.twitter.gizzard.nameserver
 import com.twitter.gizzard.shards._
 
 
-class ShardManager(shard: RoutingNode[ShardManagerSource]) {
+class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository) {
+  def reload()                          = shard.write.foreach(_.reload)
+  def currentState()                    = shard.read.any(_.currentState)
   def dumpStructure(tableIds: Seq[Int]) = shard.read.any(_.dumpStructure(tableIds))
 
-  def createShard(shardInfo: ShardInfo)            { shard.write.foreach(_.createShard(shardInfo)) }
+  @throws(classOf[ShardException])
+  def createAndMaterializeShard(shardInfo: ShardInfo) {
+    shard.write.foreach(_.createShard(shardInfo))
+    repo.materializeShard(shardInfo)
+  }
+
   def deleteShard(id: ShardId)                     { shard.write.foreach(_.deleteShard(id)) }
   def markShardBusy(id: ShardId, busy: Busy.Value) { shard.write.foreach(_.markShardBusy(id, busy)) }
 

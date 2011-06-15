@@ -10,26 +10,55 @@ class NonExistentShard(message: String) extends ShardException(message: String)
 class InvalidShard(message: String) extends ShardException(message: String)
 class NameserverUninitialized extends ShardException("Please call reload() before operating on the NameServer")
 
-class NameServerSource(shard: RoutingNode[ShardManagerSource]) {
-  def reload()       { shard.write.foreach(_.reload()) }
-  def currentState() = shard.read.any(_.currentState())
+
+class RoutingState(
+  instantiateNode: (ShardInfo, Int, Seq[RoutingNode[Any]]) => RoutingNode[Any],
+  infos: Iterable[ShardInfo],
+  links: Iterable[LinkInfo],
+  forwardings: Iterable[Forwarding]
+) {
+
+  val infoMap = (infos foldLeft mutable.Map[ShardId, ShardInfo]()) { (m, info) => m(info.id) = info; m }
+
+  val linkMap = (links foldLeft mutable.Map[ShardId, List[(ShardId, Int)]]()) { (m, link) =>
+    m(link.upId) = (Pair(link.downId, link.weight) :: m.getOrElse(link.upId, Nil))
+    m
+  }
+
+  private def constructRoutingNode(root: ShardId, weight: Int): RoutingNode[Any] = {
+    infoMap.get(root) map { rootInfo =>
+      val children = linkMap.getOrElse(root, Nil) map { case (id, wt) => constructRoutingNode(id, wt) }
+      instantiateNode(rootInfo, weight, children)
+    } getOrElse {
+      throw new InvalidShard("Expected shard '"+ root +"' to exist, but it wasn't found.")
+    }
+  }
+
+  def buildForwardingTree(): scala.collection.Map[Int, TreeMap[Long, RoutingNode[Any]]] = {
+    val rv = mutable.Map[Int, TreeMap[Long, RoutingNode[Any]]]()
+
+    forwardings foreach { case Forwarding(tableId, baseId, rootShardId) =>
+      val tree = rv.getOrElseUpdate(tableId, new TreeMap[Long, RoutingNode[Any]])
+      tree.put(baseId, constructRoutingNode(rootShardId, 1))
+    }
+
+    rv
+  }
 }
 
 class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction: Long => Long) {
 
-  val shardRepository = new ShardRepository
-
-  // XXX: inject these in later
-  val source       = new NameServerSource(shard)
-  val shardManager = new ShardManager(shard)
+  import ForwarderBuilder._
 
   private val log = Logger.get(getClass.getName)
 
-  @volatile protected var shardInfos = mutable.Map.empty[ShardId, ShardInfo]
-  @volatile private var familyTree: scala.collection.Map[ShardId, Seq[LinkInfo]] = null
-  @volatile private var forwardings: scala.collection.Map[Int, TreeMap[Long, ShardInfo]] = null
+  // XXX: inject these in later
+  val shardRepository = new ShardRepository
+  val shardManager    = new ShardManager(shard, shardRepository)
 
-  import ForwarderBuilder._
+  @volatile private var forwardingTree: scala.collection.Map[Int, TreeMap[Long, RoutingNode[Any]]] = _
+
+  // Forwarders
 
   def forwarder[T : Manifest] = {
     shardRepository.singleTableForwarder[T]
@@ -51,59 +80,25 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
     forwarder
   }
 
-  def newCopyJob(from: ShardId, to: ShardId) = {
-    shardRepository.newCopyJob(from, to)
-  }
-
-  def newRepairJob(ids: Seq[ShardId]) = {
-    shardRepository.newRepairJob(ids)
-  }
-
-  def newDiffJob(ids: Seq[ShardId]) = {
-    shardRepository.newDiffJob(ids)
-  }
-
-  @throws(classOf[ShardException])
-  def createAndMaterializeShard(shardInfo: ShardInfo) {
-    shardManager.createShard(shardInfo)
-    shardRepository.materializeShard(shardInfo)
-  }
-
-  def getShardInfo(id: ShardId) = shardInfos(id)
-
-  def getChildren(id: ShardId) = {
-    if(familyTree == null) throw new NameserverUninitialized
-    familyTree.getOrElse(id, new mutable.ArrayBuffer[LinkInfo])
-  }
-
   private def recreateInternalShardState() {
-    val newShardInfos     = mutable.Map[ShardId, ShardInfo]()
-    val newFamilyTree     = mutable.Map[ShardId, mutable.ArrayBuffer[LinkInfo]]()
-    val newForwardings    = mutable.Map[Int, TreeMap[Long, ShardInfo]]()
+    val infos       = mutable.ArrayBuffer[ShardInfo]()
+    val links       = mutable.ArrayBuffer[LinkInfo]()
+    val forwardings = mutable.ArrayBuffer[Forwarding]()
 
-    source.currentState().foreach { state =>
-
-      state.shards.foreach { info => newShardInfos += (info.id -> info) }
-
-      state.links.foreach { link =>
-        newFamilyTree.getOrElseUpdate(link.upId, new mutable.ArrayBuffer[LinkInfo]) += link
-      }
-
-      state.forwardings.foreach { forwarding =>
-        val treeMap = newForwardings.getOrElseUpdate(forwarding.tableId, new TreeMap[Long, ShardInfo])
-
-        newShardInfos.get(forwarding.shardId) match {
-          case Some(shard) => treeMap.put(forwarding.baseId, shard)
-          case None => {
-            throw new NonExistentShard("Forwarding (%s) references non-existent shard".format(forwarding))
-          }
-        }
-      }
+    shardManager.currentState() foreach { state =>
+      infos       ++= state.shards
+      links       ++= state.links
+      forwardings ++= state.forwardings
     }
 
-    shardInfos  = newShardInfos
-    familyTree  = newFamilyTree
-    forwardings = newForwardings
+    val routes = new RoutingState(
+      shardRepository.instantiateNode,
+      infos,
+      links,
+      forwardings
+    )
+
+    forwardingTree = routes.buildForwardingTree()
   }
 
   def reloadUpdatedForwardings() {
@@ -114,64 +109,58 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
 
   def reload() {
     log.info("Loading name server configuration...")
-    source.reload()
+    shardManager.reload()
     recreateInternalShardState()
     log.info("Loading name server configuration is done.")
   }
 
   // XXX: removing this causes CopyJobSpec to fail.
+  // This method now always falls back to the db.
   @throws(classOf[NonExistentShard])
   def findShardById[T](id: ShardId, weight: Int): RoutingNode[T] = {
-    val (shardInfo, downwardLinks) = shardInfos.get(id).map { info =>
-      // either pull shard and links from our internal data structures...
-      (info, getChildren(id))
-    } getOrElse {
-      // or directly from the db, in the case they are not attached to a forwarding.
-      (shardManager.getShard(id), shardManager.listDownwardLinks(id))
-    }
-
-    val children = downwardLinks.map(l => findShardById[T](l.downId, l.weight)).toList
+    val shardInfo     = shardManager.getShard(id)
+    val downwardLinks = shardManager.listDownwardLinks(id)
+    val children      = downwardLinks.map(l => findShardById[T](l.downId, l.weight)).toList
 
     shardRepository.instantiateNode[T](shardInfo, weight, children)
   }
 
   // XXX: removing this causes CopyJobSpec to fail.
+  // This method now always falls back to the db.
   @throws(classOf[NonExistentShard])
   def findShardById[T](id: ShardId): RoutingNode[T] = findShardById(id, 1)
 
   @throws(classOf[NonExistentShard])
   def findCurrentForwarding[T](tableId: Int, id: Long): RoutingNode[T] = {
-    if(forwardings == null) throw new NameserverUninitialized
-    val shardInfo = forwardings.get(tableId) flatMap { bySourceIds =>
-      val item = bySourceIds.floorEntry(mappingFunction(id))
-      if (item != null) {
-        Some(item.getValue)
-      } else {
-        None
+    if(forwardingTree == null) throw new NameserverUninitialized
+
+    val rv = forwardingTree.get(tableId) flatMap { treeMap =>
+      treeMap.floorEntry(mappingFunction(id)) match {
+        case null => None
+        case item => Some(item.getValue)
       }
     } getOrElse {
       throw new NonExistentShard("No shard for address: %s %s".format(tableId, id))
     }
 
-    findShardById[T](shardInfo.id)
+    // XXX: cast!
+    rv.asInstanceOf[RoutingNode[T]]
   }
 
   @throws(classOf[NonExistentShard])
   def findForwardings[T](tableId: Int): Seq[RoutingNode[T]] = {
     import scala.collection.JavaConversions._
 
-    if(forwardings == null) throw new NameserverUninitialized
-    forwardings.get(tableId) map { bySourceIds =>
-      bySourceIds.values map {
-        info => findShardById[T](info.id)
-      } toSeq
+    if(forwardingTree == null) throw new NameserverUninitialized
+
+    val rv = forwardingTree.get(tableId) map { bySourceIds =>
+      bySourceIds.values.toSeq
     } getOrElse {
       throw new NonExistentShard("No shards for tableId: %s".format(tableId))
     }
-  }
 
-  def getRootForwardings(id: ShardId) = {
-    getRootShardIds(id).map(shardManager.getForwardingForShard)
+    // XXX: cast!
+    rv.asInstanceOf[Seq[RoutingNode[T]]]
   }
 
   def getRootShardIds(id: ShardId): Set[ShardId] = {
