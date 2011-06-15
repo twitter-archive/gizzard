@@ -5,7 +5,7 @@ import com.twitter.logging.Logger
 import com.twitter.gizzard.shards.RoutingNode
 
 
-class RemoteClusterManager(shard: RoutingNode[com.twitter.gizzard.nameserver.Shard], relayFactory: JobRelayFactory) {
+class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relayFactory: JobRelayFactory) {
 
   private val log = Logger.get(getClass.getName)
 
@@ -14,6 +14,8 @@ class RemoteClusterManager(shard: RoutingNode[com.twitter.gizzard.nameserver.Sha
 
   def reload() {
     log.info("Loading remote cluster configuration...")
+
+    shard.write.foreach(_.reload)
 
     val newRemoteClusters = mutable.Map[String, List[Host]]()
 

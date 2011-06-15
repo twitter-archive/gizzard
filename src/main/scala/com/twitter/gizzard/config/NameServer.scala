@@ -3,7 +3,7 @@ package com.twitter.gizzard.config
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.querulous.config.{Connection, QueryEvaluator}
-import com.twitter.querulous.evaluator.QueryEvaluatorFactory
+import com.twitter.querulous.evaluator
 
 import com.twitter.gizzard
 import com.twitter.gizzard.nameserver
@@ -17,31 +17,14 @@ object Identity extends MappingFunction { def apply() = identity _ }
 object Fnv1a64 extends MappingFunction { def apply() = nameserver.FnvHasher }
 object Hash extends MappingFunction { def apply() = nameserver.FnvHasher }
 
-trait Replica {
-  def apply(): nameserver.Shard
-}
+trait Replica
 
 trait Mysql extends Replica {
   def connection: Connection
   var queryEvaluator: QueryEvaluator = new QueryEvaluator
 
-  def apply() = new nameserver.SqlShard(queryEvaluator()(connection))
+  lazy val builtEvaluator = queryEvaluator()
+  def apply[T](builder: evaluator.QueryEvaluator => T) = builder(builtEvaluator(connection))
 }
 
-object Memory extends Replica {
-  def apply() = new nameserver.MemoryShard
-}
-
-trait NameServer {
-  var mappingFunction: MappingFunction = Hash
-  def replicas: Seq[Replica]
-
-  def apply[T]() = {
-    val replicaNodes  = replicas map { replica => shards.LeafRoutingNode(replica()) }
-
-    val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
-    val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes)
-
-    new nameserver.NameServer(replicating, mappingFunction())
-  }
-}
+object Memory extends Replica

@@ -3,7 +3,7 @@ package com.twitter.gizzard.nameserver
 import com.twitter.gizzard.shards._
 
 
-class ShardManager(shard: RoutingNode[com.twitter.gizzard.nameserver.Shard]) {
+class ShardManager(shard: RoutingNode[ShardManagerSource]) {
   def dumpStructure(tableIds: Seq[Int]) = shard.read.any(_.dumpStructure(tableIds))
 
   def createShard(shardInfo: ShardInfo)            { shard.write.foreach(_.createShard(shardInfo)) }

@@ -39,9 +39,9 @@ import org.specs.Specification
 // }
 
 trait NameServerDatabase extends Specification {
-  def materialize(cfg: config.NameServer) {
+  def materialize(cfg: config.GizzardServer) {
     try {
-      cfg.replicas.map {
+      cfg.nameServerReplicas.map {
         case mysql: config.Mysql => {
           val conn = mysql.connection
           val evaluator = mysql.queryEvaluator()(conn.withoutDatabase)
@@ -57,14 +57,14 @@ trait NameServerDatabase extends Specification {
     }
   }
 
-  def evaluator(cfg: config.NameServer): QueryEvaluator = {
-    cfg.replicas.flatMap({
+  def evaluator(cfg: config.GizzardServer): QueryEvaluator = {
+    cfg.nameServerReplicas.flatMap({
       case m: config.Mysql => Seq(m.queryEvaluator()(m.connection))
       case _ => Nil
     }).head
   }
 
-  def reset(cfg: config.NameServer) {
+  def reset(cfg: config.GizzardServer) {
     try {
       reset(evaluator(cfg))
     } catch {

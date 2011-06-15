@@ -10,12 +10,12 @@ class NonExistentShard(message: String) extends ShardException(message: String)
 class InvalidShard(message: String) extends ShardException(message: String)
 class NameserverUninitialized extends ShardException("Please call reload() before operating on the NameServer")
 
-class NameServerSource(shard: RoutingNode[com.twitter.gizzard.nameserver.Shard]) {
+class NameServerSource(shard: RoutingNode[ShardManagerSource]) {
   def reload()       { shard.write.foreach(_.reload()) }
   def currentState() = shard.read.any(_.currentState())
 }
 
-class NameServer(val shard: RoutingNode[com.twitter.gizzard.nameserver.Shard], val mappingFunction: Long => Long) {
+class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction: Long => Long) {
 
   val shardRepository = new ShardRepository
 

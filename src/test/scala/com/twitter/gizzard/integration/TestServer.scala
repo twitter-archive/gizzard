@@ -66,8 +66,8 @@ package object config {
     errorLimit = 25
   }
 
-  class TestNameServer(name: String) extends gizzard.config.NameServer {
-    val replicas = Seq(new Mysql {
+  private def testNameServerReplicas(name: String) = {
+    Seq(new Mysql {
       queryEvaluator = TestQueryEvaluator
       val connection = new TestDBConnection {
         val database = "gizzard_test_" + name + "_ns"
@@ -75,21 +75,23 @@ package object config {
     })
   }
 
+
   object TestServerConfig {
     def apply(name: String, sPort: Int, iPort: Int, mPort: Int) = {
       val queueBase = "gizzard_test_" + name
 
       new TestServer {
-        val server = new TestTHsHaServer { val name = "TestGizzardService"; val port = sPort }
+        mappingFunction    = Identity
+        nameServerReplicas = testNameServerReplicas(name)
+        jobInjector.port   = iPort
+        manager.port       = mPort
+
+        val server             = new TestTHsHaServer { val name = "TestGizzardService"; val port = sPort }
         val databaseConnection = new TestDBConnection { val database = "gizzard_test_" + name }
-        val nameServer = new TestNameServer(name)
         val jobQueues = Map(
           Priority.High.id -> new TestJobScheduler { val name = queueBase+"_high" },
           Priority.Low.id  -> new TestJobScheduler { val name = queueBase+"_low" }
         )
-
-        jobInjector.port = iPort
-        manager.port     = mPort
       }
     }
 

@@ -1,22 +1,19 @@
 package com.twitter.gizzard
 package shards
 
-import java.sql.SQLException
-import scala.collection.mutable
-import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.querulous.evaluator.QueryEvaluator
-import com.twitter.gizzard.test.NameServerDatabase
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{IdGenerator, NameServer, SqlShard, ShardRepository}
+import scala.collection.mutable
+import com.twitter.gizzard.test.NameServerDatabase
+import nameserver.{NameServer, SqlShardManagerSource}
 
 
 object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
   val shardInfo1     = new ShardInfo("com.example.UserShard", "table1", "localhost")
   val shardInfo2     = new ShardInfo("com.example.UserShard", "table2", "localhost")
-  val queryEvaluator = evaluator(config.nameServer)
+  val queryEvaluator = evaluator(config)
 
-  materialize(config.nameServer)
+  materialize(config)
 
   class UserShard(val shardInfo: ShardInfo) {
     val data = new mutable.HashMap[Int, String]
@@ -35,16 +32,15 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   "Shards" should {
-    var shardRepository: ShardRepository               = null
-    var nameServerShard: RoutingNode[nameserver.Shard] = null
-    var nameServer: NameServer                         = null
-
-    var mapping = (a: Long) => a
+    var nameServer: NameServer                              = null
 
     doBefore {
       reset(queryEvaluator)
-      nameServerShard = LeafRoutingNode(new SqlShard(queryEvaluator))
-      nameServer      = new NameServer(nameServerShard, mapping)
+
+      nameServer = new NameServer(
+        LeafRoutingNode(new SqlShardManagerSource(queryEvaluator)),
+        identity
+      )
 
       val forwarder = nameServer.configureMultiForwarder[UserShard](
         _.shardFactories(

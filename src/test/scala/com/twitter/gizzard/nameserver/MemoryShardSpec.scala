@@ -22,10 +22,12 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val shardId4 = new ShardId("localhost", "shard4")
     val shardId5 = new ShardId("localhost", "shard5")
 
-    var nsShard: MemoryShard = null
+    var nsShard: ShardManagerSource = null
+    var remoteClusterShard: RemoteClusterManagerSource = null
 
     doBefore {
-      nsShard = new MemoryShard()
+      nsShard            = new MemoryShardManagerSource()
+      remoteClusterShard = new MemoryRemoteClusterManagerSource()
     }
 
     "create" in {
@@ -181,55 +183,55 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
       val host3 = new Host("remoteapp3", 7777, "c2", HostStatus.Normal)
       val host4 = new Host("remoteapp4", 7777, "c2", HostStatus.Normal)
 
-      doBefore { List(host1, host2, host3, host4).foreach(nsShard.addRemoteHost) }
+      doBefore { List(host1, host2, host3, host4).foreach(remoteClusterShard.addRemoteHost) }
 
       "addRemoteHost" in {
         val h   = new Host("new_host", 7777, "c3", HostStatus.Normal)
         val sql = "SELECT * FROM hosts WHERE hostname = 'new_host' AND port = 7777"
 
-        nsShard.addRemoteHost(h)
-        nsShard.getRemoteHost(h.hostname, h.port) mustEqual h
+        remoteClusterShard.addRemoteHost(h)
+        remoteClusterShard.getRemoteHost(h.hostname, h.port) mustEqual h
 
-        nsShard.addRemoteHost(h)
-        nsShard.listRemoteHosts().length mustEqual 5
+        remoteClusterShard.addRemoteHost(h)
+        remoteClusterShard.listRemoteHosts().length mustEqual 5
       }
 
       "removeRemoteHost" in {
-        nsShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
 
-        nsShard.removeRemoteHost(host1.hostname, host1.port)
-        nsShard.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
+        remoteClusterShard.removeRemoteHost(host1.hostname, host1.port)
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
       }
 
-      def reloadedHost(h: Host) = nsShard.getRemoteHost(h.hostname, h.port)
+      def reloadedHost(h: Host) = remoteClusterShard.getRemoteHost(h.hostname, h.port)
 
       "setRemoteHostStatus" in {
-        nsShard.setRemoteHostStatus(host1.hostname, host1.port, HostStatus.Blocked)
+        remoteClusterShard.setRemoteHostStatus(host1.hostname, host1.port, HostStatus.Blocked)
 
         reloadedHost(host1).status mustEqual HostStatus.Blocked
         (Set() ++ List(host2, host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
       }
 
       "setRemoteClusterStatus" in {
-        nsShard.setRemoteClusterStatus("c2", HostStatus.Blackholed)
+        remoteClusterShard.setRemoteClusterStatus("c2", HostStatus.Blackholed)
         (Set() ++ List(host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Blackholed)
         (Set() ++ List(host1, host2).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
       }
 
       "getRemoteHost" in {
-        nsShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
       }
 
       "listRemoteClusters" in {
-        nsShard.listRemoteClusters mustEqual List("c1", "c2")
+        remoteClusterShard.listRemoteClusters mustEqual List("c1", "c2")
       }
 
       "listRemoteHosts" in {
-        nsShard.listRemoteHosts mustEqual List(host1, host2, host3, host4)
+        remoteClusterShard.listRemoteHosts mustEqual List(host1, host2, host3, host4)
       }
 
       "listRemoteHostsInCluster" in {
-        nsShard.listRemoteHostsInCluster("c1") mustEqual List(host1, host2)
+        remoteClusterShard.listRemoteHostsInCluster("c1") mustEqual List(host1, host2)
       }
     }
   }

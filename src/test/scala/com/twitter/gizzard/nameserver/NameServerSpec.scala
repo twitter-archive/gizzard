@@ -12,7 +12,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
   "NameServer" should {
     val SQL_SHARD = "com.example.SqlShard"
 
-    val nameServerShard                        = mock[nameserver.Shard]
+    val nameServerShard                        = mock[ShardManagerSource]
     var nameServer: NameServer                 = null
     var forwarder: MultiForwarder[AnyRef] = null
 
@@ -47,18 +47,6 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         _.shardFactories(SQL_SHARD -> shardFactory)
       )
       nameServer.reload()
-    }
-
-    "construct from config struct" in {
-      val config = new gizzard.config.NameServer {
-        mappingFunction = gizzard.config.Hash
-        val replicas    = List(gizzard.config.Memory)
-      }
-
-      val ns = config()
-
-      // mapping function should be FNV1A-64:
-      ns.mappingFunction(0) mustEqual 632747166973704645L
     }
 
     "reload and get shard info" in {

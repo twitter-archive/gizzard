@@ -29,35 +29,10 @@ object TreeUtils {
   }
 }
 
-trait Shard {
-  @throws(classOf[shards.ShardException]) def createShard(shardInfo: ShardInfo)
-  @throws(classOf[shards.ShardException]) def deleteShard(id: ShardId)
-  @throws(classOf[shards.ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
-  @throws(classOf[shards.ShardException]) def removeLink(upId: ShardId, downId: ShardId)
-  @throws(classOf[shards.ShardException]) def setForwarding(forwarding: Forwarding)
-  @throws(classOf[shards.ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId)
-  @throws(classOf[shards.ShardException]) def removeForwarding(forwarding: Forwarding)
-
-  @throws(classOf[shards.ShardException]) def getShard(id: ShardId): ShardInfo
-  @throws(classOf[shards.ShardException]) def listUpwardLinks(id: ShardId): Seq[LinkInfo]
-  @throws(classOf[shards.ShardException]) def listDownwardLinks(id: ShardId): Seq[LinkInfo]
-  @throws(classOf[shards.ShardException]) def markShardBusy(id: ShardId, busy: Busy.Value)
-  @throws(classOf[shards.ShardException]) def getForwarding(tableId: Int, baseId: Long): Forwarding
-  @throws(classOf[shards.ShardException]) def getForwardingForShard(id: ShardId): Forwarding
-  @throws(classOf[shards.ShardException]) def getForwardings(): Seq[Forwarding]
-  @throws(classOf[shards.ShardException]) def getForwardingsForTableIds(tableIds: Seq[Int]): Seq[Forwarding]
-  @throws(classOf[shards.ShardException]) def shardsForHostname(hostname: String): Seq[ShardInfo]
-  @throws(classOf[shards.ShardException]) def listShards(): Seq[ShardInfo]
-  @throws(classOf[shards.ShardException]) def listLinks(): Seq[LinkInfo]
-  @throws(classOf[shards.ShardException]) def getBusyShards(): Seq[ShardInfo]
-  @throws(classOf[shards.ShardException]) def rebuildSchema()
-  @throws(classOf[shards.ShardException]) def reload()
-  @throws(classOf[shards.ShardException]) def listHostnames(): Seq[String]
-  @throws(classOf[shards.ShardException]) def listTables(): Seq[Int]
-
-  @throws(classOf[shards.ShardException]) def currentState(): Seq[NameServerState]
-
-  @throws(classOf[shards.ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
+trait ShardManagerSource {
+  @throws(classOf[ShardException]) def reload()
+  @throws(classOf[ShardException]) def currentState(): Seq[NameServerState]
+  @throws(classOf[ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
     import TreeUtils._
 
     lazy val shardsById         = listShards().map(s => s.id -> s).toMap
@@ -69,15 +44,46 @@ trait Shard {
     tableIds.map(extractor)
   }
 
-  // Remote Host Cluster Management
+  @throws(classOf[ShardException]) def createShard(shardInfo: ShardInfo)
+  @throws(classOf[ShardException]) def deleteShard(id: ShardId)
+  @throws(classOf[ShardException]) def markShardBusy(id: ShardId, busy: Busy.Value)
 
-  @throws(classOf[shards.ShardException]) def addRemoteHost(h: Host)
-  @throws(classOf[shards.ShardException]) def removeRemoteHost(h: String, p: Int)
-  @throws(classOf[shards.ShardException]) def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value)
-  @throws(classOf[shards.ShardException]) def setRemoteClusterStatus(c: String, s: HostStatus.Value)
+  @throws(classOf[ShardException]) def getShard(id: ShardId): ShardInfo
+  @throws(classOf[ShardException]) def shardsForHostname(hostname: String): Seq[ShardInfo]
+  @throws(classOf[ShardException]) def listShards(): Seq[ShardInfo]
+  @throws(classOf[ShardException]) def getBusyShards(): Seq[ShardInfo]
 
-  @throws(classOf[shards.ShardException]) def getRemoteHost(h: String, p: Int): Host
-  @throws(classOf[shards.ShardException]) def listRemoteClusters(): Seq[String]
-  @throws(classOf[shards.ShardException]) def listRemoteHosts(): Seq[Host]
-  @throws(classOf[shards.ShardException]) def listRemoteHostsInCluster(c: String): Seq[Host]
+
+  @throws(classOf[ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
+  @throws(classOf[ShardException]) def removeLink(upId: ShardId, downId: ShardId)
+
+  @throws(classOf[ShardException]) def listUpwardLinks(id: ShardId): Seq[LinkInfo]
+  @throws(classOf[ShardException]) def listDownwardLinks(id: ShardId): Seq[LinkInfo]
+  @throws(classOf[ShardException]) def listLinks(): Seq[LinkInfo]
+
+  @throws(classOf[ShardException]) def setForwarding(forwarding: Forwarding)
+  @throws(classOf[ShardException]) def removeForwarding(forwarding: Forwarding)
+  @throws(classOf[ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId)
+
+  @throws(classOf[ShardException]) def getForwarding(tableId: Int, baseId: Long): Forwarding
+  @throws(classOf[ShardException]) def getForwardingForShard(id: ShardId): Forwarding
+  @throws(classOf[ShardException]) def getForwardings(): Seq[Forwarding]
+  @throws(classOf[ShardException]) def getForwardingsForTableIds(tableIds: Seq[Int]): Seq[Forwarding]
+
+  @throws(classOf[ShardException]) def listHostnames(): Seq[String]
+  @throws(classOf[ShardException]) def listTables(): Seq[Int]
+
+}
+
+trait RemoteClusterManagerSource {
+  @throws(classOf[ShardException]) def reload()
+  @throws(classOf[ShardException]) def addRemoteHost(h: Host)
+  @throws(classOf[ShardException]) def removeRemoteHost(h: String, p: Int)
+  @throws(classOf[ShardException]) def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value)
+  @throws(classOf[ShardException]) def setRemoteClusterStatus(c: String, s: HostStatus.Value)
+
+  @throws(classOf[ShardException]) def getRemoteHost(h: String, p: Int): Host
+  @throws(classOf[ShardException]) def listRemoteClusters(): Seq[String]
+  @throws(classOf[ShardException]) def listRemoteHosts(): Seq[Host]
+  @throws(classOf[ShardException]) def listRemoteHostsInCluster(c: String): Seq[Host]
 }

@@ -19,9 +19,9 @@ abstract class GizzardServer(config: ServerConfig) {
 
   // nameserver/shard wiring
 
-  lazy val nameServer           = config.nameServer()
-  lazy val shardManager         = nameServer.shardManager
-  lazy val remoteClusterManager = new RemoteClusterManager(nameServer.shard, config.jobRelay())
+  val nameServer           = config.buildNameServer()
+  val remoteClusterManager = config.buildRemoteClusterManager()
+  val shardManager         = nameServer.shardManager
 
   // job wiring
 
