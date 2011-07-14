@@ -60,7 +60,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   def finish() {
     log.info("[%s] - finished for (type %s) for %s", label,
              getClass.getName.split("\\.").last, shardIds.mkString(", "))
-    Stats.internal.clearGauge(gaugeName)
+    Stats.clearGauge(gaugeName)
   }
 
   def apply() {
@@ -97,7 +97,7 @@ abstract case class RepairJob[S <: Shard](shardIds: Seq[ShardId],
   }
 
   def incrGauge = {
-    Stats.internal.setGauge(gaugeName, Stats.internal.getGauge(gaugeName).getOrElse(0.0) + 1)
+    Stats.setGauge(gaugeName, Stats.getGauge(gaugeName).getOrElse(0.0) + 1)
   }
 
   private def gaugeName = {

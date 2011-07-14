@@ -6,10 +6,25 @@ import com.twitter.util.Time
 import scala.collection.mutable
 import java.util.Random
 
-object Stats {
-  val global = OStats
-  val internal = new StatsCollection
+class FilteredStatsProvider(default: StatsProvider) extends StatsProvider {
+  val test: PartialFunction[String, StatsProvider] = { case s: String => default }
 
+  def addGauge(name: String)(gauge: => Double) = test(name).addGauge(name)(gauge)
+  def clearGauge(name: String) = test(name).clearGauge(name)
+  def setLabel(name: String, value: String) = test(name).setLabel(name, value)
+  def clearLabel(name: String) = test(name).clearLabel(name)
+  def getCounter(name: String) = test(name).getCounter(name)
+  def getMetric(name: String) = test(name).getMetric(name)
+  def getGauge(name: String) = test(name).getGauge(name)
+  def getLabel(name: String) = test(name).getLabel(name)
+  def getCounters() = default.getCounters()
+  def getMetrics() = default.getMetrics()
+  def getGauges() = default.getGauges()
+  def getLabels() = default.getLabels()
+  def clearAll() = default.clearAll()
+}
+
+object Stats extends FilteredStatsProvider(OStats) {
   def transaction: TransactionalStatsProvider = {
     transactionOpt.getOrElse(DevNullTransactionalStats)
   }

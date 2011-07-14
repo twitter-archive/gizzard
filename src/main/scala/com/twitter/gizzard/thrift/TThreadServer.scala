@@ -34,7 +34,7 @@ object TThreadServer {
     val executor = new ThreadPoolExecutor(minThreads, Int.MaxValue, 60, TimeUnit.SECONDS, queue,
       new NamedPoolThreadFactory(name))
 
-    Stats.internal.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
 
     executor
   }

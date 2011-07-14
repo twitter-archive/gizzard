@@ -12,7 +12,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
   var executor = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAlive.inSeconds,
     TimeUnit.SECONDS, new LinkedBlockingQueue[Runnable], new NamedPoolThreadFactory(name))
 
-  Stats.global.addGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
+  Stats.addGauge("future-" + name + "-queue-size") { executor.getQueue().size() }
 
   def apply[A](a: => A) = {
     val trans = Stats.transactionOpt.map { _.createChild }
@@ -24,7 +24,7 @@ class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,
         val timeInQueue = Time.now - startTime
         Stats.transaction.record("Time spent in future queue: "+timeInQueue.inMillis)
         if (timeInQueue > timeout) {
-          Stats.internal.incr("future-" + name + "-timeout")
+          Stats.incr("future-" + name + "-timeout")
           throw new TimeoutException("future spent too long in queue")
         }
 

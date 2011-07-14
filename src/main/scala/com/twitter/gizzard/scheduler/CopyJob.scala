@@ -65,7 +65,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
     nameServer.markShardBusy(destinationId, shards.Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
-    Stats.internal.clearGauge(gaugeName)
+    Stats.clearGauge(gaugeName)
   }
 
   def apply() {
@@ -73,7 +73,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
       if (nameServer.getShard(destinationId).busy == shards.Busy.Cancelled) {
         log.info("Copying cancelled for (type %s) from %s to %s",
                  getClass.getName.split("\\.").last, sourceId, destinationId)
-        Stats.internal.clearGauge(gaugeName)
+        Stats.clearGauge(gaugeName)
 
       } else {
 
@@ -115,7 +115,7 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
   }
 
   private def incrGauge = {
-    Stats.internal.setGauge(gaugeName, Stats.internal.getGauge(gaugeName).getOrElse(0.0) + count)
+    Stats.setGauge(gaugeName, Stats.getGauge(gaugeName).getOrElse(0.0) + count)
   }
 
   private def gaugeName = {

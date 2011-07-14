@@ -28,21 +28,21 @@ class LoggingProxy[T <: AnyRef](
         case e: Exception =>
           Stats.transaction.record("Transaction failed with exception: " + e.toString())
           Stats.transaction.set("exception", e)
-          Stats.global.incr(namePrefix+statGrouping+"-failed")
+          Stats.incr(namePrefix+statGrouping+"-failed")
           Stats.transaction.name.foreach { opName =>
-            Stats.global.incr(namePrefix+"operation-"+opName+"-failed")
+            Stats.incr(namePrefix+"operation-"+opName+"-failed")
           }
           throw e
       } finally {
-        Stats.global.incr(namePrefix+statGrouping+"-total")
+        Stats.incr(namePrefix+statGrouping+"-total")
 
         val duration = Time.now - startTime
         Stats.transaction.record("Total duration: "+duration.inMillis)
         Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
 
         Stats.transaction.name.foreach { opName =>
-          Stats.global.incr(namePrefix+"operation-"+opName+"-total")
-          Stats.global.addMetric(namePrefix+"operation-"+opName, duration.inMilliseconds.toInt)
+          Stats.incr(namePrefix+"operation-"+opName+"-total")
+          Stats.addMetric(namePrefix+"operation-"+opName, duration.inMilliseconds.toInt)
         }
 
         val t = Stats.endTransaction()

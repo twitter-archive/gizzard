@@ -146,14 +146,14 @@ class JobScheduler(val name: String,
         val job = ticket.job
         try {
           job()
-          Stats.global.incr("job-success-count")
+          Stats.incr("job-success-count")
         } catch {
-          case e: ShardBlackHoleException => Stats.global.incr("job-blackholed-count")
+          case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
           case e: ShardRejectedOperationException =>
-            Stats.global.incr("job-darkmoded-count")
+            Stats.incr("job-darkmoded-count")
             errorQueue.put(job)
           case e =>
-            Stats.global.incr("job-error-count")
+            Stats.incr("job-error-count")
             exceptionLog.error(e, "Job: %s", job)
 //            log.error(e, "Error in Job: %s - %s", job, e)
             job.errorCount += 1

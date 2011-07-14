@@ -142,8 +142,9 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       messages(0) mustEqual "before thread"
       messages(1) must startWith("Total duration:")
       val children = sampledStats.stats.children.map { _.toSeq.map { _.message } }
-      children(0)(0) mustEqual "in thread"
-      children(0)(1) must startWith("Total duration:")
+      children(0)(0) must startWith("Time spent in future queue")
+      children(0)(1) mustEqual "in thread"
+      children(0)(2) must startWith("Total duration:")
     }
 
     "log exceptions" in {

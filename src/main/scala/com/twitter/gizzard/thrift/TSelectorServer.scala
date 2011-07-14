@@ -31,8 +31,8 @@ object TSelectorServer {
     val queue = new LinkedBlockingQueue[Runnable]
     val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
                                           queue, new NamedPoolThreadFactory(name))
-    Stats.internal.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
-    Stats.global.addGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
+    Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
+    Stats.addGauge("thrift-" + name + "-queue-size") { executor.getQueue().size() }
     cache(name) = executor
     executor
   }
@@ -68,7 +68,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
   val clientMap = new mutable.HashMap[SelectableChannel, Client]
   val registerQueue = new ConcurrentLinkedQueue[SocketChannel]
 
-  Stats.global.addGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
+  Stats.addGauge("thrift-" + name + "-connections") { clientMap.synchronized { clientMap.size } }
 
   def isRunning = running
 
@@ -78,7 +78,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
 
       def run() {
         if (Time.now - startTime > timeout) {
-          Stats.global.incr("thrift-" + name + "-timeout")
+          Stats.incr("thrift-" + name + "-timeout")
           onTimeout
         } else {
           f
@@ -196,7 +196,7 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
             try {
               client.socketChannel.configureBlocking(true)
               client.processor.process(client.inputProtocol, client.outputProtocol)
-              Stats.global.incr("thrift-" + name + "-calls")
+              Stats.incr("thrift-" + name + "-calls")
               registerQueue.add(client.socketChannel)
               selector.wakeup()
             } catch {
