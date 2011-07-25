@@ -27,15 +27,6 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       override protected def loadBalancer() = children.toList
     }
 
-    "filters shards" in {
-      expect {
-        never(shard1).get("name") willReturn Some("bob")
-        one(shard2).get("name")   willReturn Some("bob")
-      }
-
-      replicatingShard.skip(ShardId("fake", "shard1")).read.any(_.get("name")) mustEqual Some("bob")
-    }
-
     "read failover" in {
       "reads happen to shards in order" in {
         expect {

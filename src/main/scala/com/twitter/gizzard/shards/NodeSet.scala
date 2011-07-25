@@ -31,19 +31,27 @@ trait NodeIterable[+T] {
   def activeShards: Seq[(ShardInfo, T)]
   def blockedShards: Seq[ShardInfo]
 
+  def size = activeShards.size + blockedShards.size
+  def length = size
+
   def containsBlocked = !blockedShards.isEmpty
 
-  def anyOption[R](f: T => R): Option[R] = _any(iterator) { s: T => Try(f(s)) }.toOption
+  def anyOption[R](f: T => R): Option[R] = {
+    // only wrap ShardExceptions in Throw. Allow others to raise naturally
+    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.toOption
+  }
 
-  def tryAny[R](f: T => Try[R]): Try[R] = _any(iterator)(f)
+  def tryAny[R](f: T => Try[R]): Try[R] = {
+    if (activeShards.isEmpty && blockedShards.isEmpty) {
+      Throw(new ShardBlackHoleException(rootInfo.id))
+    } else {
+      _any(iterator)(f)
+    }
+  }
 
   def any[R](f: T => R): R = {
-    if (activeShards.isEmpty && blockedShards.isEmpty) {
-      throw new ShardBlackHoleException(rootInfo.id)
-    }
-
     // only wrap ShardExceptions in Throw. Allow others to raise naturally
-    _any(iterator) { s: T => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
+    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
   }
 
   @tailrec protected final def _any[T1 >: T, R](iter: Iterator[T1])(f: T1 => Try[R]): Try[R] = {
@@ -119,8 +127,10 @@ extends NodeIterable[T] {
 
   def filterNot(f: (ShardInfo, Option[T]) => Boolean) = filter { (i, s) => !f(i, s) }
 
-  def skip(ss: ShardId*) = {
+  def skip(ss: Seq[ShardId]) = {
     val set = ss.toSet
     filterNot { (info, _) => set contains info.id }
   }
+
+  def skip(s: ShardId, ss: ShardId*): NodeSet[T] = skip(s +: ss)
 }

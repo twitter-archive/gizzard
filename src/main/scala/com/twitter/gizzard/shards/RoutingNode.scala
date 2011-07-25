@@ -54,12 +54,6 @@ abstract class RoutingNode[T] {
 
   def write = nodeSetFromCollected(false)
 
-  def skip(ss: ShardId*): RoutingNode[T] = if (ss.toSet.contains(shardInfo.id)) {
-    BlackHoleShard(shardInfo, weight, Seq(this))
-  } else {
-    this
-  }
-
   @deprecated("use read.all instead")
   def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]] = read.all(f) map { f => Try(f()) } map {
     case Return(r) => Right(r)
