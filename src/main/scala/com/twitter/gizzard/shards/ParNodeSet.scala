@@ -17,8 +17,9 @@ trait ParNodeIterable[T] extends NodeIterable[T] {
   protected def futurePool: FuturePool
   protected def timeout: Duration
 
-  override def all[R, That](f: T => R)(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
-    val futures = activeShards map { case (_, s) => futurePool(f(s)) }
+  override def tryAll[R, That](f: T => Try[R])(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
+    // unwrap the try within the futurePool, as it will wrap it again.
+    val futures = activeShards map { case (_, s) => futurePool(f(s).apply()) }
 
     val b = bf()
     for (future <- futures)  b += Try(future.get(timeout).apply())
