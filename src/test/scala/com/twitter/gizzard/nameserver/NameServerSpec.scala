@@ -13,7 +13,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     val SQL_SHARD = "com.example.SqlShard"
 
     val nameServerShard = mock[nameserver.Shard]
-    val routingNode     = new LeafRoutingNode(nameServerShard, 1)
+    val routingNode     = LeafRoutingNode(nameServerShard)
 
     var shardRepository = mock[ShardRepository[AnyRef]]
     val mappingFunction = (n: Long) => n
@@ -33,7 +33,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
                            new Host("host3", 7777, "c2", HostStatus.Normal))
 
     val shard = mock[AnyRef]
-    val node  = new LeafRoutingNode(shard, 1)
+    val node  = LeafRoutingNode(shard)
 
     doBefore {
       expect {
