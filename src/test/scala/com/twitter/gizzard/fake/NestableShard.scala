@@ -7,13 +7,17 @@ import com.twitter.gizzard.shards.{ShardFactory,ShardException,ShardInfo}
 
 class NestableShardFactory extends ShardFactory[Shard] {
   def instantiate(shardInfo: ShardInfo, weight: Int) = {
-    new NestableShard(shardInfo)
+    new NestableShard(shardInfo, false)
+  }
+
+  def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = {
+    new NestableShard(shardInfo, true)
   }
 
   def materialize(shardInfo: ShardInfo) = ()
 }
 
-class NestableShard(val shardInfo: ShardInfo) extends Shard {
+class NestableShard(val shardInfo: ShardInfo, readOnly: Boolean) extends Shard {
   val map = new mutable.HashMap[String, String]
 
   def get(key: String) = {
@@ -21,6 +25,7 @@ class NestableShard(val shardInfo: ShardInfo) extends Shard {
   }
 
   def put(key: String, value: String) = {
+    if (readOnly) error("shard is read only!")
     map.put(key, value)
     value
   }

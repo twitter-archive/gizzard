@@ -59,7 +59,7 @@ trait NameServer {
   }
 
   def apply[T](shardRepository: nameserver.ShardRepository[T]) = {
-    val replicaNodes  = replicas map { replica => new shards.LeafRoutingNode(replica(), 1) }
+    val replicaNodes  = replicas map { replica => shards.LeafRoutingNode(replica()) }
 
     val shardInfo     = new shards.ShardInfo("com.twitter.gizzard.nameserver.ReplicatingShard", "", "")
     val replicating   = new shards.ReplicatingShard(shardInfo, 0, replicaNodes)

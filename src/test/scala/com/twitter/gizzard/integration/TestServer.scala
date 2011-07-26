@@ -172,10 +172,11 @@ class TestShardAdapter(s: shards.RoutingNode[TestShard]) extends TestShard {
 }
 
 class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
+  def newEvaluator(host: String) = qeFactory(conn.withHost(host))
 
-  def instantiate(info: ShardInfo, weight: Int) = {
-    new SqlShard(qeFactory(conn.withHost(info.hostname)), info)
-  }
+  def instantiate(info: ShardInfo, weight: Int) = new SqlShard(newEvaluator(info.hostname), info, false)
+
+  def instantiateReadOnly(info: ShardInfo, weight: Int) = new SqlShard(newEvaluator(info.hostname), info, true)
 
   def materialize(info: ShardInfo) {
     val ddl =
@@ -196,7 +197,8 @@ class SqlShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extend
   }
 }
 
-class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo) extends TestShard {
+// should enforce read/write perms at the db access level
+class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo, readOnly: Boolean) extends TestShard {
 
   private val table = shardInfo.tablePrefix
 
@@ -207,8 +209,13 @@ class SqlShard(evaluator: QueryEvaluator, val shardInfo: ShardInfo) extends Test
 
   private def asResult(r: ResultSet) = (r.getInt("id"), r.getString("value"), r.getInt("count"))
 
-  def put(key: Int, value: String) { evaluator.execute(putSql, key, value) }
+  def put(key: Int, value: String) {
+    if (readOnly) error("shard is read only!")
+    evaluator.execute(putSql, key, value)
+  }
+
   def putAll(kvs: Seq[(Int, String)]) {
+    if (readOnly) error("shard is read only!")
     evaluator.executeBatch(putSql) { b => for ((k,v) <- kvs) b(k,v) }
   }
 

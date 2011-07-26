@@ -17,7 +17,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shard2 = mock[fake.Shard]
     val shard3 = mock[fake.Shard]
     val List(node1, node2, node3) = List(shard1, shard2, shard3).zipWithIndex map { case (s, i) =>
-      new LeafRoutingNode(s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
+      LeafRoutingNode(s, s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
     }
 
     val shards = List(node1, node2)
@@ -27,21 +27,22 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       override protected def loadBalancer() = children.toList
     }
 
-    "filters shards" in {
-      expect {
-        one(shard2).get("name").willReturn(Some("bob"))
+    "read failover" in {
+      "reads happen to shards in order" in {
+        expect {
+          one(shard1).get("name") willReturn Some("ted")
+          never(shard2).get("name")
+        }
+
+        replicatingShard.read.any(_.get("name")) mustEqual Some("ted")
       }
 
-      replicatingShard.skip(ShardId("fake", "shard1")).read.any(_.get("name")) mustEqual Some("bob")
-    }
-
-    "read failover" in {
       "when shard1 throws an exception" in {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
         expect {
-          one(shard1).get("name").willThrow(exception) then
-          one(shard2).get("name").willReturn(Some("bob"))
+          (one(shard1).get("name") willThrow  exception) then
+          (one(shard2).get("name") willReturn Some("bob"))
         }
         replicatingShard.read.any(_.get("name")) mustEqual Some("bob")
       }
@@ -50,19 +51,13 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
         val shard1Info = new ShardInfo("", "table_prefix", "hostname")
         val exception = new ShardException("o noes")
         expect {
-          one(shard1).get("name") willThrow exception
-          one(shard2).get("name") willThrow exception
+          (one(shard1).get("name") willThrow exception) then
+          (one(shard2).get("name") willThrow exception)
         }
         replicatingShard.read.any(_.get("name")) must throwA[ShardException]
       }
     }
 
-    "reads happen to shards in order" in {
-      expect {
-        one(shard1).get("name").willReturn(Some("ted"))
-      }
-      replicatingShard.read.any(_.get("name")) mustEqual Some("ted")
-    }
 
     "read all shards" in {
       "when all succeed" in {
@@ -189,7 +184,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val shardInfo = new ShardInfo("fake", "fake", "localhost")
       val mock1 = mock[EnufShard]
       val mock2 = mock[EnufShard]
-      val List(node1, node2) = List(mock1, mock2).map(new LeafRoutingNode(_, 1))
+      val List(node1, node2) = List(mock1, mock2) map { LeafRoutingNode(_) }
       val shards = List(node1, node2)
       val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards) {
         override protected def loadBalancer() = children.toList
