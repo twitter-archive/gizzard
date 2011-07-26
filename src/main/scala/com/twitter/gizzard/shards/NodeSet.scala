@@ -2,7 +2,7 @@ package com.twitter.gizzard.shards
 
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuild
-import com.twitter.util.{Try, Throw, Future}
+import com.twitter.util.{Try, Return, Throw, Future}
 
 // For read or write, three node states:
 // - normal: should apply normally
@@ -26,30 +26,39 @@ import com.twitter.util.{Try, Throw, Future}
 // withInfo -> RoutingNode[(T, ShardInfo)]
 
 
-trait NodeIterable[T] {
+trait NodeIterable[+T] {
   def rootInfo: ShardInfo
   def activeShards: Seq[(ShardInfo, T)]
   def blockedShards: Seq[ShardInfo]
 
+  def size = activeShards.size + blockedShards.size
+  def length = size
+
   def containsBlocked = !blockedShards.isEmpty
 
-  def anyOption[R](f: T => R): Option[R] = _any(iterator, s => Try(f(s)) ).toOption
-
-  def tryAny[R](f: T => Try[R]): Try[R] = _any(iterator, f)
-
-  def any[R](f: T => R): R = {
-    if (activeShards.isEmpty && blockedShards.isEmpty) {
-      throw new ShardBlackHoleException(rootInfo.id)
-    }
-
-    _any(iterator, s => Try(f(s)) ).apply()
+  def anyOption[R](f: T => R): Option[R] = {
+    // only wrap ShardExceptions in Throw. Allow others to raise naturally
+    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.toOption
   }
 
-  @tailrec protected final def _any[R](iter: Iterator[T], f: T => Try[R]): Try[R] = {
+  def tryAny[R](f: T => Try[R]): Try[R] = {
+    if (activeShards.isEmpty && blockedShards.isEmpty) {
+      Throw(new ShardBlackHoleException(rootInfo.id))
+    } else {
+      _any(iterator)(f)
+    }
+  }
+
+  def any[R](f: T => R): R = {
+    // only wrap ShardExceptions in Throw. Allow others to raise naturally
+    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
+  }
+
+  @tailrec protected final def _any[T1 >: T, R](iter: Iterator[T1])(f: T1 => Try[R]): Try[R] = {
     if (iter.hasNext) {
       f(iter.next) match {
         case rv if rv.isReturn => rv
-        case _ => _any(iter, f)
+        case _ => _any(iter)(f)
       }
     } else {
       Throw(new ShardOfflineException(rootInfo.id))
@@ -100,7 +109,7 @@ trait NodeIterable[T] {
   }
 }
 
-class NodeSet[T](
+class NodeSet[+T](
   val rootInfo: ShardInfo, // XXX: replace with forwarding id.
   val activeShards: Seq[(ShardInfo, T)],
   val blockedShards: Seq[ShardInfo])
@@ -118,8 +127,10 @@ extends NodeIterable[T] {
 
   def filterNot(f: (ShardInfo, Option[T]) => Boolean) = filter { (i, s) => !f(i, s) }
 
-  def skip(ss: ShardId*) = {
+  def skip(ss: Seq[ShardId]) = {
     val set = ss.toSet
     filterNot { (info, _) => set contains info.id }
   }
+
+  def skip(s: ShardId, ss: ShardId*): NodeSet[T] = skip(s +: ss)
 }

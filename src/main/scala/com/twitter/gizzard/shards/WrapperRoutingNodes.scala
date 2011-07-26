@@ -7,7 +7,7 @@ abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
 
   protected def leafTransform(l: RoutingNode.Leaf[T]): RoutingNode.Leaf[T]
 
-  protected[shards] def collectedShards = children flatMap { _.collectedShards.map(leafTransform) }
+  protected[shards] def collectedShards(readOnly: Boolean) = children flatMap { _.collectedShards(readOnly).map(leafTransform) }
 }
 
 

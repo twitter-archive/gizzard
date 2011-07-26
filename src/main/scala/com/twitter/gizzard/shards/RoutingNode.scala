@@ -27,32 +27,32 @@ protected[shards] object RoutingNode {
 }
 
 abstract class RoutingNode[T] {
-  def shardInfo: ShardInfo
-  def weight: Int
-  def children: Seq[RoutingNode[T]]
 
   import RoutingNode._
 
+  def shardType = shardInfo.className // XXX: replace with some other thing
+  def shardInfo: ShardInfo
+  def weight: Int
+  def children: Seq[RoutingNode[T]]
+  protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
+
   protected val log = Logger.get
 
-  protected[shards] def collectedShards: Seq[Leaf[T]]
+  def shardInfos: Seq[ShardInfo] = children flatMap { _.shardInfos }
 
-  protected def nodeSetFromCollected(filter: Leaf[T] => Behavior) = {
-    val m = collectedShards groupBy filter
+  protected def nodeSetFromCollected(readOnly: Boolean) = {
+    val m = collectedShards(readOnly) groupBy { l =>
+      if (readOnly) l.readBehavior else l.writeBehavior
+    }
+
     val active  = m.getOrElse(Allow, Nil) map { l => (l.info, l.shard) }
     val blocked = m.getOrElse(Deny, Nil) map { _.info }
     new NodeSet(shardInfo, active, blocked)
   }
 
-  def read = nodeSetFromCollected { _.readBehavior }
+  def read = nodeSetFromCollected(true)
 
-  def write = nodeSetFromCollected { _.writeBehavior }
-
-  def skip(ss: ShardId*): RoutingNode[T] = if (ss.toSet.contains(shardInfo.id)) {
-    BlackHoleShard(shardInfo, weight, Seq(this))
-  } else {
-    this
-  }
+  def write = nodeSetFromCollected(false)
 
   @deprecated("use read.all instead")
   def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]] = read.all(f) map { f => Try(f()) } map {
@@ -105,7 +105,7 @@ abstract class RoutingNode[T] {
   }
 
   protected def logException(e: Throwable, shard: T) {
-    val shardId    = (collectedShards find { l => l.shard == shard }).get.info.id
+    val shardId    = (collectedShards(false) find { l => l.shard == shard }).get.info.id
     val normalized = normalizeException(e, shardId)
 
     log.warning(e, "Error on %s: %s", shardId, e)
@@ -118,4 +118,17 @@ abstract class RoutingNode[T] {
     case e: TimeoutException => new ReplicatingShardTimeoutException(shardId, e)
     case e => e
   }
+
+  // equals overrides
+
+  override def equals(other: Any) = other match {
+    case n: RoutingNode[_] => {
+      (shardInfo == n.shardInfo) &&
+      (weight    == n.weight)    &&
+      (children  == n.children)
+    }
+    case _ => false
+  }
+
+  override def hashCode() = children.hashCode
 }
