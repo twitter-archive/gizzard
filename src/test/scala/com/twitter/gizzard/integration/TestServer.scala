@@ -231,7 +231,9 @@ class PutParser(forwarding: Long => TestShard) extends JsonJobParser {
 
 class PutJob(key: Int, value: String, forwarding: Long => TestShard) extends JsonJob {
   def toMap = Map("key" -> key, "value" -> value)
-  def apply() { forwarding(key).put(key, value) }
+  def apply() {
+    try { forwarding(key).put(key, value) } catch { case e => e.printStackTrace(); throw e }
+  }
 }
 
 class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler)

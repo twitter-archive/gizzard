@@ -44,7 +44,7 @@ abstract class GizzardServer[S <: Shard](config: ServerConfig) {
     log.error("Unparsable job: %s", new String(j) )
   }
 
-  lazy val jobCodec     = new LoggingJsonCodec(new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob), config.jobStats)
+  lazy val jobCodec     = new LoggingJsonCodec(new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob), config.jobStats, logUnparsableJob)
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
     p -> config.jobQueues(p)(jobCodec)
   } toMap)

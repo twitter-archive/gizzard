@@ -16,8 +16,8 @@ with SubversionPublisher {
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
   val ostrich         = "com.twitter" % "ostrich"          % "4.7.2"
-  val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.3.2"
-  val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.3.2"
+  val finagleThrift   = "com.twitter" % "finagle-thrift"   % "1.7.1"
+  val finagleOstrich4 = "com.twitter" % "finagle-ostrich4" % "1.7.1"
 
   val thrift     = "thrift" % "libthrift" % "0.5.0"
   val jackson    = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.7"

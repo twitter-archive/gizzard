@@ -78,7 +78,7 @@ trait JsonJob {
  */
 class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob(jobs) with JsonJob {
   def toMap: Map[String, Any] = Map("tasks" -> taskQueue.map { task => Map(task.className -> task.toMap) })
-  //override def toString = toJson
+  override def toString = toJson
 }
 
 /**

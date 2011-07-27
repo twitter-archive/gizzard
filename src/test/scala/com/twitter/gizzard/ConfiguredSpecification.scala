@@ -18,7 +18,9 @@ import testserver.config.TestServerConfig
 
 trait ConfiguredSpecification extends Specification {
   noDetailedDiffs()
-  val config = Eval[gizzard.config.GizzardServer](new File("config/test.scala"))
+  val eval = new Eval
+  val config =
+    try { eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
   Logger.configure(config.loggers)
 }
 
@@ -77,8 +79,9 @@ trait IntegrationSpecification extends Specification {
     val i = s.enum
     val port = 8000 + (i - 1) * 3
     val client = new testserver.thrift.TestServer.ServiceToClient(ClientBuilder()
-        .hosts(new InetSocketAddress("localhost", port))
         .codec(ThriftClientFramedCodec())
+        .hosts(new InetSocketAddress("localhost", port))
+        .hostConnectionLimit(1)
         .build(),
         new TBinaryProtocol.Factory())
 

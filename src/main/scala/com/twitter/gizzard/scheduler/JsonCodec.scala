@@ -34,6 +34,8 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
     p
   }
 
+  def innerCodec: JsonCodec = this
+
   def +=(item: (Regex, JsonJobParser)) = processors += item
   def +=(r: Regex, p: JsonJobParser) = processors += ((r, p))
 
@@ -58,6 +60,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
     }.map { case (_, processor) => processor }.getOrElse {
       throw new UnparsableJsonException("Can't find matching processor for '%s' in %s".format(jobType, processors), null)
     }
+
     try {
       processor.parse(attributes.asInstanceOf[Map[String, Any]])
     } catch {
@@ -87,8 +90,11 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
   }
 }
 
-class LoggingJsonCodec(codec: JsonCodec, conf: config.StatsCollection) extends JsonCodec({ _ => }) {
+class LoggingJsonCodec(val codec: JsonCodec, conf: config.StatsCollection, unparsable: Array[Byte] => Unit) extends JsonCodec(unparsable) {
+  processors.clear()
+
   private val proxyFactory = conf[JsonJob]("jobs")
+  override val innerCodec = codec.innerCodec
 
   override def +=(item: (Regex, JsonJobParser)) = codec += item
   override def +=(r: Regex, p: JsonJobParser)   = codec += ((r, p))
