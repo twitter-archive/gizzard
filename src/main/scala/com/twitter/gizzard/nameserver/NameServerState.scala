@@ -8,6 +8,8 @@ import thrift.conversions.LinkInfo._
 import thrift.conversions.Forwarding._
 import thrift.conversions.Sequences._
 import scala.collection.mutable.ListBuffer
+import com.twitter.gizzard.util.TreeUtils
+
 
 case class NameServerState(shards: List[ShardInfo], links: List[LinkInfo], forwardings: List[Forwarding], tableId: Int) {
   def toThrift = {

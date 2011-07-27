@@ -1,4 +1,4 @@
-package com.twitter.gizzard
+package com.twitter.gizzard.util
 
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicInteger

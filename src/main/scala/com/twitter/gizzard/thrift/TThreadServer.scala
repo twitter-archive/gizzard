@@ -3,12 +3,14 @@ package thrift
 
 import java.net.{ServerSocket, Socket, SocketTimeoutException}
 import java.util.concurrent.{CountDownLatch, ExecutorService, SynchronousQueue, ThreadPoolExecutor, TimeUnit}
-import com.twitter.gizzard.NamedPoolThreadFactory
-import com.twitter.logging.Logger
 import org.apache.thrift.{TProcessor, TProcessorFactory}
 import org.apache.thrift.protocol.{TBinaryProtocol, TProtocol, TProtocolFactory}
 import org.apache.thrift.server.TServer
 import org.apache.thrift.transport._
+import com.twitter.ostrich.stats.Stats
+import com.twitter.logging.Logger
+import com.twitter.gizzard.util.NamedPoolThreadFactory
+
 
 object TThreadServer {
   private val MIN_THREADS = 5

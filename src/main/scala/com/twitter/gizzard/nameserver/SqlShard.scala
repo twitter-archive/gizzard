@@ -4,6 +4,7 @@ package nameserver
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
+import com.twitter.gizzard.util.TreeUtils
 import shards._
 
 

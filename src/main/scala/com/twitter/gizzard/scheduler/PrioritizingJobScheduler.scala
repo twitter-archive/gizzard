@@ -3,6 +3,8 @@ package scheduler
 
 import scala.collection.Map
 import scala.collection.mutable
+import com.twitter.gizzard.util.Process
+
 
 /**
  * A map of JobSchedulers by priority. It can be treated as a single scheduler, and all process

@@ -2,7 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
 import com.twitter.logging.Logger
-import com.twitter.gizzard.shards.RoutingNode
+import com.twitter.gizzard.shards.{ShardException, RoutingNode}
 
 
 class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relayFactory: JobRelayFactory) {
@@ -37,4 +37,17 @@ class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relay
   def listRemoteClusters()                = shard.read.any(_.listRemoteClusters())
   def listRemoteHosts()                   = shard.read.any(_.listRemoteHosts())
   def listRemoteHostsInCluster(c: String) = shard.read.any(_.listRemoteHostsInCluster(c))
+}
+
+trait RemoteClusterManagerSource {
+  @throws(classOf[ShardException]) def reload()
+  @throws(classOf[ShardException]) def addRemoteHost(h: Host)
+  @throws(classOf[ShardException]) def removeRemoteHost(h: String, p: Int)
+  @throws(classOf[ShardException]) def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value)
+  @throws(classOf[ShardException]) def setRemoteClusterStatus(c: String, s: HostStatus.Value)
+
+  @throws(classOf[ShardException]) def getRemoteHost(h: String, p: Int): Host
+  @throws(classOf[ShardException]) def listRemoteClusters(): Seq[String]
+  @throws(classOf[ShardException]) def listRemoteHosts(): Seq[Host]
+  @throws(classOf[ShardException]) def listRemoteHostsInCluster(c: String): Seq[Host]
 }

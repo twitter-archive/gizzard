@@ -1,6 +1,8 @@
 package com.twitter.gizzard.nameserver
 
+import scala.collection.mutable
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.util.TreeUtils
 
 
 class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository) {
@@ -44,4 +46,49 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
 
   def listHostnames() = shard.read.any(_.listHostnames())
   def listTables()    = shard.read.any(_.listTables())
+}
+
+trait ShardManagerSource {
+  @throws(classOf[ShardException]) def reload()
+  @throws(classOf[ShardException]) def currentState(): Seq[NameServerState]
+  @throws(classOf[ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
+    import TreeUtils._
+
+    lazy val shardsById         = listShards().map(s => s.id -> s).toMap
+    lazy val linksByUpId        = mapOfSets(listLinks())(_.upId)
+    lazy val forwardingsByTable = mapOfSets(getForwardingsForTableIds(tableIds))(_.tableId)
+
+    def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTable)(linksByUpId)(shardsById)
+
+    tableIds.map(extractor)
+  }
+
+  @throws(classOf[ShardException]) def createShard(shardInfo: ShardInfo)
+  @throws(classOf[ShardException]) def deleteShard(id: ShardId)
+  @throws(classOf[ShardException]) def markShardBusy(id: ShardId, busy: Busy.Value)
+
+  @throws(classOf[ShardException]) def getShard(id: ShardId): ShardInfo
+  @throws(classOf[ShardException]) def shardsForHostname(hostname: String): Seq[ShardInfo]
+  @throws(classOf[ShardException]) def listShards(): Seq[ShardInfo]
+  @throws(classOf[ShardException]) def getBusyShards(): Seq[ShardInfo]
+
+
+  @throws(classOf[ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
+  @throws(classOf[ShardException]) def removeLink(upId: ShardId, downId: ShardId)
+
+  @throws(classOf[ShardException]) def listUpwardLinks(id: ShardId): Seq[LinkInfo]
+  @throws(classOf[ShardException]) def listDownwardLinks(id: ShardId): Seq[LinkInfo]
+  @throws(classOf[ShardException]) def listLinks(): Seq[LinkInfo]
+
+  @throws(classOf[ShardException]) def setForwarding(forwarding: Forwarding)
+  @throws(classOf[ShardException]) def removeForwarding(forwarding: Forwarding)
+  @throws(classOf[ShardException]) def replaceForwarding(oldId: ShardId, newId: ShardId)
+
+  @throws(classOf[ShardException]) def getForwarding(tableId: Int, baseId: Long): Forwarding
+  @throws(classOf[ShardException]) def getForwardingForShard(id: ShardId): Forwarding
+  @throws(classOf[ShardException]) def getForwardings(): Seq[Forwarding]
+  @throws(classOf[ShardException]) def getForwardingsForTableIds(tableIds: Seq[Int]): Seq[Forwarding]
+
+  @throws(classOf[ShardException]) def listHostnames(): Seq[String]
+  @throws(classOf[ShardException]) def listTables(): Seq[Int]
 }

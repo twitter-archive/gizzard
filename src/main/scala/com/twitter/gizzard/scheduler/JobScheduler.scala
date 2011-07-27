@@ -9,6 +9,8 @@ import net.lag.kestrel.PersistentQueue
 import com.twitter.logging.Logger
 import java.util.concurrent.atomic.AtomicInteger
 import shards.{ShardBlackHoleException, ShardRejectedOperationException}
+import com.twitter.gizzard.util.Process
+
 
 /**
  * A cluster of worker threads which poll a JobQueue for work and execute jobs.

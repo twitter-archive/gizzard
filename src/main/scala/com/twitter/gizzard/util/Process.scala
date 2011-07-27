@@ -1,4 +1,4 @@
-package com.twitter.gizzard
+package com.twitter.gizzard.util
 
 trait Process {
   def start()

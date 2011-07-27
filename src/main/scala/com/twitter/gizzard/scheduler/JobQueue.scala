@@ -2,6 +2,8 @@ package com.twitter.gizzard
 package scheduler
 
 import com.twitter.util.Duration
+import com.twitter.gizzard.util.Process
+
 
 /**
  * Anything that can receive jobs.

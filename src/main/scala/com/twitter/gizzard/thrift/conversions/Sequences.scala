@@ -4,6 +4,7 @@ package thrift.conversions
 import scala.collection.{JavaConversions => JC}
 import java.nio.{BufferUnderflowException, ByteBuffer, ByteOrder}
 import java.util.{AbstractList => JAbstractList, List => JList}
+import com.twitter.gizzard.util.{Future, ParallelSeq}
 
 
 object Sequences {

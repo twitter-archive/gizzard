@@ -6,7 +6,8 @@ import com.twitter.util.Time
 import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import thrift.conversions.Sequences._
+import com.twitter.gizzard.util.Future
+import com.twitter.gizzard.thrift.conversions.Sequences._
 
 
 object FutureSpec extends ConfiguredSpecification with JMocker with ClassMocker {

@@ -12,6 +12,6 @@ class Future {
 
   def apply(name: String) = {
     if (maxPoolSize < poolSize) maxPoolSize = poolSize
-    new gizzard.Future(name, poolSize, maxPoolSize, keepAlive, timeout)
+    new gizzard.util.Future(name, poolSize, maxPoolSize, keepAlive, timeout)
   }
 }
