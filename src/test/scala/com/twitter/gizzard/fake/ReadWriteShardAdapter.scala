@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package fake
+package com.twitter.gizzard.fake
 
 import com.twitter.gizzard.shards.RoutingNode
 

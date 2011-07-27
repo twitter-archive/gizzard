@@ -1,9 +1,11 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import com.twitter.json.Json
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 class JsonCodecSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JsonCodec" should {

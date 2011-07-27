@@ -1,9 +1,10 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
-import org.codehaus.jackson.map.ObjectMapper
-import com.twitter.logging.Logger
 import java.util.{Map => JMap, List => JList}
+import org.codehaus.jackson.map.ObjectMapper
+import com.twitter.ostrich.stats.{StatsProvider, W3CStats}
+import com.twitter.logging.Logger
+import com.twitter.gizzard.proxy.LoggingProxy
 
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)

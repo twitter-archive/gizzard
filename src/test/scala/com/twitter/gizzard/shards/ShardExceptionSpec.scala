@@ -1,10 +1,11 @@
-package com.twitter.gizzard
-package shards
+package com.twitter.gizzard.shards
 
 import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.logging.{Logger, StringHandler, BareFormatter}
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 object ShardExceptionSpec extends ConfiguredSpecification with JMocker {
   "ShardException" should {

@@ -1,9 +1,9 @@
-package com.twitter.gizzard
-package thrift
-package conversions
+package com.twitter.gizzard.thrift.conversions
 
-import conversions.Sequences._
-import conversions.ShardId._
+import com.twitter.gizzard.nameserver
+import com.twitter.gizzard.thrift
+import com.twitter.gizzard.thrift.conversions.Sequences._
+import com.twitter.gizzard.thrift.conversions.ShardId._
 
 
 object Forwarding {

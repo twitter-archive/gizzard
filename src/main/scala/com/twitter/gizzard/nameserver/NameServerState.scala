@@ -1,13 +1,13 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
-import scala.collection.JavaConversions._
-import shards.{ShardId, ShardInfo, LinkInfo}
-import thrift.conversions.ShardInfo._
-import thrift.conversions.LinkInfo._
-import thrift.conversions.Forwarding._
-import thrift.conversions.Sequences._
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConversions._
+import com.twitter.gizzard.shards.{ShardId, ShardInfo, LinkInfo}
+import com.twitter.gizzard.thrift.{NameServerState => ThriftNameServerState}
+import com.twitter.gizzard.thrift.conversions.ShardInfo._
+import com.twitter.gizzard.thrift.conversions.LinkInfo._
+import com.twitter.gizzard.thrift.conversions.Forwarding._
+import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.util.TreeUtils
 
 
@@ -16,7 +16,7 @@ case class NameServerState(shards: List[ShardInfo], links: List[LinkInfo], forwa
     val thriftForwardings = forwardings.map(_.toThrift)
     val thriftLinks       = links.map(_.toThrift)
     val thriftShards      = shards.map(_.toThrift)
-    new thrift.NameServerState(thriftShards, thriftLinks, thriftForwardings, tableId)
+    new ThriftNameServerState(thriftShards, thriftLinks, thriftForwardings, tableId)
   }
 }
 

@@ -1,11 +1,11 @@
-package com.twitter.gizzard
-package shards
+package com.twitter.gizzard.shards
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import scala.collection.mutable
 import com.twitter.gizzard.test.NameServerDatabase
-import nameserver.{NameServer, SqlShardManagerSource}
+import com.twitter.gizzard.nameserver.{NameServer, SqlShardManagerSource}
+import com.twitter.gizzard.ConfiguredSpecification
 
 
 object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {

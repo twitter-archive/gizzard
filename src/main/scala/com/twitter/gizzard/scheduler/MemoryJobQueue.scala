@@ -7,6 +7,7 @@ import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 
+
 /**
  * A JobQueue that stores the jobs in memory only (in a LinkedBlockingQueue), and may lose jobs
  * if the server dies while jobs are still in the queue. No codec is needed since jobs are passed

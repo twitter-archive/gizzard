@@ -6,6 +6,7 @@ import com.twitter.conversions.time._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import com.twitter.logging.Logger
 
+
 /**
  * A JobQueue backed by a kestrel journal file. A codec is used to convert jobs into byte arrays
  * on write, and back into jobs on read. Jobs are not completely removed from the queue until the

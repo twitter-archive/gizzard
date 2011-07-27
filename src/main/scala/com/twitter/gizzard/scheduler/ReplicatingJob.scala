@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
@@ -8,10 +7,9 @@ import scala.util.matching.Regex
 import com.twitter.ostrich.stats.StatsProvider
 import com.twitter.logging.Logger
 import com.twitter.util.Duration
-import proxy.LoggingProxy
-
-import thrift.conversions.Sequences._
-import nameserver.JobRelay
+import com.twitter.gizzard.thrift.conversions.Sequences._
+import com.twitter.gizzard.nameserver.JobRelay
+import com.twitter.gizzard.proxy.LoggingProxy
 
 
 class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)

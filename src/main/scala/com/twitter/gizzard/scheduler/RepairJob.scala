@@ -1,11 +1,11 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
-import com.twitter.util.TimeConversions._
+import scala.collection.mutable.ListBuffer
+import com.twitter.ostrich.stats.Stats
 import com.twitter.logging.Logger
-import nameserver.{NameServer, NonExistentShard}
-import collection.mutable.ListBuffer
-import shards.{RoutingNode, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import com.twitter.gizzard.nameserver.{NameServer, NonExistentShard}
+import com.twitter.gizzard.shards._
+
 
 trait Repairable[T] {
   def similar(other: T): Int
@@ -73,10 +73,10 @@ abstract case class RepairJob[T](shardIds: Seq[ShardId],
                getClass.getName.split("\\.").last, toMap)
       // XXX: get rid of cast here!!!
       val shardObjs = shardIds.map(nameServer.findShardById(_)).map(_.asInstanceOf[RoutingNode[T]])
-      shardIds.foreach(nameServer.shardManager.markShardBusy(_, shards.Busy.Busy))
+      shardIds.foreach(nameServer.shardManager.markShardBusy(_, Busy.Busy))
       repair(shardObjs)
       this.nextJob match {
-        case None => shardIds.foreach(nameServer.shardManager.markShardBusy(_, shards.Busy.Normal))
+        case None => shardIds.foreach(nameServer.shardManager.markShardBusy(_, Busy.Normal))
         case _ =>
       }
     } catch {

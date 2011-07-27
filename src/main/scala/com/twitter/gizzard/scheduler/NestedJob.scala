@@ -2,6 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 
+
 /**
  * A wrapper Job for a series of smaller jobs that should be executed together in series.
  * If any of the smaller jobs throws an exception, the NestedJob is enqueued with only that

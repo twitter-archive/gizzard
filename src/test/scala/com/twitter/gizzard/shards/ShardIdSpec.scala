@@ -1,7 +1,8 @@
-package com.twitter.gizzard
-package shards
+package com.twitter.gizzard.shards
 
-object ShardIdSpec extends ConfiguredSpecification {
+import org.specs.Specification
+
+object ShardIdSpec extends Specification {
   "ShardId" should {
     "validate table prefix" in {
       ShardId("hostname", "bad-table-name") must throwA[ShardException]

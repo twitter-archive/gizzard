@@ -1,29 +1,29 @@
-package com.twitter.gizzard
-package proxy
+package com.twitter.gizzard.proxy
 
 import java.sql.SQLException
-import shards.ShardId
 import scala.reflect.Manifest
 import com.mysql.jdbc.exceptions.MySQLTransientException
 import com.twitter.querulous.database.SqlDatabaseTimeoutException
 import com.twitter.querulous.query.SqlQueryTimeoutException
 import com.twitter.querulous.evaluator.{QueryEvaluator, QueryEvaluatorProxy}
+import com.twitter.gizzard.shards._
+
 
 class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy({e =>
   e match {
     case e: SqlQueryTimeoutException =>
-      throw new shards.ShardTimeoutException(e.timeout, shardId, e)
+      throw new ShardTimeoutException(e.timeout, shardId, e)
     case e: SqlDatabaseTimeoutException =>
-      throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
+      throw new ShardDatabaseTimeoutException(e.timeout, shardId, e)
     case e: MySQLTransientException =>
-      throw new shards.NormalShardException(e.toString, shardId, null)
+      throw new NormalShardException(e.toString, shardId, null)
     case e: SQLException =>
       if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
-        throw new shards.NormalShardException(e.toString, shardId, null)
+        throw new NormalShardException(e.toString, shardId, null)
       } else {
-        throw new shards.ShardException(e.toString, e)
+        throw new ShardException(e.toString, e)
       }
-    case e: shards.ShardException =>
+    case e: ShardException =>
       throw e
   }
 })
@@ -33,18 +33,18 @@ class SqlExceptionWrappingProxyFactory[T <: AnyRef : Manifest](id: ShardId) exte
 
   e match {
     case e: SqlQueryTimeoutException =>
-      throw new shards.ShardTimeoutException(e.timeout, id, e)
+      throw new ShardTimeoutException(e.timeout, id, e)
     case e: SqlDatabaseTimeoutException =>
-      throw new shards.ShardDatabaseTimeoutException(e.timeout, id, e)
+      throw new ShardDatabaseTimeoutException(e.timeout, id, e)
     case e: MySQLTransientException =>
-      throw new shards.NormalShardException(e.toString, id, null)
+      throw new NormalShardException(e.toString, id, null)
     case e: SQLException =>
       if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
-        throw new shards.NormalShardException(e.toString, id, null)
+        throw new NormalShardException(e.toString, id, null)
       } else {
-        throw new shards.ShardException(e.toString, e)
+        throw new ShardException(e.toString, e)
       }
-    case e: shards.ShardException =>
+    case e: ShardException =>
       throw e
   }
 })
@@ -55,18 +55,18 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
       f
     } catch {
       case e: SqlQueryTimeoutException =>
-        throw new shards.ShardTimeoutException(e.timeout, shardId, e)
+        throw new ShardTimeoutException(e.timeout, shardId, e)
       case e: SqlDatabaseTimeoutException =>
-        throw new shards.ShardDatabaseTimeoutException(e.timeout, shardId, e)
+        throw new ShardDatabaseTimeoutException(e.timeout, shardId, e)
       case e: MySQLTransientException =>
-        throw new shards.NormalShardException(e.toString, shardId, null)
+        throw new NormalShardException(e.toString, shardId, null)
       case e: SQLException =>
         if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
-          throw new shards.NormalShardException(e.toString, shardId, null)
+          throw new NormalShardException(e.toString, shardId, null)
         } else {
-          throw new shards.ShardException(e.toString, e)
+          throw new ShardException(e.toString, e)
         }
-      case e: shards.ShardException =>
+      case e: ShardException =>
         throw e
      }
   }

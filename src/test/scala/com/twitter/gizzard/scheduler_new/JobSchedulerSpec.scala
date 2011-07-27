@@ -1,11 +1,12 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
 import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import shards.{ShardId, ShardRejectedOperationException}
+import com.twitter.gizzard.shards._
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {

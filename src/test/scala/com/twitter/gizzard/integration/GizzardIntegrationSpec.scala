@@ -1,9 +1,11 @@
-package com.twitter.gizzard
-package integration
+package com.twitter.gizzard.integration
 
 import scala.collection.JavaConversions._
+import com.twitter.gizzard.nameserver.{Host, HostStatus}
 import com.twitter.gizzard.thrift.conversions.Sequences._
-import testserver.thrift.TestResult
+import com.twitter.gizzard.testserver.thrift.TestResult
+import com.twitter.gizzard.{IntegrationSpecification, ConfiguredSpecification}
+
 
 class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecification {
   "Replication" should {
@@ -14,7 +16,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     val client1 :: client2 :: client3 :: _ = clients
 
     val hostFor1 :: hostFor2 :: hostFor3 :: _ = List(server1, server2, server3).map { s =>
-      nameserver.Host("localhost", s.injectorPort, "c" + s.enum, nameserver.HostStatus.Normal)
+      Host("localhost", s.injectorPort, "c" + s.enum, HostStatus.Normal)
     }
 
     doBefore {
@@ -75,7 +77,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     "retry unblocked clusters" in {
       startServers(servers: _*)
 
-      server1.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Blocked)
+      server1.remoteClusterManager.setRemoteClusterStatus("c2", HostStatus.Blocked)
       server1.remoteClusterManager.reload()
 
       client1.put(1, "foo")
@@ -84,7 +86,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       client2.get(1).toList mustEqual List[TestResult]()
 
-      server1.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.remoteClusterManager.setRemoteClusterStatus("c2", HostStatus.Normal)
       server1.remoteClusterManager.reload()
       server1.jobScheduler.retryErrors()
 
@@ -94,7 +96,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
     "drop blackholed clusters" in {
       startServers(servers: _*)
 
-      server1.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Blackholed)
+      server1.remoteClusterManager.setRemoteClusterStatus("c2", HostStatus.Blackholed)
       server1.remoteClusterManager.reload()
 
       client1.put(1, "foo")
@@ -103,7 +105,7 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
 
       client2.get(1).toList mustEqual List[TestResult]()
 
-      server1.remoteClusterManager.setRemoteClusterStatus("c2", nameserver.HostStatus.Normal)
+      server1.remoteClusterManager.setRemoteClusterStatus("c2", HostStatus.Normal)
       server1.remoteClusterManager.reload()
       server1.jobScheduler.retryErrors()
 

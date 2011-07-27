@@ -1,9 +1,9 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 import com.twitter.gizzard.shards.RoutingNode
+
 
 class LoadBalancer[T](
   random: Random,

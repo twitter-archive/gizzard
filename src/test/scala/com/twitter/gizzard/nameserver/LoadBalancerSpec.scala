@@ -1,11 +1,11 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import scala.util.Random
 
 import com.twitter.gizzard.shards.RoutingNode
+import com.twitter.gizzard.ConfiguredSpecification
 
 
 // FIXME: these tests kinda suck in theory. Ideally, we'd test based on

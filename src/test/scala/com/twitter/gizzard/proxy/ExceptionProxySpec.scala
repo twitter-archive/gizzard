@@ -1,16 +1,17 @@
-package com.twitter.gizzard
-package proxy
+package com.twitter.gizzard.proxy
 
 import java.sql.SQLException
 import com.twitter.gizzard.shards._
 import org.specs.mock.JMocker
+import com.twitter.gizzard.ConfiguredSpecification
+import com.twitter.gizzard.fake.Shard
 
 
 object SqlExceptionWrappingProxySpec extends ConfiguredSpecification with JMocker {
   "SqlExceptionWrappingProxy" should {
-    val shard = mock[fake.Shard]
+    val shard = mock[Shard]
     val shardInfo  = ShardInfo(ShardId("test", "shard"), "fake.shard", "blah", "blah", Busy.Normal)
-    val proxyFactory = new SqlExceptionWrappingProxyFactory[fake.Shard](shardInfo.id)
+    val proxyFactory = new SqlExceptionWrappingProxyFactory[Shard](shardInfo.id)
     val shardProxy = proxyFactory(shard)
     val sqlException = new SQLException("huh!")
 

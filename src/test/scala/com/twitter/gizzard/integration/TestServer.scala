@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package testserver
+package com.twitter.gizzard.testserver
 
 import java.sql.{ResultSet, SQLException}
 import com.twitter.querulous
@@ -8,11 +7,13 @@ import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 import com.twitter.gizzard
+import com.twitter.gizzard.GizzardServer
 import com.twitter.gizzard.nameserver.{NameServer, Forwarder}
-import com.twitter.gizzard.shards.{RoutingNode, ShardId, ShardInfo, ShardException, ShardTimeoutException}
-import com.twitter.gizzard.scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
+import com.twitter.gizzard.shards._
+import com.twitter.gizzard.scheduler._
 
 import com.twitter.logging.config._
+
 
 package object config {
   import com.twitter.gizzard.config._
@@ -160,7 +161,7 @@ extends thrift.TestServer.Iface {
 
 // Shard Definitions
 
-class TestShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends shards.ShardFactory[TestShard] {
+class TestShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends ShardFactory[TestShard] {
   def newEvaluator(host: String) = qeFactory(conn.withHost(host))
 
   def instantiate(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, false)

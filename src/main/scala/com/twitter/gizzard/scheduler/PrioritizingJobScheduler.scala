@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import scala.collection.Map
 import scala.collection.mutable

@@ -1,10 +1,11 @@
-package com.twitter.gizzard
-package thrift
+package com.twitter.gizzard.thrift
 
 import scala.collection.JavaConversions._
 import java.util.{List => JList}
-import conversions.Sequences._
-import scheduler._
+import com.twitter.gizzard.thrift.conversions.Sequences._
+import com.twitter.gizzard.thrift.{Job => ThriftJob}
+import com.twitter.gizzard.scheduler._
+
 
 class JobInjectorService(
   codecParam: JsonCodec,
@@ -35,7 +36,7 @@ extends JobInjector.Iface {
     }
   }
 
-  def inject_jobs(jobs: JList[thrift.Job]) {
+  def inject_jobs(jobs: JList[ThriftJob]) {
     jobs foreach { j =>
       var job: JsonJob = new InjectedJsonJob(j.getContents())
       if (j.is_replicated) job = new ReplicatedJob(List(job))

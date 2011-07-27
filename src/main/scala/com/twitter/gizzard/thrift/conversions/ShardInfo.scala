@@ -1,9 +1,9 @@
-package com.twitter.gizzard
-package thrift
-package conversions
+package com.twitter.gizzard.thrift.conversions
 
-import conversions.Busy._
-import conversions.ShardId._
+import com.twitter.gizzard.shards
+import com.twitter.gizzard.thrift
+import com.twitter.gizzard.thrift.conversions.Busy._
+import com.twitter.gizzard.thrift.conversions.ShardId._
 
 
 object ShardInfo {

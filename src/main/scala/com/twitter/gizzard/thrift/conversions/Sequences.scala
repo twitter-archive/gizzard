@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package thrift.conversions
+package com.twitter.gizzard.thrift.conversions
 
 import scala.collection.{JavaConversions => JC}
 import java.nio.{BufferUnderflowException, ByteBuffer, ByteOrder}

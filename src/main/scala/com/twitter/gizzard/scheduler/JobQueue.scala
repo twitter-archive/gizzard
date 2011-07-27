@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import com.twitter.util.Duration
 import com.twitter.gizzard.util.Process

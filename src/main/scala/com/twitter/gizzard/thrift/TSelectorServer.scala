@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package thrift
+package com.twitter.gizzard.thrift
 
 import java.io.IOException
 import java.net.InetSocketAddress

@@ -11,8 +11,10 @@ import com.twitter.finagle.thrift.ThriftClientFramedCodec
 import com.twitter.util.Eval
 
 import com.twitter.gizzard
-import testserver.{Priority, TestServer}
-import testserver.config.TestServerConfig
+import com.twitter.gizzard.nameserver.{Forwarding, Host}
+import com.twitter.gizzard.shards.ShardFactory
+import com.twitter.gizzard.testserver._
+import com.twitter.gizzard.testserver.config.TestServerConfig
 
 
 object ConfiguredSpecification {

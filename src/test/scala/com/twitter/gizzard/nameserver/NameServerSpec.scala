@@ -1,11 +1,10 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-
 import com.twitter.gizzard
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.ConfiguredSpecification
 
 
 object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -17,7 +16,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     var forwarder: MultiForwarder[AnyRef] = null
 
     val shardInfos = (1 until 5).toList map { id =>
-      new ShardInfo(ShardId("localhost", id.toString), SQL_SHARD, "a", "b", shards.Busy.Normal)
+      new ShardInfo(ShardId("localhost", id.toString), SQL_SHARD, "a", "b", Busy.Normal)
     }
     val replicatingInfo = new ShardInfo(ShardId("localhost", "replicating"), "ReplicatingShard", "", "", Busy.Normal)
 

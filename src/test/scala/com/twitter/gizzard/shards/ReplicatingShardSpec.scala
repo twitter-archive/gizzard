@@ -1,11 +1,12 @@
-package com.twitter.gizzard
-package shards
+package com.twitter.gizzard.shards
 
 import com.twitter.conversions.time._
 import org.specs.Specification
 import org.specs.mock.JMocker
 import com.twitter.gizzard.nameserver.LoadBalancer
 import com.twitter.util.{Return, Throw}
+import com.twitter.gizzard.fake.Shard
+import com.twitter.gizzard.ConfiguredSpecification
 
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
@@ -13,9 +14,9 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
   "ReplicatingShard" should {
     val shardId = ShardId("fake", "shard")
-    val shard1 = mock[fake.Shard]
-    val shard2 = mock[fake.Shard]
-    val shard3 = mock[fake.Shard]
+    val shard1 = mock[Shard]
+    val shard2 = mock[Shard]
+    val shard3 = mock[Shard]
     val List(node1, node2, node3) = List(shard1, shard2, shard3).zipWithIndex map { case (s, i) =>
       LeafRoutingNode(s, s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
     }

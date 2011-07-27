@@ -1,9 +1,8 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import org.specs.Specification
 
-object FnvHasherSpec extends ConfiguredSpecification {
+object FnvHasherSpec extends Specification {
   "FnvHasher" should {
     "hash" in {
       FnvHasher(0L) mustEqual 632747166973704645L

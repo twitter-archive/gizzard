@@ -1,11 +1,11 @@
-package com.twitter.gizzard
-package test
+package com.twitter.gizzard.test
 
+import org.specs.Specification
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.util.Time
 import com.twitter.conversions.time._
-import org.specs.Specification
+import com.twitter.gizzard.config
 
 
 // trait IdServerDatabase extends Specification with Database {

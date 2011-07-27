@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package proxy
+package com.twitter.gizzard.proxy
 
 import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}

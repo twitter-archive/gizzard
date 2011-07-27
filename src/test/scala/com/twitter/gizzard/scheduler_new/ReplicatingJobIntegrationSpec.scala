@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
@@ -7,8 +6,10 @@ import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.conversions.time._
 
 import com.twitter.gizzard
-import thrift.{JobInjectorService, TThreadServer, JobInjector}
-import nameserver.{Host, HostStatus, JobRelay}
+import com.twitter.gizzard.thrift.{JobInjectorService, TThreadServer, JobInjector}
+import com.twitter.gizzard.nameserver.{Host, HostStatus, JobRelay}
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "ReplicatingJobIntegration" should {

@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package proxy
+package com.twitter.gizzard.proxy
 
 import java.lang.reflect
 import scala.reflect.Manifest

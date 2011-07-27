@@ -1,7 +1,6 @@
-package com.twitter.gizzard
-package shards
+package com.twitter.gizzard.shards
 
-import thrift.conversions.ShardId._
+import com.twitter.gizzard.thrift.conversions.ShardId._
 
 
 case class ShardInfo(

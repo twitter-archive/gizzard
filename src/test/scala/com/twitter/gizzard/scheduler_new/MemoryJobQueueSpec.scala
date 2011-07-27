@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 import com.twitter.util.Time
@@ -7,6 +6,8 @@ import com.twitter.conversions.time._
 import net.lag.kestrel.{PersistentQueue, QItem}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 object MemoryJobQueueSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "MemoryJobQueue" should {

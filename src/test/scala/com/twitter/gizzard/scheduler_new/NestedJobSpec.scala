@@ -1,9 +1,10 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import scala.collection.mutable
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NestedJob" should {

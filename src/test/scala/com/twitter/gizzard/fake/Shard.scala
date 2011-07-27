@@ -1,5 +1,4 @@
-package com.twitter.gizzard
-package fake
+package com.twitter.gizzard.fake
 
 trait Shard extends {
   @throws(classOf[Throwable]) def get(k: String): Option[String]

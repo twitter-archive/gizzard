@@ -1,10 +1,10 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import com.twitter.util.TimeConversions._
 import com.twitter.logging.Logger
-import nameserver.{NameServer, NonExistentShard}
-import shards.{RoutingNode, ShardId, ShardException, ShardDatabaseTimeoutException, ShardTimeoutException}
+import com.twitter.gizzard.nameserver.{NameServer, NonExistentShard}
+import com.twitter.gizzard.shards._
+
 
 object CopyJob {
   val MIN_COPY = 500
@@ -68,7 +68,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
   }
 
   def finish() {
-    nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Normal)
+    nameServer.shardManager.markShardBusy(destinationId, Busy.Normal)
     log.info("Copying finished for (type %s) from %s to %s",
              getClass.getName.split("\\.").last, sourceId, destinationId)
     Stats.clearGauge(gaugeName)
@@ -76,7 +76,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
 
   def apply() {
     try {
-      if (nameServer.shardManager.getShard(destinationId).busy == shards.Busy.Cancelled) {
+      if (nameServer.shardManager.getShard(destinationId).busy == Busy.Cancelled) {
         log.info("Copying cancelled for (type %s) from %s to %s",
                  getClass.getName.split("\\.").last, sourceId, destinationId)
         Stats.clearGauge(gaugeName)
@@ -90,7 +90,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
         log.info("Copying shard block (type %s) from %s to %s: state=%s",
                  getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
         // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-        nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Busy)
+        nameServer.shardManager.markShardBusy(destinationId, Busy.Busy)
 
         this.nextJob = copyPage(sourceShard, destinationShard, count)
         this.nextJob match {
@@ -108,7 +108,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
           scheduler.put(this)
         } else {
           log.error("Shard block copy timed out on minimum block size.")
-          nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Error)
+          nameServer.shardManager.markShardBusy(destinationId, Busy.Error)
           throw e
         }
       case e: ShardDatabaseTimeoutException =>
@@ -116,7 +116,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
         scheduler.put(this)
       case e: Throwable =>
         log.error(e, "Shard block copy stopped due to exception: %s", e)
-        nameServer.shardManager.markShardBusy(destinationId, shards.Busy.Error)
+        nameServer.shardManager.markShardBusy(destinationId, Busy.Error)
         throw e
     }
   }

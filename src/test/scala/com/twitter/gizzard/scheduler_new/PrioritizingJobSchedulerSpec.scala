@@ -1,9 +1,10 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import com.twitter.conversions.time._
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 object PrioritizingJobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "PrioritizingJobScheduler" should {

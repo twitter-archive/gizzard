@@ -1,8 +1,8 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import scala.collection.mutable
-import shards._
+import com.twitter.gizzard.shards._
+
 
 /**
  * NameServer implementation that doesn't actually store anything anywhere.

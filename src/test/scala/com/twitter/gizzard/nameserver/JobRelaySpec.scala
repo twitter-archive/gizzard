@@ -1,9 +1,9 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.conversions.time._
-import thrift.{JobInjectorService, TThreadServer, JobInjector}
+import com.twitter.gizzard.thrift.{JobInjectorService, TThreadServer, JobInjector}
+import com.twitter.gizzard.ConfiguredSpecification
 
 
 object JobRelaySpec extends ConfiguredSpecification {

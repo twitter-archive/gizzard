@@ -1,6 +1,6 @@
-package com.twitter.gizzard
-package thrift
+package com.twitter.gizzard.thrift
 
+import java.util.{List => JList}
 import scala.reflect.Manifest
 import scala.collection.JavaConversions._
 import com.twitter.gizzard.thrift.conversions.Sequences._
@@ -14,7 +14,6 @@ import com.twitter.gizzard.shards._
 import com.twitter.gizzard.scheduler._
 import com.twitter.gizzard.nameserver._
 import com.twitter.logging.Logger
-import java.util.{List => JList}
 
 
 class ManagerService(
@@ -30,7 +29,7 @@ extends Manager.Iface {
   def wrapEx[A](f: => A): A = try { f } catch {
     case ex: Throwable =>
       log.error(ex, "Exception in Gizzard ManagerService: %s", ex)
-      throw new thrift.GizzardException(ex.getMessage)
+      throw new GizzardException(ex.getMessage)
   }
 
   def reload_updated_forwardings() = wrapEx {

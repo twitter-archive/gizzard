@@ -1,9 +1,9 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import com.twitter.conversions.time._
-import com.twitter.gizzard.shards.{Busy, LinkInfo, ShardId, ShardInfo}
+import com.twitter.gizzard.shards._
 import com.twitter.gizzard.test.NameServerDatabase
+import com.twitter.gizzard.ConfiguredSpecification
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 
@@ -200,7 +200,7 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
         remoteClusterShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
 
         remoteClusterShard.removeRemoteHost(host1.hostname, host1.port)
-        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) must throwA[ShardException]
       }
 
       def reloadedHost(h: Host) = remoteClusterShard.getRemoteHost(h.hostname, h.port)

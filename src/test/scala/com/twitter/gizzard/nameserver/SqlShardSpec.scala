@@ -1,13 +1,14 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
-import com.twitter.gizzard.shards.{ShardInfo, ShardId, Busy, LinkInfo}
+import com.twitter.gizzard.shards._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.test.NameServerDatabase
+import com.twitter.gizzard.ConfiguredSpecification
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+
 
 class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
 
@@ -132,9 +133,9 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       "be markable busy" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         nsShard.createShard(a)
-        nsShard.markShardBusy(a.id, shards.Busy.Busy)
-        nsShard.markShardBusy(a.id, shards.Busy.Busy)
-        nsShard.getShard(a.id).busy mustEqual shards.Busy.Busy
+        nsShard.markShardBusy(a.id, Busy.Busy)
+        nsShard.markShardBusy(a.id, Busy.Busy)
+        nsShard.getShard(a.id).busy mustEqual Busy.Busy
       }
 
       "sets forwarding" in {
@@ -381,7 +382,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         remoteClusterShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
 
         remoteClusterShard.removeRemoteHost(host1.hostname, host1.port)
-        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) must throwA[ShardException]
       }
 
       def reloadedHost(h: Host) = remoteClusterShard.getRemoteHost(h.hostname, h.port)

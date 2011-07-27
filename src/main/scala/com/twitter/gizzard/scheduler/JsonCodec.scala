@@ -8,6 +8,7 @@ import org.codehaus.jackson.map.ObjectMapper
 import java.util.{Map => JMap, List => JList}
 import scala.collection.JavaConversions._
 
+
 /**
  * Codec for json-encoded jobs.
  *

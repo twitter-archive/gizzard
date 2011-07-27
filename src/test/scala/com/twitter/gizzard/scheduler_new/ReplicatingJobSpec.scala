@@ -1,8 +1,8 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import org.specs.mock.{ClassMocker, JMocker}
-import nameserver.{JobRelay, JobRelayCluster, Host}
+import com.twitter.gizzard.nameserver.{JobRelay, JobRelayCluster, Host}
+import com.twitter.gizzard.ConfiguredSpecification
 
 
 class ReplicatingJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {

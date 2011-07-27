@@ -1,17 +1,17 @@
-package com.twitter.gizzard
-package nameserver
+package com.twitter.gizzard.nameserver
 
 import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
+import java.net.InetSocketAddress
+import org.apache.thrift.protocol.TBinaryProtocol
 import com.twitter.conversions.time._
 import com.twitter.util.Duration
 import com.twitter.finagle.builder.ClientBuilder
-import java.net.InetSocketAddress
-import org.apache.thrift.protocol.TBinaryProtocol
 import com.twitter.finagle.thrift.ThriftClientFramedCodec
+import com.twitter.gizzard.scheduler.JsonJob
+import com.twitter.gizzard.thrift.JobInjector
+import com.twitter.gizzard.thrift.{Job => ThriftJob}
 
-import scheduler.JsonJob
-import thrift.JobInjector
 
 class ClusterBlockedException(cluster: String, cause: Throwable)
 extends Exception("Job replication to cluster '" + cluster + "' is blocked.", cause) {
@@ -75,10 +75,10 @@ extends (Iterable[Array[Byte]] => Unit) {
       new TBinaryProtocol.Factory())
 
   def apply(jobs: Iterable[Array[Byte]]) {
-    val jobList = new JLinkedList[thrift.Job]()
+    val jobList = new JLinkedList[ThriftJob]()
 
     jobs.foreach { j =>
-      val tj = new thrift.Job(priority, ByteBuffer.wrap(j))
+      val tj = new ThriftJob(priority, ByteBuffer.wrap(j))
       tj.setIs_replicated(true)
       jobList.add(tj)
     }

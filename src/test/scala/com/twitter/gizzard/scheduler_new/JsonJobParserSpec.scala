@@ -1,8 +1,10 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import com.twitter.json.Json
+import com.twitter.gizzard.ConfiguredSpecification
+
 
 class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JsonJobParser" should {

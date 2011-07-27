@@ -1,6 +1,7 @@
-package com.twitter.gizzard
-package thrift.conversions
+package com.twitter.gizzard.thrift.conversions
 
+import com.twitter.gizzard.thrift
+import com.twitter.gizzard.nameserver
 
 
 object Host {

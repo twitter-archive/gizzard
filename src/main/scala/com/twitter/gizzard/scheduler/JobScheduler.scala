@@ -1,14 +1,13 @@
-package com.twitter.gizzard
-package scheduler
+package com.twitter.gizzard.scheduler
 
 import java.util.Random
+import java.util.concurrent.atomic.AtomicInteger
+import net.lag.kestrel.PersistentQueue
 import com.twitter.ostrich.admin.BackgroundProcess
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
-import net.lag.kestrel.PersistentQueue
 import com.twitter.logging.Logger
-import java.util.concurrent.atomic.AtomicInteger
-import shards.{ShardBlackHoleException, ShardRejectedOperationException}
+import com.twitter.gizzard.shards.{ShardBlackHoleException, ShardRejectedOperationException}
 import com.twitter.gizzard.util.Process
 
 
@@ -25,16 +24,17 @@ import com.twitter.gizzard.util.Process
  * Jobs are added to the scheduler with 'put', and the thread pool & queues can be controlled
  * with the normal Process methods ('start', 'shutdown', and so on).
  */
-class JobScheduler(val name: String,
-                             val threadCount: Int,
-                             val strobeInterval: Duration,
-                             val errorLimit: Int,
-                             val flushLimit: Int,
-                             val jitterRate: Float,
-                             val queue: JobQueue,
-                             val errorQueue: JobQueue,
-                             val badJobQueue: Option[JobConsumer])
-      extends Process with JobConsumer {
+class JobScheduler(
+  val name: String,
+  val threadCount: Int,
+  val strobeInterval: Duration,
+  val errorLimit: Int,
+  val flushLimit: Int,
+  val jitterRate: Float,
+  val queue: JobQueue,
+  val errorQueue: JobQueue,
+  val badJobQueue: Option[JobConsumer])
+extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
   private val exceptionLog = Logger.get("exception")
