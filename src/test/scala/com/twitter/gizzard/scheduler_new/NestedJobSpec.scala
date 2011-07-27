@@ -23,6 +23,15 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
     }
 
     "equals" in {
+      expect {
+        atLeast(1).of(job1).className willReturn "JsonJob"
+        atLeast(1).of(job1).toMap willReturn Map[String, String]()
+        atLeast(1).of(job2).className willReturn "JsonJob"
+        atLeast(1).of(job2).toMap willReturn Map[String, String]()
+        atLeast(1).of(job3).className willReturn "JsonJob"
+        atLeast(1).of(job3).toMap willReturn Map[String, String]()
+      }
+
       nestedJob mustEqual new JsonNestedJob(List(job1, job2, job3))
     }
 
