@@ -11,6 +11,10 @@ trait JobConsumer {
   def put(job: JsonJob)
 }
 
+object NullJobConsumer extends JobConsumer {
+  def put(j: JsonJob) {}
+}
+
 /**
  * A promise to work on a job. For journaled queues, a ticket is a "tentative get" that isn't
  * confirmed until the 'ack' method is called. If a ticket isn't acked before the server shuts

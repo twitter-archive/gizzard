@@ -27,7 +27,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
     doBefore {
       jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE,
-                                      queue, errorQueue, Some(badJobQueue)) {
+                                      queue, errorQueue, badJobQueue) {
         override def processWork() {
           liveThreads.incrementAndGet()
           try {

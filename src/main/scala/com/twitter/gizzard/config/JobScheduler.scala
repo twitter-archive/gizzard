@@ -66,15 +66,21 @@ class JsonJobLogger extends BadJobConsumer {
   def apply(): JobConsumer = new scheduler.JsonJobLogger(Logger.get(name))
 }
 
+object NullBadJobConsumer extends BadJobConsumer {
+  def apply(): JobConsumer = scheduler.NullJobConsumer
+}
+
 trait Scheduler {
   def name: String
   def schedulerType: SchedulerType
-  var threads = 1
-  var errorLimit          = 100
-  var errorStrobeInterval = 30.seconds
-  var errorRetryDelay     = 900.seconds
-  var perFlushItemLimit   = 1000
-  var jitterRate          = 0.0f
+
+  var threads                     = 1
+  var errorLimit                  = 100
+  var errorStrobeInterval         = 30.seconds
+  var errorRetryDelay             = 900.seconds
+  var perFlushItemLimit           = 1000
+  var jitterRate                  = 0.0f
+  var badJobQueue: BadJobConsumer = new JsonJobLogger { name = "bad_jobs" }
 
   var _jobQueueName: Option[String] = None
   def jobQueueName_=(s: String) { _jobQueueName = Some(s) }
@@ -82,8 +88,6 @@ trait Scheduler {
   var _errorQueueName: Option[String] = None
   def errorQueueName_=(s: String) { _errorQueueName = Some(s) }
   def errorQueueName: String = _errorQueueName.getOrElse(name + "_errors")
-  var badJobQueue: Option[BadJobConsumer] = None
-  def badJobQueue_=(c: BadJobConsumer) { badJobQueue = Some(c) }
 
   def apply(codec: JsonCodec): gizzard.scheduler.JobScheduler = {
     val (jobQueue, errorQueue) = schedulerType match {
@@ -115,7 +119,7 @@ trait Scheduler {
       jitterRate,
       jobQueue,
       errorQueue,
-      badJobQueue.map(_.apply())
+      badJobQueue()
     )
   }
 }

@@ -33,7 +33,7 @@ class JobScheduler(
   val jitterRate: Float,
   val queue: JobQueue,
   val errorQueue: JobQueue,
-  val badJobQueue: Option[JobConsumer])
+  val badJobQueue: JobConsumer)
 extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
@@ -161,7 +161,7 @@ extends Process with JobConsumer {
             job.errorCount += 1
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {
-              badJobQueue.foreach { _.put(job) }
+              badJobQueue.put(job)
             } else {
               errorQueue.put(job)
             }
