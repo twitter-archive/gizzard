@@ -15,12 +15,14 @@ import testserver.{Priority, TestServer}
 import testserver.config.TestServerConfig
 
 
+object ConfiguredSpecification {
+  val eval = new Eval
+}
 
 trait ConfiguredSpecification extends Specification {
   noDetailedDiffs()
-  val eval = new Eval
   val config =
-    try { eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
+    try { ConfiguredSpecification.eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
   Logger.configure(config.loggers)
 }
 
