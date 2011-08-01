@@ -11,13 +11,20 @@ import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler, RepairJobFactory}
+import com.twitter.gizzard.scheduler._
 import com.twitter.gizzard.nameserver._
 import com.twitter.logging.Logger
 import java.util.{List => JList}
 
 
-class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler, copyScheduler: JobScheduler, repairer: RepairJobFactory[S], repairPriority: Int, differ: RepairJobFactory[S]) extends Manager.Iface {
+class ManagerService(
+  nameServer: NameServer,
+  shardManager: ShardManager,
+  adminJobManager: AdminJobManager,
+  remoteClusterManager: RemoteClusterManager,
+  scheduler: PrioritizingJobScheduler)
+extends Manager.Iface {
+
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
@@ -31,92 +38,91 @@ class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], sc
   }
   def reload_config() = wrapEx {
     nameServer.reload()
+    remoteClusterManager.reload()
   }
 
-  def rebuild_schema() = wrapEx(nameServer.rebuildSchema())
   def find_current_forwarding(tableId: Int, id: Long) = {
     wrapEx(nameServer.findCurrentForwarding(tableId, id).shardInfo.toThrift)
   }
 
   // Shard Tree Management
 
-  def create_shard(shard: ShardInfo) = wrapEx(nameServer.createShard(shard.fromThrift))
-  def delete_shard(id: ShardId)      = wrapEx(nameServer.deleteShard(id.fromThrift))
+  // XXX: must be nameserver, in order to materialize. odd exception
+  def create_shard(shard: ShardInfo) = wrapEx(shardManager.createAndMaterializeShard(shard.fromThrift))
+
+  def delete_shard(id: ShardId)      = wrapEx(shardManager.deleteShard(id.fromThrift))
 
 
   def add_link(upId: ShardId, downId: ShardId, weight: Int) = {
-    wrapEx(nameServer.addLink(upId.fromThrift, downId.fromThrift, weight))
+    wrapEx(shardManager.addLink(upId.fromThrift, downId.fromThrift, weight))
   }
   def remove_link(upId: ShardId, downId: ShardId) = {
-    wrapEx(nameServer.removeLink(upId.fromThrift, downId.fromThrift))
+    wrapEx(shardManager.removeLink(upId.fromThrift, downId.fromThrift))
   }
 
 
   def set_forwarding(forwarding: Forwarding) = {
-    wrapEx(nameServer.setForwarding(forwarding.fromThrift))
+    wrapEx(shardManager.setForwarding(forwarding.fromThrift))
   }
   def replace_forwarding(oldId: ShardId, newId: ShardId) = {
-    wrapEx(nameServer.replaceForwarding(oldId.fromThrift, newId.fromThrift))
+    wrapEx(shardManager.replaceForwarding(oldId.fromThrift, newId.fromThrift))
   }
   def remove_forwarding(forwarding: Forwarding) = {
-    wrapEx(nameServer.removeForwarding(forwarding.fromThrift))
+    wrapEx(shardManager.removeForwarding(forwarding.fromThrift))
   }
 
 
   def get_shard(id: ShardId): ShardInfo = {
-    wrapEx(nameServer.getShard(id.fromThrift).toThrift)
+    wrapEx(shardManager.getShard(id.fromThrift).toThrift)
   }
   def shards_for_hostname(hostname: String): JList[ShardInfo] = {
-    wrapEx(nameServer.shardsForHostname(hostname).map(_.toThrift))
+    wrapEx(shardManager.shardsForHostname(hostname).map(_.toThrift))
   }
   def get_busy_shards(): JList[ShardInfo] = {
-    wrapEx(nameServer.getBusyShards().map(_.toThrift))
+    wrapEx(shardManager.getBusyShards().map(_.toThrift))
   }
 
 
   def list_upward_links(id: ShardId): JList[LinkInfo] = {
-    wrapEx(nameServer.listUpwardLinks(id.fromThrift).map(_.toThrift))
+    wrapEx(shardManager.listUpwardLinks(id.fromThrift).map(_.toThrift))
   }
   def list_downward_links(id: ShardId): JList[LinkInfo] = {
-    wrapEx(nameServer.listDownwardLinks(id.fromThrift).map(_.toThrift))
+    wrapEx(shardManager.listDownwardLinks(id.fromThrift).map(_.toThrift))
   }
 
 
   def get_forwarding(tableId: Int, baseId: Long) = {
-    wrapEx(nameServer.getForwarding(tableId, baseId).toThrift)
+    wrapEx(shardManager.getForwarding(tableId, baseId).toThrift)
   }
 
 
   def get_forwarding_for_shard(id: ShardId) = {
-    wrapEx(nameServer.getForwardingForShard(id.fromThrift).toThrift)
+    wrapEx(shardManager.getForwardingForShard(id.fromThrift).toThrift)
   }
   def get_forwardings(): JList[Forwarding] = {
-    wrapEx(nameServer.getForwardings().map(_.toThrift))
+    wrapEx(shardManager.getForwardings().map(_.toThrift))
   }
 
-  def list_hostnames() = wrapEx(nameServer.listHostnames)
+  def list_hostnames() = wrapEx(shardManager.listHostnames)
 
   def mark_shard_busy(id: ShardId, busy: Int) = {
-    wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
+    wrapEx(shardManager.markShardBusy(id.fromThrift, busy.fromThrift))
   }
+
+  def list_tables(): JList[java.lang.Integer] = wrapEx(shardManager.listTables)
+
+  def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(shardManager.dumpStructure(tableIds.toList).map(_.toThrift))
+
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, destinationId.fromThrift)))
+    wrapEx(adminJobManager.scheduleCopyJob(sourceId.fromThrift, destinationId.fromThrift))
   }
-
-  def list_tables(): JList[java.lang.Integer] = wrapEx(nameServer.listTables)
-
-  def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(nameServer.dumpStructure(tableIds.toList).map(_.toThrift))
 
   def repair_shard(shardIds: JList[ShardId]) = {
-    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler]).put(repairPriority, repairer(
-      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
-    )))
+    wrapEx(adminJobManager.scheduleRepairJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
   }
 
   def diff_shards(shardIds: JList[ShardId]) = {
-    wrapEx((scheduler.asInstanceOf[PrioritizingJobScheduler]).put(repairPriority, differ(
-      shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)
-    )))
+    wrapEx(adminJobManager.scheduleDiffJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
   }
 
   // Job Scheduler Management
@@ -135,26 +141,26 @@ class ManagerService[S](nameServer: NameServer[S], copier: CopyJobFactory[S], sc
   // Remote Host Cluster Management
 
   def add_remote_host(host: Host) = {
-    wrapEx(nameServer.addRemoteHost(host.fromThrift))
+    wrapEx(remoteClusterManager.addRemoteHost(host.fromThrift))
   }
   def remove_remote_host(hostname: String, port: Int) = {
-    wrapEx(nameServer.removeRemoteHost(hostname, port))
+    wrapEx(remoteClusterManager.removeRemoteHost(hostname, port))
   }
   def set_remote_host_status(hostname: String, port: Int, status: HostStatus) = {
-    wrapEx(nameServer.setRemoteHostStatus(hostname, port, status.fromThrift))
+    wrapEx(remoteClusterManager.setRemoteHostStatus(hostname, port, status.fromThrift))
   }
   def set_remote_cluster_status(cluster: String, status: HostStatus) = {
-    wrapEx(nameServer.setRemoteClusterStatus(cluster, status.fromThrift))
+    wrapEx(remoteClusterManager.setRemoteClusterStatus(cluster, status.fromThrift))
   }
 
   def get_remote_host(hostname: String, port: Int) = {
-    wrapEx(nameServer.getRemoteHost(hostname, port).toThrift)
+    wrapEx(remoteClusterManager.getRemoteHost(hostname, port).toThrift)
   }
 
-  def list_remote_clusters(): JList[String] = wrapEx(nameServer.listRemoteClusters)
-  def list_remote_hosts(): JList[Host]      = wrapEx(nameServer.listRemoteHosts.map(_.toThrift))
+  def list_remote_clusters(): JList[String] = wrapEx(remoteClusterManager.listRemoteClusters)
+  def list_remote_hosts(): JList[Host]      = wrapEx(remoteClusterManager.listRemoteHosts.map(_.toThrift))
 
   def list_remote_hosts_in_cluster(cluster: String): JList[Host] = {
-    wrapEx(nameServer.listRemoteHosts.map(_.toThrift))
+    wrapEx(remoteClusterManager.listRemoteHosts.map(_.toThrift))
   }
 }

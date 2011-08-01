@@ -53,7 +53,7 @@ trait RepairJobParser[T] extends JsonJobParser {
  */
 abstract case class RepairJob[T](shardIds: Seq[ShardId],
                                  var count: Int,
-                                 nameServer: NameServer[T],
+                                 nameServer: NameServer,
                                  scheduler: PrioritizingJobScheduler,
                                  priority: Int) extends JsonJob {
   private val log = Logger.get(getClass.getName)
@@ -72,11 +72,12 @@ abstract case class RepairJob[T](shardIds: Seq[ShardId],
     try {
       log.info("[%s] - shard block (type %s): state=%s", label,
                getClass.getName.split("\\.").last, toMap)
-      val shardObjs = shardIds.map(nameServer.findShardById(_))
-      shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Busy))
+      // XXX: get rid of cast here!!!
+      val shardObjs = shardIds.map(nameServer.findShardById(_)).map(_.asInstanceOf[RoutingNode[T]])
+      shardIds.foreach(nameServer.shardManager.markShardBusy(_, shards.Busy.Busy))
       repair(shardObjs)
       this.nextJob match {
-        case None => shardIds.foreach(nameServer.markShardBusy(_, shards.Busy.Normal))
+        case None => shardIds.foreach(nameServer.shardManager.markShardBusy(_, shards.Busy.Normal))
         case _ =>
       }
     } catch {
@@ -115,7 +116,7 @@ abstract case class RepairJob[T](shardIds: Seq[ShardId],
 }
 
 abstract class MultiShardRepair[T, R <: Repairable[R], C <: Any](shardIds: Seq[ShardId], cursor: C, count: Int,
-    nameServer: NameServer[T], scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
+    nameServer: NameServer, scheduler: PrioritizingJobScheduler, priority: Int) extends RepairJob(shardIds, count, nameServer, scheduler, priority) {
 
   private val log = Logger.get(getClass.getName)
 

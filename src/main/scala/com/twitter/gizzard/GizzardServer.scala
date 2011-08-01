@@ -3,22 +3,14 @@ package com.twitter.gizzard
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
-import nameserver.{NameServer, BasicShardRepository}
-import scheduler.{CopyJobFactory, JobScheduler, JsonJob, JobConsumer, PrioritizingJobScheduler, ReplicatingJsonCodec, RepairJobFactory}
-import config.{GizzardServer => ServerConfig}
+import com.twitter.gizzard.nameserver.{NameServer, RemoteClusterManager}
+import com.twitter.gizzard.scheduler.{JobScheduler, PrioritizingJobScheduler, AdminJobManager, ReplicatingJsonCodec}
+import com.twitter.gizzard.config.{GizzardServer => ServerConfig}
 
 
-abstract class GizzardServer[S](config: ServerConfig) {
-
-  def copyFactory: CopyJobFactory[S]
-  def repairFactory: RepairJobFactory[S] = null
-  def diffFactory: RepairJobFactory[S] = null
+abstract class GizzardServer(config: ServerConfig) {
   def jobPriorities: Seq[Int]
   def copyPriority: Int
-  def repairPriority: Int = copyPriority
-  def start(): Unit
-  def shutdown(quiesce: Boolean): Unit
-  def shutdown() { shutdown(false) }
 
   // setup logging
 
@@ -27,10 +19,10 @@ abstract class GizzardServer[S](config: ServerConfig) {
 
   // nameserver/shard wiring
 
-  val replicationFuture: Option[Future] = None
-  lazy val shardRepo    = new BasicShardRepository[S](replicationFuture)
-  lazy val nameServer   = config.nameServer(shardRepo)
-
+  val nameServer           = config.buildNameServer()
+  val remoteClusterManager = config.buildRemoteClusterManager()
+  val shardManager         = nameServer.shardManager
+  lazy val adminJobManager = new AdminJobManager(nameServer.shardRepository, shardManager, jobScheduler(copyPriority))
 
   // job wiring
 
@@ -38,25 +30,14 @@ abstract class GizzardServer[S](config: ServerConfig) {
     log.error("Unparsable job: %s", new String(j) )
   }
 
-  lazy val jobCodec     = new ReplicatingJsonCodec(nameServer.jobRelay, logUnparsableJob)
+  lazy val jobCodec     = new ReplicatingJsonCodec(remoteClusterManager.jobRelay, logUnparsableJob)
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
     p -> config.jobQueues(p)(jobCodec)
   } toMap)
 
-  lazy val copyScheduler = jobScheduler(copyPriority).asInstanceOf[JobScheduler]
-
-
   // service wiring
 
-  lazy val managerServer = new thrift.ManagerService(
-    nameServer,
-    copyFactory,
-    jobScheduler,
-    copyScheduler,
-    repairFactory,
-    repairPriority,
-    diffFactory)
-
+  lazy val managerServer       = new thrift.ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, jobScheduler)
   lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
 
   lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)

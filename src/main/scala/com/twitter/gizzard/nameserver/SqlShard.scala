@@ -71,10 +71,8 @@ CREATE TABLE IF NOT EXISTS hosts (
 """
 }
 
-class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
-  val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.SqlShard", "", "")
-  val weight = 1 // hardcode for now
+
+class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManagerSource {
 
   private def rowToShardInfo(row: ResultSet) = {
     ShardInfo(ShardId(row.getString("hostname"), row.getString("table_prefix")), row.getString("class_name"),
@@ -91,17 +89,10 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
              row.getInt("weight"))
   }
 
-  private def rowToHost(row: ResultSet) = {
-    Host(row.getString("hostname"),
-         row.getInt("port"),
-         row.getString("cluster"),
-         HostStatus(row.getInt("status")))
-  }
-
 
   // Forwardings/Shard Management Write Methods
 
-  def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) {
+  def createShard(shardInfo: ShardInfo) {
     try {
       queryEvaluator.transaction { transaction =>
         transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",
@@ -116,7 +107,6 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
                              "source_type, destination_type) VALUES (?, ?, ?, ?, ?)",
                              shardInfo.hostname, shardInfo.tablePrefix, shardInfo.className,
                              shardInfo.sourceType, shardInfo.destinationType)
-          repository.create(shardInfo)
         }
       }
 
@@ -357,11 +347,17 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
     queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
     queryEvaluator.execute(SqlShard.UPDATE_COUNTER_DDL)
-    queryEvaluator.execute(SqlShard.HOSTS_DDL)
   }
+}
 
+class SqlRemoteClusterManagerSource(queryEvaluator: QueryEvaluator) extends RemoteClusterManagerSource {
 
-  // Remote Host Cluster Management
+  private def rowToHost(row: ResultSet) = {
+    Host(row.getString("hostname"),
+         row.getInt("port"),
+         row.getString("cluster"),
+         HostStatus(row.getInt("status")))
+  }
 
   def addRemoteHost(h: Host) {
     val sql = "INSERT INTO hosts (hostname, port, cluster, status) VALUES (?,?,?,?)" +
@@ -394,12 +390,32 @@ class SqlShard(queryEvaluator: QueryEvaluator) extends nameserver.Shard {
     }
   }
 
-  def listRemoteClusters() =
+  def listRemoteClusters() = {
     queryEvaluator.select("SELECT DISTINCT cluster FROM hosts")(_.getString("cluster")).toList
+  }
 
-  def listRemoteHosts() =
+  def listRemoteHosts() = {
     queryEvaluator.select("SELECT * FROM hosts")(rowToHost).toList
+  }
 
-  def listRemoteHostsInCluster(c: String) =
+  def listRemoteHostsInCluster(c: String) = {
     queryEvaluator.select("SELECT * FROM hosts WHERE cluster = ?", c)(rowToHost).toList
+  }
+
+  def reload() {
+    try {
+      List("hosts").foreach { table =>
+        queryEvaluator.select("DESCRIBE " + table) { row => }
+      }
+    } catch {
+      case e: SQLException =>
+        // try creating the schema
+        rebuildSchema()
+    }
+  }
+
+  def rebuildSchema() {
+    queryEvaluator.execute(SqlShard.HOSTS_DDL)
+  }
+
 }

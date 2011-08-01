@@ -8,7 +8,7 @@ import com.twitter.querulous.config.Connection
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 import com.twitter.gizzard
-import com.twitter.gizzard.nameserver.NameServer
+import com.twitter.gizzard.nameserver.{NameServer, Forwarder}
 import com.twitter.gizzard.shards.{RoutingNode, ShardId, ShardInfo, ShardException, ShardTimeoutException}
 import com.twitter.gizzard.scheduler.{JobScheduler, JsonJob, CopyJob, CopyJobParser, CopyJobFactory, JsonJobParser, PrioritizingJobScheduler}
 
@@ -40,7 +40,9 @@ package object config {
   trait TestServer extends gizzard.config.GizzardServer {
     def server: TServer
     def databaseConnection: Connection
+
     val queryEvaluator = TestQueryEvaluator
+    jobRelay.priority = Priority.Low.id
     loggers = List(
       new LoggerConfig {
         level = Level.ERROR
@@ -64,10 +66,8 @@ package object config {
     errorLimit = 25
   }
 
-  class TestNameServer(name: String) extends gizzard.config.NameServer {
-    jobRelay.priority = Priority.Low.id
-
-    val replicas = Seq(new Mysql {
+  private def testNameServerReplicas(name: String) = {
+    Seq(new Mysql {
       queryEvaluator = TestQueryEvaluator
       val connection = new TestDBConnection {
         val database = "gizzard_test_" + name + "_ns"
@@ -75,21 +75,23 @@ package object config {
     })
   }
 
+
   object TestServerConfig {
     def apply(name: String, sPort: Int, iPort: Int, mPort: Int) = {
       val queueBase = "gizzard_test_" + name
 
       new TestServer {
-        val server = new TestTHsHaServer { val name = "TestGizzardService"; val port = sPort }
+        mappingFunction    = Identity
+        nameServerReplicas = testNameServerReplicas(name)
+        jobInjector.port   = iPort
+        manager.port       = mPort
+
+        val server             = new TestTHsHaServer { val name = "TestGizzardService"; val port = sPort }
         val databaseConnection = new TestDBConnection { val database = "gizzard_test_" + name }
-        val nameServer = new TestNameServer(name)
         val jobQueues = Map(
           Priority.High.id -> new TestJobScheduler { val name = queueBase+"_high" },
           Priority.Low.id  -> new TestJobScheduler { val name = queueBase+"_low" }
         )
-
-        jobInjector.port = iPort
-        manager.port     = mPort
       }
     }
 
@@ -102,24 +104,25 @@ object Priority extends Enumeration {
   val High, Low = Value
 }
 
-class TestServer(conf: config.TestServer) extends GizzardServer[TestShard](conf) {
+class TestServer(conf: config.TestServer) extends GizzardServer(conf) {
 
   // shard/nameserver/scheduler wiring
   val jobPriorities         = List(Priority.High.id, Priority.Low.id)
   val copyPriority          = Priority.Low.id
-  val copyFactory           = new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id))
 
-  shardRepo += ("TestShard" -> new TestShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+  nameServer.configureForwarder[TestShard](
+    _.tableId(0)
+    .shardFactory(new TestShardFactory(conf.queryEvaluator(), conf.databaseConnection))
+    .copyFactory(new TestCopyFactory(nameServer, jobScheduler(Priority.Low.id)))
+  )
 
-  def findForwarding(id: Long) = nameServer.findCurrentForwarding(0, id)
-
-  jobCodec += ("Put".r  -> new PutParser(findForwarding))
+  jobCodec += ("Put".r  -> new PutParser(nameServer.forwarder[TestShard]))
   jobCodec += ("Copy".r -> new TestCopyParser(nameServer, jobScheduler(Priority.Low.id)))
 
 
   // service listener
 
-  val testService = new TestServerIFace(findForwarding, jobScheduler)
+  val testService = new TestServerIFace(nameServer.forwarder[TestShard], jobScheduler)
 
   lazy val testThriftServer = {
     val processor = new thrift.TestServer.Processor(testService)
@@ -162,7 +165,7 @@ class TestShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) exten
 
   def instantiate(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, false)
 
-  def instantiateReadOnly(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, true)
+  def instantiateReadOnly(info: ShardInfo, weight: Int) = instantiate(info, weight)
 
   def materialize(info: ShardInfo) {
     val ddl =
@@ -223,12 +226,12 @@ class PutJob(key: Int, value: String, forwarding: Long => RoutingNode[TestShard]
   def apply() { forwarding(key).write.foreach(_.put(key, value)) }
 }
 
-class TestCopyFactory(ns: NameServer[TestShard], s: JobScheduler)
+class TestCopyFactory(ns: NameServer, s: JobScheduler)
 extends CopyJobFactory[TestShard] {
   def apply(src: ShardId, dest: ShardId) = new TestCopy(src, dest, 0, 500, ns, s)
 }
 
-class TestCopyParser(ns: NameServer[TestShard], s: JobScheduler)
+class TestCopyParser(ns: NameServer, s: JobScheduler)
 extends CopyJobParser[TestShard] {
   def deserialize(m: Map[String, Any], src: ShardId, dest: ShardId, count: Int) = {
     val cursor = m("cursor").asInstanceOf[Int]
@@ -237,8 +240,13 @@ extends CopyJobParser[TestShard] {
   }
 }
 
-class TestCopy(srcId: ShardId, destId: ShardId, cursor: Int, count: Int,
-               ns: NameServer[TestShard], s: JobScheduler)
+class TestCopy(
+  srcId: ShardId,
+  destId: ShardId,
+  cursor: Int,
+  count: Int,
+  ns: NameServer,
+  s: JobScheduler)
 extends CopyJob[TestShard](srcId, destId, count, ns, s) {
 
   def copyPage(src: RoutingNode[TestShard], dest: RoutingNode[TestShard], count: Int) = {

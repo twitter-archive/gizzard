@@ -92,9 +92,10 @@ trait IntegrationSpecification extends Specification {
   def setupServers(servers: WithFacts*) {
     servers.foreach { s =>
       createTestServerDBs(s)
-      s.nameServer.rebuildSchema()
-      s.nameServer.setForwarding(s.forwarding)
-      s.nameServer.createShard(s.sqlShardInfo)
+      s.nameServer.reload()
+      s.remoteClusterManager.reload()
+      s.nameServer.shardManager.setForwarding(s.forwarding)
+      s.shardManager.createAndMaterializeShard(s.sqlShardInfo)
       s.nameServer.reload()
     }
   }

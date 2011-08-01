@@ -8,15 +8,11 @@ import shards._
  * NameServer implementation that doesn't actually store anything anywhere.
  * Useful for tests or stubbing out the partitioning scheme.
  */
-class MemoryShard extends Shard {
-  val children = List()
-  val shardInfo = new ShardInfo("com.twitter.gizzard.nameserver.MemoryShard", "", "")
-  val weight = 1 // hardcode for now
+class MemoryShardManagerSource extends ShardManagerSource {
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
-  val hostTable = new mutable.ListBuffer[Host]()
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
     shardTable.find { x =>
@@ -39,7 +35,7 @@ class MemoryShard extends Shard {
     dumpStructure(tableIds.toSeq)
   }
 
-  def createShard[T](shardInfo: ShardInfo, repository: ShardRepository[T]) {
+  def createShard(shardInfo: ShardInfo) {
     find(shardInfo) match {
       case Some(x) =>
         if (x.className != shardInfo.className ||
@@ -50,7 +46,6 @@ class MemoryShard extends Shard {
       case None =>
         shardTable += shardInfo.clone
     }
-    repository.create(shardInfo)
   }
 
   def getShard(shardId: ShardId): ShardInfo = {
@@ -157,10 +152,11 @@ class MemoryShard extends Shard {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
   }
 
-  def rebuildSchema() { }
-
   def reload() { }
+}
 
+class MemoryRemoteClusterManagerSource extends RemoteClusterManagerSource {
+  val hostTable = new mutable.ListBuffer[Host]()
 
   // Remote Host Cluster Management
 
@@ -196,4 +192,6 @@ class MemoryShard extends Shard {
   def listRemoteClusters()                = (Set() ++ hostTable.map(_.cluster)).toList
   def listRemoteHosts()                   = hostTable.toList
   def listRemoteHostsInCluster(c: String) = hostTable.filter(_.cluster == c).toList
+
+  def reload() { }
 }

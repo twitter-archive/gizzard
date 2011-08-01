@@ -32,27 +32,26 @@ class TestScheduler(val name: String) extends Scheduler {
     path = "/tmp"
     keepJournal = false
   }
-  errorLimit = 25
+
+  errorLimit  = 25
   badJobQueue = new JsonJobLogger { name = "bad_jobs" }
 }
 
 new GizzardServer {
-  val nameServer = new NameServer {
-    jobRelay.priority = Priority.High.id
-
-    val replicas = Seq(new Mysql {
-      val connection = new Connection with Credentials {
-        val hostnames = Seq("localhost")
-        val database  = "gizzard_test"
-      }
-    })
-  }
-
   val jobQueues = Map(
     Priority.High.id   -> new TestScheduler("high"),
     Priority.Medium.id -> new TestScheduler("medium"),
     Priority.Low.id    -> new TestScheduler("low")
   )
+
+  jobRelay.priority = Priority.High.id
+
+  nameServerReplicas = Seq(new Mysql {
+    val connection = new Connection with Credentials {
+      val hostnames = Seq("localhost")
+      val database  = "gizzard_test"
+    }
+  })
 
   loggers = List(
     new LoggerConfig {

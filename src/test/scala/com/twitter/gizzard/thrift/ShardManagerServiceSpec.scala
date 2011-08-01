@@ -8,19 +8,21 @@ import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import shards.{Busy, RoutingNode}
-import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob}
+import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob, AdminJobManager}
 
 
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
-  val nameServer    = mock[nameserver.NameServer[AnyRef]]
-  val copier        = mock[CopyJobFactory[AnyRef]]
-  val scheduler     = mock[PrioritizingJobScheduler]
-  val subScheduler  = mock[JobScheduler]
-  val copyScheduler = mock[JobScheduler]
-  val manager       = new ManagerService(nameServer, copier, scheduler, copyScheduler, null, 0, null)
+  val nameServer           = mock[nameserver.NameServer]
+  val shardManager         = mock[nameserver.ShardManager]
+  val adminJobManager      = mock[AdminJobManager]
+  val remoteClusterManager = mock[nameserver.RemoteClusterManager]
+  val copier               = mock[CopyJobFactory[AnyRef]]
+  val scheduler            = mock[PrioritizingJobScheduler]
+  val subScheduler         = mock[JobScheduler]
+  val manager              = new ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, scheduler)
 
-  val shard = mock[RoutingNode[AnyRef]]
+  val shard = mock[RoutingNode[Nothing]]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
     "com.example.SqlShard", "INT UNSIGNED", "INT UNSIGNED", Busy.Normal.id)
   val shardInfo1 = new shards.ShardInfo(new shards.ShardId("hostname", "table_prefix"),
@@ -38,7 +40,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
   "ManagerService" should {
     "explode" in {
       expect {
-        one(nameServer).createShard(shardInfo1) willThrow new shards.ShardException("blarg!")
+        one(shardManager).createAndMaterializeShard(shardInfo1) willThrow new shards.ShardException("blarg!")
       }
       manager.create_shard(thriftShardInfo1) must throwA[thrift.GizzardException]
     }
@@ -46,7 +48,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "deliver messages for runtime exceptions" in {
       var woot = false
       expect {
-        one(nameServer).createShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
+        one(shardManager).createAndMaterializeShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
       }
       try{
         manager.create_shard(thriftShardInfo1)
@@ -61,42 +63,42 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
 
     "create_shard" in {
       expect {
-        one(nameServer).createShard(shardInfo1)
+        one(shardManager).createAndMaterializeShard(shardInfo1)
       }
       manager.create_shard(thriftShardInfo1)
     }
 
     "get_shard" in {
       expect {
-        one(nameServer).getShard(shardInfo1.id) willReturn shardInfo1
+        one(shardManager).getShard(shardInfo1.id) willReturn shardInfo1
       }
       manager.get_shard(thriftShardInfo1.id) mustEqual thriftShardInfo1
     }
 
     "delete_shard" in {
       expect {
-        one(nameServer).deleteShard(shardInfo1.id)
+        one(shardManager).deleteShard(shardInfo1.id)
       }
       manager.delete_shard(thriftShardInfo1.id)
     }
 
     "add_link" in {
       expect {
-        one(nameServer).addLink(shardInfo1.id, shardInfo2.id, 2)
+        one(shardManager).addLink(shardInfo1.id, shardInfo2.id, 2)
       }
       manager.add_link(thriftShardInfo1.id, thriftShardInfo2.id, 2)
     }
 
     "remove_link" in {
       expect {
-        one(nameServer).removeLink(shardInfo1.id, shardInfo2.id)
+        one(shardManager).removeLink(shardInfo1.id, shardInfo2.id)
       }
       manager.remove_link(thriftShardInfo1.id, thriftShardInfo2.id)
     }
 
     "list_downward_links" in {
       expect {
-        one(nameServer).listDownwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo1.id, shardInfo2.id, 1))
+        one(shardManager).listDownwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo1.id, shardInfo2.id, 1))
       }
       manager.list_downward_links(thriftShardInfo1.id).toList mustEqual
         List(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1))
@@ -104,7 +106,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
 
     "mark_shard_busy" in {
       expect {
-        one(nameServer).markShardBusy(shardInfo1.id, Busy.Busy)
+        one(shardManager).markShardBusy(shardInfo1.id, Busy.Busy)
       }
       manager.mark_shard_busy(thriftShardInfo1.id, Busy.Busy.id)
     }
@@ -112,11 +114,9 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
-      val copyJob = mock[CopyJob[AnyRef]]
 
       expect {
-        one(copier).apply(shardId1, shardId2) willReturn copyJob
-        one(copyScheduler).put(copyJob)
+        one(adminJobManager).scheduleCopyJob(shardId1, shardId2)
       }
 
       manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
@@ -124,35 +124,35 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
 
     "set_forwarding" in {
       expect {
-        one(nameServer).setForwarding(forwarding)
+        one(shardManager).setForwarding(forwarding)
       }
       manager.set_forwarding(thriftForwarding)
     }
 
     "replace_forwarding" in {
       expect {
-        one(nameServer).replaceForwarding(shardInfo1.id, shardInfo2.id)
+        one(shardManager).replaceForwarding(shardInfo1.id, shardInfo2.id)
       }
       manager.replace_forwarding(thriftShardInfo1.id, thriftShardInfo2.id)
     }
 
     "get_forwarding" in {
       expect {
-        one(nameServer).getForwarding(tableId, 0) willReturn forwarding
+        one(shardManager).getForwarding(tableId, 0) willReturn forwarding
       }
       manager.get_forwarding(tableId, 0) mustEqual thriftForwarding
     }
 
     "get_forwarding_for_shard" in {
       expect {
-        one(nameServer).getForwardingForShard(shardInfo1.id) willReturn forwarding
+        one(shardManager).getForwardingForShard(shardInfo1.id) willReturn forwarding
       }
       manager.get_forwarding_for_shard(thriftShardInfo1.id) mustEqual thriftForwarding
     }
 
     "get_forwardings" in {
       expect {
-        one(nameServer).getForwardings() willReturn List(forwarding)
+        one(shardManager).getForwardings() willReturn List(forwarding)
       }
       manager.get_forwardings().toList mustEqual List(thriftForwarding)
     }
@@ -160,8 +160,16 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "reload_config" in {
       expect {
         one(nameServer).reload()
+        one(remoteClusterManager).reload()
       }
       manager.reload_config()
+    }
+
+    "reload_updated_forwardings" in {
+      expect {
+        one(nameServer).reloadUpdatedForwardings()
+      }
+      manager.reload_updated_forwardings()
     }
 
     "find_current_forwarding" in {
@@ -174,21 +182,21 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
 
     "shards_for_hostname" in {
       expect {
-        one(nameServer).shardsForHostname(hostname) willReturn List(shardInfo1)
+        one(shardManager).shardsForHostname(hostname) willReturn List(shardInfo1)
       }
       manager.shards_for_hostname(hostname).toList mustEqual List(thriftShardInfo1)
     }
 
     "get_busy_shards" in {
       expect {
-        one(nameServer).getBusyShards() willReturn List(shardInfo1)
+        one(shardManager).getBusyShards() willReturn List(shardInfo1)
       }
       manager.get_busy_shards().toList mustEqual List(thriftShardInfo1)
     }
 
     "list_upward_links" in {
       expect {
-        one(nameServer).listUpwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo2.id, shardInfo1.id, 1))
+        one(shardManager).listUpwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo2.id, shardInfo1.id, 1))
       }
       manager.list_upward_links(thriftShardInfo1.id).toList mustEqual List(new thrift.LinkInfo(thriftShardInfo2.id, thriftShardInfo1.id, 1))
     }

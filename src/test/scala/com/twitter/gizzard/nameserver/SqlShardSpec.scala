@@ -12,26 +12,23 @@ import org.specs.mock.{ClassMocker, JMocker}
 class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker with NameServerDatabase {
 
   "SqlShard" should {
-    materialize(config.nameServer)
-    val queryEvaluator = evaluator(config.nameServer)
+    materialize(config)
+    val queryEvaluator = evaluator(config)
 
     val SQL_SHARD = "com.example.SqlShard"
-
-    var nameServer: nameserver.SqlShard = null
-    var shardRepository: ShardRepository[fake.Shard] = null
-    val future = new Future("Future!", 1, 1, 1.second, 1.second)
-
-    val repo = new BasicShardRepository[fake.Shard](Some(future))
-    repo += ("com.twitter.gizzard.fake.NestableShard" -> new fake.NestableShardFactory())
 
     val forwardShardInfo = new ShardInfo(SQL_SHARD, "forward_table", "localhost")
     val backwardShardInfo = new ShardInfo(SQL_SHARD, "backward_table", "localhost")
 
+    var nsShard: ShardManagerSource = null
+    var remoteClusterShard: RemoteClusterManagerSource = null
+
     doBefore {
-      nameServer = new SqlShard(queryEvaluator)
-      nameServer.rebuildSchema()
-      reset(config.nameServer)
-      shardRepository = mock[ShardRepository[fake.Shard]]
+      reset(config)
+      nsShard = new SqlShardManagerSource(queryEvaluator)
+      nsShard.reload()
+      remoteClusterShard = new SqlRemoteClusterManagerSource(queryEvaluator)
+      remoteClusterShard.reload()
     }
 
     "be able to dump nameserver structure" in {
@@ -40,22 +37,22 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
       val shardSets = List((0 to 5).toList,(6 to 11).toList).map(_.map(shards))
 
-      shards.foreach { s => nameServer.createShard(s, repo) }
+      shards.foreach { nsShard createShard _ }
 
       List(0,1).zip(shardSets).foreach { case (tableId, List(a,b,c,d,e,f)) =>
-        nameServer.setForwarding(Forwarding(tableId, 0, a.id))
-        nameServer.addLink(a.id, b.id, 2)
-        nameServer.addLink(a.id, c.id, 2)
+        nsShard.setForwarding(Forwarding(tableId, 0, a.id))
+        nsShard.addLink(a.id, b.id, 2)
+        nsShard.addLink(a.id, c.id, 2)
 
-        nameServer.setForwarding(Forwarding(tableId, 1, d.id))
-        nameServer.addLink(d.id, e.id, 2)
-        nameServer.addLink(d.id, f.id, 2)
+        nsShard.setForwarding(Forwarding(tableId, 1, d.id))
+        nsShard.addLink(d.id, e.id, 2)
+        nsShard.addLink(d.id, f.id, 2)
       }
 
-      val singleStructureList = nameServer.dumpStructure(List(0)).toList
+      val singleStructureList = nsShard.dumpStructure(List(0)).toList
       singleStructureList.length mustEqual 1
 
-      val structureList = nameServer.dumpStructure(List(0,1)).toList
+      val structureList = nsShard.dumpStructure(List(0,1)).toList
       structureList.length mustEqual 2
 
       structureList.zip(shardSets).foreach { case (structure, List(a,b,c,d,e,f)) =>
@@ -72,32 +69,32 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         new ShardInfo("com.twitter.gizzard.fake.NestableShard", "%02d".format(i), "localhost")
       }
 
-      shards.foreach { s => nameServer.createShard(s, repo) }
-      nameServer.currentState().isEmpty mustEqual true
+      shards.foreach { nsShard createShard _ }
+      nsShard.currentState().isEmpty mustEqual true
 
-      nameServer.addLink(shards(0).id, shards(1).id, 2)
-      nameServer.currentState().isEmpty mustEqual true
+      nsShard.addLink(shards(0).id, shards(1).id, 2)
+      nsShard.currentState().isEmpty mustEqual true
 
-      nameServer.setForwarding(Forwarding(0, 1, shards(0).id))
+      nsShard.setForwarding(Forwarding(0, 1, shards(0).id))
 
-      val state1 = nameServer.currentState()
+      val state1 = nsShard.currentState()
       state1.length mustEqual 1
       state1.head.forwardings.toList mustEqual List(Forwarding(0, 1, shards(0).id))
       state1.head.links.length mustEqual 1
       state1.head.shards.toList mustEqual List(shards(0), shards(1))
 
-      nameServer.addLink(shards(0).id, shards(3).id, 2)
-      nameServer.setForwarding(Forwarding(0, 2, shards(4).id))
+      nsShard.addLink(shards(0).id, shards(3).id, 2)
+      nsShard.setForwarding(Forwarding(0, 2, shards(4).id))
 
-      val state2 = nameServer.currentState()
+      val state2 = nsShard.currentState()
       state2.length mustEqual 1
       state2.head.forwardings.length mustEqual 2
       state2.head.links.length mustEqual 2
       state2.head.shards.length mustEqual 4
 
-      nameServer.removeLink(shards(0).id, shards(1).id)
+      nsShard.removeLink(shards(0).id, shards(1).id)
 
-      val state3 = nameServer.currentState()
+      val state3 = nsShard.currentState()
       state3.length mustEqual 1
       state3.head.forwardings.length mustEqual 2
       state3.head.links.length mustEqual 1
@@ -107,143 +104,123 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     "be idempotent" in {
       "be creatable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
-        nameServer.createShard(shardInfo, repo)
-        nameServer.createShard(shardInfo, repo)
-        nameServer.getShard(shardInfo.id) mustEqual shardInfo
+        nsShard.createShard(shardInfo)
+        nsShard.createShard(shardInfo)
+        nsShard.getShard(shardInfo.id) mustEqual shardInfo
       }
 
       "be deletable" in {
         val shardInfo = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "table1", "localhost")
-        nameServer.createShard(shardInfo, repo)
-        nameServer.deleteShard(shardInfo.id)
-        nameServer.deleteShard(shardInfo.id)
-        nameServer.getShard(shardInfo.id) must throwA[Exception]
+        nsShard.createShard(shardInfo)
+        nsShard.deleteShard(shardInfo.id)
+        nsShard.deleteShard(shardInfo.id)
+        nsShard.getShard(shardInfo.id) must throwA[Exception]
       }
 
       "be linkable and unlinkable" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
         val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
-        nameServer.createShard(a, repo)
-        nameServer.createShard(b, repo)
-        nameServer.addLink(a.id, b.id, 1)
-        nameServer.addLink(a.id, b.id, 2)
-        nameServer.listUpwardLinks(b.id).head.weight mustEqual 2
-        nameServer.removeLink(a.id, b.id)
-        nameServer.removeLink(a.id, b.id)
+        nsShard.createShard(a)
+        nsShard.createShard(b)
+        nsShard.addLink(a.id, b.id, 1)
+        nsShard.addLink(a.id, b.id, 2)
+        nsShard.listUpwardLinks(b.id).head.weight mustEqual 2
+        nsShard.removeLink(a.id, b.id)
+        nsShard.removeLink(a.id, b.id)
       }
 
       "be markable busy" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
-        nameServer.createShard(a, repo)
-        nameServer.markShardBusy(a.id, shards.Busy.Busy)
-        nameServer.markShardBusy(a.id, shards.Busy.Busy)
-        nameServer.getShard(a.id).busy mustEqual shards.Busy.Busy
+        nsShard.createShard(a)
+        nsShard.markShardBusy(a.id, shards.Busy.Busy)
+        nsShard.markShardBusy(a.id, shards.Busy.Busy)
+        nsShard.getShard(a.id).busy mustEqual shards.Busy.Busy
       }
 
       "sets forwarding" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
-        nameServer.createShard(a, repo)
+        nsShard.createShard(a)
 
-        nameServer.setForwarding(Forwarding(0, 0, a.id))
-        nameServer.setForwarding(Forwarding(0, 0, a.id))
-        nameServer.getForwardings.size mustEqual 1
+        nsShard.setForwarding(Forwarding(0, 0, a.id))
+        nsShard.setForwarding(Forwarding(0, 0, a.id))
+        nsShard.getForwardings.size mustEqual 1
       }
 
       "removes forwarding" in {
         val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
-        nameServer.createShard(a, repo)
+        nsShard.createShard(a)
 
-        nameServer.setForwarding(Forwarding(0, 0, a.id))
+        nsShard.setForwarding(Forwarding(0, 0, a.id))
 
-        nameServer.removeForwarding(Forwarding(0, 0, a.id))
-        nameServer.removeForwarding(Forwarding(0, 0, a.id))
-        nameServer.getForwardings.size mustEqual 0
+        nsShard.removeForwarding(Forwarding(0, 0, a.id))
+        nsShard.removeForwarding(Forwarding(0, 0, a.id))
+        nsShard.getForwardings.size mustEqual 0
       }
 
     }
 
     "list hostnames" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
-      nameServer.createShard(a, repo)
-      nameServer.listHostnames().head mustEqual "localhost"
+      nsShard.createShard(a)
+      nsShard.listHostnames().head mustEqual "localhost"
     }
 
     "list tables" in {
       val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
       val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
       val c = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "c", "localhost")
-      nameServer.createShard(a, repo)
-      nameServer.createShard(b, repo)
-      nameServer.createShard(c, repo)
-      nameServer.setForwarding(Forwarding(0, 0, a.id))
-      nameServer.setForwarding(Forwarding(0, 1, b.id))
-      nameServer.setForwarding(Forwarding(1, 0, c.id))
+      nsShard.createShard(a)
+      nsShard.createShard(b)
+      nsShard.createShard(c)
+      nsShard.setForwarding(Forwarding(0, 0, a.id))
+      nsShard.setForwarding(Forwarding(0, 1, b.id))
+      nsShard.setForwarding(Forwarding(1, 0, c.id))
 
-      nameServer.listTables must haveTheSameElementsAs(List(0, 1))
+      nsShard.listTables must haveTheSameElementsAs(List(0, 1))
     }
 
     "create" in {
       "a new shard" >> {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        nameServer.createShard(forwardShardInfo, shardRepository)
-        nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+        nsShard.createShard(forwardShardInfo)
+        nsShard.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
       }
 
       "when the shard already exists" >> {
         "when the shard matches existing data" >> {
-          expect {
-            one(shardRepository).create(forwardShardInfo)
-          }
-
-          nameServer.createShard(forwardShardInfo, shardRepository)
-          nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
-          nameServer.createShard(forwardShardInfo, shardRepository)
-          nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+          nsShard.createShard(forwardShardInfo)
+          nsShard.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+          nsShard.createShard(forwardShardInfo)
+          nsShard.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
         }
 
         "when the shard contradicts existing data" >> {
-          expect {
-            one(shardRepository).create(forwardShardInfo)
-          }
-
-          nameServer.createShard(forwardShardInfo, shardRepository)
+          nsShard.createShard(forwardShardInfo)
           val otherShard = forwardShardInfo.clone()
           otherShard.className = "garbage"
-          nameServer.createShard(otherShard, shardRepository) must throwA[InvalidShard]
+          nsShard.createShard(otherShard) must throwA[InvalidShard]
         }
       }
     }
 
     "find" in {
       "a created shard" >> {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        nameServer.createShard(forwardShardInfo, shardRepository)
-        nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
-        nameServer.getShard(forwardShardInfo.id).className mustEqual forwardShardInfo.className
+        nsShard.createShard(forwardShardInfo)
+        nsShard.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+        nsShard.getShard(forwardShardInfo.id).className mustEqual forwardShardInfo.className
       }
 
       "when the shard doesn't exist" >> {
-        nameServer.getShard(backwardShardInfo.id) must throwA[NonExistentShard]
+        nsShard.getShard(backwardShardInfo.id) must throwA[NonExistentShard]
       }
     }
 
     // FIXME: GET SHARD
 
     "delete" in {
-      expect {
-        one(shardRepository).create(forwardShardInfo)
-      }
-
-      nameServer.createShard(forwardShardInfo, shardRepository)
-      nameServer.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
-      nameServer.deleteShard(forwardShardInfo.id)
-      nameServer.getShard(forwardShardInfo.id) must throwA[NonExistentShard]
+      nsShard.createShard(forwardShardInfo)
+      nsShard.getShard(forwardShardInfo.id) mustEqual forwardShardInfo
+      nsShard.deleteShard(forwardShardInfo.id)
+      nsShard.getShard(forwardShardInfo.id) must throwA[NonExistentShard]
     }
 
     "children" in {
@@ -252,110 +229,102 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       def link = linkInfo(1, _: Int, _: Int)
 
       "add & find" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"), repo)
-        nameServer.addLink(shard(1), shard(100), 2)
-        nameServer.addLink(shard(1), shard(200), 2)
-        nameServer.addLink(shard(1), shard(300), 1)
-        nameServer.listDownwardLinks(shard(1)) mustEqual
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"))
+        nsShard.addLink(shard(1), shard(100), 2)
+        nsShard.addLink(shard(1), shard(200), 2)
+        nsShard.addLink(shard(1), shard(300), 1)
+        nsShard.listDownwardLinks(shard(1)) mustEqual
           List(link(100, 2), link(200, 2), link(300, 1))
       }
 
       "remove" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"), repo)
-        nameServer.addLink(shard(1), shard(100), 2)
-        nameServer.addLink(shard(1), shard(200), 2)
-        nameServer.addLink(shard(1), shard(300), 1)
-        nameServer.removeLink(shard(1), shard(200))
-        nameServer.listDownwardLinks(shard(1)) mustEqual List(link(100, 2), link(300, 1))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"))
+        nsShard.addLink(shard(1), shard(100), 2)
+        nsShard.addLink(shard(1), shard(200), 2)
+        nsShard.addLink(shard(1), shard(300), 1)
+        nsShard.removeLink(shard(1), shard(200))
+        nsShard.listDownwardLinks(shard(1)) mustEqual List(link(100, 2), link(300, 1))
       }
 
       "add & remove, retaining order" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "150", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"), repo)
-        nameServer.addLink(shard(1), shard(100), 5)
-        nameServer.addLink(shard(1), shard(200), 2)
-        nameServer.addLink(shard(1), shard(300), 1)
-        nameServer.removeLink(shard(1), shard(200))
-        nameServer.addLink(shard(1), shard(150), 8)
-        nameServer.listDownwardLinks(shard(1)) mustEqual List(link(150, 8), link(100, 5), link(300, 1))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "150", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "200", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "300", "host"))
+        nsShard.addLink(shard(1), shard(100), 5)
+        nsShard.addLink(shard(1), shard(200), 2)
+        nsShard.addLink(shard(1), shard(300), 1)
+        nsShard.removeLink(shard(1), shard(200))
+        nsShard.addLink(shard(1), shard(150), 8)
+        nsShard.listDownwardLinks(shard(1)) mustEqual List(link(150, 8), link(100, 5), link(300, 1))
       }
 
       "link from non-existant shard" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
-        nameServer.addLink(shard(23), shard(1), 1) must throwA[Exception]
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"))
+        nsShard.addLink(shard(23), shard(1), 1) must throwA[Exception]
       }
 
       "link to non-existant shard" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "23", "host"), repo)
-        nameServer.addLink(shard(23), shard(1), 1) must throwA[Exception]
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "23", "host"))
+        nsShard.addLink(shard(23), shard(1), 1) must throwA[Exception]
       }
 
       "remove shard with downlinks" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
-        nameServer.addLink(shard(1), shard(100), 5)
-        nameServer.deleteShard(shard(1)) must throwA[Exception]
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"))
+        nsShard.addLink(shard(1), shard(100), 5)
+        nsShard.deleteShard(shard(1)) must throwA[Exception]
       }
 
       "remove shard with uplinks" >> {
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"), repo)
-        nameServer.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"), repo)
-        nameServer.addLink(shard(1), shard(100), 5)
-        nameServer.deleteShard(shard(100)) must throwA[Exception]
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "1", "host"))
+        nsShard.createShard(new ShardInfo("com.twitter.gizzard.fake.NestableShard", "100", "host"))
+        nsShard.addLink(shard(1), shard(100), 5)
+        nsShard.deleteShard(shard(100)) must throwA[Exception]
       }
     }
 
     "set shard busy" in {
-      expect {
-        one(shardRepository).create(forwardShardInfo)
-      }
-
-      nameServer.createShard(forwardShardInfo, shardRepository)
-      nameServer.markShardBusy(forwardShardInfo.id, Busy.Busy)
-      nameServer.getShard(forwardShardInfo.id).busy mustEqual Busy.Busy
+      nsShard.createShard(forwardShardInfo)
+      nsShard.markShardBusy(forwardShardInfo.id, Busy.Busy)
+      nsShard.getShard(forwardShardInfo.id).busy mustEqual Busy.Busy
     }
 
     "forwarding changes" in {
       var forwarding: Forwarding = null
 
       doBefore {
-        expect {
-          one(shardRepository).create(forwardShardInfo)
-        }
-
-        nameServer.createShard(forwardShardInfo, shardRepository)
+        nsShard.createShard(forwardShardInfo)
         forwarding = new Forwarding(1, 0L, forwardShardInfo.id)
       }
 
       "set and get for shard" in {
-        nameServer.setForwarding(forwarding)
-        nameServer.getForwardingForShard(forwarding.shardId) mustEqual forwarding
+        nsShard.setForwarding(forwarding)
+        nsShard.getForwardingForShard(forwarding.shardId) mustEqual forwarding
       }
 
       "replace" in {
         val newShardId = ShardId("new", "shard")
-        nameServer.setForwarding(forwarding)
-        nameServer.replaceForwarding(forwardShardInfo.id, newShardId)
-        nameServer.getForwardingForShard(newShardId).shardId mustEqual newShardId
+        nsShard.setForwarding(forwarding)
+        nsShard.replaceForwarding(forwardShardInfo.id, newShardId)
+        nsShard.getForwardingForShard(newShardId).shardId mustEqual newShardId
       }
 
       "set and get" in {
-        nameServer.setForwarding(forwarding)
-        nameServer.getForwarding(1, 0L).shardId mustEqual forwardShardInfo.id
+        nsShard.setForwarding(forwarding)
+        nsShard.getForwarding(1, 0L).shardId mustEqual forwardShardInfo.id
       }
 
       "get all" in {
-        nameServer.setForwarding(forwarding)
-        nameServer.getForwardings() mustEqual List(forwarding)
+        nsShard.setForwarding(forwarding)
+        nsShard.getForwardings() mustEqual List(forwarding)
       }
     }
 
@@ -365,33 +334,27 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val shard3 = new ShardInfo(SQL_SHARD, "forward_1_too", "localhost")
 
       doBefore {
-        expect {
-          one(shardRepository).create(shard1)
-          one(shardRepository).create(shard2)
-          one(shardRepository).create(shard3)
-        }
-
-        nameServer.createShard(shard1, shardRepository)
-        nameServer.createShard(shard2, shardRepository)
-        nameServer.createShard(shard3, shardRepository)
-        nameServer.addLink(shard1.id, shard2.id, 10)
-        nameServer.addLink(shard2.id, shard3.id, 10)
+        nsShard.createShard(shard1)
+        nsShard.createShard(shard2)
+        nsShard.createShard(shard3)
+        nsShard.addLink(shard1.id, shard2.id, 10)
+        nsShard.addLink(shard2.id, shard3.id, 10)
       }
 
       "shardsForHostname" in {
-        nameServer.shardsForHostname("localhost").map { _.id }.sortWith(_.tablePrefix < _.tablePrefix) mustEqual List(shard1.id, shard2.id, shard3.id).sortWith(_.tablePrefix < _.tablePrefix)
+        nsShard.shardsForHostname("localhost").map { _.id }.sortWith(_.tablePrefix < _.tablePrefix) mustEqual List(shard1.id, shard2.id, shard3.id).sortWith(_.tablePrefix < _.tablePrefix)
       }
 
       "getBusyShards" in {
-        nameServer.getBusyShards() mustEqual List()
-        nameServer.markShardBusy(shard1.id, Busy.Busy)
-        nameServer.getBusyShards().map { _.id } mustEqual List(shard1.id)
+        nsShard.getBusyShards() mustEqual List()
+        nsShard.markShardBusy(shard1.id, Busy.Busy)
+        nsShard.getBusyShards().map { _.id } mustEqual List(shard1.id)
       }
 
       "getParentShard" in {
-        nameServer.listUpwardLinks(shard3.id) mustEqual List(LinkInfo(shard2.id, shard3.id, 10))
-        nameServer.listUpwardLinks(shard2.id) mustEqual List(LinkInfo(shard1.id, shard2.id, 10))
-        nameServer.listUpwardLinks(shard1.id) mustEqual List()
+        nsShard.listUpwardLinks(shard3.id) mustEqual List(LinkInfo(shard2.id, shard3.id, 10))
+        nsShard.listUpwardLinks(shard2.id) mustEqual List(LinkInfo(shard1.id, shard2.id, 10))
+        nsShard.listUpwardLinks(shard1.id) mustEqual List()
       }
     }
 
@@ -401,55 +364,55 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       val host3 = new Host("remoteapp3", 7777, "c2", HostStatus.Normal)
       val host4 = new Host("remoteapp4", 7777, "c2", HostStatus.Normal)
 
-      doBefore { List(host1, host2, host3, host4).foreach(nameServer.addRemoteHost) }
+      doBefore { List(host1, host2, host3, host4).foreach(remoteClusterShard.addRemoteHost) }
 
       "addRemoteHost" in {
         val h   = new Host("new_host", 7777, "c3", HostStatus.Normal)
         val sql = "SELECT * FROM hosts WHERE hostname = 'new_host' AND port = 7777"
 
-        nameServer.addRemoteHost(h)
+        remoteClusterShard.addRemoteHost(h)
         queryEvaluator.selectOne(sql)(r => true).getOrElse(false) mustEqual true
 
-        nameServer.addRemoteHost(h)
-        nameServer.listRemoteHosts().length mustEqual 5
+        remoteClusterShard.addRemoteHost(h)
+        remoteClusterShard.listRemoteHosts().length mustEqual 5
       }
 
       "removeRemoteHost" in {
-        nameServer.getRemoteHost(host1.hostname, host1.port) mustEqual host1
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
 
-        nameServer.removeRemoteHost(host1.hostname, host1.port)
-        nameServer.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
+        remoteClusterShard.removeRemoteHost(host1.hostname, host1.port)
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) must throwA[shards.ShardException]
       }
 
-      def reloadedHost(h: Host) = nameServer.getRemoteHost(h.hostname, h.port)
+      def reloadedHost(h: Host) = remoteClusterShard.getRemoteHost(h.hostname, h.port)
 
       "setRemoteHostStatus" in {
-        nameServer.setRemoteHostStatus(host1.hostname, host1.port, HostStatus.Blocked)
+        remoteClusterShard.setRemoteHostStatus(host1.hostname, host1.port, HostStatus.Blocked)
 
         reloadedHost(host1).status mustEqual HostStatus.Blocked
         (Set() ++ List(host2, host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
       }
 
       "setRemoteClusterStatus" in {
-        nameServer.setRemoteClusterStatus("c2", HostStatus.Blackholed)
+        remoteClusterShard.setRemoteClusterStatus("c2", HostStatus.Blackholed)
         (Set() ++ List(host3, host4).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Blackholed)
         (Set() ++ List(host1, host2).map(reloadedHost(_).status)) mustEqual Set(HostStatus.Normal)
       }
 
       "getRemoteHost" in {
-        nameServer.getRemoteHost(host1.hostname, host1.port) mustEqual host1
+        remoteClusterShard.getRemoteHost(host1.hostname, host1.port) mustEqual host1
       }
 
       "listRemoteClusters" in {
-        nameServer.listRemoteClusters mustEqual List("c1", "c2")
+        remoteClusterShard.listRemoteClusters mustEqual List("c1", "c2")
       }
 
       "listRemoteHosts" in {
-        nameServer.listRemoteHosts mustEqual List(host1, host2, host3, host4)
+        remoteClusterShard.listRemoteHosts mustEqual List(host1, host2, host3, host4)
       }
 
       "listRemoteHostsInCluster" in {
-        nameServer.listRemoteHostsInCluster("c1") mustEqual List(host1, host2)
+        remoteClusterShard.listRemoteHostsInCluster("c1") mustEqual List(host1, host2)
       }
     }
   }
