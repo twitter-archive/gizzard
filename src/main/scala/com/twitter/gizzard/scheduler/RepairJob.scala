@@ -22,6 +22,10 @@ object RepairJob {
  */
 trait RepairJobFactory[T] extends (Seq[ShardId] => RepairJob[T])
 
+class NullRepairJobFactory[T](message: String) extends RepairJobFactory[T] {
+  def apply(ids: Seq[ShardId]) = throw new UnsupportedOperation(message)
+}
+
 /**
  * A parser that creates a repair job out of json. The basic attributes (source shard ID, destination)
  * shard ID, count) are parsed out first, and the remaining attributes are passed to

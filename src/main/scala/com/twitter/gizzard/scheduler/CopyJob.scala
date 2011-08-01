@@ -5,17 +5,23 @@ import com.twitter.ostrich.stats.Stats
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
-import shards.{RoutingNode, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
+import shards.{RoutingNode, ShardId, ShardException, ShardDatabaseTimeoutException, ShardTimeoutException}
 
 object CopyJob {
   val MIN_COPY = 500
 }
+
+class UnsupportedOperation(msg: String) extends ShardException(msg)
 
 /**
  * A factory for creating a new copy job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
 trait CopyJobFactory[T] extends ((ShardId, ShardId) => CopyJob[T])
+
+class NullCopyJobFactory[T](message: String) extends CopyJobFactory[T] {
+  def apply(from: ShardId, to: ShardId) = throw new UnsupportedOperation(message)
+}
 
 /**
  * A parser that creates a copy job out of json. The basic attributes (source shard ID, destination)
