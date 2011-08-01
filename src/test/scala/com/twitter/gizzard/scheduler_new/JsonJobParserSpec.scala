@@ -3,7 +3,6 @@ package scheduler
 
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import com.twitter.json.Json
 
 class JsonJobParserSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JsonJobParser" should {

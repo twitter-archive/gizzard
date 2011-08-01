@@ -69,11 +69,17 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
   private val CMD_ADD_XID = 7
   private val CMD_CONTINUE = 8
 
+  checkIfQueuePathExists
+
   def this(fullPath: String, syncJournal: => Boolean) =
     this(new File(fullPath).getParent(), new File(fullPath).getName(), syncJournal, false)
 
   private def open(file: File): Unit = {
     writer = new FileOutputStream(file, true).getChannel
+  }
+
+  private def checkIfQueuePathExists {
+    if (!new File(queuePath).exists()) throw new FileNotFoundException(queuePath + " does not exist.")
   }
 
   def open(): Unit = {

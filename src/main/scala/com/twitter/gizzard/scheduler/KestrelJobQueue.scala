@@ -1,6 +1,6 @@
-package com.twitter.gizzard.scheduler
+package com.twitter.gizzard
+package scheduler
 
-import com.twitter.ostrich.stats.{Stats, StatsProvider}
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 import net.lag.kestrel.{PersistentQueue, QItem}
@@ -84,7 +84,7 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   def checkExpiration(flushLimit: Int) {
     val count = queue.discardExpired(flushLimit)
     if (count > 0) {
-      log.info("Replaying %d error jobs from %s.", count, queueName)
+      log.debug("Replaying %d error jobs from %s.", count, queueName)
     }
   }
 

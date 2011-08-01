@@ -5,8 +5,10 @@ import java.util.{LinkedList => JLinkedList}
 import java.nio.ByteBuffer
 import scala.collection.mutable.Queue
 import scala.util.matching.Regex
-import com.twitter.util.Duration
+import com.twitter.ostrich.stats.StatsProvider
 import com.twitter.logging.Logger
+import com.twitter.util.Duration
+import proxy.LoggingProxy
 
 import thrift.conversions.Sequences._
 import nameserver.JobRelay
@@ -16,7 +18,7 @@ class ReplicatingJsonCodec(relay: => JobRelay, unparsable: Array[Byte] => Unit)
 extends JsonCodec(unparsable) {
   processors.clear()
 
-  lazy val innerCodec = {
+  override lazy val innerCodec = {
     val c = new JsonCodec(unparsable)
     c += ("ReplicatingJob".r -> new ReplicatingJobParser(c, relay))
     c += ("ReplicatedJob".r -> new ReplicatedJobParser(c))

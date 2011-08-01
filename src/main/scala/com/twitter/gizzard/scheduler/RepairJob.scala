@@ -1,8 +1,7 @@
 package com.twitter.gizzard
 package scheduler
 
-import com.twitter.ostrich.stats.Stats
-import com.twitter.conversions.time._
+import com.twitter.util.TimeConversions._
 import com.twitter.logging.Logger
 import nameserver.{NameServer, NonExistentShard}
 import collection.mutable.ListBuffer

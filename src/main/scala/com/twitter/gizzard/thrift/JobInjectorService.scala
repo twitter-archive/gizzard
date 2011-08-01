@@ -11,10 +11,7 @@ class JobInjectorService(
   scheduler: PrioritizingJobScheduler)
 extends JobInjector.Iface {
 
-  private val codec = codecParam match {
-    case c: ReplicatingJsonCodec => c.innerCodec
-    case _ => codecParam
-  }
+  private val codec = codecParam.innerCodec
 
   private class InjectedJsonJob(serialized: Array[Byte]) extends JsonJob {
     private var isDeserialized = false

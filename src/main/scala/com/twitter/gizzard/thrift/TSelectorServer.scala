@@ -11,7 +11,6 @@ import org.apache.thrift._
 import org.apache.thrift.protocol._
 import org.apache.thrift.transport._
 import org.apache.thrift.server._
-import com.twitter.ostrich.stats.Stats
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
@@ -192,26 +191,21 @@ class TSelectorServer(name: String, processor: TProcessor, serverSocket: ServerS
         } else {
           key.cancel()
           execute {
-            val (_, duration) = Duration.inMilliseconds {
-              val client = clientMap.synchronized { clientMap(key.channel) }
-              client.activity = Time.now
-              try {
-                client.socketChannel.configureBlocking(true)
-                client.processor.process(client.inputProtocol, client.outputProtocol)
-                Stats.incr("thrift-" + name + "-calls")
-                registerQueue.add(client.socketChannel)
-                selector.wakeup()
-              } catch {
-                case e: TTransportException =>
-                  // session ends
-                  closeSocket(client.socketChannel)
-                case e: Throwable =>
-                  log.error(e, "Exception in client processor")
-                  closeSocket(client.socketChannel)
-              }
-            }
-            if (duration > 50) {
-              Stats.incr("thrift-" + name + "-work-50")
+            val client = clientMap.synchronized { clientMap(key.channel) }
+            client.activity = Time.now
+            try {
+              client.socketChannel.configureBlocking(true)
+              client.processor.process(client.inputProtocol, client.outputProtocol)
+              Stats.incr("thrift-" + name + "-calls")
+              registerQueue.add(client.socketChannel)
+              selector.wakeup()
+            } catch {
+              case e: TTransportException =>
+                // session ends
+                closeSocket(client.socketChannel)
+              case e: Throwable =>
+                log.error(e, "Exception in client processor")
+                closeSocket(client.socketChannel)
             }
           } {
             // if the job spent too long waiting for a thread:

@@ -3,47 +3,50 @@ package proxy
 
 import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
-import com.twitter.ostrich.stats.{Stats, StatsProvider, W3CStats}
+import com.twitter.gizzard.Stats
+import com.twitter.ostrich.stats.{StatsProvider, TransactionalStatsCollection}
+import scheduler.JsonJob
 
 
 /**
  * Wrap an object's method calls in a logger that sends the method name, arguments, and elapsed
- * time to a W3CStats logger.
+ * time to a transactional logger.
  */
-object LoggingProxy {
-  def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, obj: T)(implicit manifest: Manifest[T]): T =
-    apply(stats, logger, name, Set(), obj)
+class LoggingProxy[T <: AnyRef](
+  consumers: Seq[TransactionalStatsConsumer], statGrouping: String, name: Option[String])(implicit manifest: Manifest[T]) {
 
-  def apply[T <: AnyRef](stats: StatsProvider, logger: W3CStats, name: String, methods: Set[String], obj: T)(implicit manifest: Manifest[T]): T = {
-    Proxy(obj) { method =>
-      if (methods.size == 0 || methods.contains(method.name)) {
-        val shortName = if (name contains ',') ("multi:" + name.substring(name.lastIndexOf(',') + 1)) else name
-        if (method.name != "apply") {
-          stats.incr("operation-" + shortName + "-" + method.name + "-count")
-        }
-        logger { tstats =>
-          tstats.setLabel("timestamp", Time.now.inMillis.toString)
-          tstats.setLabel("operation", name + ":" + method.name)
-          val arguments = (if (method.args != null) method.args.mkString(",") else "").replaceAll("[ \n]", "_")
-          tstats.setLabel("arguments", if (arguments.length < 200) arguments else (arguments.substring(0, 200) + "..."))
-          val (rv, duration) = Duration.inMilliseconds { method() }
-          tstats.addMetric("action-timing", duration.inMilliseconds.toInt)
-          stats.addMetric("x-operation-" + shortName + ":" + method.name, duration.inMilliseconds.toInt)
+  private val proxy = new ProxyFactory[T]
 
-          if (rv != null) {
-            // structural types don't appear to work for some reason.
-            val resultCount = rv match {
-              case col: Collection[_]               => col.size.toString
-              case javaCol: java.util.Collection[_] => javaCol.size.toString
-              case arr: Array[AnyRef]               => arr.size.toString
-              case _: AnyRef                        => "1"
-            }
-            tstats.setLabel("result-count", resultCount)
-          }
-          rv
-        }
-      } else {
+  def apply(obj: T): T = {
+    proxy(obj) { method =>
+      Stats.beginTransaction()
+      val namePrefix = name.map(_+"-").getOrElse("")
+      val startTime = Time.now
+      try {
         method()
+      } catch {
+        case e: Exception =>
+          Stats.transaction.record("Transaction failed with exception: " + e.toString())
+          Stats.transaction.set("exception", e)
+          Stats.incr(namePrefix+statGrouping+"-failed")
+          Stats.transaction.name.foreach { opName =>
+            Stats.incr(namePrefix+"operation-"+opName+"-failed")
+          }
+          throw e
+      } finally {
+        Stats.incr(namePrefix+statGrouping+"-total")
+
+        val duration = Time.now - startTime
+        Stats.transaction.record("Total duration: "+duration.inMillis)
+        Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
+
+        Stats.transaction.name.foreach { opName =>
+          Stats.incr(namePrefix+"operation-"+opName+"-total")
+          Stats.addMetric(namePrefix+"operation-"+opName, duration.inMilliseconds.toInt)
+        }
+
+        val t = Stats.endTransaction()
+        consumers.map { _(t) }
       }
     }
   }
