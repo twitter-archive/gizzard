@@ -2,9 +2,8 @@ package com.twitter.gizzard.proxy
 
 import scala.reflect.Manifest
 import com.twitter.util.{Duration, Time}
-import com.twitter.gizzard.Stats
-import com.twitter.ostrich.stats.{StatsProvider, TransactionalStatsCollection}
-import scheduler.JsonJob
+import com.twitter.gizzard.{Stats, TransactionalStatsConsumer}
+import com.twitter.gizzard.scheduler.JsonJob
 
 
 /**

@@ -7,6 +7,7 @@ import com.twitter.ostrich.admin.BackgroundProcess
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
+import com.twitter.gizzard.Stats
 import com.twitter.gizzard.shards.{ShardBlackHoleException, ShardRejectedOperationException}
 import com.twitter.gizzard.util.Process
 

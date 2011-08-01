@@ -2,6 +2,7 @@ package com.twitter.gizzard.scheduler
 
 import com.twitter.util.TimeConversions._
 import com.twitter.logging.Logger
+import com.twitter.gizzard.Stats
 import com.twitter.gizzard.nameserver.{NameServer, NonExistentShard}
 import com.twitter.gizzard.shards._
 

@@ -5,6 +5,7 @@ import scala.collection.generic.CanBuildFrom
 import java.util.concurrent._
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
+import com.twitter.gizzard.Stats
 
 
 class Future(name: String, poolSize: Int, maxPoolSize: Int, keepAlive: Duration,

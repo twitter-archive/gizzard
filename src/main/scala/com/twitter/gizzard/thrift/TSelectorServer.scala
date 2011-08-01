@@ -13,6 +13,7 @@ import org.apache.thrift.server._
 import com.twitter.util.{Duration, Time}
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
+import com.twitter.gizzard.Stats
 import com.twitter.gizzard.util.NamedPoolThreadFactory
 
 

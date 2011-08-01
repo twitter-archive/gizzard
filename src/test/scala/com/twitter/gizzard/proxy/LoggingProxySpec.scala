@@ -1,10 +1,11 @@
 package com.twitter.gizzard.proxy
 
-import com.twitter.ostrich.stats.{TransactionalStatsCollection, StatsSummary}
 import com.twitter.logging.Logger
 import com.twitter.util.TimeConversions._
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
+import com.twitter.gizzard.util.Future
+import com.twitter.gizzard.{Stats, TransactionalStatsProvider, TransactionalStatsConsumer, SampledTransactionalStatsConsumer}
 import com.twitter.gizzard.ConfiguredSpecification
 
 
