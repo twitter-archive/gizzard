@@ -33,6 +33,13 @@ object LeafRoutingNode {
   def apply[T](shard: T): LeafRoutingNode[T] = {
     apply(shard, shard, new ShardInfo("", "", ""), 1)
   }
+
+  // XXX: remove when we move to shard replica sets rather than trees.
+  object NullNode extends LeafRoutingNode[Null](
+    new LeafRoutingNode.WrapperShardFactory(null, null),
+    new ShardInfo("NullShardPlaceholder", "null", "null"),
+    1
+  )
 }
 
 class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shardInfo: ShardInfo, val weight: Int) extends RoutingNode[T] {

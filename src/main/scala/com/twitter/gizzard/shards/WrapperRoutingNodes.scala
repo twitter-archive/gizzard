@@ -20,8 +20,17 @@ extends RoutingNode[T] {
 abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
   protected def leafTransform(l: RoutingNode.Leaf[T]): RoutingNode.Leaf[T]
 
+  // XXX: remove when we move to shard replica sets rather than trees.
+  private lazy val childrenWithPlaceholder = if (children.isEmpty) {
+    Seq(LeafRoutingNode.NullNode.asInstanceOf[RoutingNode[T]])
+  } else {
+    children
+  }
+
   protected[shards] def collectedShards(readOnly: Boolean) = {
-    children flatMap { _.collectedShards(readOnly).map(leafTransform) }
+    childrenWithPlaceholder flatMap {
+      _.collectedShards(readOnly).map(leafTransform)
+    }
   }
 }
 

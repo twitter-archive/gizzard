@@ -8,7 +8,9 @@ import com.twitter.util.{Try, Return, Throw, Future}
 object NodeSetSpec extends Specification {
   case class Fake(i: Int, readOnly: Boolean)
 
-  val leafs  = (0 to 8) map { i => LeafRoutingNode(Fake(i, true), Fake(i, false), new ShardInfo("", i.toString, ""), 1) }
+  val leafs = (0 to 8) map { i =>
+    LeafRoutingNode(Fake(i, true), Fake(i, false), new ShardInfo("", i.toString, ""), 1)
+  }
 
   val normals   = leafs take 3
   val blocked   = leafs drop 3 take 3 map { l =>  BlockedShard(new ShardInfo("","b",""), 1, Seq(l)) }
