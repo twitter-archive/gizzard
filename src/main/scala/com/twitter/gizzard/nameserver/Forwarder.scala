@@ -110,13 +110,13 @@ extends Forwarder[T](ns, config) {
 
   def isValidTableId(id: Int) = tableIdValidator(id)
 
-  def find(tableId: Int, baseId: Int) = if (isValidTableId(tableId)) {
+  def find(tableId: Int, baseId: Long) = if (isValidTableId(tableId)) {
     nameServer.findCurrentForwarding[T](tableId, baseId)
   } else {
     throw new InvalidTableId(tableId)
   }
 
-  def findOption(tableId: Int, baseId: Int) = try {
+  def findOption(tableId: Int, baseId: Long) = try {
     Some(find(tableId, baseId))
   } catch {
     case e: NonExistentShard => None
