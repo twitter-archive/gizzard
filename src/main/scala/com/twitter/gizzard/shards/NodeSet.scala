@@ -41,17 +41,17 @@ trait NodeIterable[+T] {
     tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.toOption
   }
 
+  def any[R](f: T => R): R = {
+    // only wrap ShardExceptions in Throw. Allow others to raise naturally
+    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
+  }
+
   def tryAny[R](f: T => Try[R]): Try[R] = {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       Throw(new ShardBlackHoleException(rootInfo.id))
     } else {
       _any(iterator)(f)
     }
-  }
-
-  def any[R](f: T => R): R = {
-    // only wrap ShardExceptions in Throw. Allow others to raise naturally
-    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
   }
 
   @tailrec protected final def _any[T1 >: T, R](iter: Iterator[T1])(f: T1 => Try[R]): Try[R] = {

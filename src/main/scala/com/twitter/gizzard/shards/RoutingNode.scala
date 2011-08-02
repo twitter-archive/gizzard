@@ -61,12 +61,12 @@ abstract class RoutingNode[T] {
   }
 
   @deprecated("use read.any instead")
-  def readOperation[A](f: T => A) = read.tryAny { shard =>
+  def readOperation[A](f: T => A): A = read.tryAny { shard =>
     Try(f(shard)) onFailure { e => logException(e, shard) }
-  }
+  } apply
 
   @deprecated("use write.all instead")
-  def writeOperation[A](f: T => A) = {
+  def writeOperation[A](f: T => A): A = {
     var rv: Option[A] = None
     write foreach { s => rv = Some(f(s)) }
     rv.getOrElse(throw new ShardBlackHoleException(shardInfo.id))
