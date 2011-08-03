@@ -1,0 +1,12 @@
+;; This config was generated using ensime-config-gen. Feel free to customize its contents manually.
+
+(
+
+:project-package "com.twitter.gizzard"
+
+:use-sbt t
+
+:compile_jars ("lib_managed")
+
+:sources ("target/gen-java")
+)
