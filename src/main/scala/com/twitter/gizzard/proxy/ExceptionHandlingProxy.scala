@@ -1,5 +1,6 @@
 package com.twitter.gizzard.proxy
 
+import scala.annotation.tailrec
 import scala.reflect.Manifest
 import java.lang.reflect.UndeclaredThrowableException
 import java.sql.SQLException
@@ -8,15 +9,22 @@ import com.twitter.querulous.database.SqlDatabaseTimeoutException
 import com.twitter.querulous.query.SqlQueryTimeoutException
 
 
+object ExceptionHandlingProxy {
+  @tailrec
+  final def unwrapException(ex: Throwable): Throwable = ex match {
+    case ex: UndeclaredThrowableException => unwrapException(ex.getCause())
+    case ex: ExecutionException => unwrapException(ex.getCause())
+    case ex => ex
+  }
+}
+
 class ExceptionHandlingProxy(f: Throwable => AnyRef) {
   def apply[T <: AnyRef](obj: T)(implicit manifest: Manifest[T]): T = {
     Proxy(obj) { method =>
       try {
         method()
       } catch {
-        case ex: UndeclaredThrowableException => f(ex.getCause())
-        case ex: ExecutionException => f(ex.getCause())
-        case ex => f(ex)
+        case e => f(ExceptionHandlingProxy.unwrapException(e))
       }
     }
   }
@@ -47,9 +55,7 @@ class ExceptionHandlingProxyFactory[T <: AnyRef](f: (T, Throwable) => AnyRef)(im
       try {
         method()
       } catch {
-        case ex: UndeclaredThrowableException => f(obj, ex.getCause())
-        case ex: ExecutionException => f(obj, ex.getCause())
-        case ex => f(obj, ex)
+        case e => f(obj, ExceptionHandlingProxy.unwrapException(e))
       }
     }
   }
