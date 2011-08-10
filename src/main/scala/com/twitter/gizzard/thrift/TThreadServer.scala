@@ -124,8 +124,7 @@ class TThreadServer(name: String, port: Int, idleTimeout: Int,
   }
 
   private def process(client: Socket) {
-    val socket = new TSocket(client)
-    val transport = new TFramedTransport(socket)
+    val transport = new TSocket(client)
     val processor = processorFactory.getProcessor(transport)
     val protocol = protocolFactory.getProtocol(transportFactory.getTransport(transport))
     while (running && processor.process(protocol, protocol)) {

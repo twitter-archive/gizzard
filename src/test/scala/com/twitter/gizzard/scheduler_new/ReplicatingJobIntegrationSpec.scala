@@ -7,15 +7,14 @@ import com.twitter.conversions.time._
 
 import com.twitter.gizzard
 import com.twitter.gizzard.thrift.{JobInjectorService, TThreadServer, JobInjector}
+import com.twitter.gizzard.config.{THsHaServer => THsHaServerConfig}
 import com.twitter.gizzard.nameserver.{Host, HostStatus, JobRelay}
 import com.twitter.gizzard.ConfiguredSpecification
 
 
 object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "ReplicatingJobIntegration" should {
-    // TODO: make configurable
-    val port  = 12313
-    val host  = Host("localhost", port, "c1", HostStatus.Normal)
+    val host  = Host("localhost", 12313, "c1", HostStatus.Normal)
     val relay = new JobRelay(Map("c1" -> List(host)), 1, 1.second, 0)
     val codec = new ReplicatingJsonCodec(relay, { badJob =>
       println(new String(badJob, "UTF-8"))
@@ -50,10 +49,10 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
 
     val service   = new JobInjectorService(codec, scheduler)
     val processor = new JobInjector.Processor(service)
-    val server    = TThreadServer("injector", port, 500, TThreadServer.makeThreadPool("injector", 5), processor)
+    val server    = (new THsHaServerConfig { val name = "injector"; val port = 12313 }).apply(processor)
 
     doBefore {
-      server.start()
+      (new Thread { override def run() { server.serve() } }).start()
       scheduler.start()
       queue.flush()
     }
