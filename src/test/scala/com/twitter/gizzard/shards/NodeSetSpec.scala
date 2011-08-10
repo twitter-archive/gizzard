@@ -36,6 +36,10 @@ object NodeSetSpec extends Specification {
       (allBlackhole.read.activeShards map { _._2.i } sorted) must haveTheSameElementsAs(Seq())
     }
 
+    "lookupId" in {
+      allNormal.read foreach { s => allNormal.read.lookupId(s).get.tablePrefix mustEqual s.i.toString }
+    }
+
     "blockedShards" in {
       (noNormal.read.blockedShards map { _.tablePrefix } sorted)    must haveTheSameElementsAs(Seq("3", "4", "5"))
       (allBlocked.read.blockedShards map { _.tablePrefix } sorted)  must haveTheSameElementsAs(Seq("3", "4", "5"))

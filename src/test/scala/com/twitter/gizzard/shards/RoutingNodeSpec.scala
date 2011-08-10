@@ -27,7 +27,7 @@ object RoutingNodeSpec extends Specification {
       (node.read.blockedShards map { _.tablePrefix } sorted)   must haveTheSameElementsAs(Seq("2", "3"))
 
       // pull out the fake shards themselve
-      val shards = node.read all identity collect { case Return(t) => t }
+      val shards = node.read all identity(_) collect { case Return(t) => t }
 
       // should all be readonly on read
       for (s <- shards) s.readOnly mustEqual true
@@ -38,7 +38,7 @@ object RoutingNodeSpec extends Specification {
       (node.write.blockedShards map { _.tablePrefix } sorted)   must haveTheSameElementsAs(Seq("1", "3"))
 
       // pull out the fake shards themselve
-      val shards = node.write all identity collect { case Return(t) => t }
+      val shards = node.write all identity(_) collect { case Return(t) => t }
 
       // should never be readonly on write
       for (s <- shards) s.readOnly mustEqual false

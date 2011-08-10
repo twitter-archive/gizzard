@@ -61,8 +61,8 @@ abstract class RoutingNode[T] {
   }
 
   @deprecated("use read.any instead")
-  def readOperation[A](f: T => A): A = read.tryAny { shard =>
-    Try(f(shard)) onFailure { e => logException(e, shard) }
+  def readOperation[A](f: T => A): A = read.tryAny { (id, shard) =>
+    Try(f(shard)) onFailure { e => logException(e, shard, id) }
   } apply
 
   @deprecated("use write.all instead")
@@ -80,7 +80,7 @@ abstract class RoutingNode[T] {
     var toRebuild: List[T] = Nil
 
     while (iter.hasNext) {
-      val shard = iter.next
+      val (id, shard) = iter.next
 
       try {
         val result = f(shard)
@@ -93,7 +93,7 @@ abstract class RoutingNode[T] {
           return result
         }
       } catch {
-        case e => logException(e, shard)
+        case e => logException(e, shard, id)
       }
     }
 
@@ -104,11 +104,10 @@ abstract class RoutingNode[T] {
     }
   }
 
-  protected def logException(e: Throwable, shard: T) {
-    val shardId    = (collectedShards(false) find { l => l.shard == shard }).get.info.id
-    val normalized = normalizeException(e, shardId)
+  protected def logException(e: Throwable, shard: T, id: ShardId) {
+    val normalized = normalizeException(e, id)
 
-    log.warning(e, "Error on %s: %s", shardId, e)
+    log.warning(e, "Error on %s: %s", id, e)
   }
 
   protected def normalizeException(ex: Throwable, shardId: ShardId): Throwable = ex match {

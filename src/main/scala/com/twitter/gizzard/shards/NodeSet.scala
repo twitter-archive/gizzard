@@ -12,7 +12,7 @@ import com.twitter.util.{Try, Return, Throw, Future}
 // skip(ShardId).read.any(T => R) => R
 
 // read.blockedShards => Seq[ShardInfo]
-// read.iterator => Iterator[T]
+// read.iterator => Iterator[(ShardId, T)]
 // read.map(T => R) => Seq[R]      // throws error if block exists.
 // read.foreach(T => R) => Seq[R]  // throws error if block exists.
 // read.all(T => R) => Seq[Try[R]]
@@ -31,22 +31,39 @@ trait NodeIterable[+T] {
   def activeShards: Seq[(ShardInfo, T)]
   def blockedShards: Seq[ShardInfo]
 
+  def lookupId[U >: T](u: U) = activeShards find { case (i, t) => t == u } map { _._1 }
+
   def size = activeShards.size + blockedShards.size
+
   def length = size
 
   def containsBlocked = !blockedShards.isEmpty
 
-  def anyOption[R](f: T => R): Option[R] = {
+  // iterators are lazy, so map works here.
+  def iterator: Iterator[(ShardId, T)] = activeShards.iterator map { case (i, s) => (i.id, s) }
+
+
+  def anyOption[R](f: (ShardId, T) => R): Option[R] = {
     // only wrap ShardExceptions in Throw. Allow others to raise naturally
-    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.toOption
+    tryAny { (i, s) => try { Return(f(i, s)) } catch { case e: ShardException => Throw(e) } }.toOption
+  }
+
+  def anyOption[R](f: T => R): Option[R] = {
+    this anyOption { (_, t) => f(t) }
+  }
+
+
+  def any[R](f: (ShardId, T) => R): R = {
+    // only wrap ShardExceptions in Throw. Allow others to raise naturally
+    tryAny { (i, s) => try { Return(f(i, s)) } catch { case e: ShardException => Throw(e) } }.apply()
   }
 
   def any[R](f: T => R): R = {
-    // only wrap ShardExceptions in Throw. Allow others to raise naturally
-    tryAny { s => try { Return(f(s)) } catch { case e: ShardException => Throw(e) } }.apply()
+    this any { (_, t) => f(t) }
   }
 
-  def tryAny[R](f: T => Try[R]): Try[R] = {
+
+  def tryAny[R](f: (ShardId, T) => Try[R]): Try[R] = {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       Throw(new ShardBlackHoleException(rootInfo.id))
     } else {
@@ -54,9 +71,16 @@ trait NodeIterable[+T] {
     }
   }
 
-  @tailrec protected final def _any[T1 >: T, R](iter: Iterator[T1])(f: T1 => Try[R]): Try[R] = {
+  def tryAny[R](f: T => Try[R]): Try[R] = {
+    this tryAny { (_, t) => f(t) }
+  }
+
+
+  @tailrec protected final def _any[T1 >: T, R](iter: Iterator[(ShardId, T1)])(f: (ShardId, T1) => Try[R]): Try[R] = {
     if (iter.hasNext) {
-      f(iter.next) match {
+      val (id, s) = iter.next
+
+      f(id, s) match {
         case rv if rv.isReturn => rv
         case _ => _any(iter)(f)
       }
@@ -65,47 +89,74 @@ trait NodeIterable[+T] {
     }
   }
 
+
   // XXX: it would be nice to have a way to implement all in terms of fmap. :(
-  def fmap[R, That](f: T => Future[R])(implicit bf: CanBuild[Future[R], That] = Seq.canBuildFrom[Future[R]]): That = {
+  def fmap[R, That](f: (ShardId, T) => Future[R])(implicit bf: CanBuild[Future[R], That]): That = {
     val b = bf()
-    for ((i, s) <- activeShards) b += f(s)
-    for (s <- blockedShards)     b += Future.exception(new ShardOfflineException(s.id))
+    for ((i, s) <- activeShards) b += f(i.id, s)
+    for (i <- blockedShards)     b += Future.exception(new ShardOfflineException(i.id))
     b.result
   }
 
-  def all[R, That](f: T => R)(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
-    tryAll { s => Try(f(s)) }
+  def fmap[R, That](f: T => Future[R])(implicit bf: CanBuild[Future[R], That]): That = {
+    this fmap { (_, t) => f(t) }
   }
 
-  def tryAll[R, That](f: T => Try[R])(implicit bf: CanBuild[Try[R], That] = Seq.canBuildFrom[Try[R]]): That = {
+
+  def all[R, That](f: (ShardId, T) => R)(implicit bf: CanBuild[Try[R], That]): That = {
+    this tryAll { (i, s) => Try(f(i, s)) }
+  }
+
+  def all[R, That](f: T => R)(implicit bf: CanBuild[Try[R], That]): That = {
+    this all { (_, t) => f(t) }
+  }
+
+
+  def tryAll[R, That](f: (ShardId, T) => Try[R])(implicit bf: CanBuild[Try[R], That]): That = {
     val b = bf()
-    for ((i, s) <- activeShards) b += f(s)
-    for (s <- blockedShards)     b += Throw(new ShardOfflineException(s.id))
+    for ((i, s) <- activeShards) b += f(i.id, s)
+    for (i <- blockedShards)     b += Throw(new ShardOfflineException(i.id))
     b.result
   }
 
-  // iterators are lazy, so map works here.
-  def iterator: Iterator[T] = activeShards.iterator map { case (i, s) => s }
+  def tryAll[R, That](f: T => Try[R])(implicit bf: CanBuild[Try[R], That]): That = {
+    this tryAll { (_, t) => f(t) }
+  }
+
 
   // throws error if block exists
+  def map[R, That](f: (ShardId, T) => R)(implicit bf: CanBuild[R, That]): That = {
+    val b = bf()
+    this foreach { (i, s) => b += f(i, s) }
+    b.result
+  }
+
   def map[R, That](f: T => R)(implicit bf: CanBuild[R, That]): That = {
-    val b = bf()
-    for (s <- this) b += f(s)
-    b.result
+    this map { (_, t) => f(t) }
   }
+
 
   // throws error if block exists
-  def flatMap[R, That](f: T => Traversable[R])(implicit bf: CanBuild[R, That]): That = {
+  def flatMap[R, That](f: (ShardId, T) => Traversable[R])(implicit bf: CanBuild[R, That]): That = {
     val b = bf()
-    for (s <- this) b ++= f(s)
+    this foreach { (i, s) => b ++= f(i, s) }
     b.result
   }
 
-  def foreach[U](f: T => U) {
+  def flatMap[R, That](f: T => Traversable[R])(implicit bf: CanBuild[R, That]): That = {
+    this flatMap { (_, t) => f(t) }
+  }
+
+
+  def foreach[U](f: (ShardId, T) => U) {
     all(f) foreach {
       case Throw(e) => throw e
       case _        => ()
     }
+  }
+
+  def foreach[U](f: T => U) {
+    this foreach { (_, t) => f(t) }
   }
 }
 
