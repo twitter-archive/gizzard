@@ -12,7 +12,7 @@ object SqlShard {
 CREATE TABLE IF NOT EXISTS shards (
     class_name              VARCHAR(125) NOT NULL,
     table_prefix            VARCHAR(125) NOT NULL,
-    hostname                VARCHAR(25)  NOT NULL,
+    hostname                VARCHAR(125)  NOT NULL,
     source_type             VARCHAR(125),
     destination_type        VARCHAR(125),
     busy                    TINYINT      NOT NULL DEFAULT 0,
