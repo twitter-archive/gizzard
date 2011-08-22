@@ -1,8 +1,5 @@
 package com.twitter.gizzard.shards
 
-import com.twitter.gizzard.thrift.conversions.ShardId._
-
-
 case class ShardInfo(
   var id: ShardId,
   var className: String,
