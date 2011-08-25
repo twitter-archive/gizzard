@@ -4,9 +4,7 @@ package scheduler
 import scala.collection.mutable
 import scala.util.matching.Regex
 import com.twitter.logging.Logger
-import org.codehaus.jackson.map.ObjectMapper
-import java.util.{Map => JMap, List => JList}
-import scala.collection.JavaConversions._
+import com.twitter.gizzard.util.Json
 
 
 /**
@@ -22,7 +20,6 @@ import scala.collection.JavaConversions._
  * Jobs that can't be parsed by the json library are handed to 'unparsableJobHandler'.
  */
 class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
-  private val mapper = new ObjectMapper
 
   protected val log = Logger.get(getClass.getName)
   protected val exceptionLog = Logger.get("exception")
@@ -44,13 +41,12 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
 
   def inflate(data: Array[Byte]): JsonJob = {
     try {
-      val javaMap: JMap[String, Any] = mapper.readValue(new String(data, "UTF-8"), classOf[JMap[String, Any]])
-      val scalaMap = deepConvert(javaMap)
-      inflate(scalaMap)
+      inflate(Json.decode(data))
     } catch {
-      case e =>
+      case e => {
         unparsableJobHandler(data)
         throw new UnparsableJsonException("Unparsable json", e)
+      }
     }
   }
 
@@ -68,26 +64,6 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
       case e =>
         throw new UnparsableJsonException("Processor '%s' blew up: %s".format(jobType, e.toString), e)
     }
-  }
-
-  private def deepConvert(javaList: JList[Any]): List[Any] = {
-    javaList.map { v =>
-      v match {
-        case jm: JMap[_,_] => deepConvert(jm.asInstanceOf[JMap[String,Any]])
-        case jl: JList[_]  => deepConvert(jl.asInstanceOf[JList[Any]])
-        case _ => v
-      }
-    }.toList
-  }
-
-  private def deepConvert(javaMap: JMap[String, Any]): Map[String, Any] = {
-    javaMap.map { case (k,v) =>
-      v match {
-        case jm: JMap[_,_] => (k, deepConvert(jm.asInstanceOf[JMap[String,Any]]))
-        case jl: JList[_]  => (k, deepConvert(jl.asInstanceOf[JList[Any]]))
-        case _ => (k, v)
-      }
-    }.toMap
   }
 }
 

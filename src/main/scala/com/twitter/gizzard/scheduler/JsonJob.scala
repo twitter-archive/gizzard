@@ -1,10 +1,9 @@
 package com.twitter.gizzard.scheduler
 
-import java.util.{Map => JMap, List => JList}
-import org.codehaus.jackson.map.ObjectMapper
 import com.twitter.ostrich.stats.{StatsProvider, W3CStats}
 import com.twitter.logging.Logger
 import com.twitter.gizzard.proxy.LoggingProxy
+import com.twitter.gizzard.util.Json
 
 
 class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
@@ -14,10 +13,6 @@ class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, 
  * map containing 'className' => 'toMap', where 'toMap' should return a map of key/values from the
  * job. The default 'className' is the job's java/scala class name.
  */
-object JsonJob {
-  val mapper = new ObjectMapper
-}
-
 trait JsonJob {
   @throws(classOf[Exception])
   def apply(): Unit
@@ -40,36 +35,10 @@ trait JsonJob {
   def className = getClass.getName
 
   def toJsonBytes = {
-    def json = toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage)
-    val javaMap = deepConvert(Map(className -> json))
-    JsonJob.mapper.writeValueAsBytes(javaMap)
+    Json.encode(Map(className -> (toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage))))
   }
 
   def toJson = new String(toJsonBytes, "UTF-8")
-
-  private def deepConvert(scalaMap: Map[String, Any]): JMap[String, Any] = {
-    val map = new java.util.LinkedHashMap[String, Any]()
-    scalaMap.map { case (k, v) =>
-      v match {
-        case m: Map[_,_]    => map.put(k, deepConvert(m.asInstanceOf[Map[String,Any]]))
-        case a: Iterable[_] => map.put(k, deepConvert(a.asInstanceOf[Iterable[Any]]))
-        case v => map.put(k, v)
-      }
-    }
-    map
-  }
-
-  private def deepConvert(scalaIterable: Iterable[Any]): JList[Any] = {
-    val list = new java.util.LinkedList[Any]()
-    scalaIterable.map { v =>
-      v match {
-        case m: Map[_,_]    => list.add(deepConvert(m.asInstanceOf[Map[String,Any]]))
-        case a: Iterable[_] => list.add(deepConvert(a.asInstanceOf[Iterable[Any]]))
-        case v => list.add(v)
-      }
-    }
-    list
-  }
 
   override def toString = toJson
 }
