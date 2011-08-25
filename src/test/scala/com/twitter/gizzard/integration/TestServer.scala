@@ -12,11 +12,11 @@ import com.twitter.gizzard.nameserver.{NameServer, Forwarder}
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.scheduler._
 
-import com.twitter.logging.config._
-
 
 package object config {
+  import com.twitter.logging.config._
   import com.twitter.gizzard.config._
+  import com.twitter.gizzard.logging.config._
   import com.twitter.querulous.config._
   import com.twitter.conversions.time._
   import com.twitter.util.Duration
@@ -44,6 +44,7 @@ package object config {
 
     val queryEvaluator = TestQueryEvaluator
     jobRelay.priority = Priority.Low.id
+
     loggers = List(
       new LoggerConfig {
         level = Level.ERROR
@@ -55,6 +56,15 @@ package object config {
         node = "bad_jobs"
         useParents = false
         level = Level.INFO
+      },
+      new LoggerConfig {
+        node = "exception"
+        useParents = false
+        level = Some(Level.INFO)
+        handlers = List(new FileHandlerConfig {
+          formatter = new ExceptionJsonFormatterConfig
+          filename = "./exception.log"
+        })
       }
     )
   }
