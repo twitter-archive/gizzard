@@ -51,7 +51,6 @@ class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shard
 
   val children = Nil
 
-  // only one of these will usually be called.
   val readOnlyShard  = factory.instantiateReadOnly(shardInfo, weight)
   val readWriteShard = factory.instantiate(shardInfo, weight)
 
