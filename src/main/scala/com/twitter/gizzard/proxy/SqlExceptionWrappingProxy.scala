@@ -3,7 +3,7 @@ package com.twitter.gizzard.proxy
 import java.sql.SQLException
 import scala.reflect.Manifest
 import com.mysql.jdbc.exceptions.MySQLTransientException
-import com.twitter.querulous.database.SqlDatabaseTimeoutException
+import com.twitter.querulous.database.{PoolTimeoutException, PoolEmptyException, SqlDatabaseTimeoutException}
 import com.twitter.querulous.query.SqlQueryTimeoutException
 import com.twitter.querulous.evaluator.{QueryEvaluator, QueryEvaluatorProxy}
 import com.twitter.gizzard.shards._
@@ -15,6 +15,10 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
       throw new ShardTimeoutException(e.timeout, shardId, e)
     case e: SqlDatabaseTimeoutException =>
       throw new ShardDatabaseTimeoutException(e.timeout, shardId, e)
+    case e: PoolTimeoutException =>
+      throw new NormalShardException(e.toString, shardId, e)
+    case e: PoolEmptyException =>
+      throw new NormalShardException(e.toString, shardId, e)
     case e: MySQLTransientException =>
       throw new NormalShardException(e.toString, shardId, null)
     case e: SQLException =>
@@ -36,6 +40,10 @@ class SqlExceptionWrappingProxyFactory[T <: AnyRef : Manifest](id: ShardId) exte
       throw new ShardTimeoutException(e.timeout, id, e)
     case e: SqlDatabaseTimeoutException =>
       throw new ShardDatabaseTimeoutException(e.timeout, id, e)
+    case e: PoolTimeoutException =>
+      throw new NormalShardException(e.toString, id, e)
+    case e: PoolEmptyException =>
+      throw new NormalShardException(e.toString, id, e)
     case e: MySQLTransientException =>
       throw new NormalShardException(e.toString, id, null)
     case e: SQLException =>
@@ -58,6 +66,10 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
         throw new ShardTimeoutException(e.timeout, shardId, e)
       case e: SqlDatabaseTimeoutException =>
         throw new ShardDatabaseTimeoutException(e.timeout, shardId, e)
+      case e: PoolTimeoutException =>
+        throw new NormalShardException(e.toString, shardId, e)
+      case e: PoolEmptyException =>
+        throw new NormalShardException(e.toString, shardId, e)
       case e: MySQLTransientException =>
         throw new NormalShardException(e.toString, shardId, null)
       case e: SQLException =>
