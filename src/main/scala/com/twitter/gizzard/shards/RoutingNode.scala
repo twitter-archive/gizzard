@@ -37,6 +37,7 @@ abstract class RoutingNode[T] {
   protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
 
   protected val log = Logger.get
+  protected val exceptionLog = Logger.get("exception")
 
   def shardInfos: Seq[ShardInfo] = children flatMap { _.shardInfos }
 
@@ -107,7 +108,7 @@ abstract class RoutingNode[T] {
   protected def logException(e: Throwable, shard: T, id: ShardId) {
     val normalized = normalizeException(e, id)
 
-    log.warning(e, "Error on %s: %s", id, e)
+    exceptionLog.warning(e, "Error on %s: %s", id, e)
   }
 
   protected def normalizeException(ex: Throwable, shardId: ShardId): Throwable = ex match {
