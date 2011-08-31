@@ -32,14 +32,25 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     val shard        = mock[AnyRef]
     var shardFactory = mock[ShardFactory[AnyRef]]
-    val nodes        = shardInfos map { new LeafRoutingNode(shardFactory, _, 1) }
-    val replNode     = ReplicatingShard(replicatingInfo, 1, Seq(nodes(3)))
+    var nodes: Seq[LeafRoutingNode[AnyRef]]        = null
+    var replNode: ReplicatingShard[AnyRef]         = null
 
     doBefore {
       expect {
         one(nameServerShard).reload()
         one(nameServerShard).currentState()    willReturn Seq(nameServerState)
+        2.of(shardFactory).instantiateReadOnly(shardInfos(0), 1) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(0), 1) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(1), 1) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(1), 1) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(2), 1) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(3), 1) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
       }
+
+      nodes        = shardInfos map { new LeafRoutingNode(shardFactory, _, 1) }
+      replNode     = ReplicatingShard(replicatingInfo, 1, Seq(nodes(3)))
 
       nameServer = new NameServer(LeafRoutingNode(nameServerShard), identity)
       forwarder  = nameServer.configureMultiForwarder[AnyRef](
@@ -87,8 +98,10 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).listDownwardLinks(replicatingInfo.id) willReturn linksList
         one(nameServerShard).getShard(shardInfos(3).id)            willReturn shardInfos(3)
         one(nameServerShard).listDownwardLinks(shardInfos(3).id)   willReturn List[LinkInfo]()
-        never(shardFactory).instantiate(shardInfos(2), 1)          willReturn shard
-        never(shardFactory).instantiate(shardInfos(3), 1)          willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(2), 1) willReturn shard
+        one(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(3), 1) willReturn shard
+        one(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
       }
 
       forwarder.findShardById(shardInfos(2).id)   mustEqual Some(nodes(2))
@@ -99,6 +112,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       val floatingShard = ShardInfo(ShardId("localhost", "floating"), SQL_SHARD, "a", "b", Busy.Normal)
 
       expect {
+        2.of(shardFactory).instantiateReadOnly(floatingShard, 1)
+        2.of(shardFactory).instantiate(floatingShard, 1)
         one(nameServerShard).getShard(floatingShard.id)          willReturn floatingShard
         one(nameServerShard).listDownwardLinks(floatingShard.id) willReturn List[LinkInfo]()
       }
