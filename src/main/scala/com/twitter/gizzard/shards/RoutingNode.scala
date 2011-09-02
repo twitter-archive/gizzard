@@ -55,7 +55,7 @@ abstract class RoutingNode[T] {
   def write = nodeSetFromCollected(false)
 
   @deprecated("use read.all instead")
-  def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]] = read.all(f) map { f => Try(f()) } map {
+  def readAllOperation[A](f: T => A): Seq[Either[Throwable,A]] = read.all(f) map {
     case Return(r) => Right(r)
     case Throw(e)  => Left(e)
   }
@@ -107,7 +107,7 @@ abstract class RoutingNode[T] {
   protected def logException(e: Throwable, shard: T, id: ShardId) {
     val normalized = normalizeException(e, id)
 
-    log.warning(e, "Error on %s: %s", id, e)
+    log.warning(normalized, "Error on %s: %s", id, e)
   }
 
   protected def normalizeException(ex: Throwable, shardId: ShardId): Throwable = ex match {
