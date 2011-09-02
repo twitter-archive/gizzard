@@ -2,7 +2,7 @@ package com.twitter.gizzard.shards
 
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuild
-import com.twitter.util.{Try, Return, Throw, Future}
+import com.twitter.util.{Try, Return, Throw, Future, Promise}
 
 // For read or write, three node states:
 // - normal: should apply normally
@@ -67,7 +67,7 @@ trait NodeIterable[+T] {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       Throw(new ShardBlackHoleException(rootInfo.id))
     } else {
-      _any(iterator)(f)
+      _any(iterator, f)
     }
   }
 
@@ -75,17 +75,53 @@ trait NodeIterable[+T] {
     this tryAny { (_, t) => f(t) }
   }
 
+  @tailrec
+  protected final def _any[T1 >: T, R](
+    iter: Iterator[(ShardId, T1)],
+    f: (ShardId, T1) => Try[R]
+  ): Try[R] = {
 
-  @tailrec protected final def _any[T1 >: T, R](iter: Iterator[(ShardId, T1)])(f: (ShardId, T1) => Try[R]): Try[R] = {
     if (iter.hasNext) {
       val (id, s) = iter.next
 
       f(id, s) match {
         case rv if rv.isReturn => rv
-        case _ => _any(iter)(f)
+        case _ => _any(iter, f)
       }
     } else {
       Throw(new ShardOfflineException(rootInfo.id))
+    }
+  }
+
+  def futureAny[R](f: (ShardId, T) => Future[R]): Future[R] = {
+    if (activeShards.isEmpty && blockedShards.isEmpty) {
+      Future.exception(new ShardBlackHoleException(rootInfo.id))
+    } else {
+      val promise = new Promise[R]
+      _futureAny(iterator, promise, f)
+      promise
+    }
+  }
+
+  def futureAny[R](f: T => Future[R]): Future[R] = {
+    this futureAny { (_, t) => f(t) }
+  }
+
+  protected final def _futureAny[T1 >: T, R](
+    iter: Iterator[(ShardId, T1)],
+    promise: Promise[R],
+    f: (ShardId, T1) => Future[R]
+  ) {
+
+    if (iter.hasNext) {
+      val (id, s) = iter.next
+
+      f(id, s) respond {
+        case Return(r) => promise.setValue(r)
+        case Throw(e)  => _futureAny(iter, promise, f)
+      }
+    } else {
+      promise.setException(new ShardOfflineException(rootInfo.id))
     }
   }
 
