@@ -69,10 +69,19 @@ trait TransactionalStatsConsumer {
   def apply(t: TransactionalStatsProvider)
 }
 
-class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsConsumer {
+abstract class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsConsumer {
   def this(logName: String) = this(Logger.get(logName))
+  def transactionToString(t: TransactionalStatsProvider): String
 
   def apply(t: TransactionalStatsProvider) {
+    log.info(transactionToString(t))
+  }
+}
+
+class HumanReadableTransactionalStatsConsumer(log: Logger) extends LoggingTransactionalStatsConsumer(log) {
+  def this(logName: String) = this(Logger.get(logName))
+
+  def transactionToString(t: TransactionalStatsProvider) = {
     val buf = new StringBuilder
 
     buf.append("Trace "+t.id)
@@ -89,7 +98,8 @@ class LoggingTransactionalStatsConsumer(log: Logger) extends TransactionalStatsC
         buf.append("    ["+record.timestamp.inMillis+"] "+record.message+"\n")
       }
     }
-    log.info(buf.toString)
+
+    buf.toString
   }
 }
 
@@ -113,6 +123,11 @@ class SampledTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, sa
 class SlowTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, threshold: Long)
   extends ConditionalTransactionalStatsConsumer(consumer, { t =>
     t.get("duration").map { _.asInstanceOf[Long] > threshold }.getOrElse(false)
+  })
+
+class AuditingTransactionalStatsConsumer(consumer: TransactionalStatsConsumer, methodNames: Set[String])
+  extends ConditionalTransactionalStatsConsumer(consumer, { t =>
+    t.name.map { name => methodNames.contains(name) } getOrElse false
   })
 
 trait TransactionalStatsProvider {

@@ -71,9 +71,9 @@ trait TransactionalStatsConsumer {
   def apply(): com.twitter.gizzard.TransactionalStatsConsumer
 }
 
-trait LoggingTransactionalStatsConsumer extends TransactionalStatsConsumer {
+trait HumanReadableTransactionalStatsConsumer extends TransactionalStatsConsumer {
   def loggerName: String
-  def apply() = { new com.twitter.gizzard.LoggingTransactionalStatsConsumer(loggerName) }
+  def apply() = { new com.twitter.gizzard.HumanReadableTransactionalStatsConsumer(loggerName) }
 }
 
 trait ConditionalTransactionalStatsConsumer extends TransactionalStatsConsumer {
@@ -85,14 +85,20 @@ trait ConditionalTransactionalStatsConsumer extends TransactionalStatsConsumer {
 
 trait SlowTransactionalStatsConsumer extends TransactionalStatsConsumer {
   var threshold: Duration = 2.seconds
-  var consumer = new LoggingTransactionalStatsConsumer { var loggerName = "slow_query" }
+  var consumer = new HumanReadableTransactionalStatsConsumer { var loggerName = "slow_query" }
   def apply() = { new com.twitter.gizzard.SlowTransactionalStatsConsumer(consumer(), threshold) }
 }
 
 trait SampledTransactionalStatsConsumer extends TransactionalStatsConsumer {
   var sampleRate: Double = 0.001
-  var consumer = new LoggingTransactionalStatsConsumer { var loggerName = "sampled_query" }
+  var consumer = new HumanReadableTransactionalStatsConsumer { var loggerName = "sampled_query" }
   def apply() = { new com.twitter.gizzard.SampledTransactionalStatsConsumer(consumer(), sampleRate) }
+}
+
+trait AuditingTransactionalStatsConsumer extends TransactionalStatsConsumer {
+  var names: Set[String] = Set()
+  var consumer = new HumanReadableTransactionalStatsConsumer { var loggerName = "audit_log" }
+  def apply () = { new com.twitter.gizzard.AuditingTransactionalStatsConsumer(consumer(), names) }
 }
 
 trait StatsCollection {
