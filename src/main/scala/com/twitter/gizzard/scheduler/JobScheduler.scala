@@ -8,7 +8,7 @@ import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import com.twitter.gizzard.Stats
-import com.twitter.gizzard.shards.{ShardBlackHoleException, ShardRejectedOperationException}
+import com.twitter.gizzard.shards.{ShardBlackHoleException, ShardOfflineException}
 import com.twitter.gizzard.util.Process
 
 
@@ -152,8 +152,8 @@ extends Process with JobConsumer {
           Stats.incr("job-success-count")
         } catch {
           case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
-          case e: ShardRejectedOperationException =>
-            Stats.incr("job-darkmoded-count")
+          case e: ShardOfflineException =>
+            Stats.incr("job-blocked-count")
             errorQueue.put(job)
           case e =>
             Stats.incr("job-error-count")
