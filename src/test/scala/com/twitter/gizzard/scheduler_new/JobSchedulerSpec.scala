@@ -148,11 +148,11 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         jobScheduler.process()
       }
 
-      "darkmode" in {
+      "blocked" in {
         expect {
           one(queue).get() willReturn Some(ticket1)
           one(ticket1).job willReturn job1
-          one(job1).apply() willThrow new ShardRejectedOperationException("darkmoded!", shardId)
+          one(job1).apply() willThrow new ShardOfflineException(shardId)
           one(ticket1).ack()
           one(job1).nextJob willReturn None
           one(errorQueue).put(job1)
