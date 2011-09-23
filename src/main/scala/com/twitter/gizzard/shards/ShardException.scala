@@ -42,15 +42,6 @@ class ShardDatabaseTimeoutException(timeout: Duration, shardId: ShardId, cause: 
 }
 
 /**
- * Shard refused to do the operation, possibly because it's blocked. This is not a retryable error.
- *
- * Often this exception is used to signal a ReplicatingShard that it should try another shard,
- * because this shard is read-only, write-only, or blocked (offline).
- */
-class ShardRejectedOperationException(description: String, shardId: ShardId) extends
-  NormalShardException(description, shardId)
-
-/**
  * Shard cannot do the operation because all possible child shards are unavailable. This is only
  * thrown by a ReplicatingShard. This is not a retryable error.
  */

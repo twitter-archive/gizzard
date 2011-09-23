@@ -209,6 +209,7 @@ class Journal(queuePath: String, queueName: String, syncJournal: => Boolean, mul
             f(item)
           case (JournalItem.EndOfFile, _) =>
             // move to next file and try again.
+            rj.close
             readerFilename = Journal.journalAfter(new File(queuePath), queueName, readerFilename.get)
             reader = Some(new FileInputStream(new File(queuePath, readerFilename.get)).getChannel)
             fillReadBehind(f)
