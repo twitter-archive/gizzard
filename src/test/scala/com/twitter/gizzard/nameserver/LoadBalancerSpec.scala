@@ -7,6 +7,9 @@ import scala.util.Random
 import com.twitter.gizzard.shards.RoutingNode
 import com.twitter.gizzard.ConfiguredSpecification
 
+import scala.collection.mutable
+import java.util.concurrent.atomic.AtomicLong
+
 
 // FIXME: these tests kinda suck in theory. Ideally, we'd test based on
 //        a fuzzy expectation of the distribution of responses.
@@ -14,29 +17,31 @@ import com.twitter.gizzard.ConfiguredSpecification
 
 object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "LoadBalancer" should {
-    val random = new Random(0)
     val shard1 = mock[RoutingNode[AnyRef]]
     val shard2 = mock[RoutingNode[AnyRef]]
     val shard3 = mock[RoutingNode[AnyRef]]
 
-    "with a zero weight" in {
-      expect {
-        allowing(shard1).weight willReturn 3
-        allowing(shard2).weight willReturn 0
-        allowing(shard3).weight willReturn 1
-      }
-      val loadBalancer = new LoadBalancer(random, List(shard1, shard2, shard3))
-      loadBalancer() mustEqual List(shard1, shard3)
-    }
+    val tolerance = 2000
 
-    "with interesting weights" in {
+    "actually be random" in {
       expect {
-        allowing(shard1).weight willReturn 3
-        allowing(shard2).weight willReturn 2
+        allowing(shard1).weight willReturn 1
+        allowing(shard2).weight willReturn 1
         allowing(shard3).weight willReturn 1
       }
-      val loadBalancer = new LoadBalancer(random, List(shard1, shard2, shard3))
-      loadBalancer() mustEqual List(shard1, shard2, shard3)
+
+      val histogram = mutable.HashMap[List[RoutingNode[AnyRef]], AtomicLong]()
+      1.to(1000000).foreach { i =>
+        val loadBalancer = new LoadBalancer(new Random, List(shard1, shard2, shard3))
+        val result = loadBalancer().toList
+        histogram.getOrElseUpdate(result, new AtomicLong()).incrementAndGet()
+      }
+
+      val avg = histogram.values.foldLeft(0L) { _ + _.get() } / histogram.size
+      val sumOfSquares = histogram.values.map { i => (avg - i.get()) * (avg - i.get()) }.foldLeft(0L)(_ + _)
+      val stdev = Math.sqrt(sumOfSquares / (histogram.size - 1))
+
+      stdev must be_<(tolerance.toDouble)
     }
   }
 }
