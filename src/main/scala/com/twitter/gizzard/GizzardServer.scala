@@ -55,6 +55,7 @@ abstract class GizzardServer(config: ServerConfig) {
 
   def startGizzard() {
     nameServer.reload()
+    remoteClusterManager.reload()
     jobScheduler.start()
 
     new Thread(new Runnable { def run() { managerThriftServer.serve() } }, "GizzardManagerThread").start()

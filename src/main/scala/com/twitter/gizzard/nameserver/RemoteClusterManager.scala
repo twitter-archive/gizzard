@@ -4,10 +4,12 @@ import scala.collection.mutable
 import com.twitter.logging.Logger
 import com.twitter.gizzard.shards.{ShardException, RoutingNode}
 
+class RemoteClusterManagerUninitialized extends ShardException("Please call reload() before operating on the RemoteClusterManager")
 
 class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relayFactory: JobRelayFactory) {
 
   private val log = Logger.get(getClass.getName)
+  private var initialized = false
 
   @volatile
   var jobRelay: JobRelay = NullJobRelay
@@ -15,6 +17,7 @@ class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relay
   def reload() {
     log.info("Loading remote cluster configuration...")
 
+    initialized = true
     shard.write.foreach(_.reload)
 
     val newRemoteClusters = mutable.Map[String, List[Host]]()
@@ -33,10 +36,15 @@ class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relay
   def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value) { shard.write.foreach(_.setRemoteHostStatus(h, p, s)) }
   def setRemoteClusterStatus(c: String, s: HostStatus.Value)      { shard.write.foreach(_.setRemoteClusterStatus(c, s)) }
 
-  def getRemoteHost(h: String, p: Int)    = shard.read.any(_.getRemoteHost(h, p))
-  def listRemoteClusters()                = shard.read.any(_.listRemoteClusters())
-  def listRemoteHosts()                   = shard.read.any(_.listRemoteHosts())
-  def listRemoteHostsInCluster(c: String) = shard.read.any(_.listRemoteHostsInCluster(c))
+  def checkInitialized[A](f: => A): A = {
+    if (!initialized) throw new RemoteClusterManagerUninitialized
+    f
+  }
+
+  def getRemoteHost(h: String, p: Int)    = checkInitialized { shard.read.any(_.getRemoteHost(h, p)) }
+  def listRemoteClusters()                = checkInitialized { shard.read.any(_.listRemoteClusters()) }
+  def listRemoteHosts()                   = checkInitialized { shard.read.any(_.listRemoteHosts()) }
+  def listRemoteHostsInCluster(c: String) = checkInitialized { shard.read.any(_.listRemoteHostsInCluster(c)) }
 }
 
 trait RemoteClusterManagerSource {
