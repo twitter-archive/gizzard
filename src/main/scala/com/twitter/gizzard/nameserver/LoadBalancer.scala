@@ -4,6 +4,8 @@ import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 import com.twitter.gizzard.shards.RoutingNode
 
+// The default load balancer will randomly shuffle the order of shards. It
+// does not take weight into account.
 
 class LoadBalancer[T](
   random: Random,
