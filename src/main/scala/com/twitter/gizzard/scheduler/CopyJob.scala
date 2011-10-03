@@ -17,10 +17,10 @@ class UnsupportedOperation(msg: String) extends ShardException(msg)
  * A factory for creating a new copy job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait CopyJobFactory[T] extends ((ShardId, ShardId) => CopyJob[T])
+trait CopyJobFactory[T] extends (Seq[ShardId] => CopyJob[T])
 
 class NullCopyJobFactory[T](message: String) extends CopyJobFactory[T] {
-  def apply(from: ShardId, to: ShardId) = throw new UnsupportedOperation(message)
+  def apply(ids: Seq[ShardId]) = throw new UnsupportedOperation(message)
 }
 
 /**
@@ -29,13 +29,11 @@ class NullCopyJobFactory[T](message: String) extends CopyJobFactory[T] {
  * 'deserialize' to decode any shard-specific data (like a cursor).
  */
 trait CopyJobParser[T] extends JsonJobParser {
-  def deserialize(attributes: Map[String, Any], sourceId: ShardId,
-                  destinationId: ShardId, count: Int): CopyJob[T]
+  def deserialize(attributes: Map[String, Any], shardIds: Seq[ShardId], count: Int): CopyJob[T]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
     deserialize(attributes,
-                ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
-                ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString),
+                attributes("shards").asInstanceOf[Seq[Map[String, Any]]].map {idmap => ShardId(idmap("hostname").toString, idmap("table_prefix").toString)},
                 attributes("count").asInstanceOf[{def toInt: Int}].toInt)
   }
 }
@@ -49,8 +47,7 @@ trait CopyJobParser[T] extends JsonJobParser {
  * 'copyPage' is called to do the actual data copying. It should return a new CopyJob representing
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
-abstract case class CopyJob[T](sourceId: ShardId,
-                               destinationId: ShardId,
+abstract case class CopyJob[T](shardIds: Seq[ShardId],
                                var count: Int,
                                nameServer: NameServer,
                                scheduler: JobScheduler)
@@ -59,41 +56,40 @@ abstract case class CopyJob[T](sourceId: ShardId,
 
   override def shouldReplicate = false
 
+
   def toMap = {
-    Map("source_shard_hostname" -> sourceId.hostname,
-        "source_shard_table_prefix" -> sourceId.tablePrefix,
-        "destination_shard_hostname" -> destinationId.hostname,
-        "destination_shard_table_prefix" -> destinationId.tablePrefix,
-        "count" -> count
-    ) ++ serialize
+    Map("shards" -> shardIds.map { id => Map(
+                        "hostname" -> id.hostname, 
+                        "table_prefix" -> id.tablePrefix
+                    )}, 
+        "count" -> count) ++ serialize
   }
 
   def finish() {
-    nameServer.shardManager.markShardBusy(destinationId, Busy.Normal)
-    log.info("Copying finished for (type %s) from %s to %s",
-             getClass.getName.split("\\.").last, sourceId, destinationId)
+    shardIds.foreach { nameServer.shardManager.markShardBusy(_, Busy.Normal) }
+    log.info("Copying finished for (type %s) between %s",
+             getClass.getName.split("\\.").last, shardIds.mkString)
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
-      if (nameServer.shardManager.getShard(destinationId).busy == Busy.Cancelled) {
-        log.info("Copying cancelled for (type %s) from %s to %s",
-                 getClass.getName.split("\\.").last, sourceId, destinationId)
+      if (shardIds.map { nameServer.shardManager.getShard(_).busy }.find(_ == Busy.Cancelled).isDefined) {
+        log.info("Copying cancelled for (type %s) between %s",
+                 getClass.getName.split("\\.").last, shardIds.mkString)
         Stats.clearGauge(gaugeName)
 
       } else {
 
         // XXX: get rid of the cast here by hooking off of the forwardingManager or equivalent
-        val sourceShard      = nameServer.findShardById(sourceId).asInstanceOf[RoutingNode[T]]
-        val destinationShard = nameServer.findShardById(destinationId).asInstanceOf[RoutingNode[T]]
+        val shards = shardIds.map { nameServer.findShardById(_).asInstanceOf[RoutingNode[T]] }
 
-        log.info("Copying shard block (type %s) from %s to %s: state=%s",
-                 getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
+        log.info("Copying shard block (type %s) between %s: state=%s",
+                 getClass.getName.split("\\.").last, shardIds.mkString, toMap)
         // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-        nameServer.shardManager.markShardBusy(destinationId, Busy.Busy)
+        shardIds.foreach { nameServer.shardManager.markShardBusy(_, Busy.Busy) }
 
-        this.nextJob = copyPage(sourceShard, destinationShard, count)
+        this.nextJob = copyPage(shards, count)
         this.nextJob match {
           case None => finish()
           case _ => incrGauge
@@ -109,7 +105,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
           scheduler.put(this)
         } else {
           log.error("Shard block copy timed out on minimum block size.")
-          nameServer.shardManager.markShardBusy(destinationId, Busy.Error)
+          shardIds.foreach { nameServer.shardManager.markShardBusy(_, Busy.Error) }
           throw e
         }
       case e: ShardDatabaseTimeoutException =>
@@ -117,7 +113,7 @@ abstract case class CopyJob[T](sourceId: ShardId,
         scheduler.put(this)
       case e: Throwable =>
         log.error(e, "Shard block copy stopped due to exception: %s", e)
-        nameServer.shardManager.markShardBusy(destinationId, Busy.Error)
+        shardIds.foreach { nameServer.shardManager.markShardBusy(_, Busy.Error) }
         throw e
     }
   }
@@ -127,10 +123,10 @@ abstract case class CopyJob[T](sourceId: ShardId,
   }
 
   private def gaugeName = {
-    "x-copying-" + sourceId + "-" + destinationId
+      "x-copying-" + shardIds.mkString("-")
   }
 
-  def copyPage(sourceShard: RoutingNode[T], destinationShard: RoutingNode[T], count: Int): Option[CopyJob[T]]
+  def copyPage(nodes: Seq[RoutingNode[T]], count: Int): Option[CopyJob[T]]
 
   def serialize: Map[String, Any]
 }
