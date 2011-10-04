@@ -53,7 +53,6 @@ abstract case class CopyJob[T](shardIds: Seq[ShardId],
                                scheduler: JobScheduler)
          extends JsonJob {
   private val log = Logger.get(getClass.getName)
-
   override def shouldReplicate = false
 
 
@@ -68,7 +67,7 @@ abstract case class CopyJob[T](shardIds: Seq[ShardId],
   def finish() {
     shardIds.foreach { nameServer.shardManager.markShardBusy(_, Busy.Normal) }
     log.info("Copying finished for (type %s) between %s",
-             getClass.getName.split("\\.").last, shardIds.mkString)
+             getClass.getName.split("\\.").last, shardIds.mkString(", "))
     Stats.clearGauge(gaugeName)
   }
 
@@ -76,7 +75,7 @@ abstract case class CopyJob[T](shardIds: Seq[ShardId],
     try {
       if (shardIds.map { nameServer.shardManager.getShard(_).busy }.find(_ == Busy.Cancelled).isDefined) {
         log.info("Copying cancelled for (type %s) between %s",
-                 getClass.getName.split("\\.").last, shardIds.mkString)
+                 getClass.getName.split("\\.").last, shardIds.mkString(", "))
         Stats.clearGauge(gaugeName)
 
       } else {
@@ -85,7 +84,7 @@ abstract case class CopyJob[T](shardIds: Seq[ShardId],
         val shards = shardIds.map { nameServer.findShardById(_).asInstanceOf[RoutingNode[T]] }
 
         log.info("Copying shard block (type %s) between %s: state=%s",
-                 getClass.getName.split("\\.").last, shardIds.mkString, toMap)
+                 getClass.getName.split("\\.").last, shardIds.mkString(", "), toMap)
         // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
         shardIds.foreach { nameServer.shardManager.markShardBusy(_, Busy.Busy) }
 
