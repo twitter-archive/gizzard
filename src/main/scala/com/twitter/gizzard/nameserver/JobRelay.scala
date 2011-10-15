@@ -8,6 +8,7 @@ import com.twitter.conversions.time._
 import com.twitter.util.Duration
 import com.twitter.finagle.builder.ClientBuilder
 import com.twitter.finagle.thrift.ThriftClientFramedCodec
+import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.gizzard.scheduler.JsonJob
 import com.twitter.gizzard.thrift.JobInjector
 import com.twitter.gizzard.thrift.{Job => ThriftJob}
@@ -68,9 +69,10 @@ extends (Iterable[Array[Byte]] => Unit) {
       .hosts(hosts.map { h => new InetSocketAddress(h.hostname, h.port) })
       .hostConnectionLimit(2)
       .retries(retries)
-      .connectionTimeout(timeout)
+      .tcpConnectTimeout(timeout)
       .requestTimeout(timeout)
       .name("JobManagerClient")
+      .reportTo(new OstrichStatsReceiver)
       .build(),
       new TBinaryProtocol.Factory())
 
