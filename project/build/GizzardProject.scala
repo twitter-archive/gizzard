@@ -15,9 +15,9 @@ with SubversionPublisher {
   // remove when moved to libkestrel
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
-  val finagleThrift   = "com.twitter"          % "finagle-thrift"     % "1.9.2"
-  val finagleOstrich4 = "com.twitter"          % "finagle-ostrich4"   % "1.9.2"
-  val thrift          = "thrift"               % "libthrift"          % "0.5.0"
+  val finagleThrift   = "com.twitter"          % "finagle-thrift"     % "1.9.3"
+  val finagleOstrich4 = "com.twitter"          % "finagle-ostrich4"   % "1.9.3"
+  
   val jackson         = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.7"
   val jacksonMap      = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.7"
 
@@ -42,5 +42,5 @@ with SubversionPublisher {
       </license>
     </licenses>
 
-  override def subversionRepository = Some("http://svn.local.twitter.com/maven-public")
+  override def subversionRepository = Some("https://svn.twitter.biz/maven-public")
 }
