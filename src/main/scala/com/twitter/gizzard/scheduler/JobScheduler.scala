@@ -47,7 +47,7 @@ extends Process with JobConsumer {
 
   val retryTask = new BackgroundProcess("Retry process for " + name + " errors") {
     def runLoop() {
-      val jitter = math.round(strobeInterval.inMillis * jitterRate * new Random().nextGaussian())
+      val jitter = math.round(strobeInterval.inMillis * jitterRate * (2*new Random().nextDouble() - 1))
       Thread.sleep(strobeInterval.inMillis + jitter)
       try {
         checkExpiredJobs()
