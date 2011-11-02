@@ -19,12 +19,13 @@ import com.twitter.gizzard.testserver.config.TestServerConfig
 
 object ConfiguredSpecification {
   val eval = new Eval
+  val config =
+    try { eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
 }
 
 trait ConfiguredSpecification extends Specification {
   noDetailedDiffs()
-  val config =
-    try { ConfiguredSpecification.eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
+  val config = ConfiguredSpecification.config
   Logger.configure(config.loggers)
 }
 

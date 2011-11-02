@@ -6,7 +6,9 @@ import java.net.InetSocketAddress
 import org.apache.thrift.protocol.TBinaryProtocol
 import com.twitter.conversions.time._
 import com.twitter.util.Duration
+import java.util.logging.Logger
 import com.twitter.finagle.builder.ClientBuilder
+import com.twitter.finagle.service.FailOnUnavailableServiceFilter
 import com.twitter.finagle.thrift.ThriftClientFramedCodec
 import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.gizzard.scheduler.JsonJob
@@ -64,17 +66,18 @@ class JobRelayCluster(
   timeout: Duration,
   retries: Int)
 extends (Iterable[Array[Byte]] => Unit) {
-  val client = new JobInjector.ServiceToClient(ClientBuilder()
+  val service = new FailOnUnavailableServiceFilter andThen ClientBuilder()
       .codec(ThriftClientFramedCodec())
       .hosts(hosts.map { h => new InetSocketAddress(h.hostname, h.port) })
       .hostConnectionLimit(2)
       .retries(retries)
       .tcpConnectTimeout(timeout)
+      .failureAccrualParams((10, 1.minute))
       .requestTimeout(timeout)
       .name("JobManagerClient")
       .reportTo(new OstrichStatsReceiver)
-      .build(),
-      new TBinaryProtocol.Factory())
+      .build()
+  val client = new JobInjector.ServiceToClient(service, new TBinaryProtocol.Factory())
 
   def apply(jobs: Iterable[Array[Byte]]) {
     val jobList = new JLinkedList[ThriftJob]()
@@ -85,7 +88,7 @@ extends (Iterable[Array[Byte]] => Unit) {
       jobList.add(tj)
     }
 
-    client.inject_jobs(jobList)()
+    client.inject_jobs(jobList).get(timeout)
   }
 }
 
