@@ -8,7 +8,6 @@ import com.twitter.conversions.time._
 import com.twitter.util.Duration
 import java.util.logging.Logger
 import com.twitter.finagle.builder.ClientBuilder
-import com.twitter.finagle.service.FailOnUnavailableServiceFilter
 import com.twitter.finagle.thrift.ThriftClientFramedCodec
 import com.twitter.finagle.stats.OstrichStatsReceiver
 import com.twitter.gizzard.scheduler.JsonJob
@@ -66,7 +65,7 @@ class JobRelayCluster(
   timeout: Duration,
   retries: Int)
 extends (Iterable[Array[Byte]] => Unit) {
-  val service = new FailOnUnavailableServiceFilter andThen ClientBuilder()
+  val service = ClientBuilder()
       .codec(ThriftClientFramedCodec())
       .hosts(hosts.map { h => new InetSocketAddress(h.hostname, h.port) })
       .hostConnectionLimit(2)

@@ -15,9 +15,8 @@ with SubversionPublisher {
   // remove when moved to libkestrel
   val twitterActors = "com.twitter" % "twitteractors_2.8.0" % "2.0.1"
 
-  val finagleThrift   = "com.twitter"          % "finagle-thrift"     % "1.9.3"
-  val finagleOstrich4 = "com.twitter"          % "finagle-ostrich4"   % "1.9.3"
-  
+  val finagleThrift   = "com.twitter"          % "finagle-thrift"     % "1.9.5"
+  val finagleOstrich4 = "com.twitter"          % "finagle-ostrich4"   % "1.9.5"
   val jackson         = "org.codehaus.jackson" % "jackson-core-asl"   % "1.6.7"
   val jacksonMap      = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.6.7"
 
