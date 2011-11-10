@@ -22,5 +22,13 @@ object SqlExceptionWrappingProxySpec extends ConfiguredSpecification with JMocke
 
       shardProxy.get("blah") must throwA(new ShardException(sqlException.toString, sqlException))
     }
+
+    "wrap a readOnly exception with ShardOfflineException" in {
+      expect {
+        one(shard).get("blah") willThrow new SQLException("blah", "blah", 1290)
+      }
+
+      shardProxy.get("blah") must throwA(new ShardOfflineException(shardInfo.id))
+    }
   }
 }

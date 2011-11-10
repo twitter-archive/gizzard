@@ -2,6 +2,7 @@ package com.twitter.gizzard.proxy
 
 import java.sql.SQLException
 import scala.reflect.Manifest
+import com.mysql.jdbc.MysqlErrorNumbers
 import com.mysql.jdbc.exceptions.MySQLTransientException
 import com.twitter.querulous.database.{PoolTimeoutException, PoolEmptyException, SqlDatabaseTimeoutException}
 import com.twitter.querulous.query.SqlQueryTimeoutException
@@ -24,6 +25,8 @@ class SqlExceptionWrappingProxy(shardId: ShardId) extends ExceptionHandlingProxy
     case e: SQLException =>
       if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
         throw new NormalShardException(e.toString, shardId, null)
+      } else if (e.getErrorCode() == MysqlErrorNumbers.ER_OPTION_PREVENTS_STATEMENT) {
+        throw new ShardOfflineException(shardId)
       } else {
         throw new ShardException(e.toString, e)
       }
@@ -49,6 +52,8 @@ class SqlExceptionWrappingProxyFactory[T <: AnyRef : Manifest](id: ShardId) exte
     case e: SQLException =>
       if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
         throw new NormalShardException(e.toString, id, null)
+      } else if (e.getErrorCode() == MysqlErrorNumbers.ER_OPTION_PREVENTS_STATEMENT) {
+        throw new ShardOfflineException(id)
       } else {
         throw new ShardException(e.toString, e)
       }
@@ -75,6 +80,8 @@ class ShardExceptionWrappingQueryEvaluator(shardId: ShardId, evaluator: QueryEva
       case e: SQLException =>
         if ((e.toString contains "Connection") && (e.toString contains " is closed")) {
           throw new NormalShardException(e.toString, shardId, null)
+        } else if (e.getErrorCode() == MysqlErrorNumbers.ER_OPTION_PREVENTS_STATEMENT) {
+          throw new ShardOfflineException(shardId)
         } else {
           throw new ShardException(e.toString, e)
         }
