@@ -23,19 +23,21 @@ extends Exception("Job replication to cluster '" + cluster + "' is blocked.", ca
 class JobRelayFactory(
   priority: Int,
   timeout: Duration,
+  requestTimeout: Duration,
   retries: Int)
 extends (Map[String, Seq[Host]] => JobRelay) {
 
-  def this(priority: Int, timeout: Duration) = this(priority, timeout, 0)
+  def this(priority: Int, timeout: Duration) = this(priority, timeout, timeout, 0)
 
   def apply(hostMap: Map[String, Seq[Host]]) =
-    new JobRelay(hostMap, priority, timeout, retries)
+    new JobRelay(hostMap, priority, timeout, requestTimeout, retries)
 }
 
 class JobRelay(
   hostMap: Map[String, Seq[Host]],
   priority: Int,
   timeout: Duration,
+  requestTimeout: Duration,
   retries: Int)
 extends (String => JobRelayCluster) {
 
@@ -50,19 +52,24 @@ extends (String => JobRelayCluster) {
     if (onlineHosts.isEmpty) {
       if (blocked) Map(c -> new BlockedJobRelayCluster(c)) else Map[String, JobRelayCluster]()
     } else {
-      Map(c -> new JobRelayCluster(onlineHosts, priority, timeout, retries))
+      Map(c -> new JobRelayCluster(onlineHosts, priority, timeout, requestTimeout, retries))
     }
   }
 
   val clusters = clients.keySet
 
   def apply(cluster: String) = clients.getOrElse(cluster, NullJobRelayCluster)
+
+  def close() {
+    clients.foreach { case (cluster, client) => client.close() }
+  }
 }
 
 class JobRelayCluster(
   hosts: Seq[Host],
   priority: Int,
   timeout: Duration,
+  requestTimeout: Duration,
   retries: Int)
 extends (Iterable[Array[Byte]] => Unit) {
   val service = ClientBuilder()
@@ -71,8 +78,9 @@ extends (Iterable[Array[Byte]] => Unit) {
       .hostConnectionLimit(2)
       .retries(retries)
       .tcpConnectTimeout(timeout)
-      .failureAccrualParams((10, 1.minute))
-      .requestTimeout(timeout)
+      .failureAccrualParams((10, 1.second))
+      .requestTimeout(requestTimeout)
+      .timeout(timeout)
       .name("JobManagerClient")
       .reportTo(new OstrichStatsReceiver)
       .build()
@@ -87,7 +95,11 @@ extends (Iterable[Array[Byte]] => Unit) {
       jobList.add(tj)
     }
 
-    client.inject_jobs(jobList).get(timeout)
+    client.inject_jobs(jobList)()
+  }
+
+  def close() {
+    service.release()
   }
 }
 
@@ -95,14 +107,16 @@ object NullJobRelayFactory extends JobRelayFactory(0, 0.seconds) {
   override def apply(h: Map[String, Seq[Host]]) = NullJobRelay
 }
 
-object NullJobRelay extends JobRelay(Map(), 0, 0.seconds, 0)
+object NullJobRelay extends JobRelay(Map(), 0, 0.seconds, 0.seconds, 0)
 
-object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, 0.seconds, 0) {
+object NullJobRelayCluster extends JobRelayCluster(Seq(), 0, 0.seconds, 0.seconds, 0) {
   override val client = null
   override def apply(jobs: Iterable[Array[Byte]]) = ()
+  override def close() { }
 }
 
-class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, 0.seconds, 0) {
+class BlockedJobRelayCluster(cluster: String) extends JobRelayCluster(Seq(), 0, 0.seconds, 0.seconds, 0) {
   override val client = null
   override def apply(jobs: Iterable[Array[Byte]]) { throw new ClusterBlockedException(cluster) }
+  override def close() { }
 }
