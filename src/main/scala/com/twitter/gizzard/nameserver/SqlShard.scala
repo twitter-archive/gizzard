@@ -11,13 +11,14 @@ object SqlShard {
   val SHARDS_DDL = """
 CREATE TABLE IF NOT EXISTS shards (
     class_name              VARCHAR(125) NOT NULL,
+    hostname                VARCHAR(125) NOT NULL,
     table_prefix            VARCHAR(125) NOT NULL,
-    hostname                VARCHAR(125)  NOT NULL,
     source_type             VARCHAR(125),
     destination_type        VARCHAR(125),
     busy                    TINYINT      NOT NULL DEFAULT 0,
 
-   PRIMARY KEY (hostname, table_prefix)
+   PRIMARY KEY (hostname, table_prefix),
+   INDEX idx_busy (busy)
 ) ENGINE=INNODB
 """
 
@@ -30,22 +31,23 @@ CREATE TABLE IF NOT EXISTS shard_children (
     weight                  INT          NOT NULL DEFAULT 1,
 
     PRIMARY KEY (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
-    INDEX child (child_hostname, child_table_prefix)
+    INDEX idx_parent (parent_hostname, parent_table_prefix, weight),
+    INDEX idx_child (child_hostname, child_table_prefix, weight)
 ) ENGINE=INNODB
 """
 
   val FORWARDINGS_DDL = """
 CREATE TABLE IF NOT EXISTS forwardings (
-    base_source_id          BIGINT                  NOT NULL,
     table_id                INT                     NOT NULL,
+    base_source_id          BIGINT                  NOT NULL,
     shard_hostname          VARCHAR(125)            NOT NULL,
     shard_table_prefix      VARCHAR(125)            NOT NULL,
     deleted                 TINYINT                 NOT NULL DEFAULT 0,
     updated_seq             BIGINT                  NOT NULL,
 
-    PRIMARY KEY         (base_source_id, table_id),
-    UNIQUE unique_shard (shard_hostname, shard_table_prefix),
-    INDEX  updated_seq  (updated_seq)
+    PRIMARY KEY (table_id, base_source_id),
+    UNIQUE uni_shard (shard_hostname, shard_table_prefix),
+    INDEX  idx_updated  (updated_seq)
 ) ENGINE=INNODB;
 """
 
@@ -66,7 +68,7 @@ CREATE TABLE IF NOT EXISTS hosts (
     status                  INT          NOT NULL DEFAULT 0,
 
     PRIMARY KEY (hostname, port),
-    INDEX cluster (cluster, status)
+    INDEX idx_cluster (cluster, status)
 ) ENGINE=INNODB;
 """
 }
@@ -95,8 +97,8 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   def createShard(shardInfo: ShardInfo) {
     try {
       queryEvaluator.transaction { transaction =>
-        transaction.selectOne("SELECT * FROM shards WHERE table_prefix = ? AND hostname = ?",
-                              shardInfo.tablePrefix, shardInfo.hostname) { row =>
+        transaction.selectOne("SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?",
+                              shardInfo.hostname, shardInfo.tablePrefix) { row =>
           if (row.getString("class_name") != shardInfo.className ||
               row.getString("source_type") != shardInfo.sourceType ||
               row.getString("destination_type") != shardInfo.destinationType) {
@@ -300,8 +302,8 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   def getForwarding(tableId: Int, baseId: Long) = {
-    val query = "SELECT * FROM forwardings WHERE base_source_id = ? AND table_id = ? AND deleted = 0"
-    queryEvaluator.selectOne(query, baseId, tableId)(rowToForwarding) getOrElse { throw new ShardException("No such forwarding") }
+    val query = "SELECT * FROM forwardings WHERE table_id = ? AND base_source_id = ? AND deleted = 0"
+    queryEvaluator.selectOne(query, tableId, baseId)(rowToForwarding) getOrElse { throw new ShardException("No such forwarding") }
   }
 
   def getForwardingForShard(id: ShardId) = {
@@ -322,7 +324,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   def getBusyShards() = {
-    queryEvaluator.select("SELECT * FROM shards where busy != 0")(rowToShardInfo).toList
+    queryEvaluator.select("SELECT * FROM shards where busy IN (1, 2, 3)")(rowToShardInfo).toList
   }
 
   def reload() {
