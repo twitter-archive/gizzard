@@ -36,4 +36,7 @@ class PrioritizingJobScheduler(val _schedulers: Map[Int, JobScheduler]) extends 
   def size = schedulers.values.foldLeft(0) { _ + _.size }
   def errorSize = schedulers.values.foldLeft(0) { _ + _.errorSize }
   def activeThreads = schedulers.values.foldLeft(0) { _ + _.activeThreads }
+
+  def addFanout(suffix: String) = schedulers.values.foreach { _.addFanout(suffix) }
+  def removeFanout(suffix: String) = schedulers.values.foreach { _.removeFanout(suffix) }
 }
