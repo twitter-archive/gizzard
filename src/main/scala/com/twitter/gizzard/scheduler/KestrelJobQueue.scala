@@ -96,62 +96,21 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
 }
 
 class KestrelCollectionJobQueue(queueName: String, val collection: QueueCollection, codec: JsonCodec)
-  extends JobQueue {
-
-  private val log = Logger.get(getClass.getName)
-  val TIMEOUT = 100
-
-  private def queue = collection.queue(queueName).get
-
-  def isShutdown = queue.isClosed
-
-  def pause() { }
-
-  def resume() { }
-
-  def start() {
+  extends KestrelJobQueue(queueName, collection.queue(queueName).get, codec) {
+  override def start() {
     collection.loadQueues()
   }
 
-  def put(job: JsonJob) {
+  override def put(job: JsonJob) {
     collection.add(queueName, codec.flatten(job))
   }
 
-  def shutdown() { collection.shutdown }
+  override def shutdown() { collection.shutdown }
 
-  def size = queue.length.toInt
-
-  def get(): Option[Ticket] = {
-    val queue = collection.queue(queueName).get
-    var item: Option[QItem] = None
-    while (item == None && !queue.isClosed) {
-      item = queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + TIMEOUT)), true)
-    }
-    item.map { qitem => 
-      val decoded = codec.inflate(qitem.data)
-      new Ticket {
-        def job = decoded
-        def ack() {
-          queue.confirmRemove(qitem.xid)
-        }
-        def continue(job: JsonJob) = {
-          queue.continue(qitem.xid, codec.flatten(job))
-        }
-      }
-    }
+  override def drainTo(queue: JobQueue, delay: Duration) {
+    // todo
   }
 
-  def drainTo(queue: JobQueue, delay: Duration) {
-    // shit
-  }
-
-  def checkExpiration(flushLimit: Int) {
-    val count = queue.discardExpired(flushLimit)
-    if (count > 0) {
-      log.debug("Replaying %d error jobs from %s.", count, queueName)
-    }
-  }
-
-  def addFanout(suffix: String) { collection.queue(queueName + "+" + suffix) }
-  def removeFanout(suffix: String) { collection.delete(queueName + "+" + suffix) }
+  override def addFanout(suffix: String) { collection.queue(queueName + "+" + suffix) }
+  override def removeFanout(suffix: String) { collection.delete(queueName + "+" + suffix) }
 }
