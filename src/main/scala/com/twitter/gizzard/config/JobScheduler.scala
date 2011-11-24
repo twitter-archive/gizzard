@@ -140,7 +140,12 @@ trait Scheduler {
 
         (jobQueue, errorQueue)
       }
+      case collection: KestrelCollectionScheduler =>
+        val coll = collection("") // name doesn't matter here.
+        val jobQueue = new gizzard.scheduler.KestrelCollectionJobQueue(jobQueueName, coll, codec)
+        val errorQueue = new gizzard.scheduler.KestrelCollectionJobQueue(errorQueueName, coll, codec)
 
+        (jobQueue, errorQueue)
       case memory: MemoryScheduler => {
         val jobQueue = new gizzard.scheduler.MemoryJobQueue(jobQueueName, memory.sizeLimit)
         val errorQueue = new gizzard.scheduler.MemoryJobQueue(errorQueueName, memory.sizeLimit)

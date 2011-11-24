@@ -78,9 +78,9 @@ class QueueCollection(queueFolder: String, defaultConfig: QueueConfig, private v
           val master = name.split('+')(0)
           fanout_queues.getOrElseUpdate(master, new mutable.HashSet[String]) += name
           log.info("Fanout queue %s added to %s", name, master)
-          new PersistentQueue(path.getPath, name, queueConfigs.get(master).getOrElse(defaultConfig))
+          new PersistentQueue(name, path.getPath, queueConfigs.get(master).getOrElse(defaultConfig))
         } else {
-          new PersistentQueue(path.getPath, name, queueConfigs.get(name).getOrElse(defaultConfig))
+          new PersistentQueue(name, path.getPath, queueConfigs.get(name).getOrElse(defaultConfig))
         }
         q.setup
         queues(name) = q

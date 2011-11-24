@@ -153,5 +153,5 @@ class KestrelCollectionJobQueue(queueName: String, val collection: QueueCollecti
   }
 
   def addFanout(suffix: String) { collection.queue(queueName + "+" + suffix) }
-  def removeFanout(suffix: String) { collection.delete(suffix) }
+  def removeFanout(suffix: String) { collection.delete(queueName + "+" + suffix) }
 }
