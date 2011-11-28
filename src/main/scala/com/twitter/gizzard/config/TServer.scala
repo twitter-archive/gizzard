@@ -10,6 +10,9 @@ class ThreadPool extends (String => ThreadPoolExecutor) {
   var stopTimeout = 60
   var minThreads = 1
   var maxThreads = 1
+  var maxWaiters: Option[Int] = None
+
+  def maxWaiters_=(n: Int) { maxWaiters = Some(n) }
 
   def apply(name: String): ThreadPoolExecutor = {
     if (maxThreads < minThreads) maxThreads = minThreads
@@ -18,7 +21,8 @@ class ThreadPool extends (String => ThreadPoolExecutor) {
       name,
       stopTimeout,
       minThreads,
-      maxThreads)
+      maxThreads,
+      maxWaiters)
   }
 }
 

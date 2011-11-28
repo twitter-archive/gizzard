@@ -31,6 +31,10 @@ class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relay
     log.info("Loading remote cluster configuration is done.")
   }
 
+  def closeRelay() {
+    jobRelay.close()
+  }
+
   def addRemoteHost(h: Host)                                      { shard.write.foreach(_.addRemoteHost(h)) }
   def removeRemoteHost(h: String, p: Int)                         { shard.write.foreach(_.removeRemoteHost(h, p)) }
   def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value) { shard.write.foreach(_.setRemoteHostStatus(h, p, s)) }

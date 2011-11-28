@@ -63,6 +63,7 @@ abstract class GizzardServer(config: ServerConfig) {
   }
 
   def shutdownGizzard(quiesce: Boolean) {
+    remoteClusterManager.closeRelay()
     managerThriftServer.stop()
     jobInjectorThriftServer.stop()
 

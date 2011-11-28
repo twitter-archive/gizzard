@@ -22,7 +22,7 @@ object TSelectorServer {
 
   val cache = new mutable.HashMap[String, ThreadPoolExecutor]()
 
-  def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int): ThreadPoolExecutor = {
+  def makeThreadPoolExecutor(name: String, stopTimeout: Int, minThreads: Int, maxThreads: Int, maxWaiters: Option[Int]): ThreadPoolExecutor = {
     cache.get(name) foreach { executor =>
       if (!executor.isShutdown()) {
         return executor
@@ -30,7 +30,7 @@ object TSelectorServer {
       cache.remove(name)
     }
 
-    val queue = new LinkedBlockingQueue[Runnable]
+    val queue = maxWaiters.map { new LinkedBlockingQueue[Runnable](_) } getOrElse { new LinkedBlockingQueue[Runnable] }
     val executor = new ThreadPoolExecutor(minThreads, maxThreads, stopTimeout, TimeUnit.SECONDS,
                                           queue, new NamedPoolThreadFactory(name))
     Stats.addGauge("thrift-" + name + "-worker-threads") { executor.getPoolSize().toDouble }
