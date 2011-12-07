@@ -7,6 +7,8 @@ import net.lag.kestrel.{PersistentQueue, QueueCollection, QItem}
 import com.twitter.logging.Logger
 
 
+class SchedulerException(reason: String) extends Exception(reason)
+
 /**
  * A JobQueue backed by a kestrel journal file. A codec is used to convert jobs into byte arrays
  * on write, and back into jobs on read. Jobs are not completely removed from the queue until the
@@ -21,8 +23,9 @@ class KestrelJobQueue(queueName: String, val queue: PersistentQueue, codec: Json
   Stats.addGauge(queueName + "_items") { size }
   Stats.addGauge(queueName + "_age") { age }
 
-  def addFanout(suffix: String) { throw new Exception("omfg") }
-  def removeFanout(suffix: String) { throw new Exception("omfg") }
+  def addFanout(suffix: String) { throw new SchedulerException("Fanout queue not supported for standalone Kestrel queues.") }
+  def removeFanout(suffix: String) { throw new SchedulerException("Fanout queue not supported for standalone Kestrel queues.") }
+  def listFanout(): List[String] = { throw new SchedulerException("Fanout queue not supported for standalone Kestrel queues.") }
 
   def name = queueName
   def size = queue.length.toInt
@@ -113,4 +116,5 @@ class KestrelCollectionJobQueue(queueName: String, val collection: QueueCollecti
 
   override def addFanout(suffix: String) { collection.queue(queueName + "+" + suffix) }
   override def removeFanout(suffix: String) { collection.delete(queueName + "+" + suffix) }
+  override def listFanout() = { collection.fanoutQueueNames }
 }

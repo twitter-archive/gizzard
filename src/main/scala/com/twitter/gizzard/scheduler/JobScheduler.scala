@@ -79,6 +79,7 @@ extends Process with JobConsumer {
 
   def addFanout(suffix: String) { queue.addFanout(suffix) }
   def removeFanout(suffix: String) { queue.removeFanout(suffix) }
+  def listFanout() = { queue.listFanout() }
 
   def start() = {
     if (!running) {

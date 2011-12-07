@@ -112,6 +112,7 @@ service Manager {
 
   void add_fanout(1: string suffix) throws(1: GizzardException ex)
   void remove_fanout(1: string suffix) throws(1: GizzardException ex)
+  list<string> list_fanout() throws(1: GizzardException ex)
 
   void add_fanout_for(1: i32 priority, 2: string suffix) throws(1: GizzardException ex)
   void remove_fanout_for(1: i32 priority, 2: string suffix) throws(1: GizzardException ex)

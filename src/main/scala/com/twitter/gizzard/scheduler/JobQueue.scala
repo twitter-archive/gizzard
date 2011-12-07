@@ -37,4 +37,5 @@ trait JobQueue extends JobConsumer with Process {
 
   def addFanout(suffix: String)
   def removeFanout(suffix: String)
+  def listFanout(): Seq[String]
 }

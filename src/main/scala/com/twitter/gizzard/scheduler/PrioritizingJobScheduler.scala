@@ -39,4 +39,5 @@ class PrioritizingJobScheduler(val _schedulers: Map[Int, JobScheduler]) extends 
 
   def addFanout(suffix: String) = schedulers.values.foreach { _.addFanout(suffix) }
   def removeFanout(suffix: String) = schedulers.values.foreach { _.removeFanout(suffix) }
+  def listFanout() = schedulers.values.flatMap { _.listFanout() }
 }

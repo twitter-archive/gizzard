@@ -61,6 +61,10 @@ class QueueCollection(queueFolder: String, defaultConfig: QueueConfig, private v
     queues.keys.toList
   }
 
+  def fanoutQueueNames: List[String] = synchronized {
+    fanout_queues.values.flatMap { _.toList }.toList
+  }
+
   def currentItems = queues.values.foldLeft(0L) { _ + _.length }
   def currentBytes = queues.values.foldLeft(0L) { _ + _.bytes }
 

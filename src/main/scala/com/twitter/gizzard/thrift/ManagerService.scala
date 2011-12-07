@@ -139,6 +139,7 @@ extends Manager.Iface {
 
   def add_fanout(suffix: String) = wrapEx(scheduler.addFanout(suffix))
   def remove_fanout(suffix: String) = wrapEx(scheduler.removeFanout(suffix))
+  def list_fanout() = wrapEx(scheduler.listFanout().toList)
 
   def add_fanout_for(priority: Int, suffix: String)        = wrapEx(scheduler(priority).addFanout(suffix))
   def remove_fanout_for(priority: Int, suffix: String)     = wrapEx(scheduler(priority).removeFanout(suffix))
