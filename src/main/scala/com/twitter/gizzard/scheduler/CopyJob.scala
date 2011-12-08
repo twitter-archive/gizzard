@@ -17,7 +17,7 @@ class UnsupportedOperation(msg: String) extends ShardException(msg)
  * A factory for creating a new copy job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait CopyJobFactory[T] extends ((ShardId, ShardId) => CopyJob[T])
+trait CopyJobFactory[T] extends ((ShardId, ShardId) => JsonJob)
 
 class NullCopyJobFactory[T](message: String) extends CopyJobFactory[T] {
   def apply(from: ShardId, to: ShardId) = throw new UnsupportedOperation(message)

@@ -19,7 +19,7 @@ object RepairJob {
  * A factory for creating a new repair job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait RepairJobFactory[T] extends (Seq[ShardId] => RepairJob[T])
+trait RepairJobFactory[T] extends (Seq[ShardId] => JsonJob)
 
 class NullRepairJobFactory[T](message: String) extends RepairJobFactory[T] {
   def apply(ids: Seq[ShardId]) = throw new UnsupportedOperation(message)
