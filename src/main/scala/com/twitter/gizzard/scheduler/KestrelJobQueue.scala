@@ -116,5 +116,5 @@ class KestrelCollectionJobQueue(queueName: String, val collection: QueueCollecti
 
   override def addFanout(suffix: String) { collection.queue(queueName + "+" + suffix) }
   override def removeFanout(suffix: String) { collection.delete(queueName + "+" + suffix) }
-  override def listFanout() = { collection.fanoutQueueNames }
+  override def listFanout() = { collection.fanoutQueueNames.filter { _.startsWith(queueName) } }
 }
