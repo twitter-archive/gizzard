@@ -137,6 +137,14 @@ extends Manager.Iface {
   def queue_size(priority: Int)        = wrapEx(scheduler(priority).size)
   def error_queue_size(priority: Int)  = wrapEx(scheduler(priority).errorSize)
 
+  def add_fanout(suffix: String) = wrapEx(scheduler.addFanout(suffix))
+  def remove_fanout(suffix: String) = wrapEx(scheduler.removeFanout(suffix))
+  def list_fanout() = wrapEx(scheduler.listFanout().toList)
+
+  def add_fanout_for(priority: Int, suffix: String)        = wrapEx(scheduler(priority).addFanout(suffix))
+  def remove_fanout_for(priority: Int, suffix: String)     = wrapEx(scheduler(priority).removeFanout(suffix))
+
+
   // Remote Host Cluster Management
 
   def add_remote_host(host: Host) = {

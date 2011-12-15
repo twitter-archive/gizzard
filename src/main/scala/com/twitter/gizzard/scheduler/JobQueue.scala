@@ -34,4 +34,8 @@ trait JobQueue extends JobConsumer with Process {
   def drainTo(queue: JobQueue, delay: Duration)
   def checkExpiration(flushLimit: Int)
   def size: Int
+
+  def addFanout(suffix: String)
+  def removeFanout(suffix: String)
+  def listFanout(): Seq[String]
 }

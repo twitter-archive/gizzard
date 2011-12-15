@@ -4,7 +4,7 @@ import com.twitter.util.{Duration, StorageUnit}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
-import net.lag.kestrel.PersistentQueue
+import net.lag.kestrel.{QueueCollection, PersistentQueue}
 import net.lag.kestrel.config.QueueConfig
 
 import com.twitter.gizzard
@@ -52,8 +52,49 @@ trait KestrelScheduler extends SchedulerType {
     new PersistentQueue(name, path, aConfig)
   }
 }
+
 class MemoryScheduler extends SchedulerType {
   var sizeLimit = 0
+}
+
+trait KestrelCollectionScheduler extends SchedulerType {
+  var path = "/tmp/collection"
+
+  var maxItems: Int                 = Int.MaxValue
+  var maxSize: StorageUnit          = Long.MaxValue.bytes
+  var maxItemSize: StorageUnit      = Long.MaxValue.bytes
+  var maxAge: Option[Duration]      = None
+  var maxJournalSize: StorageUnit   = 16.megabytes
+  var maxMemorySize: StorageUnit    = 128.megabytes
+  var maxJournalOverflow: Int       = 10
+  var discardOldWhenFull: Boolean   = false
+  var keepJournal: Boolean          = true
+  var syncJournal: Boolean          = false
+  var multifileJournal: Boolean     = false
+  var expireToQueue: Option[String] = None
+  var maxExpireSweep: Int           = Int.MaxValue
+  var fanoutOnly: Boolean           = false
+
+  def aConfig = QueueConfig(
+    maxItems           = maxItems,
+    maxSize            = maxSize,
+    maxItemSize        = maxItemSize,
+    maxAge             = maxAge,
+    maxJournalSize     = maxJournalSize,
+    maxMemorySize      = maxMemorySize,
+    maxJournalOverflow = maxJournalOverflow,
+    discardOldWhenFull = discardOldWhenFull,
+    keepJournal        = keepJournal,
+    syncJournal        = syncJournal,
+    multifileJournal   = multifileJournal,
+    expireToQueue      = expireToQueue,
+    maxExpireSweep     = maxExpireSweep,
+    fanoutOnly         = fanoutOnly
+  )
+
+  def apply(name: String): QueueCollection = {
+    new QueueCollection(path, aConfig, Map())
+  }
 }
 
 trait BadJobConsumer {
@@ -99,7 +140,12 @@ trait Scheduler {
 
         (jobQueue, errorQueue)
       }
+      case collection: KestrelCollectionScheduler =>
+        val coll = collection("") // name doesn't matter here.
+        val jobQueue = new gizzard.scheduler.KestrelCollectionJobQueue(jobQueueName, coll, codec)
+        val errorQueue = new gizzard.scheduler.KestrelCollectionJobQueue(errorQueueName, coll, codec)
 
+        (jobQueue, errorQueue)
       case memory: MemoryScheduler => {
         val jobQueue = new gizzard.scheduler.MemoryJobQueue(jobQueueName, memory.sizeLimit)
         val errorQueue = new gizzard.scheduler.MemoryJobQueue(errorQueueName, memory.sizeLimit)

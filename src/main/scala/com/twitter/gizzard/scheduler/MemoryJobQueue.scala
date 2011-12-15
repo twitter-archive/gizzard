@@ -121,4 +121,8 @@ class MemoryJobQueue(queueName: String, maxSize: Int) extends JobQueue {
   }
 
   def isShutdown = !running
+
+  def addFanout(suffix: String) { }
+  def removeFanout(suffix: String) { }
+  def listFanout() = Nil
 }
