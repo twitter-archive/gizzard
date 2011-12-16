@@ -31,7 +31,7 @@ trait GenericForwarder {
 
   // XXX: copy, repair and diff live here for now, but it's a bit
   // jank. clean up the admin job situation.
-  def newCopyJob(from: ShardId, to: ShardId): JsonJob
+  def newCopyJob(ids: Seq[ShardId]): JsonJob
   def newRepairJob(ids: Seq[ShardId]): JsonJob
   def newDiffJob(ids: Seq[ShardId]): JsonJob
 }
@@ -70,7 +70,7 @@ extends GenericForwarder {
 
   // XXX: copy, repair and diff live here for now, but it's a bit
   // jank. clean up the admin job situation.
-  def newCopyJob(from: ShardId, to: ShardId) = copyFactory(from, to)
+  def newCopyJob(ids: Seq[ShardId])          = copyFactory(ids)
   def newRepairJob(ids: Seq[ShardId])        = repairFactory(ids)
   def newDiffJob(ids: Seq[ShardId])          = diffFactory(ids)
 }

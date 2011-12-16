@@ -5,9 +5,9 @@ import com.twitter.gizzard.nameserver.{ShardRepository, ShardManager}
 
 
 class AdminJobManager(repo: ShardRepository, shardManager: ShardManager, scheduler: JobScheduler) {
-  def scheduleCopyJob(from: ShardId, to: ShardId) {
+  def scheduleCopyJob(ids: Seq[ShardId]) {
     // XXX: repo shouldn't build the job, but instead provide an appropriate adapter.
-    scheduler.put(repo.newCopyJob(shardManager.getShard(from), shardManager.getShard(to)))
+    scheduler.put(repo.newCopyJob(ids.map { shardManager.getShard _ }))
   }
 
   def scheduleRepairJob(ids: Seq[ShardId]) {
