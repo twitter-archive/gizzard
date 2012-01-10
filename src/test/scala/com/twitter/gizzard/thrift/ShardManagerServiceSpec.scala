@@ -114,12 +114,14 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
     "copy_shard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
+      val shardIds = Seq(shardId1, shardId2)
+      val shardIdsThrift = new java.util.LinkedList[thrift.ShardId]()
+      shardIds.foreach { e: shards.ShardId => shardIdsThrift.add(e.toThrift) }
 
       expect {
-        one(adminJobManager).scheduleCopyJob(shardId1, shardId2)
+        one(adminJobManager).scheduleCopyJob(shardIds)
       }
-
-      manager.copy_shard(shardId1.toThrift, shardId2.toThrift)
+      manager.copy_shard(shardIdsThrift)
     }
 
     "set_forwarding" in {

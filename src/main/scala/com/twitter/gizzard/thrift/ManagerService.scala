@@ -33,8 +33,7 @@ extends Manager.Iface {
   }
 
   def reload_updated_forwardings() = wrapEx {
-    nameServer.reloadUpdatedForwardings()
-  }
+    nameServer.reloadUpdatedForwardings()  }
   def reload_config() = wrapEx {
     nameServer.reload()
     remoteClusterManager.reload()
@@ -112,8 +111,8 @@ extends Manager.Iface {
 
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(shardManager.dumpStructure(tableIds.toList).map(_.toThrift))
 
-  def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(adminJobManager.scheduleCopyJob(sourceId.fromThrift, destinationId.fromThrift))
+  def copy_shard(shardIds: JList[ShardId]) = {
+    wrapEx(adminJobManager.scheduleCopyJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
   }
 
   def repair_shard(shardIds: JList[ShardId]) = {

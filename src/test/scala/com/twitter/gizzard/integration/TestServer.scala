@@ -239,35 +239,34 @@ class PutJob(key: Int, value: String, forwarding: Long => RoutingNode[TestShard]
 
 class TestCopyFactory(ns: NameServer, s: JobScheduler)
 extends CopyJobFactory[TestShard] {
-  def apply(src: ShardId, dest: ShardId) = new TestCopy(src, dest, 0, 500, ns, s)
+  def apply(shardIds: Seq[ShardId]) = new TestCopy(shardIds, 0, 500, ns, s)
 }
 
 class TestCopyParser(ns: NameServer, s: JobScheduler)
 extends CopyJobParser[TestShard] {
-  def deserialize(m: Map[String, Any], src: ShardId, dest: ShardId, count: Int) = {
+  def deserialize(m: Map[String, Any], shardIds: Seq[ShardId], count: Int) = {
     val cursor = m("cursor").asInstanceOf[Int]
     val count  = m("count").asInstanceOf[Int]
-    new TestCopy(src, dest, cursor, count, ns, s)
+    new TestCopy(shardIds, cursor, count, ns, s)
   }
 }
 
 class TestCopy(
-  srcId: ShardId,
-  destId: ShardId,
+  shardIds: Seq[ShardId],
   cursor: Int,
   count: Int,
   ns: NameServer,
   s: JobScheduler)
-extends CopyJob[TestShard](srcId, destId, count, ns, s) {
+extends CopyJob[TestShard](shardIds, count, ns, s) {
 
-  def copyPage(src: RoutingNode[TestShard], dest: RoutingNode[TestShard], count: Int) = {
-    val rows = src.read.any(_.getAll(cursor, count)) map { case (k,v,c) => (k,v) }
+  def copyPage(nodes: Seq[RoutingNode[TestShard]], count: Int) = {
+    val rows = nodes.map { _.read.any(_.getAll(cursor, count)) map { case (k,v,c) => (k,v) }}.flatten
 
     if (rows.isEmpty) {
       None
     } else {
-      dest.write.foreach(_.putAll(rows))
-      Some(new TestCopy(srcId, destId, rows.last._1, count, ns, s))
+      nodes.map { _.write.foreach(_.putAll(rows)) }
+      Some(new TestCopy(shardIds, rows.last._1, count, ns, s))
     }
   }
 
