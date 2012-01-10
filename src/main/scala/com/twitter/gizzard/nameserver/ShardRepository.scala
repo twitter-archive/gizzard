@@ -53,8 +53,8 @@ class ShardRepository {
 
   // XXX: Do these copy job related methods belong here?
 
-  def newCopyJob(from: ShardInfo, to: ShardInfo) = {
-    commonForwarderForShards(Seq(from, to)).newCopyJob(from.id, to.id)
+  def newCopyJob(infos: Seq[ShardInfo]) = {
+    commonForwarderForShards(infos).newCopyJob(infos.map(_.id))
   }
 
   def newRepairJob(infos: Seq[ShardInfo]) = {
