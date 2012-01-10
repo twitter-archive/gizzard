@@ -45,7 +45,6 @@ object CopyJobSpec extends ConfiguredSpecification with JMocker with ClassMocker
     def makeCopy(next: => Option[FakeCopy]) = new FakeCopy(shardIds, count, nameServer, jobScheduler, next)
     val shard1 = mock[RoutingNode[AnyRef]]
     val shard2 = mock[RoutingNode[AnyRef]]
-t
 
     expect {
       allowing(nameServer).shardManager willReturn shardManager
