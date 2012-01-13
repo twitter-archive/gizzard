@@ -259,6 +259,17 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     }
   }
 
+  // Version methods
+  def getUpdateVersion() : Long = {
+    val query = "SELECT counter FROM update_counters WHERE id = 'version'"
+    queryEvaluator.selectOne(query)(_.getLong("counter")).getOrElse(0L)
+  }
+
+  def incrementVersion() {
+    queryEvaluator.execute(
+      "INSERT INTO update_counters (id, counter) VALUES ('version', 1) ON DUPLICATE KEY UPDATE counter = counter + 1")
+  }
+
   def getShard(id: ShardId) = {
     val query = "SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?"
     queryEvaluator.selectOne(query, id.hostname, id.tablePrefix)(rowToShardInfo) getOrElse {
@@ -332,7 +343,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
         _forwardingUpdatedSeq = 0L
       }
 
-      List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
+      List("shards", "shard_children", "forwardings", "update_counters", "hosts, version").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {
