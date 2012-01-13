@@ -343,7 +343,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
         _forwardingUpdatedSeq = 0L
       }
 
-      List("shards", "shard_children", "forwardings", "update_counters", "hosts, version").foreach { table =>
+      List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
     } catch {
