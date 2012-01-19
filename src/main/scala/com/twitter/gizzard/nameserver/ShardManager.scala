@@ -48,6 +48,8 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
 
   def getUpdateVersion() = shard.read.any(_.getUpdateVersion())
   def incrementVersion() { shard.write.foreach(_.incrementVersion()) }
+
+  def batchExecute(commands : Seq[BatchedCommand]) { shard.write.foreach(_.batchExecute(commands)) }
 }
 
 trait ShardManagerSource {
@@ -96,4 +98,6 @@ trait ShardManagerSource {
 
   @throws(classOf[ShardException]) def getUpdateVersion() : Long
   @throws(classOf[ShardException]) def incrementVersion()
+
+  @throws(classOf[ShardException]) def batchExecute(commands : Seq[BatchedCommand])
 }

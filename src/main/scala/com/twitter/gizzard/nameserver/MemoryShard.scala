@@ -8,6 +8,8 @@ import com.twitter.gizzard.shards._
 /**
  * NameServer implementation that doesn't actually store anything anywhere.
  * Useful for tests or stubbing out the partitioning scheme.
+ *
+ * Note: batch_execute commands are not executed atomically in this implementation.
  */
 class MemoryShardManagerSource extends ShardManagerSource {
 
@@ -158,6 +160,19 @@ class MemoryShardManagerSource extends ShardManagerSource {
 
   def incrementVersion() {
     updateVersion.incrementAndGet()
+  }
+
+  def batchExecute(commands : Seq[BatchedCommand]) {
+    for (cmd <- commands) {
+      cmd match {
+        case CreateShard(shardInfo) => createShard(shardInfo)
+        case DeleteShard(shardId) => deleteShard(shardId)
+        case AddLink(upId, downId, weight) => addLink(upId, downId, weight)
+        case RemoveLink(upId, downId) => removeLink(upId, downId)
+        case SetForwarding(forwarding) => setForwarding(forwarding)
+        case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+      }
+    }
   }
 
   def reload() { }

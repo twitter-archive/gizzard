@@ -338,6 +338,56 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       nsShard.getUpdateVersion() mustEqual 3L
     }
 
+    "execute batched commands" in {
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
+      val c = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "c", "localhost")
+
+      "create shards and add links" in {
+        val commands = List(CreateShard(a),
+                            CreateShard(b),
+                            AddLink(a.id, b.id, 1),
+                            AddLink(a.id, b.id, 2))
+        nsShard.batchExecute(commands)
+        nsShard.listUpwardLinks(b.id).head.weight mustEqual 2
+      }
+
+      "create shards, add links, remove links" in {
+        val commands = List(CreateShard(a),
+                            CreateShard(b),
+                            CreateShard(c),
+                            AddLink(a.id, b.id, 1),
+                            AddLink(b.id, c.id, 2),
+                            RemoveLink(b.id, c.id))
+        nsShard.batchExecute(commands)
+        nsShard.listUpwardLinks(b.id).head.weight mustEqual 1
+        nsShard.listUpwardLinks(c.id) mustEqual List()
+      }
+
+      "set and remove forwardings" in {
+        val fwdA = Forwarding(0, 0, a.id)
+        val fwdB = Forwarding(0, 1, b.id)
+        val commands = List(CreateShard(a),
+                            CreateShard(b),
+                            SetForwarding(fwdA),
+                            SetForwarding(fwdB),
+                            RemoveForwarding(fwdB))
+        nsShard.batchExecute(commands)
+        nsShard.getForwardings() mustEqual List(fwdA)
+      }
+
+      "execute atomically and rollback on error" in {
+        val commands = List(CreateShard(a),
+                            CreateShard(b),
+                            AddLink(a.id, b.id, 1),
+                            DeleteShard(b.id))
+        // The batch should fail due to DeleteShard with an existing link.
+        nsShard.batchExecute(commands) must throwA[ShardException]
+        nsShard.getShard(a.id) must throwA[NonExistentShard]
+        nsShard.getShard(b.id) must throwA[NonExistentShard]
+      }
+    }
+
     "advanced shard navigation" in {
       val shard1 = new ShardInfo(SQL_SHARD, "forward_1", "localhost")
       val shard2 = new ShardInfo(SQL_SHARD, "forward_1_also", "localhost")
