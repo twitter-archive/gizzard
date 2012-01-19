@@ -8,13 +8,15 @@ import com.twitter.gizzard.shards._
 /**
  * NameServer implementation that doesn't actually store anything anywhere.
  * Useful for tests or stubbing out the partitioning scheme.
+ *
+ * Note: batch_execute commands are not executed atomically in this implementation.
  */
 class MemoryShardManagerSource extends ShardManagerSource {
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
-  val updateVersion = new AtomicLong(0L)
+  val stateVersion = new AtomicLong(0L)
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
     shardTable.find { x =>
@@ -167,10 +169,12 @@ class MemoryShardManagerSource extends ShardManagerSource {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
   }
 
-  def getUpdateVersion() : Long = updateVersion.get()
+  def getCurrentStateVersion() : Long = stateVersion.get()
 
-  def incrementVersion() {
-    updateVersion.incrementAndGet()
+  def getMasterStateVersion() : Long = stateVersion.get()
+
+  def incrementStateVersion() {
+    stateVersion.incrementAndGet()
   }
 
   def reload() { }

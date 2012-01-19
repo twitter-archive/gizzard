@@ -139,12 +139,15 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
     }
 
     "manage update version" in {
-      nsShard.getUpdateVersion() mustEqual 0L
-      nsShard.incrementVersion()
-      nsShard.getUpdateVersion() mustEqual 1L
-      nsShard.incrementVersion()
-      nsShard.incrementVersion()
-      nsShard.getUpdateVersion() mustEqual 3L
+      nsShard.getMasterStateVersion() mustEqual 0L
+      nsShard.getCurrentStateVersion() mustEqual 0L
+      nsShard.incrementStateVersion()
+      nsShard.getMasterStateVersion() mustEqual 1L
+      nsShard.getCurrentStateVersion() mustEqual 1L
+      nsShard.incrementStateVersion()
+      nsShard.incrementStateVersion()
+      nsShard.getMasterStateVersion() mustEqual 3L
+      nsShard.getCurrentStateVersion() mustEqual 3L
     }
 
     "advanced shard navigation" in {
