@@ -114,6 +114,27 @@ service Manager {
 
   list<i32> list_tables() throws(1: GizzardException ex)
 
+  // versioning
+
+  /**
+   * Increment the "master" version number of the nameserver state.
+   * This method is called implicitly after any successful update of nameserver state,
+   * so it's unlikely that you'll need to call this method directly.
+   * Does not trigger a local reload.
+   */
+  void increment_state_version() throws(1: GizzardException ex)
+
+  /**
+   * Get this application's current view of the state version.
+   */
+  i64 get_current_state_version() throws(1: GizzardException ex)
+
+  /**
+   * Get the master version number of the nameserver state according to the shard manager.
+   * The master version may be ahead of this application's version.
+   */
+  i64 get_master_state_version() throws(1: GizzardException ex)
+
   void batch_execute(1: list<BatchedCommand> commands) throws (1: GizzardException ex)
 
   list<NameServerState> dump_nameserver(1: list<i32> table_id) throws(1: GizzardException ex)

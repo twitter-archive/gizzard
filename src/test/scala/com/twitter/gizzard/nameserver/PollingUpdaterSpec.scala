@@ -16,7 +16,8 @@ class PollingUpdaterSpec extends ConfiguredSpecification with JMocker with Class
       val shard = mock[ShardManagerSource]
       val nameServer = new NameServer(LeafRoutingNode(shard), identity)
       expect {
-        atLeast(2).of(shard).getUpdateVersion()
+        atLeast(1).of(shard).getCurrentStateVersion() willReturn (0L)
+        atLeast(1).of(shard).getMasterStateVersion() willReturn (0L)
       }
       val pollingUpdater = new PollingUpdater(nameServer, 1.second)
       pollingUpdater.start()
@@ -28,7 +29,8 @@ class PollingUpdaterSpec extends ConfiguredSpecification with JMocker with Class
       val shard = mock[ShardManagerSource]
       val nameServer = new NameServer(LeafRoutingNode(shard), identity)
       expect {
-        exactly(4).of(shard).getUpdateVersion() willReturnEach (0L, 1L, 1L, 5L)
+        exactly(4).of(shard).getCurrentStateVersion() willReturnEach (0L, 0L, 2L, 2L)
+        exactly(4).of(shard).getMasterStateVersion() willReturnEach (0L, 2L, 2L, 5L)
         exactly(2).of(shard).reload
         exactly(2).of(shard).currentState willReturn (List[NameServerState]())
       }
@@ -44,7 +46,8 @@ class PollingUpdaterSpec extends ConfiguredSpecification with JMocker with Class
       val shard = mock[ShardManagerSource]
       val nameServer = new NameServer(LeafRoutingNode(shard), identity)
       expect {
-        exactly(1).of(shard).getUpdateVersion() willReturnEach (0L)
+        exactly(1).of(shard).getCurrentStateVersion() willReturnEach (10L)
+        exactly(1).of(shard).getMasterStateVersion() willReturnEach (10L)
       }
 
       val pollingUpdater = new PollingUpdater(nameServer, 1.second)

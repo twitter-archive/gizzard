@@ -128,6 +128,18 @@ extends Manager.Iface {
     wrapEx(shardManager.batchExecute(commands.map(nameserver.BatchedCommand.apply)))
   }
 
+  def increment_state_version() {
+    wrapEx(shardManager.incrementStateVersion())
+  }
+
+  def get_current_state_version() : Long = {
+    wrapEx(shardManager.getCurrentStateVersion())
+  }
+
+  def get_master_state_version() : Long = {
+    wrapEx(shardManager.getMasterStateVersion())
+  }
+
   // Job Scheduler Management
 
   def retry_errors()  = wrapEx(scheduler.retryErrors())

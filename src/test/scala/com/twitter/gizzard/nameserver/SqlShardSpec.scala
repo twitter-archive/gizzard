@@ -329,13 +329,47 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
     }
 
-    "manage update version" in {
-      nsShard.getUpdateVersion() mustEqual 0L
-      nsShard.incrementVersion()
-      nsShard.getUpdateVersion() mustEqual 1L
-      nsShard.incrementVersion()
-      nsShard.incrementVersion()
-      nsShard.getUpdateVersion() mustEqual 3L
+    "manage state version" in {
+      val a = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "a", "localhost")
+      val b = new ShardInfo("com.twitter.gizzard.fake.NestableShard", "b", "localhost")
+      val fwd = Forwarding(0, 1, a.id)
+
+      "manually update version" in {
+        nsShard.getMasterStateVersion() mustEqual 0L
+        nsShard.incrementStateVersion()
+        nsShard.getMasterStateVersion() mustEqual 1L
+        nsShard.incrementStateVersion()
+        nsShard.incrementStateVersion()
+        nsShard.getMasterStateVersion() mustEqual 3L
+      }
+
+      "automatically update version" in {
+        nsShard.createShard(a)
+        nsShard.createShard(b)
+        nsShard.addLink(a.id, b.id, 1)
+        nsShard.setForwarding(fwd)
+        nsShard.getMasterStateVersion() mustEqual 4
+
+        nsShard.removeForwarding(fwd)
+        nsShard.removeLink(a.id, b.id)
+        nsShard.deleteShard(b.id)
+        nsShard.deleteShard(a.id)
+        nsShard.getMasterStateVersion() mustEqual 8
+      }
+
+      "update current version on reload" in {
+        nsShard.getMasterStateVersion() mustEqual 0
+        nsShard.getCurrentStateVersion() mustEqual 0
+
+        nsShard.createShard(a)
+        nsShard.getMasterStateVersion() mustEqual 1
+        nsShard.getCurrentStateVersion() mustEqual 0
+
+        nsShard.reload()
+        nsShard.currentState()
+        nsShard.getMasterStateVersion() mustEqual 1
+        nsShard.getCurrentStateVersion() mustEqual 1
+      }
     }
 
     "execute batched commands" in {
@@ -348,8 +382,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
                             CreateShard(b),
                             AddLink(a.id, b.id, 1),
                             AddLink(a.id, b.id, 2))
+        nsShard.getMasterStateVersion() mustEqual 0
         nsShard.batchExecute(commands)
         nsShard.listUpwardLinks(b.id).head.weight mustEqual 2
+        nsShard.getMasterStateVersion() mustEqual 1
       }
 
       "create shards, add links, remove links" in {
@@ -359,9 +395,11 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
                             AddLink(a.id, b.id, 1),
                             AddLink(b.id, c.id, 2),
                             RemoveLink(b.id, c.id))
+        nsShard.getMasterStateVersion() mustEqual 0
         nsShard.batchExecute(commands)
         nsShard.listUpwardLinks(b.id).head.weight mustEqual 1
         nsShard.listUpwardLinks(c.id) mustEqual List()
+        nsShard.getMasterStateVersion() mustEqual 1
       }
 
       "set and remove forwardings" in {
@@ -372,8 +410,10 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
                             SetForwarding(fwdA),
                             SetForwarding(fwdB),
                             RemoveForwarding(fwdB))
+        nsShard.getMasterStateVersion() mustEqual 0
         nsShard.batchExecute(commands)
         nsShard.getForwardings() mustEqual List(fwdA)
+        nsShard.getMasterStateVersion() mustEqual 1
       }
 
       "execute atomically and rollback on error" in {
@@ -382,9 +422,11 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
                             AddLink(a.id, b.id, 1),
                             DeleteShard(b.id))
         // The batch should fail due to DeleteShard with an existing link.
+        nsShard.getMasterStateVersion() mustEqual 0
         nsShard.batchExecute(commands) must throwA[ShardException]
         nsShard.getShard(a.id) must throwA[NonExistentShard]
         nsShard.getShard(b.id) must throwA[NonExistentShard]
+        nsShard.getMasterStateVersion() mustEqual 0
       }
     }
 

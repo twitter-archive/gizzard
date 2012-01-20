@@ -1,6 +1,7 @@
 package com.twitter.gizzard.nameserver
 
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 import com.twitter.logging.Logger
 import com.twitter.querulous.evaluator.{QueryEvaluator, Transaction}
@@ -184,14 +185,16 @@ class SqlShardManagerTransaction(transaction : Transaction) extends ShardManager
     ancestorIds.foreach(id => replaceForwarding(id, id))
   }
 
-
-  // Version methods
-  def getUpdateVersion() : Long = {
+  def getMasterStateVersion() : Long = {
     val query = "SELECT counter FROM update_counters WHERE id = 'version'"
     transaction.selectOne(query)(_.getLong("counter")).getOrElse(0L)
   }
 
-  def incrementVersion() {
+  def getCurrentStateVersion() : Long = {
+    throw new UnsupportedOperationException("Transactional contexts do not have an independent state version")
+  }
+
+  def incrementStateVersion() {
     transaction.execute(
       "INSERT INTO update_counters (id, counter) VALUES ('version', 1) ON DUPLICATE KEY UPDATE counter = counter + 1")
   }
@@ -262,13 +265,12 @@ class SqlShardManagerTransaction(transaction : Transaction) extends ShardManager
     transaction.select("SELECT * FROM shards where busy != 0")(SqlShard.rowToShardInfo).toList
   }
 
-  def reload() {
-    throw new UnsupportedOperationException("reload not supported within a transactional context")
+  def latestUpdatedSeq() = {
+    val query = "SELECT counter FROM update_counters WHERE id = 'forwardings'"
+    transaction.selectOne(query)(_.getLong("counter")).getOrElse(0L)
   }
 
-  def currentState(): Seq[NameServerState] = {
-    throw new UnsupportedOperationException("shard state not supported within a transactional context")
-  }
+  def loadState() = dumpStructure(listTables)
 
   def batchExecute(commands : Seq[BatchedCommand]) {
     for (cmd <- commands) {
@@ -282,85 +284,8 @@ class SqlShardManagerTransaction(transaction : Transaction) extends ShardManager
       }
     }
   }
-}
 
-class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManagerSource {
-  private val log = Logger.get(getClass.getName)
-
-  private def withTransaction [T] (f : ShardManagerSource => T) : T = {
-    queryEvaluator.transaction(t => f(new SqlShardManagerTransaction(t)))
-  }
-
-  def reload() {
-    try {
-      synchronized {
-        _currentState         = null
-        _forwardingUpdatedSeq = 0L
-      }
-
-      List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
-        queryEvaluator.select("DESCRIBE " + table) { row => }
-      }
-    } catch {
-      case e: SQLException =>
-        // try creating the schema
-        rebuildSchema()
-    }
-  }
-
-  def rebuildSchema() {
-    queryEvaluator.execute(SqlShard.SHARDS_DDL)
-    queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
-    queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
-    queryEvaluator.execute(SqlShard.UPDATE_COUNTER_DDL)
-  }
-
-  def createShard(shardInfo: ShardInfo) { withTransaction(_.createShard(shardInfo)) }
-  def deleteShard(id: ShardId) { withTransaction(_.deleteShard(id)) }
-  def markShardBusy(id: ShardId, busy: Busy.Value) { withTransaction(_.markShardBusy(id, busy)) }
-
-  def getShard(id: ShardId) = withTransaction(_.getShard(id))
-  def shardsForHostname(hostname: String) = withTransaction(_.shardsForHostname(hostname))
-  def listShards() = withTransaction(_.listShards())
-  def getBusyShards() = withTransaction(_.getBusyShards())
-
-  def addLink(upId: ShardId, downId: ShardId, weight: Int) {
-    withTransaction(_.addLink(upId, downId, weight))
-  }
-
-  def removeLink(upId: ShardId, downId: ShardId) {
-    withTransaction(_.removeLink(upId, downId))
-  }
-
-  def listUpwardLinks(id: ShardId) = withTransaction(_.listUpwardLinks(id))
-
-  def listDownwardLinks(id: ShardId) = withTransaction(_.listDownwardLinks(id))
-  def listLinks() = withTransaction(_.listLinks())
-
-  def setForwarding(forwarding: Forwarding) { withTransaction(_.setForwarding(forwarding)) }
-  def removeForwarding(forwarding: Forwarding) { withTransaction(_.removeForwarding(forwarding)) }
-  def replaceForwarding(oldId: ShardId, newId: ShardId) {
-    withTransaction(_.replaceForwarding(oldId, newId))
-  }
-
-  def getForwarding(tableId: Int, baseId: Long) = withTransaction(_.getForwarding(tableId, baseId))
-  def getForwardingForShard(id: ShardId) = withTransaction(_.getForwardingForShard(id))
-  def getForwardings() = withTransaction(_.getForwardings())
-  def getForwardingsForTableIds(tableIds: Seq[Int]) = withTransaction(_.getForwardingsForTableIds(tableIds))
-
-  def listHostnames() = withTransaction(_.listHostnames())
-  def listTables() = withTransaction(_.listTables())
-
-  def getUpdateVersion() = withTransaction(_.getUpdateVersion())
-  def incrementVersion() { withTransaction(_.incrementVersion()) }
-
-  def batchExecute(commands : Seq[BatchedCommand]) { withTransaction(_.batchExecute(commands)) }
-
-  // Forwardings/Shard Management Read Methods
-
-  private def loadState() = dumpStructure(listTables)
-
-  private def updateState(state: Seq[NameServerState], updatedSequence: Long) = {
+  def updateState(state: Seq[NameServerState], updatedSequence: Long) = {
     import TreeUtils._
 
     val oldForwardings = state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f).toMap
@@ -372,7 +297,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     val newForwardings     = mutable.Map[(Int,Long), Forwarding]()
     val deletedForwardings = mutable.Map[(Int,Long), Forwarding]()
 
-    queryEvaluator.select("SELECT * FROM forwardings WHERE updated_seq > ?", updatedSequence) { row =>
+    transaction.select("SELECT * FROM forwardings WHERE updated_seq > ?", updatedSequence) { row =>
       val f  = SqlShard.rowToForwarding(row)
       val fs = if (row.getBoolean("deleted")) deletedForwardings else newForwardings
 
@@ -401,29 +326,122 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     tableIds.map(t => extractor(t)).toSeq
   }
 
+  def reload() {
+    throw new UnsupportedOperationException("reload not supported within a transactional context")
+  }
+
+  def currentState(): Seq[NameServerState] = {
+    throw new UnsupportedOperationException("shard state not supported within a transactional context")
+  }
+}
+
+class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManagerSource {
+  private val log = Logger.get(getClass.getName)
+
+  private def withTransaction [T] (f : SqlShardManagerTransaction => T) : T = {
+    queryEvaluator.transaction(t => f(new SqlShardManagerTransaction(t)))
+  }
+
+  private def updateWithTransaction [T] (f : SqlShardManagerTransaction => T) : T = {
+    queryEvaluator.transaction(t => {
+      val shardTransaction = new SqlShardManagerTransaction(t)
+      val result = f(shardTransaction)
+      shardTransaction.incrementStateVersion()
+      result
+    })
+  }
+
+  def reload() {
+    try {
+      synchronized {
+        _currentState         = null
+        _forwardingUpdatedSeq = 0L
+      }
+
+      List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
+        queryEvaluator.select("DESCRIBE " + table) { row => }
+      }
+    } catch {
+      case e: SQLException =>
+        // try creating the schema
+        rebuildSchema()
+    }
+  }
+
+  def rebuildSchema() {
+    queryEvaluator.execute(SqlShard.SHARDS_DDL)
+    queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
+    queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
+    queryEvaluator.execute(SqlShard.UPDATE_COUNTER_DDL)
+  }
+
+  def createShard(shardInfo: ShardInfo) { updateWithTransaction(_.createShard(shardInfo)) }
+  def deleteShard(id: ShardId) { updateWithTransaction(_.deleteShard(id)) }
+  def markShardBusy(id: ShardId, busy: Busy.Value) { updateWithTransaction(_.markShardBusy(id, busy)) }
+
+  def getShard(id: ShardId) = withTransaction(_.getShard(id))
+  def shardsForHostname(hostname: String) = withTransaction(_.shardsForHostname(hostname))
+  def listShards() = withTransaction(_.listShards())
+  def getBusyShards() = withTransaction(_.getBusyShards())
+
+  def addLink(upId: ShardId, downId: ShardId, weight: Int) {
+    updateWithTransaction(_.addLink(upId, downId, weight))
+  }
+
+  def removeLink(upId: ShardId, downId: ShardId) {
+    updateWithTransaction(_.removeLink(upId, downId))
+  }
+
+  def listUpwardLinks(id: ShardId) = withTransaction(_.listUpwardLinks(id))
+
+  def listDownwardLinks(id: ShardId) = withTransaction(_.listDownwardLinks(id))
+  def listLinks() = withTransaction(_.listLinks())
+
+  def setForwarding(forwarding: Forwarding) { updateWithTransaction(_.setForwarding(forwarding)) }
+  def removeForwarding(forwarding: Forwarding) { updateWithTransaction(_.removeForwarding(forwarding)) }
+  def replaceForwarding(oldId: ShardId, newId: ShardId) {
+    updateWithTransaction(_.replaceForwarding(oldId, newId))
+  }
+
+  def getForwarding(tableId: Int, baseId: Long) = withTransaction(_.getForwarding(tableId, baseId))
+  def getForwardingForShard(id: ShardId) = withTransaction(_.getForwardingForShard(id))
+  def getForwardings() = withTransaction(_.getForwardings())
+  def getForwardingsForTableIds(tableIds: Seq[Int]) = withTransaction(_.getForwardingsForTableIds(tableIds))
+
+  def listHostnames() = withTransaction(_.listHostnames())
+  def listTables() = withTransaction(_.listTables())
+
+  def getMasterStateVersion() = withTransaction(_.getMasterStateVersion())
+  def incrementStateVersion() { updateWithTransaction(_ => ()) }
+
+  def batchExecute(commands : Seq[BatchedCommand]) { updateWithTransaction(_.batchExecute(commands)) }
+
+  // Forwardings/Shard Management Read Methods
+
   @volatile private var _forwardingUpdatedSeq = 0L
   @volatile private var _currentState: Seq[NameServerState] = null
-
-  private def latestUpdatedSeq() = {
-    val query = "SELECT counter FROM update_counters WHERE id = 'forwardings'"
-    queryEvaluator.selectOne(query)(_.getLong("counter")).getOrElse(0L)
-  }
+  private val _stateVersion = new AtomicLong(0L)
 
   def currentState() = {
     synchronized {
-      val nextUpdatedSeq = latestUpdatedSeq()
+      withTransaction(t => {
+        val nextUpdatedSeq = t.latestUpdatedSeq()
 
-      if (_currentState eq null) {
-        _currentState = loadState()
-      } else {
-        _currentState = updateState(_currentState, _forwardingUpdatedSeq)
-      }
+        if (_currentState eq null) {
+          _currentState = t.loadState()
+        } else {
+          _currentState = t.updateState(_currentState, _forwardingUpdatedSeq)
+        }
 
-      _forwardingUpdatedSeq = nextUpdatedSeq
+        _forwardingUpdatedSeq = nextUpdatedSeq
+        _stateVersion.set(t.getMasterStateVersion())
 
-      _currentState
+        _currentState
+      })
     }
   }
+
+  def getCurrentStateVersion() : Long = _stateVersion.get()
 }
 
 class SqlRemoteClusterManagerSource(queryEvaluator: QueryEvaluator) extends RemoteClusterManagerSource {
