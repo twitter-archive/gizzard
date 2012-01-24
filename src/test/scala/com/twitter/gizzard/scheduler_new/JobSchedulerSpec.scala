@@ -11,7 +11,7 @@ import com.twitter.gizzard.nameserver.JobRelay
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
-    val mockJobRelay = mock[JobRelay]
+    val asyncReplicator = mock[JobAsyncReplicator]
     val queue = mock[JobQueue]
     val errorQueue = mock[JobQueue]
     val badJobQueue = mock[JobConsumer]
@@ -28,7 +28,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val JITTER_RATE = 0.01f
 
     doBefore {
-      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE, true, mockJobRelay,
+      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE, false, asyncReplicator,
                                       queue, errorQueue, badJobQueue) {
         override def processWork() {
           liveThreads.incrementAndGet()

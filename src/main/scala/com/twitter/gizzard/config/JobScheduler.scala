@@ -4,7 +4,6 @@ import com.twitter.util.{Duration, StorageUnit}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
-import com.twitter.gizzard.nameserver
 import com.twitter.gizzard
 import com.twitter.gizzard.scheduler
 import com.twitter.gizzard.scheduler.{JsonJob, JsonCodec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
@@ -132,7 +131,7 @@ trait Scheduler {
   def errorQueueName_=(s: String) { _errorQueueName = Some(s) }
   def errorQueueName: String = _errorQueueName.getOrElse(name + "_errors")
 
-  def apply(codec: JsonCodec, jobRelay: => nameserver.JobRelay): gizzard.scheduler.JobScheduler = {
+  def apply(codec: JsonCodec, jobAsyncReplicator: scheduler.JobAsyncReplicator): gizzard.scheduler.JobScheduler = {
     val (jobQueue, errorQueue) = schedulerType match {
       case kestrel: KestrelScheduler => {
         val persistentJobQueue = kestrel(jobQueueName)
@@ -166,7 +165,7 @@ trait Scheduler {
       perFlushItemLimit,
       jitterRate,
       isReplicated,
-      jobRelay,
+      jobAsyncReplicator,
       jobQueue,
       errorQueue,
       badJobQueue()

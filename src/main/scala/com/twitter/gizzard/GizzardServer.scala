@@ -41,8 +41,10 @@ abstract class GizzardServer(config: ServerConfig) {
     logUnparsableJob
   )
 
+  lazy val jobAsyncReplicator = config.jobAsyncReplicator(remoteClusterManager.jobRelay)
+
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
-    p -> config.jobQueues(p)(jobCodec, remoteClusterManager.jobRelay)
+    p -> config.jobQueues(p)(jobCodec, jobAsyncReplicator)
   } toMap)
 
   // service wiring

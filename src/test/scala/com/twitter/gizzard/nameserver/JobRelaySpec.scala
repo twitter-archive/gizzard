@@ -7,7 +7,7 @@ import com.twitter.gizzard.ConfiguredSpecification
 
 
 object JobRelaySpec extends ConfiguredSpecification {
-  val relay = new JobRelayFactory(2, 1.second, 1.second, 0, null, null)(Map(
+  val relay = new JobRelayFactory(2, 1.second)(Map(
     "normal" ->
       Seq(Host("localhost1", 8000, "normal", HostStatus.Normal),
           Host("localhost2", 8000, "normal", HostStatus.Normal)),
