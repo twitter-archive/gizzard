@@ -42,7 +42,7 @@ abstract class GizzardServer(config: ServerConfig) {
   )
 
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
-    p -> config.jobQueues(p)(jobCodec)
+    p -> config.jobQueues(p)(jobCodec, remoteClusterManager.jobRelay)
   } toMap)
 
   // service wiring

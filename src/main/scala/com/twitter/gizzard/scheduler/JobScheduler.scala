@@ -9,6 +9,7 @@ import com.twitter.conversions.time._
 import com.twitter.logging.Logger
 import com.twitter.gizzard.Stats
 import com.twitter.gizzard.shards.{ShardBlackHoleException, ShardOfflineException}
+import com.twitter.gizzard.nameserver.JobRelay
 import com.twitter.gizzard.util.Process
 
 
@@ -32,6 +33,8 @@ class JobScheduler(
   val errorLimit: Int,
   val flushLimit: Int,
   val jitterRate: Float,
+  val isReplicated: Boolean,
+  jobRelay: => JobRelay,
   val queue: JobQueue,
   val errorQueue: JobQueue,
   val badJobQueue: JobConsumer)
@@ -152,6 +155,9 @@ extends Process with JobConsumer {
       try {
         val job = ticket.job
         try {
+          if (isReplicated && job.shouldReplicate) jobRelay.enqueue(job.toJsonBytes)
+          // TODO(Abhi Khune): 
+          // job.shouldReplicate = false
           job()
           Stats.incr("job-success-count")
         } catch {

@@ -6,10 +6,12 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.ConfiguredSpecification
+import com.twitter.gizzard.nameserver.JobRelay
 
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
+    val mockJobRelay = mock[JobRelay]
     val queue = mock[JobQueue]
     val errorQueue = mock[JobQueue]
     val badJobQueue = mock[JobConsumer]
@@ -26,7 +28,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val JITTER_RATE = 0.01f
 
     doBefore {
-      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE,
+      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE, true, mockJobRelay,
                                       queue, errorQueue, badJobQueue) {
         override def processWork() {
           liveThreads.incrementAndGet()

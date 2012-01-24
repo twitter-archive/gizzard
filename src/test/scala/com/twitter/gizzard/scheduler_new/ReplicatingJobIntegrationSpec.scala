@@ -15,7 +15,7 @@ import com.twitter.gizzard.ConfiguredSpecification
 object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "ReplicatingJobIntegration" should {
     val host  = Host("localhost", 12313, "c1", HostStatus.Normal)
-    val relay = new JobRelay(Map("c1" -> List(host)), 1, 1.second, 1.second, 0)
+    val relay = new JobRelay(Map("c1" -> List(host)), 1, 1.second, 1.second, 0, null, null)
     val codec = new ReplicatingJsonCodec(relay, { badJob =>
       println(new String(badJob, "UTF-8"))
     })
@@ -42,7 +42,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     }
 
     val scheduler = new PrioritizingJobScheduler(Map(
-      1 -> schedulerConfig(codec)
+      1 -> schedulerConfig(codec, relay)
     ))
 
     val queue = scheduler(1).queue.asInstanceOf[KestrelJobQueue].queue
