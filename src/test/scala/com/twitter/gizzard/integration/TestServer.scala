@@ -28,6 +28,8 @@ package object config {
   }
 
   object TestQueryEvaluator extends querulous.config.QueryEvaluator {
+    singletonFactory = true
+    database.memoize = true
     database.pool = new ApachePoolingDatabase {
       sizeMin = 3
       sizeMax = 3

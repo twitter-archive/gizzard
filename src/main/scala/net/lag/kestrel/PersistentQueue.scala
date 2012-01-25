@@ -236,7 +236,7 @@ class PersistentQueue(val name: String, persistencePath: String, @volatile var c
    * Remove and return an item from the queue, if there is one.
    *
    * @param transaction true if this should be considered the first part
-   *     of a transaction, to be committed or rolled back (put back at the
+   *     of a transaction, to be committed or rolled back (put' back at the
    *     head of the queue)
    */
   def remove(transaction: Boolean): Option[QItem] = {
