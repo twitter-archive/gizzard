@@ -4,19 +4,20 @@ import scala.annotation.tailrec
 import com.twitter.util.Time
 import com.twitter.gizzard.nameserver.JobRelay
 import net.lag.kestrel.config.QueueConfig
+import net.lag.kestrel.PersistentQueue
 import java.util.concurrent.ConcurrentHashMap
 
 class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueRootDir: String) {
-  
+
   private val QueuePollTimeout = 1000 // 1 second
-  
+
   val queueMap = new ConcurrentHashMap[String, PersistentQueue]
-  val threadPool 
-  
+  // val threadPool 
+
   def enqueue(job: Array[Byte]) {
     jobRelay.clusters.foreach { getQueue(_).add(job) }
   }
-  
+
   def getQueue(cluster: String) = {
     queueMap.get(cluster) match {
       case null => { 
@@ -26,15 +27,15 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
       case queue => queue
     }
   }
-  
+
   @tailrec
-  def process(cluster: String) {
+  final def process(cluster: String) {
     val queue = getQueue(cluster)
-    
+
     if (!queue.isClosed) {
       queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + QueuePollTimeout)), true) foreach { item =>
         try {
-          jobRelay(cluster)(item.data)
+          jobRelay(cluster)(Iterable(item.data))
           queue.confirmRemove(item.xid)
         } catch { case e =>
           // log error
