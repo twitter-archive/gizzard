@@ -6,13 +6,14 @@ import com.twitter.gizzard.nameserver.JobRelay
 import net.lag.kestrel.config.QueueConfig
 import net.lag.kestrel.PersistentQueue
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 
 class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueRootDir: String) {
 
   private val QueuePollTimeout = 1000 // 1 second
 
   val queueMap = new ConcurrentHashMap[String, PersistentQueue]
-  // val threadPool 
+  val threadpool = Executors.newCachedThreadPool()
 
   def enqueue(job: Array[Byte]) {
     jobRelay.clusters.foreach { getQueue(_).add(job) }
@@ -20,11 +21,19 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
 
   def getQueue(cluster: String) = {
     queueMap.get(cluster) match {
-      case null => { 
-        queueMap.putIfAbsent(cluster, new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig))
+      case null => {
+        if (null == queueMap.putIfAbsent(cluster, new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig))) {
+          threadpool.submit(new Runnable { def run() { process(cluster) } })
+        }
         queueMap.get(cluster)
       }
       case queue => queue
+    }
+  }
+
+  def shutdown() {
+    if (threadpool != null && !threadpool.isShutdown) {
+      threadpool.shutdown() 
     }
   }
 
@@ -35,7 +44,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
     if (!queue.isClosed) {
       queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + QueuePollTimeout)), true) foreach { item =>
         try {
-          jobRelay(cluster)(Iterable(item.data))
+          jobRelay(cluster)(Iterator(item.data).toIterable)
           queue.confirmRemove(item.xid)
         } catch { case e =>
           // log error
