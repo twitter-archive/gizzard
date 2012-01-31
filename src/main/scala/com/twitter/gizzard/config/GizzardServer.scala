@@ -85,6 +85,7 @@ class JobAsyncReplicator {
   var expireToQueue: Option[String] = None
   var maxExpireSweep: Int           = Int.MaxValue
   var fanoutOnly: Boolean           = false
+  var threadsPerCluster: Int        = 4
 
   def aConfig = QueueConfig(
     maxItems           = maxItems,
@@ -103,7 +104,7 @@ class JobAsyncReplicator {
     fanoutOnly         = fanoutOnly
   )
 
-  def apply(jobRelay: => nameserver.JobRelay) = new scheduler.JobAsyncReplicator(jobRelay, aConfig, path)
+  def apply(jobRelay: => nameserver.JobRelay) = new scheduler.JobAsyncReplicator(jobRelay, aConfig, path, threadsPerCluster)
 }
 
 // XXX: move StatsCollection, etc. to separate file

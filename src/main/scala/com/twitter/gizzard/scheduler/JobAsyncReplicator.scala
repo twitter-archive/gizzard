@@ -8,7 +8,7 @@ import net.lag.kestrel.PersistentQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueRootDir: String) {
+class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueRootDir: String, threadsPerCluster: Int) {
 
   private val QueuePollTimeout = 1000 // 1 second
 
@@ -23,7 +23,9 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
     queueMap.get(cluster) match {
       case null => {
         if (null == queueMap.putIfAbsent(cluster, new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig))) {
-          threadpool.submit(new Runnable { def run() { process(cluster) } })
+          for (i <- 0 until threadsPerCluster) { 
+            threadpool.submit(new Runnable { def run() { process(cluster) } })
+          }
         }
         queueMap.get(cluster)
       }
@@ -31,6 +33,10 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
     }
   }
 
+  def start() {
+    
+  }
+  
   def shutdown() {
     if (threadpool != null && !threadpool.isShutdown) {
       threadpool.shutdown() 
