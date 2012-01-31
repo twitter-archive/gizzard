@@ -34,12 +34,12 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
   }
 
   def start() {
-    
+
   }
-  
+
   def shutdown() {
     if (threadpool != null && !threadpool.isShutdown) {
-      threadpool.shutdown() 
+      threadpool.shutdown()
     }
   }
 
@@ -57,7 +57,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
           queue.unremove(item.xid)
         }
       }
-      
+
       process(cluster)
     }
   }

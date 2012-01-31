@@ -156,8 +156,7 @@ extends Process with JobConsumer {
         val job = ticket.job
         try {
           if (isReplicated && job.shouldReplicate) jobAsyncReplicator.enqueue(job.toJsonBytes)
-          // TODO(Abhi Khune): 
-          // job.shouldReplicate = false
+          // TODO(Abhi Khune): job.shouldReplicate = false
           job()
           Stats.incr("job-success-count")
         } catch {
