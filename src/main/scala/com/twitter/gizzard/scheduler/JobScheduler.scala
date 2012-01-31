@@ -117,7 +117,6 @@ extends Process with JobConsumer {
       errorQueue.shutdown()
       shutdownWorkerThreads()
       retryTask.shutdown()
-      if (isReplicated) { jobAsyncReplicator.shutdown() }
       running = false
     }
   }
