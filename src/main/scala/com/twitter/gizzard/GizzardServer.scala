@@ -36,7 +36,7 @@ abstract class GizzardServer(config: ServerConfig) {
   }
 
   lazy val jobCodec = new LoggingJsonCodec(
-    new ReplicatingJsonCodec(remoteClusterManager.jobRelay, logUnparsableJob),
+    new JsonCodec(logUnparsableJob),
     config.jobStats,
     logUnparsableJob
   )

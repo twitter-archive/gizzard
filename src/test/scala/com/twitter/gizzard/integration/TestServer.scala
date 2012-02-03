@@ -100,7 +100,6 @@ package object config {
         jobInjector.port   = iPort
         manager.port       = mPort
         jobAsyncReplicator.path = "/tmp/" + queueBase + "_replication"
-        (new File(jobAsyncReplicator.path)).mkdirs
 
         val server             = new TestTHsHaServer { val name = "TestGizzardService"; val port = sPort }
         val databaseConnection = new TestDBConnection { val database = "gizzard_test_" + name }

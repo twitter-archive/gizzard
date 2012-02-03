@@ -7,21 +7,27 @@ import net.lag.kestrel.config.QueueConfig
 import net.lag.kestrel.PersistentQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import com.twitter.logging.Logger
+
 
 class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueRootDir: String, threadsPerCluster: Int) {
-
+  private val log = Logger.get(getClass)
+  private val exceptionLog = Logger.get("exception")
   private val QueuePollTimeout = 1000 // 1 second
+  private val threadpool = Executors.newCachedThreadPool()
 
-  lazy val queueMap = {
+  lazy private val queueMap = {
     val m = new ConcurrentHashMap[String, PersistentQueue]
     jobRelay.clusters.foreach { cluster =>
       val queue = new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig)
       queue.setup()
+      for (i <- 0 until threadsPerCluster) {
+        threadpool.submit(new Runnable { def run() { process(cluster) } })
+      }
       m.put(cluster, queue)
     }
     m
   }
-  val threadpool = Executors.newCachedThreadPool()
 
   def enqueue(job: Array[Byte]) {
     jobRelay.clusters.foreach { getQueue(_).add(job) }
@@ -29,17 +35,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
 
   def getQueue(cluster: String) = {
     queueMap.get(cluster) match {
-      case null => {
-        // if (null == queueMap.putIfAbsent(cluster, new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig))) {
-        //   for (i <- 0 until threadsPerCluster) { 
-        //     // threadpool.submit(new Runnable { def run() { process(cluster) } })
-        //   }
-        // }
-        // val queue = queueMap.get(cluster)
-        // queue.setup()
-        // queue
-        error("queue not found")
-      }
+      case null => error("queue not found")
       case queue => queue
     }
   }
@@ -49,6 +45,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
   }
 
   def shutdown() {
+    queueMap.values.toArray(Array[PersistentQueue]()).foreach { _.close() }
     if (!threadpool.isShutdown) threadpool.shutdown()
   }
 
@@ -57,14 +54,19 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
     val queue = getQueue(cluster)
 
     if (!queue.isClosed) {
-      queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + QueuePollTimeout)), true) foreach { item =>
-        try {
-          jobRelay(cluster)(Iterator(item.data).toIterable)
-          queue.confirmRemove(item.xid)
-        } catch { case e =>
-          // log error
-          queue.unremove(item.xid)
+      try {
+        queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + QueuePollTimeout)), true) foreach { item =>
+          try {
+            jobRelay(cluster)(Iterator(item.data).toIterable)
+            queue.confirmRemove(item.xid)
+          } catch { case e =>
+            exceptionLog.error(e, "Exception in job replication for cluster %s: %s", cluster, e.toString)
+            queue.unremove(item.xid)
+          }
         }
+      } catch { case e:java.nio.channels.ClosedByInterruptException =>
+        println("Exception: Queue is closed?")
+        queue.close()
       }
 
       process(cluster)
