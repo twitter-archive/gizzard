@@ -5,71 +5,113 @@ import com.twitter.util.Time
 import com.twitter.gizzard.nameserver.JobRelay
 import net.lag.kestrel.config.QueueConfig
 import net.lag.kestrel.PersistentQueue
-import java.util.concurrent.ConcurrentHashMap
+import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.Executors
 import com.twitter.logging.Logger
 
 
 class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueRootDir: String, threadsPerCluster: Int) {
-  private val log = Logger.get(getClass)
+
+  // TODO make configurable
+  private val WatchdogPollInterval = 100 // 100 millis
+  private val QueuePollTimeout    = 1000 // 1 second
+
+  @volatile private var queueMap: Map[String, PersistentQueue] = Map()
+  @volatile private var watchdogThread: Option[Thread]         = None
+
+  private val log          = Logger.get(getClass)
   private val exceptionLog = Logger.get("exception")
-  private val QueuePollTimeout = 1000 // 1 second
+
   private val threadpool = Executors.newCachedThreadPool()
 
-  lazy private val queueMap = {
-    val m = new ConcurrentHashMap[String, PersistentQueue]
-    jobRelay.clusters.foreach { cluster =>
-      val queue = new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig)
-      queue.setup()
-      for (i <- 0 until threadsPerCluster) {
-        threadpool.submit(new Runnable { def run() { process(cluster) } })
-      }
-      m.put(cluster, queue)
-    }
-    m
-  }
+  def clusters = queueMap.keySet
+  def queues   = queueMap.values.toSeq
 
   def enqueue(job: Array[Byte]) {
-    jobRelay.clusters.foreach { getQueue(_).add(job) }
-  }
-
-  def getQueue(cluster: String) = {
-    queueMap.get(cluster) match {
-      case null => error("queue not found")
-      case queue => queue
-    }
+    queues foreach { _.add(job) }
   }
 
   def start() {
-
+    watchdogThread = Some(newWatchdogThread)
+    watchdogThread foreach { _.start() }
   }
 
   def shutdown() {
-    queueMap.values.toArray(Array[PersistentQueue]()).foreach { _.close() }
+    watchdogThread foreach { _.interrupt() }
+    queues foreach { _.close() }
     if (!threadpool.isShutdown) threadpool.shutdown()
   }
 
-  @tailrec
-  final def process(cluster: String) {
-    val queue = getQueue(cluster)
+  private final def process(cluster: String) {
+    ignoreInterrupt {
+      queueMap.get(cluster) foreach { queue =>
 
-    if (!queue.isClosed) {
-      try {
-        queue.removeReceive(Some(Time.fromMilliseconds(System.currentTimeMillis + QueuePollTimeout)), true) foreach { item =>
-          try {
-            jobRelay(cluster)(Iterator(item.data).toIterable)
-            queue.confirmRemove(item.xid)
-          } catch { case e =>
-            exceptionLog.error(e, "Exception in job replication for cluster %s: %s", cluster, e.toString)
-            queue.unremove(item.xid)
+        while (!queue.isClosed) {
+          queue.removeReceive(removeTimeout, true) foreach { item =>
+            try {
+              jobRelay(cluster)(Seq(item.data))
+              queue.confirmRemove(item.xid)
+            } catch { case e =>
+              exceptionLog.error(e, "Exception in job replication for cluster %s: %s", cluster, e.toString)
+              queue.unremove(item.xid)
+            }
           }
         }
-      } catch { case e:java.nio.channels.ClosedByInterruptException =>
-        println("Exception: Queue is closed?")
-        queue.close()
+      }
+    }
+  }
+
+  def reconfigure() {
+    // save the relay so we work on a single instance in case it is reconfigured again.
+    val r = jobRelay
+
+    if (r.clusters != clusters) {
+      queues foreach { _.close() }
+
+      val qs = (r.clusters foldLeft Map[String, PersistentQueue]()) { (m, c) =>
+        m + (c -> newQueue(c))
       }
 
-      process(cluster)
+      queueMap = qs
+
+      qs.values foreach { _.setup }
+
+      for (c <- qs.keys; i <- 0 until threadsPerCluster) {
+        threadpool.submit(newProcessor(c))
+      }
+    }
+
+    // wait before returning
+    Thread.sleep(WatchdogPollInterval)
+  }
+
+
+  // Helpers
+
+  private def removeTimeout = {
+    Some(Time.fromMilliseconds(System.currentTimeMillis + QueuePollTimeout))
+  }
+
+  private def newQueue(cluster: String) = {
+    new PersistentQueue("replicating_" + cluster, queueRootDir, queueConfig)
+  }
+
+  private def newProcessor(cluster: String) = {
+    new Runnable { def run() { process(cluster) } }
+  }
+
+  private def ignoreInterrupt[A](f: => A) = try {
+    f
+  } catch {
+    case e: InterruptedException       => ()
+    case e: ClosedByInterruptException => ()
+  }
+
+  private def newWatchdogThread = new Thread {
+    override def run() {
+      ignoreInterrupt {
+        while (!isInterrupted) reconfigure()
+      }
     }
   }
 }

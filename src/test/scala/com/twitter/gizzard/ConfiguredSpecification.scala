@@ -108,6 +108,7 @@ trait IntegrationSpecification extends Specification {
       createTestServerDBs(s)
       s.nameServer.reload()
       s.remoteClusterManager.reload()
+      s.jobAsyncReplicator.reconfigure()
       s.nameServer.shardManager.setForwarding(s.forwarding)
       s.shardManager.createAndMaterializeShard(s.sqlShardInfo)
       s.nameServer.reload()
