@@ -101,10 +101,10 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
         "with an exception" in {
           expect {
-            one(shard1).put("name", "carol")
-            one(shard2).put("name", "carol") willThrow new ShardException("o noes")
+            one(shard1).put("name", "carol") willThrow new ShardException("o noes")
+            one(shard2).put("name", "carol")
           }
-          replicatingShard.put("name", "carol") must throwA[Exception]
+          replicatingShard.put("name", "carol") must throwA[ShardException]
         }
 
         "with a black hole" in {

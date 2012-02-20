@@ -3,6 +3,8 @@ package com.twitter.gizzard.scheduler
 import com.twitter.ostrich.Stats
 import com.twitter.util.TimeConversions._
 import net.lag.logging.Logger
+import collection.mutable.ListBuffer
+import collection.mutable
 import nameserver.{NameServer, NonExistentShard}
 import shards.{Shard, ShardId, ShardDatabaseTimeoutException, ShardTimeoutException}
 
@@ -14,7 +16,10 @@ object CopyJob {
  * A factory for creating a new copy job (with default count and a starting cursor) from a source
  * and destination shard ID.
  */
-trait CopyJobFactory[S <: Shard] extends ((ShardId, ShardId) => CopyJob[S])
+trait CopyJobFactory[S <: Shard] extends ((ShardId, List[CopyDestination]) => CopyJob[S])
+
+case class CopyDestination(shardId: ShardId, baseId: Option[Long])
+case class CopyDestinationShard[S](shard: S, baseId: Option[Long])
 
 /**
  * A parser that creates a copy job out of json. The basic attributes (source shard ID, destination)
@@ -23,13 +28,34 @@ trait CopyJobFactory[S <: Shard] extends ((ShardId, ShardId) => CopyJob[S])
  */
 trait CopyJobParser[S <: Shard] extends JsonJobParser {
   def deserialize(attributes: Map[String, Any], sourceId: ShardId,
-                  destinationId: ShardId, count: Int): CopyJob[S]
+                  destinations: List[CopyDestination], count: Int): CopyJob[S]
 
   def apply(attributes: Map[String, Any]): JsonJob = {
+    val sourceId = ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString)
+
     deserialize(attributes,
-                ShardId(attributes("source_shard_hostname").toString, attributes("source_shard_table_prefix").toString),
-                ShardId(attributes("destination_shard_hostname").toString, attributes("destination_shard_table_prefix").toString),
+                sourceId,
+                parseDestinations(attributes).toList,
                 attributes("count").asInstanceOf[{def toInt: Int}].toInt)
+  }
+
+  private def parseDestinations(attributes: Map[String, Any]) = {
+    val destinations = new ListBuffer[CopyDestination]
+    var i = 0
+    while(attributes.contains("destination_" + i + "_hostname")) {
+      val prefix = "destination_" + i
+      val baseKey = prefix + "_base_id"
+      val baseId = if (attributes.contains(baseKey)) {
+        Some(attributes(baseKey).asInstanceOf[{def toLong: Long}].toLong)
+      } else {
+        None
+      }
+      val shardId = ShardId(attributes(prefix + "_shard_hostname").toString, attributes(prefix + "_shard_table_prefix").toString)
+      destinations += CopyDestination(shardId, baseId)
+      i += 1
+    }
+
+    destinations.toList
   }
 }
 
@@ -43,7 +69,7 @@ trait CopyJobParser[S <: Shard] extends JsonJobParser {
  * the next chunk of work to do, or None if the entire copying job is complete.
  */
 abstract case class CopyJob[S <: Shard](sourceId: ShardId,
-                                        destinationId: ShardId,
+                                        destinations: List[CopyDestination],
                                         var count: Int,
                                         nameServer: NameServer[S],
                                         scheduler: JobScheduler[JsonJob])
@@ -55,29 +81,50 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
   def toMap = {
     Map("source_shard_hostname" -> sourceId.hostname,
         "source_shard_table_prefix" -> sourceId.tablePrefix,
-        "destination_shard_hostname" -> destinationId.hostname,
-        "destination_shard_table_prefix" -> destinationId.tablePrefix,
         "count" -> count
-    ) ++ serialize
+    ) ++ serialize ++ destinationsToMap
+  }
+
+  private def destinationsToMap = {
+    var i = 0
+    val map = mutable.Map[String, Any]()
+    destinations.foreach { destination =>
+      map("destination_" + i + "_hostname") = destination.shardId.hostname
+      map("destination_" + i + "_table_prefix") = destination.shardId.tablePrefix
+      destination.baseId.foreach { id =>
+        map("destination_" + i + "_base_id") = id
+      }
+      i += 1
+    }
+    map
   }
 
   def finish() {
-    nameServer.markShardBusy(destinationId, shards.Busy.Normal)
+    destinations.foreach { dest =>
+      nameServer.markShardBusy(dest.shardId, shards.Busy.Normal)
+    }
     log.info("Copying finished for (type %s) from %s to %s",
-             getClass.getName.split("\\.").last, sourceId, destinationId)
+             getClass.getName.split("\\.").last, sourceId, destinations)
     Stats.clearGauge(gaugeName)
   }
 
   def apply() {
     try {
       log.info("Copying shard block (type %s) from %s to %s: state=%s",
-               getClass.getName.split("\\.").last, sourceId, destinationId, toMap)
+               getClass.getName.split("\\.").last, sourceId, destinations, toMap)
       val sourceShard = nameServer.findShardById(sourceId)
-      val destinationShard = nameServer.findShardById(destinationId)
-      // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
-      nameServer.markShardBusy(destinationId, shards.Busy.Busy)
 
-      val nextJob = copyPage(sourceShard, destinationShard, count)
+      val destinationShards = destinations.map { dest =>
+        CopyDestinationShard[S](nameServer.findShardById(dest.shardId), dest.baseId)
+      }
+
+      // do this on each iteration, so it happens in the queue and can be retried if the db is busy:
+      destinations.foreach { dest =>
+        nameServer.markShardBusy(dest.shardId, shards.Busy.Busy)
+      }
+      
+      val nextJob = copyPage(sourceShard, destinationShards, count)
+      
       nextJob match {
         case Some(job) =>
           incrGauge
@@ -106,10 +153,10 @@ abstract case class CopyJob[S <: Shard](sourceId: ShardId,
   }
 
   private def gaugeName = {
-    "x-copying-" + sourceId + "-" + destinationId
+    "x-copying-" + sourceId + "-" + destinations
   }
 
-  def copyPage(sourceShard: S, destinationShard: S, count: Int): Option[CopyJob[S]]
+  def copyPage(sourceShard: S, destinationShards: List[CopyDestinationShard[S]], count: Int): Option[CopyJob[S]]
 
   def serialize: Map[String, Any]
 }
