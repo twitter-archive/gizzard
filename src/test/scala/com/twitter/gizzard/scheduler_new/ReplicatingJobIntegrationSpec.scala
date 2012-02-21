@@ -6,8 +6,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.conversions.time._
 
 import com.twitter.gizzard
-import com.twitter.gizzard.thrift.{JobInjectorService, TThreadServer, JobInjector}
-import com.twitter.gizzard.config.{THsHaServer => THsHaServerConfig}
+import com.twitter.gizzard.thrift.{JobInjectorService, JobInjector}
 import com.twitter.gizzard.nameserver.{Host, HostStatus, JobRelay}
 import com.twitter.gizzard.ConfiguredSpecification
 
@@ -20,7 +19,7 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
       println(new String(badJob, "UTF-8"))
     })
 
-    var jobsApplied = new AtomicInteger
+    val jobsApplied = new AtomicInteger
 
     val testJobParser = new JsonJobParser {
       def apply(json: Map[String, Any]) = new JsonJob {
@@ -47,22 +46,22 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
 
     val queue = scheduler(1).queue.asInstanceOf[KestrelJobQueue].queue
 
-    val service   = new JobInjectorService(codec, scheduler)
-    val processor = new JobInjector.Processor(service)
-    val server    = (new THsHaServerConfig { val name = "injector"; val port = 12313 }).apply(processor)
+    val service = new JobInjectorService("injector", 12313, codec, scheduler)
 
     doBefore {
-      (new Thread { override def run() { server.serve() } }).start()
+      service.start()
       scheduler.start()
       queue.flush()
     }
 
     doAfter {
-      server.stop()
+      service.shutdown()
       scheduler.shutdown()
     }
 
     "replicate and replay jobs" in {
+      jobsApplied.set(0)
+
       val testJob = testJobParser(Map("dummy" -> 1, "job" -> true, "blah" -> "blop"))
       scheduler.put(1, testJob)
 
@@ -70,9 +69,12 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     }
 
     "replicate and replay nested jobs" in {
+      jobsApplied.set(0)
+
       val jobs = Seq(
         Map("asdf" -> 1, "bleep" -> "bloop"),
-        Map("this" -> 4, "is" -> true, "a test job" -> "teh"))
+        Map("this" -> 4, "is" -> true, "a test job" -> "teh")
+      )
       val nestedJsonJob = new JsonNestedJob(jobs.map(testJobParser(_)))
 
       scheduler.put(1, nestedJsonJob)
@@ -80,4 +82,3 @@ object ReplicatingJobIntegrationSpec extends ConfiguredSpecification with JMocke
     }
   }
 }
-

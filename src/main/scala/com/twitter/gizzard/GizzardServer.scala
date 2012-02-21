@@ -7,6 +7,7 @@ import com.twitter.gizzard.nameserver.{NameServer, RemoteClusterManager}
 import com.twitter.gizzard.scheduler._
 import com.twitter.gizzard.config.{GizzardServer => ServerConfig}
 import com.twitter.gizzard.proxy.LoggingProxy
+import com.twitter.gizzard.thrift.{ManagerService, JobInjectorService}
 
 
 abstract class GizzardServer(config: ServerConfig) {
@@ -47,25 +48,35 @@ abstract class GizzardServer(config: ServerConfig) {
 
   // service wiring
 
-  lazy val managerServer       = new thrift.ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, jobScheduler)
-  lazy val managerThriftServer = config.manager(new thrift.Manager.Processor(managerServer))
+  lazy val managerService = new ManagerService(
+    config.manager.name,
+    config.manager.port,
+    nameServer,
+    shardManager,
+    adminJobManager,
+    remoteClusterManager,
+    jobScheduler
+  )
 
-  lazy val jobInjectorServer       = new thrift.JobInjectorService(jobCodec, jobScheduler)
-  lazy val jobInjectorThriftServer = config.jobInjector(new thrift.JobInjector.Processor(jobInjectorServer))
+  lazy val jobInjectorService = new JobInjectorService(
+    config.jobInjector.name,
+    config.jobInjector.port,
+    jobCodec,
+    jobScheduler
+  )
 
   def startGizzard() {
     nameServer.reload()
     remoteClusterManager.reload()
     jobScheduler.start()
-
-    new Thread(new Runnable { def run() { managerThriftServer.serve() } }, "GizzardManagerThread").start()
-    new Thread(new Runnable { def run() { jobInjectorThriftServer.serve() } }, "JobInjectorThread").start()
+    managerService.start()
+    jobInjectorService.start()
   }
 
   def shutdownGizzard(quiesce: Boolean) {
     remoteClusterManager.closeRelay()
-    managerThriftServer.stop()
-    jobInjectorThriftServer.stop()
+    managerService.shutdown()
+    jobInjectorService.shutdown()
 
     while (quiesce && jobScheduler.size > 0) Thread.sleep(100)
     jobScheduler.shutdown()

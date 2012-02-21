@@ -12,7 +12,7 @@ import com.twitter.gizzard.util.Json
  */
 class ExceptionJsonFormatter extends Formatter {
   private def throwableToMap(wrapped: Throwable): Map[String, Any] = {
-    var pairs = List(
+    var pairs: List[(String, Any)] = List(
       ("class" -> wrapped.getClass().getName()),
       ("trace" -> wrapped.getStackTrace().map(_.toString()))
     )

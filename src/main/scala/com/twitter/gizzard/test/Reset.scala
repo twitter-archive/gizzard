@@ -1,6 +1,5 @@
 package com.twitter.gizzard.test
 
-import org.specs.Specification
 import com.twitter.querulous.query.SqlQueryFactory
 import com.twitter.querulous.evaluator.{StandardQueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.util.Time
@@ -38,7 +37,7 @@ import com.twitter.gizzard.config
 //   }
 // }
 
-trait NameServerDatabase extends Specification {
+trait NameServerDatabase {
   def materialize(cfg: config.GizzardServer) {
     try {
       cfg.nameServerReplicas.map {

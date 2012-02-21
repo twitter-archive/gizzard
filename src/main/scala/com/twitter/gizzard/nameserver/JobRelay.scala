@@ -84,18 +84,12 @@ extends (Iterable[Array[Byte]] => Unit) {
       .name("JobManagerClient")
       .reportTo(new OstrichStatsReceiver)
       .build()
-  val client = new JobInjector.ServiceToClient(service, new TBinaryProtocol.Factory())
+  val client = new JobInjector.FinagledClient(service)
 
   def apply(jobs: Iterable[Array[Byte]]) {
-    val jobList = new JLinkedList[ThriftJob]()
+    val thriftJobs = jobs map { j => new ThriftJob(priority, ByteBuffer.wrap(j), Some(true)) } toSeq
 
-    jobs.foreach { j =>
-      val tj = new ThriftJob(priority, ByteBuffer.wrap(j))
-      tj.setIs_replicated(true)
-      jobList.add(tj)
-    }
-
-    client.inject_jobs(jobList)()
+    client.injectJobs(thriftJobs)()
   }
 
   def close() {

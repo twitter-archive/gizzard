@@ -1,16 +1,16 @@
 package com.twitter.gizzard.thrift
 
-import scala.collection.JavaConversions._
-import java.util.{List => JList}
-import com.twitter.gizzard.thrift.conversions.Sequences._
+import java.nio.ByteBuffer
+import com.twitter.util.Future
 import com.twitter.gizzard.thrift.{Job => ThriftJob}
 import com.twitter.gizzard.scheduler._
 
-
 class JobInjectorService(
+  val serverName: String,
+  val thriftPort: Int,
   codecParam: JsonCodec,
   scheduler: PrioritizingJobScheduler)
-extends JobInjector.Iface {
+extends JobInjector.ThriftServer {
 
   private val codec = codecParam.innerCodec
 
@@ -36,12 +36,17 @@ extends JobInjector.Iface {
     }
   }
 
-  def inject_jobs(jobs: JList[ThriftJob]) {
+  def injectJobs(jobs: Seq[ThriftJob]) = {
     jobs foreach { j =>
-      var job: JsonJob = new InjectedJsonJob(j.getContents())
-      if (j.is_replicated) job = new ReplicatedJob(List(job))
+      val bytes = new Array[Byte](j.contents.remaining)
+      j.contents.get(bytes)
+
+      var job: JsonJob = new InjectedJsonJob(bytes)
+      if (j.isReplicated getOrElse false) job = new ReplicatedJob(List(job))
 
       scheduler.put(j.priority, job)
     }
+
+    Future.Done
   }
 }

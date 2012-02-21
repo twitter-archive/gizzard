@@ -83,12 +83,14 @@ trait IntegrationSpecification extends Specification {
   def testServerClient(s: WithFacts) = {
     val i = s.enum
     val port = 8000 + (i - 1) * 3
-    val client = new testserver.thrift.TestServer.ServiceToClient(ClientBuilder()
+    val client = new testserver.thrift.TestServer.FinagledClient(
+      ClientBuilder()
+        .name("TestServerClient")
         .codec(ThriftClientFramedCodec())
         .hosts(new InetSocketAddress("localhost", port))
         .hostConnectionLimit(1)
-        .build(),
-        new TBinaryProtocol.Factory())
+        .build()
+    )
 
     new testserver.thrift.TestServer.Iface {
       def put(key: Int, value: String) { client.put(key, value)() }

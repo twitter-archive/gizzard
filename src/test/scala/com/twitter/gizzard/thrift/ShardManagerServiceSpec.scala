@@ -1,16 +1,11 @@
 package com.twitter.gizzard
 package thrift
 
-import scala.collection.JavaConversions._
+import com.twitter.util.Future
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
-import com.twitter.gizzard.thrift.conversions.Sequences._
-import com.twitter.gizzard.thrift.conversions.ShardId._
-import com.twitter.gizzard.thrift.conversions.ShardInfo._
-import shards.{Busy, RoutingNode}
-import scheduler.{CopyJob, CopyJobFactory, JobScheduler, PrioritizingJobScheduler, JsonJob, AdminJobManager}
-
-
+import com.twitter.gizzard.shards.{Busy, RoutingNode}
+import com.twitter.gizzard.scheduler._
 
 object ManagerServiceSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   val nameServer           = mock[nameserver.NameServer]
@@ -20,7 +15,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
   val copier               = mock[CopyJobFactory[AnyRef]]
   val scheduler            = mock[PrioritizingJobScheduler]
   val subScheduler         = mock[JobScheduler]
-  val manager              = new ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, scheduler)
+  val manager              = new ManagerService("manager", 1, nameServer, shardManager, adminJobManager, remoteClusterManager, scheduler)
 
   val shard = mock[RoutingNode[Nothing]]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
@@ -42,7 +37,7 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
       expect {
         one(shardManager).createAndMaterializeShard(shardInfo1) willThrow new shards.ShardException("blarg!")
       }
-      manager.create_shard(thriftShardInfo1) must throwA[thrift.GizzardException]
+      manager.createShard(thriftShardInfo1)() must throwA[thrift.GizzardException]
     }
 
     "deliver messages for runtime exceptions" in {
@@ -51,220 +46,218 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
         one(shardManager).createAndMaterializeShard(shardInfo1) willThrow new RuntimeException("Monkeys!")
       }
       try{
-        manager.create_shard(thriftShardInfo1)
+        manager.createShard(thriftShardInfo1)()
       } catch {
         case e: thrift.GizzardException => {
-          e.getDescription mustEqual "Monkeys!"
+          e.description mustEqual "Monkeys!"
           woot = true
         }
       }
       woot mustEqual true
     }
 
-    "create_shard" in {
+    "createShard" in {
       expect {
         one(shardManager).createAndMaterializeShard(shardInfo1)
       }
-      manager.create_shard(thriftShardInfo1)
+      manager.createShard(thriftShardInfo1)()
     }
 
-    "get_shard" in {
+    "getShard" in {
       expect {
         one(shardManager).getShard(shardInfo1.id) willReturn shardInfo1
       }
-      manager.get_shard(thriftShardInfo1.id) mustEqual thriftShardInfo1
+      manager.getShard(thriftShardInfo1.id)() mustEqual thriftShardInfo1
     }
 
-    "delete_shard" in {
+    "deleteShard" in {
       expect {
         one(shardManager).deleteShard(shardInfo1.id)
       }
-      manager.delete_shard(thriftShardInfo1.id)
+      manager.deleteShard(thriftShardInfo1.id)()
     }
 
-    "add_link" in {
+    "addLink" in {
       expect {
         one(shardManager).addLink(shardInfo1.id, shardInfo2.id, 2)
       }
-      manager.add_link(thriftShardInfo1.id, thriftShardInfo2.id, 2)
+      manager.addLink(thriftShardInfo1.id, thriftShardInfo2.id, 2)()
     }
 
-    "remove_link" in {
+    "removeLink" in {
       expect {
         one(shardManager).removeLink(shardInfo1.id, shardInfo2.id)
       }
-      manager.remove_link(thriftShardInfo1.id, thriftShardInfo2.id)
+      manager.removeLink(thriftShardInfo1.id, thriftShardInfo2.id)()
     }
 
-    "list_downward_links" in {
+    "listDownwardLinks" in {
       expect {
         one(shardManager).listDownwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo1.id, shardInfo2.id, 1))
       }
-      manager.list_downward_links(thriftShardInfo1.id).toList mustEqual
-        List(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1))
+      manager.listDownwardLinks(thriftShardInfo1.id)() mustEqual Seq(new thrift.LinkInfo(thriftShardInfo1.id, thriftShardInfo2.id, 1))
     }
 
-    "mark_shard_busy" in {
+    "markShardBusy" in {
       expect {
         one(shardManager).markShardBusy(shardInfo1.id, Busy.Busy)
       }
-      manager.mark_shard_busy(thriftShardInfo1.id, Busy.Busy.id)
+      manager.markShardBusy(thriftShardInfo1.id, Busy.Busy.id)()
     }
 
-    "copy_shard" in {
+    "copyShard" in {
       val shardId1 = new shards.ShardId("hostname1", "table1")
       val shardId2 = new shards.ShardId("hostname2", "table2")
       val shardIds = Seq(shardId1, shardId2)
-      val shardIdsThrift = new java.util.LinkedList[thrift.ShardId]()
-      shardIds.foreach { e: shards.ShardId => shardIdsThrift.add(e.toThrift) }
+      val shardIdsThrift = shardIds map { id=> thrift.ShardId(id.hostname, id.tablePrefix) }
 
       expect {
         one(adminJobManager).scheduleCopyJob(shardIds)
       }
-      manager.copy_shard(shardIdsThrift)
+      manager.copyShard(shardIdsThrift)()
     }
 
-    "set_forwarding" in {
+    "setForwarding" in {
       expect {
         one(shardManager).setForwarding(forwarding)
       }
-      manager.set_forwarding(thriftForwarding)
+      manager.setForwarding(thriftForwarding)()
     }
 
-    "replace_forwarding" in {
+    "replaceForwarding" in {
       expect {
         one(shardManager).replaceForwarding(shardInfo1.id, shardInfo2.id)
       }
-      manager.replace_forwarding(thriftShardInfo1.id, thriftShardInfo2.id)
+      manager.replaceForwarding(thriftShardInfo1.id, thriftShardInfo2.id)()
     }
 
-    "get_forwarding" in {
+    "getForwarding" in {
       expect {
         one(shardManager).getForwarding(tableId, 0) willReturn forwarding
       }
-      manager.get_forwarding(tableId, 0) mustEqual thriftForwarding
+      manager.getForwarding(tableId, 0)() mustEqual thriftForwarding
     }
 
-    "get_forwarding_for_shard" in {
+    "getForwardingForShard" in {
       expect {
         one(shardManager).getForwardingForShard(shardInfo1.id) willReturn forwarding
       }
-      manager.get_forwarding_for_shard(thriftShardInfo1.id) mustEqual thriftForwarding
+      manager.getForwardingForShard(thriftShardInfo1.id)() mustEqual thriftForwarding
     }
 
-    "get_forwardings" in {
+    "getForwardings" in {
       expect {
-        one(shardManager).getForwardings() willReturn List(forwarding)
+        one(shardManager).getForwardings() willReturn Seq(forwarding)
       }
-      manager.get_forwardings().toList mustEqual List(thriftForwarding)
+      manager.getForwardings()() mustEqual Seq(thriftForwarding)
     }
 
-    "reload_config" in {
+    "reloadConfig" in {
       expect {
         one(nameServer).reload()
         one(remoteClusterManager).reload()
       }
-      manager.reload_config()
+      manager.reloadConfig()
     }
 
-    "reload_updated_forwardings" in {
+    "reloadUpdatedForwardings" in {
       expect {
         one(nameServer).reloadUpdatedForwardings()
       }
-      manager.reload_updated_forwardings()
+      manager.reloadUpdatedForwardings()
     }
 
-    "find_current_forwarding" in {
+    "findCurrentForwarding" in {
       expect {
         one(nameServer).findCurrentForwarding(tableId, 23L) willReturn shard
         one(shard).shardInfo willReturn shardInfo1
       }
-      manager.find_current_forwarding(tableId, 23L) mustEqual thriftShardInfo1
+      manager.findCurrentForwarding(tableId, 23L)() mustEqual thriftShardInfo1
     }
 
-    "shards_for_hostname" in {
+    "shardsForHostname" in {
       expect {
-        one(shardManager).shardsForHostname(hostname) willReturn List(shardInfo1)
+        one(shardManager).shardsForHostname(hostname) willReturn Seq(shardInfo1)
       }
-      manager.shards_for_hostname(hostname).toList mustEqual List(thriftShardInfo1)
+      manager.shardsForHostname(hostname)() mustEqual Seq(thriftShardInfo1)
     }
 
-    "get_busy_shards" in {
+    "getBusyShards" in {
       expect {
-        one(shardManager).getBusyShards() willReturn List(shardInfo1)
+        one(shardManager).getBusyShards() willReturn Seq(shardInfo1)
       }
-      manager.get_busy_shards().toList mustEqual List(thriftShardInfo1)
+      manager.getBusyShards()() mustEqual Seq(thriftShardInfo1)
     }
 
-    "list_upward_links" in {
+    "listUpwardLinks" in {
       expect {
-        one(shardManager).listUpwardLinks(shardInfo1.id) willReturn List(shards.LinkInfo(shardInfo2.id, shardInfo1.id, 1))
+        one(shardManager).listUpwardLinks(shardInfo1.id) willReturn Seq(shards.LinkInfo(shardInfo2.id, shardInfo1.id, 1))
       }
-      manager.list_upward_links(thriftShardInfo1.id).toList mustEqual List(new thrift.LinkInfo(thriftShardInfo2.id, thriftShardInfo1.id, 1))
+      manager.listUpwardLinks(thriftShardInfo1.id)() mustEqual Seq(new thrift.LinkInfo(thriftShardInfo2.id, thriftShardInfo1.id, 1))
     }
 
 
 
     // job management
 
-    "retry_errors" in {
+    "retryErrors" in {
       expect {
         one(scheduler).retryErrors()
       }
 
-      manager.retry_errors()
+      manager.retryErrors()()
     }
 
-    "stop_writes" in {
+    "stopWrites" in {
       expect {
         one(scheduler).pause()
       }
 
-      manager.stop_writes()
+      manager.stopWrites()()
     }
 
-    "resume_writes" in {
+    "resumeWrites" in {
       expect {
         one(scheduler).resume()
       }
 
-      manager.resume_writes()
+      manager.resumeWrites()()
     }
 
-    "retry_errors_for" in {
+    "retryErrorsFor" in {
       expect {
         one(scheduler).apply(3) willReturn subScheduler
         one(subScheduler).retryErrors()
       }
 
-      manager.retry_errors_for(3)
+      manager.retryErrorsFor(3)()
     }
 
-    "stop_writes_for" in {
+    "stopWritesFor" in {
       expect {
         one(scheduler).apply(3) willReturn subScheduler
         one(subScheduler).pause()
       }
 
-      manager.stop_writes_for(3)
+      manager.stopWritesFor(3)()
     }
 
-    "resume_writes_for" in {
+    "resumeWritesFor" in {
       expect {
         one(scheduler).apply(3) willReturn subScheduler
         one(subScheduler).resume()
       }
 
-      manager.resume_writes_for(3)
+      manager.resumeWritesFor(3)()
     }
 
-    "is_writing" in {
+    "isWriting" in {
       expect {
         one(scheduler).apply(3) willReturn subScheduler
         one(subScheduler).isShutdown willReturn false
       }
 
-      manager.is_writing(3) mustEqual true
+      manager.isWriting(3)() mustEqual true
     }
 
   }

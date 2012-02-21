@@ -121,6 +121,7 @@ trait NodeIterable[+T] {
         case Throw(e)  => _futureAny(iter, promise, f)
       }
     } else {
+      // XXX: this is incorrect. If e exists at any time, ShardOfflineException masks logical errors.
       promise.setException(new ShardOfflineException(rootInfo.id))
     }
   }

@@ -17,8 +17,8 @@ trait GizzardServer {
   var mappingFunction: MappingFunction = Hash
   var nameServerReplicas: Seq[Replica] = Seq(Memory)
   var jobRelay: JobRelay               = new JobRelay
-  var manager: Manager                 = new Manager with TThreadServer
-  var jobInjector: JobInjector         = new JobInjector with THsHaServer
+  var manager: Manager                 = new Manager
+  var jobInjector: JobInjector         = new JobInjector
 
   var queryStats: StatsCollection = new StatsCollection { }
   var jobStats: StatsCollection = new StatsCollection {
@@ -55,13 +55,13 @@ trait GizzardServer {
   }
 }
 
-trait Manager extends TServer {
-  def name = "GizzardManager"
+class Manager {
+  var name = "GizzardManager"
   var port = 7920
 }
 
-trait JobInjector extends TServer {
-  def name = "JobInjector"
+class JobInjector {
+  var name = "JobInjector"
   var port = 7921
 }
 

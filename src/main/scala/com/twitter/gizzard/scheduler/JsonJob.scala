@@ -1,5 +1,6 @@
 package com.twitter.gizzard.scheduler
 
+import com.twitter.util.Future
 import com.twitter.ostrich.stats.{StatsProvider, W3CStats}
 import com.twitter.logging.Logger
 import com.twitter.gizzard.proxy.LoggingProxy
@@ -42,6 +43,26 @@ trait JsonJob {
 
   override def toString = toJson
 }
+
+/**
+ * A JsonJob designed to work with futures. Implementations should override applyFuture and return
+ * Future signalling job completion instead of blocking.
+ */
+trait AsyncJsonJob extends JsonJob {
+  def applyFuture(): Future[Unit]
+
+  def apply() {
+    // todo. this should more intelligently deal with stuff...
+    val f = try {
+      applyFuture()
+    } catch {
+      case e => Future.exception(e)
+    }
+
+    f.apply()
+  }
+}
+
 
 /**
  * A NestedJob that can be encoded in json.

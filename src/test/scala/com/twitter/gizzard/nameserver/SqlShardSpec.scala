@@ -3,7 +3,6 @@ package com.twitter.gizzard.nameserver
 import com.twitter.util.Duration
 import com.twitter.conversions.time._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.test.NameServerDatabase
 import com.twitter.gizzard.ConfiguredSpecification
 import org.specs.Specification

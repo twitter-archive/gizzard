@@ -1,13 +1,10 @@
 package com.twitter.gizzard.scheduler
 
-import java.util.{LinkedList => JLinkedList}
-import java.nio.ByteBuffer
 import scala.collection.mutable.Queue
 import scala.util.matching.Regex
 import com.twitter.ostrich.stats.StatsProvider
 import com.twitter.logging.Logger
 import com.twitter.util.Duration
-import com.twitter.gizzard.thrift.conversions.Sequences._
 import com.twitter.gizzard.nameserver.JobRelay
 import com.twitter.gizzard.proxy.LoggingProxy
 
@@ -116,4 +113,3 @@ extends JsonJobParser {
     new ReplicatingJob(relay, tasks, clusters, serialized)
   }
 }
-
