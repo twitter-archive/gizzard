@@ -43,9 +43,14 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def getForwardingForShard(id: ShardId)        = shard.read.any(_.getForwardingForShard(id))
   def getForwardings()                          = shard.read.any(_.getForwardings())
 
-
   def listHostnames() = shard.read.any(_.listHostnames())
   def listTables()    = shard.read.any(_.listTables())
+
+  def incrementStateVersion() { shard.write.foreach(_.incrementStateVersion()) }
+  def getCurrentStateVersion() = shard.read.any(_.getCurrentStateVersion())
+  def getMasterStateVersion() = shard.read.any(_.getMasterStateVersion())
+
+  def batchExecute(commands : Seq[BatchedCommand]) { shard.write.foreach(_.batchExecute(commands)) }
 }
 
 trait ShardManagerSource {
@@ -91,4 +96,10 @@ trait ShardManagerSource {
 
   @throws(classOf[ShardException]) def listHostnames(): Seq[String]
   @throws(classOf[ShardException]) def listTables(): Seq[Int]
+
+  @throws(classOf[ShardException]) def getCurrentStateVersion() : Long
+  @throws(classOf[ShardException]) def getMasterStateVersion() : Long
+  @throws(classOf[ShardException]) def incrementStateVersion()
+
+  @throws(classOf[ShardException]) def batchExecute(commands : Seq[BatchedCommand])
 }

@@ -1,5 +1,6 @@
 package com.twitter.gizzard.nameserver
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 import com.twitter.gizzard.shards._
 
@@ -7,12 +8,15 @@ import com.twitter.gizzard.shards._
 /**
  * NameServer implementation that doesn't actually store anything anywhere.
  * Useful for tests or stubbing out the partitioning scheme.
+ *
+ * Note: batch_execute commands are not executed atomically in this implementation.
  */
 class MemoryShardManagerSource extends ShardManagerSource {
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
+  val stateVersion = new AtomicLong(0L)
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
     shardTable.find { x =>
@@ -150,6 +154,27 @@ class MemoryShardManagerSource extends ShardManagerSource {
 
   def listTables(): Seq[Int] = {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
+  }
+
+  def getCurrentStateVersion() : Long = stateVersion.get()
+
+  def getMasterStateVersion() : Long = stateVersion.get()
+
+  def incrementStateVersion() {
+    stateVersion.incrementAndGet()
+  }
+
+  def batchExecute(commands : Seq[BatchedCommand]) {
+    for (cmd <- commands) {
+      cmd match {
+        case CreateShard(shardInfo) => createShard(shardInfo)
+        case DeleteShard(shardId) => deleteShard(shardId)
+        case AddLink(upId, downId, weight) => addLink(upId, downId, weight)
+        case RemoveLink(upId, downId) => removeLink(upId, downId)
+        case SetForwarding(forwarding) => setForwarding(forwarding)
+        case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+      }
+    }
   }
 
   def reload() { }

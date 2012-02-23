@@ -138,6 +138,18 @@ class MemoryShardSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
     }
 
+    "manage update version" in {
+      nsShard.getMasterStateVersion() mustEqual 0L
+      nsShard.getCurrentStateVersion() mustEqual 0L
+      nsShard.incrementStateVersion()
+      nsShard.getMasterStateVersion() mustEqual 1L
+      nsShard.getCurrentStateVersion() mustEqual 1L
+      nsShard.incrementStateVersion()
+      nsShard.incrementStateVersion()
+      nsShard.getMasterStateVersion() mustEqual 3L
+      nsShard.getCurrentStateVersion() mustEqual 3L
+    }
+
     "advanced shard navigation" in {
       val shard1 = new ShardInfo(SQL_SHARD, "forward_1", "localhost")
       val shard2 = new ShardInfo(SQL_SHARD, "forward_1_also", "localhost")

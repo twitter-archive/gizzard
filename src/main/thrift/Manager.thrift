@@ -55,6 +55,26 @@ struct Host {
   4: HostStatus status
 }
 
+struct AddLinkRequest {
+  1: required ShardId up_id
+  2: required ShardId down_id
+  3: required i32 weight
+}
+
+struct RemoveLinkRequest {
+  1: required ShardId up_id
+  2: required ShardId down_id
+}
+
+union BatchedCommand {
+  1: optional ShardInfo create_shard
+  2: optional ShardId delete_shard
+  3: optional AddLinkRequest add_link
+  4: optional RemoveLinkRequest remove_link
+  5: optional Forwarding set_forwarding
+  6: optional Forwarding remove_forwarding
+}
+
 service Manager {
   void reload_updated_forwardings() throws(1: GizzardException ex)
   void reload_config() throws(1: GizzardException ex)
@@ -93,6 +113,29 @@ service Manager {
   void diff_shards(1: list<ShardId> ids) throws(1: GizzardException ex)
 
   list<i32> list_tables() throws(1: GizzardException ex)
+
+  // versioning
+
+  /**
+   * Increment the "master" version number of the nameserver state.
+   * This method is called implicitly after any successful update of nameserver state,
+   * so it's unlikely that you'll need to call this method directly.
+   * Does not trigger a local reload.
+   */
+  void increment_state_version() throws(1: GizzardException ex)
+
+  /**
+   * Get this application's current view of the state version.
+   */
+  i64 get_current_state_version() throws(1: GizzardException ex)
+
+  /**
+   * Get the master version number of the nameserver state according to the shard manager.
+   * The master version may be ahead of this application's version.
+   */
+  i64 get_master_state_version() throws(1: GizzardException ex)
+
+  void batch_execute(1: list<BatchedCommand> commands) throws (1: GizzardException ex)
 
   list<NameServerState> dump_nameserver(1: list<i32> table_id) throws(1: GizzardException ex)
 

@@ -12,6 +12,7 @@ import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.scheduler._
+import com.twitter.gizzard.nameserver
 import com.twitter.gizzard.nameserver._
 import com.twitter.logging.Logger
 
@@ -121,6 +122,22 @@ extends Manager.Iface {
 
   def diff_shards(shardIds: JList[ShardId]) = {
     wrapEx(adminJobManager.scheduleDiffJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
+  }
+
+  def batch_execute(commands : JList[BatchedCommand]) {
+    wrapEx(shardManager.batchExecute(commands.map(nameserver.BatchedCommand.apply)))
+  }
+
+  def increment_state_version() {
+    wrapEx(shardManager.incrementStateVersion())
+  }
+
+  def get_current_state_version() : Long = {
+    wrapEx(shardManager.getCurrentStateVersion())
+  }
+
+  def get_master_state_version() : Long = {
+    wrapEx(shardManager.getMasterStateVersion())
   }
 
   // Job Scheduler Management
