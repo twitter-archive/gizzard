@@ -167,6 +167,7 @@ extends Process with JobConsumer {
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {
               badJobQueue.put(job)
+              Stats.incr("job-bad-count")
             } else {
               errorQueue.put(job)
             }
