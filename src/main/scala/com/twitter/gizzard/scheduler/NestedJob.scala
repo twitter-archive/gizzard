@@ -17,23 +17,23 @@ abstract class NestedJob(val jobs: Iterable[JsonJob]) extends JsonJob {
 
   def apply() {
     val failedTasks = mutable.Buffer[JsonJob]()
-    var lastNormalException: Throwable = null
-    var lastOfflineException: ShardOfflineException = null
-    var lastBlackHoleException: ShardBlackHoleException = null
+    var lastNormalException: Option[Throwable] = None
+    var lastOfflineException: Option[ShardOfflineException] = None
+    var lastBlackHoleException: Option[ShardBlackHoleException] = None
 
     while (!taskQueue.isEmpty) {
-      val task: JsonJob = taskQueue.head
+      val task = taskQueue.head
       try {
         task.apply()
       } catch {
         case e: ShardBlackHoleException =>
-          lastBlackHoleException = e
+          lastBlackHoleException = Some(e)
         case e: ShardOfflineException =>
           failedTasks += task
-          lastOfflineException = e
+          lastOfflineException = Some(e)
         case e =>
           failedTasks += task
-          lastNormalException = e
+          lastNormalException = Some(e)
       }
       taskQueue.dequeue()
     }
@@ -42,14 +42,13 @@ abstract class NestedJob(val jobs: Iterable[JsonJob]) extends JsonJob {
       taskQueue ++= failedTasks
     }
 
-    if (lastOfflineException != null) {
-      throw lastOfflineException
-    } else if (lastNormalException != null) {
-      throw lastNormalException
-    } else if (lastBlackHoleException != null) {
-      throw lastBlackHoleException
+    // Prioritize exceptions:
+    //  (1) ShardOfflineException - jobs with this exception should be retried forever
+    //  (2) Regular Exception 
+    //  (3) ShardBlackHoleException - jobs with this exception will not be retried
+    lastOfflineException orElse lastNormalException orElse lastBlackHoleException foreach { e =>
+      throw e
     }
-
   }
 
   override def loggingName = jobs.map { _.loggingName }.mkString(",")
