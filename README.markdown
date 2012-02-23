@@ -139,7 +139,7 @@ utility of some of the more obscure shard types is discussed in the section on
 The exact nature of the replication topologies can vary per partition. This
 means you can have a higher replication level for a “hotter” partition and a
 lower replication level for a “cooler” one. This makes the system highly
-configurable. For instance, you can specify that the that back-ends mirror one
+configurable. For instance, you can specify that the back-ends mirror one
 another in a primary-secondary-tertiary-etc. configuration for simplicity.
 Alternatively, for better fault tolerance (but higher complexity) you can
 “stripe” partitions across machines so that no machine is a mirror of any
