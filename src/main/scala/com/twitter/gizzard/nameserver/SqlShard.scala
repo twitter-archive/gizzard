@@ -1,10 +1,12 @@
 package com.twitter.gizzard.nameserver
 
+import java.nio.ByteBuffer
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.gizzard.util.TreeUtils
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.thrift
 
 
 object SqlShard {
@@ -69,6 +71,29 @@ CREATE TABLE IF NOT EXISTS hosts (
 
     PRIMARY KEY (hostname, port),
     INDEX idx_cluster (cluster, status)
+) ENGINE=INNODB;
+"""
+
+  // logs have a UUID in order to avoid coordination between nameservers
+  val LOGS_DDL = """
+CREATE TABLE IF NOT EXISTS logs (
+    id                        BINARY(16)   NOT NULL,
+    name                      VARCHAR(256) NOT NULL,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY id (name)
+) ENGINE=INNODB;
+"""
+
+  val LOG_ENTRIES_DDL = """
+CREATE TABLE IF NOT EXISTS log_entries (
+    log_id               BINARY(16)      NOT NULL,
+    id                   INT             NOT NULL,
+    content              VARBINARY(1024) NOT NULL,
+    deleted              BOOLEAN         NOT NULL,
+
+    PRIMARY KEY (log_id, id),
+    FOREIGN KEY (log_id) REFERENCES logs(id) ON DELETE CASCADE
 ) ENGINE=INNODB;
 """
 }
@@ -327,6 +352,42 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     queryEvaluator.select("SELECT * FROM shards where busy IN (1, 2, 3)")(rowToShardInfo).toList
   }
 
+  def logCreate(id: Array[Byte], logName: String): Unit =
+    queryEvaluator.execute(
+      "INSERT INTO logs (id, name) VALUES (?, ?)",
+      id,
+      logName
+    )
+
+  def logGet(logName: String): Option[Array[Byte]] =
+    queryEvaluator.selectOne("SELECT id FROM logs WHERE name = ?", logName) { res =>
+      res.getBytes(0)
+    }
+
+  def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit =
+    queryEvaluator.execute(
+      "INSERT INTO log_entries (log_id, id, content) VALUES (?, ?, ?)",
+      logId,
+      entry.id,
+      entry.getContent
+    )
+
+  def logEntryPeek(logId: Array[Byte]): Option[thrift.LogEntry] =
+    // select the 'last' live entry (which may not exist)
+    queryEvaluator.selectOne(
+      "SELECT id, content FROM log_entries WHERE log_id = ? AND deleted = false ORDER BY log_id, id DESC LIMIT 1",
+      logId
+    ) { row =>
+      new thrift.LogEntry(row.getInt("id"), ByteBuffer.wrap(row.getBytes("content")))
+    }
+
+  def logEntryPop(logId: Array[Byte], entryId: Int): Unit =
+    queryEvaluator.execute(
+      "UPDATE log_entries SET deleted = true WHERE log_id = ? AND id = ? LIMIT 1",
+      logId,
+      entryId
+    )
+
   def reload() {
     try {
       synchronized {
@@ -349,6 +410,8 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
     queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
     queryEvaluator.execute(SqlShard.UPDATE_COUNTER_DDL)
+    queryEvaluator.execute(SqlShard.LOGS_DDL)
+    queryEvaluator.execute(SqlShard.LOG_ENTRIES_DDL)
   }
 }
 
