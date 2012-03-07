@@ -12,7 +12,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
   "JobScheduler" should {
     val queue = mock[JobQueue]
     val errorQueue = mock[JobQueue]
-    val badJobQueue = mock[JobConsumer]
+    val badJobQueue = mock[JobQueue]
     val job1 = mock[JsonJob]
     val ticket1 = mock[Ticket]
     val codec = mock[JsonCodec]
@@ -43,6 +43,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       expect {
         one(queue).start()
         one(errorQueue).start()
+        one(badJobQueue).start()
         one(queue).isShutdown willReturn false
       }
 
@@ -57,6 +58,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       expect {
         one(queue).shutdown()
         one(errorQueue).shutdown()
+        one(badJobQueue).shutdown()
         one(queue).isShutdown willReturn true
       }
 
@@ -71,6 +73,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       expect {
         one(queue).start()
         one(errorQueue).start()
+        one(badJobQueue).start()
       }
 
       jobScheduler.start()
@@ -78,6 +81,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       expect {
         one(queue).pause()
         one(errorQueue).pause()
+        one(badJobQueue).pause()
       }
 
       jobScheduler.pause()
@@ -88,6 +92,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       expect {
         one(queue).resume()
         one(errorQueue).resume()
+        one(badJobQueue).resume()
       }
 
       jobScheduler.resume()
@@ -98,6 +103,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       expect {
         one(queue).shutdown()
         one(errorQueue).shutdown()
+        one(badJobQueue).shutdown()
       }
 
       jobScheduler.shutdown()

@@ -34,7 +34,7 @@ class JobScheduler(
   val jitterRate: Float,
   val queue: JobQueue,
   val errorQueue: JobQueue,
-  val badJobQueue: JobConsumer)
+  val badJobQueue: JobQueue)
 extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
@@ -85,6 +85,7 @@ extends Process with JobConsumer {
     if (!running) {
       queue.start()
       errorQueue.start()
+      badJobQueue.start()
       running = true
       log.debug("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
@@ -97,6 +98,7 @@ extends Process with JobConsumer {
     log.debug("Pausing work in JobScheduler: %s", queue)
     queue.pause()
     errorQueue.pause()
+    badJobQueue.pause()
     shutdownWorkerThreads()
   }
 
@@ -104,6 +106,7 @@ extends Process with JobConsumer {
     log.debug("Resuming work in JobScheduler: %s", queue)
     queue.resume()
     errorQueue.resume()
+    badJobQueue.resume()
     workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
     workerThreads.foreach { _.start() }
   }
@@ -113,6 +116,7 @@ extends Process with JobConsumer {
       log.debug("Shutting down JobScheduler: %s", queue)
       queue.shutdown()
       errorQueue.shutdown()
+      badJobQueue.shutdown()
       shutdownWorkerThreads()
       retryTask.shutdown()
       running = false
@@ -167,6 +171,7 @@ extends Process with JobConsumer {
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {
               badJobQueue.put(job)
+              Logger.get("bad_jobs").error(job.toString)
               Stats.incr("job-bad-count")
             } else {
               errorQueue.put(job)
