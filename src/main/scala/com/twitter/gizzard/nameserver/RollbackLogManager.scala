@@ -2,6 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import java.util.UUID
 import java.nio.ByteBuffer
+import scala.math.Ordering
 
 import com.twitter.gizzard.shards.RoutingNode
 import com.twitter.gizzard.thrift
@@ -25,8 +26,12 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
   def entryPush(logId: ByteBuffer, entry: thrift.LogEntry): Unit =
     shard.write.foreach(_.logEntryPush(unwrap(logId), entry))
 
+  /**
+   * @return the entry with the highest id on all replicas: note that this means
+   * that logs cannot be rolled back while any nameserver replicas are unavailable.
+   */
   def entryPeek(logId: ByteBuffer): Option[thrift.LogEntry] =
-    shard.read.any(_.logEntryPeek(unwrap(logId)))
+    shard.read.map(_.logEntryPeek(unwrap(logId))).max(RollbackLogManager.EntryOrdering)
 
   def entryPop(logId: ByteBuffer, entryId: Int): Unit =
     shard.write.foreach(_.logEntryPop(unwrap(logId), entryId))
@@ -44,4 +49,12 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
 
 object RollbackLogManager {
   val UUID_BYTES = 16
+  // TODO: Scala 2.8.1 doesn't have maxBy
+  object EntryOrdering extends Ordering[Option[thrift.LogEntry]] {
+    override def compare(a: Option[thrift.LogEntry], b: Option[thrift.LogEntry]) =
+      Ordering.Int.compare(
+        a.map(_.id).getOrElse(Int.MinValue),
+        b.map(_.id).getOrElse(Int.MinValue)
+      )
+  }
 }

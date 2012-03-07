@@ -87,7 +87,7 @@ object SqlShard {
           log_id               BINARY(16)      NOT NULL,
           id                   INT             NOT NULL,
           content              VARBINARY(1024) NOT NULL,
-          deleted              BOOLEAN         NOT NULL,
+          deleted              BOOL            NOT NULL DEFAULT FALSE,
 
           PRIMARY KEY (log_id, id),
           FOREIGN KEY (log_id) REFERENCES logs(id) ON DELETE CASCADE
@@ -360,7 +360,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
 
   def logGet(logName: String): Option[Array[Byte]] =
     queryEvaluator.selectOne("SELECT id FROM logs WHERE name = ?", logName) { res =>
-      res.getBytes(0)
+      res.getBytes("id")
     }
 
   def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit =
