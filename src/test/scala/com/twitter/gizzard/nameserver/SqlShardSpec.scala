@@ -237,8 +237,11 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nsShard.addLink(shard(1), shard(100), 2)
         nsShard.addLink(shard(1), shard(200), 2)
         nsShard.addLink(shard(1), shard(300), 1)
-        nsShard.listDownwardLinks(shard(1)) mustEqual
-          List(link(100, 2), link(200, 2), link(300, 1))
+        nsShard.listDownwardLinks(shard(1)) must beOneOf(
+          // only the ordering of weights matters
+          List(link(100, 2), link(200, 2), link(300, 1)),
+          List(link(200, 2), link(100, 2), link(300, 1))
+        )
       }
 
       "remove" >> {

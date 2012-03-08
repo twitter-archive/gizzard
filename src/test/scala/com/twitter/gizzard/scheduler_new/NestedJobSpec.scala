@@ -4,7 +4,7 @@ import scala.collection.mutable
 import org.specs.mock.{ClassMocker, JMocker}
 import org.specs.Specification
 import com.twitter.gizzard.ConfiguredSpecification
-
+import com.twitter.gizzard.shards.{ShardBlackHoleException, ShardException, ShardId, ShardOfflineException}
 
 class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "NestedJob" should {
@@ -12,6 +12,7 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
     val job2 = mock[JsonJob]
     val job3 = mock[JsonJob]
     val nestedJob = new JsonNestedJob(List(job1, job2, job3))
+    val shardId = ShardId("fake", "shard")
 
     "loggingName" in {
       expect {
@@ -51,10 +52,12 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
       "instant failure" in {
         expect {
           one(job1).apply() willThrow new Exception("oops!")
+          one(job2).apply()
+          one(job3).apply()
         }
 
         nestedJob.apply() must throwA[Exception]
-        nestedJob.taskQueue.size mustEqual 3
+        nestedJob.taskQueue.size mustEqual 1
       }
 
       "eventual failure" in {
@@ -65,6 +68,28 @@ class NestedJobSpec extends ConfiguredSpecification with JMocker with ClassMocke
         }
 
         nestedJob.apply() must throwA[Exception]
+        nestedJob.taskQueue.size mustEqual 1
+      }
+
+      "offline failure" in {
+        expect {
+          one(job1).apply()
+          one(job2).apply() willThrow new ShardOfflineException(shardId)
+          one(job3).apply() willThrow new Exception("oops!")
+        }
+
+        nestedJob.apply() must throwA[ShardOfflineException]
+        nestedJob.taskQueue.size mustEqual 2
+      }
+
+      "blackhole failure" in {
+        expect {
+          one(job1).apply() willThrow new ShardException("wrapped oops!", new Exception("oops!"))
+          one(job2).apply() willThrow new ShardBlackHoleException(shardId)
+          one(job3).apply() willThrow new ShardBlackHoleException(shardId)
+        }
+
+        nestedJob.apply() must throwA[ShardException]
         nestedJob.taskQueue.size mustEqual 1
       }
     }
