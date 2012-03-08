@@ -43,21 +43,26 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
   }
 
   private final def process(cluster: String) {
-    ignoreInterrupt {
-      queueMap.get(cluster) foreach { queue =>
+    try {
+      ignoreInterrupt {
+        queueMap.get(cluster) foreach { queue =>
 
-        while (!queue.isClosed) {
-          queue.removeReceive(removeTimeout, true) foreach { item =>
-            try {
-              jobRelay(cluster)(Seq(item.data))
-              queue.confirmRemove(item.xid)
-            } catch { case e =>
-              exceptionLog.error(e, "Exception in job replication for cluster %s: %s", cluster, e.toString)
-              queue.unremove(item.xid)
+          while (!queue.isClosed) {
+            queue.removeReceive(removeTimeout, true) foreach { item =>
+              try {
+                jobRelay(cluster)(Seq(item.data))
+                queue.confirmRemove(item.xid)
+              } catch { case e =>
+                exceptionLog.error(e, "Exception in job replication for cluster %s: %s", cluster, e.toString)
+                queue.unremove(item.xid)
+              }
             }
           }
         }
       }
+    } catch {
+      case e =>
+        exceptionLog.error(e, "Uncaught exception in job replication for cluster %s: %s", cluster, e.toString)
     }
   }
 
@@ -109,8 +114,13 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
 
   private def newWatchdogThread = new Thread {
     override def run() {
-      ignoreInterrupt {
-        while (!isInterrupted) reconfigure()
+      try {
+        ignoreInterrupt {
+          while (!isInterrupted) reconfigure()
+        }
+      } catch {
+        case e =>
+          exceptionLog.error(e, "Uncaught exception in watchdog thread")
       }
     }
   }
