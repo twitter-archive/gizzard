@@ -24,6 +24,7 @@ class JobAsyncReplicatorSpec extends ConfiguredSpecification with JMocker with C
 
       val replicator = createAsyncReplicator(relay)
       replicator.start()
+      replicator.reconfigure()
 
       replicator.enqueue(job)
 
@@ -33,8 +34,5 @@ class JobAsyncReplicatorSpec extends ConfiguredSpecification with JMocker with C
       replicator.shutdown()
     }
 
-    "reconfigure queues based when the JobRelay is reconfigured" in {
-
-    }
   }
 }
