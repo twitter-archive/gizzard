@@ -1,7 +1,7 @@
 package com.twitter.gizzard.proxy
 
 import scala.reflect.Manifest
-import com.twitter.util.{Duration, Time}
+import com.twitter.util.{Duration, Time, Future}
 import com.twitter.gizzard.{Stats, TransactionalStatsConsumer}
 import com.twitter.gizzard.scheduler.JsonJob
 
@@ -21,31 +21,51 @@ class LoggingProxy[T <: AnyRef](
       val namePrefix = name.map(_+"-").getOrElse("")
       val startTime = Time.now
       try {
-        method()
-      } catch {
-        case e: Exception =>
-          Stats.transaction.record("Transaction failed with exception: " + e.toString())
-          Stats.transaction.set("exception", e)
-          Stats.incr(namePrefix+statGrouping+"-failed")
-          Stats.transaction.name.foreach { opName =>
-            Stats.incr(namePrefix+"operation-"+opName+"-failed")
+        val ret = method()
+        // TODO: Move the following code to after the catch.
+        ret match {
+          case f: Future[_] => {
+            f onSuccess { _ =>
+              handleDone(namePrefix, startTime)
+            } onFailure { throwable =>
+              handleException(namePrefix, startTime, throwable)
+            }
           }
-          throw e
-      } finally {
-        Stats.incr(namePrefix+statGrouping+"-total")
 
-        val duration = Time.now - startTime
-        Stats.transaction.record("Total duration: "+duration.inMillis)
-        Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
-
-        Stats.transaction.name.foreach { opName =>
-          Stats.incr(namePrefix+"operation-"+opName+"-total")
-          Stats.addMetric(namePrefix+"operation-"+opName, duration.inMilliseconds.toInt)
+          case _ => handleDone(namePrefix, startTime)
         }
-
-        val t = Stats.endTransaction()
-        consumers.map { _(t) }
+        ret
+      } catch {
+        case t: Throwable =>
+          handleException(namePrefix, startTime, t)
+          throw t
       }
     }
+  }
+
+  def handleException(namePrefix: String, startTime: Time, t: Throwable) = {
+    Stats.transaction.record("Transaction failed with exception: " + t.toString())
+    Stats.transaction.set("exception", t)
+    Stats.incr(namePrefix+statGrouping+"-failed")
+    Stats.transaction.name.foreach { opName =>
+      Stats.incr(namePrefix+"operation-"+opName+"-failed")
+    }
+    handleDone(namePrefix, startTime)
+  }
+
+  def handleDone(namePrefix: String, startTime: Time) = {
+    Stats.incr(namePrefix+statGrouping+"-total")
+
+    val duration = Time.now - startTime
+    Stats.transaction.record("Total duration: "+duration.inMillis)
+    Stats.transaction.set("duration", duration.inMillis.asInstanceOf[AnyRef])
+
+    Stats.transaction.name.foreach { opName =>
+      Stats.incr(namePrefix+"operation-"+opName+"-total")
+      Stats.addMetric(namePrefix+"operation-"+opName, duration.inMilliseconds.toInt)
+    }
+
+    val t = Stats.endTransaction()
+    consumers.map { _(t) }
   }
 }
