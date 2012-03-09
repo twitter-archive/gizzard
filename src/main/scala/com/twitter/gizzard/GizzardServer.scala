@@ -36,13 +36,15 @@ abstract class GizzardServer(config: ServerConfig) {
   }
 
   lazy val jobCodec = new LoggingJsonCodec(
-    new ReplicatingJsonCodec(remoteClusterManager.jobRelay, logUnparsableJob),
+    new JsonCodec(logUnparsableJob),
     config.jobStats,
     logUnparsableJob
   )
 
+  lazy val jobAsyncReplicator = config.jobAsyncReplicator(remoteClusterManager.jobRelay)
+
   lazy val jobScheduler = new PrioritizingJobScheduler(jobPriorities map { p =>
-    p -> config.jobQueues(p)(jobCodec)
+    p -> config.jobQueues(p)(jobCodec, jobAsyncReplicator)
   } toMap)
 
   // service wiring
@@ -57,6 +59,7 @@ abstract class GizzardServer(config: ServerConfig) {
     nameServer.reload()
     remoteClusterManager.reload()
     jobScheduler.start()
+    jobAsyncReplicator.start()
 
     new Thread(new Runnable { def run() { managerThriftServer.serve() } }, "GizzardManagerThread").start()
     new Thread(new Runnable { def run() { jobInjectorThriftServer.serve() } }, "JobInjectorThread").start()
@@ -69,5 +72,6 @@ abstract class GizzardServer(config: ServerConfig) {
 
     while (quiesce && jobScheduler.size > 0) Thread.sleep(100)
     jobScheduler.shutdown()
+    jobAsyncReplicator.shutdown()
   }
 }

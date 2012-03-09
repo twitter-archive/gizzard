@@ -32,6 +32,8 @@ class JobScheduler(
   val errorLimit: Int,
   val flushLimit: Int,
   val jitterRate: Float,
+  val isReplicated: Boolean,
+  jobAsyncReplicator: JobAsyncReplicator,
   val queue: JobQueue,
   val errorQueue: JobQueue,
   val badJobQueue: JobQueue)
@@ -149,6 +151,10 @@ extends Process with JobConsumer {
       try {
         val job = ticket.job
         try {
+          if (isReplicated && job.shouldReplicate && !job.wasReplicated) {
+            jobAsyncReplicator.enqueue(job.toJsonBytes)
+            job.setReplicated()
+          }
           job()
           Stats.incr("job-success-count")
         } catch {
@@ -159,7 +165,6 @@ extends Process with JobConsumer {
           case e =>
             Stats.incr("job-error-count")
             exceptionLog.error(e, "Job: %s", job)
-//            log.error(e, "Error in Job: %s - %s", job, e)
             job.errorCount += 1
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {

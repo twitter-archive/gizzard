@@ -4,12 +4,12 @@ import com.twitter.util.{Duration, StorageUnit}
 import com.twitter.conversions.storage._
 import com.twitter.conversions.time._
 import com.twitter.logging.Logger
-import net.lag.kestrel.{QueueCollection, PersistentQueue}
-import net.lag.kestrel.config.QueueConfig
-
 import com.twitter.gizzard
 import com.twitter.gizzard.scheduler
 import com.twitter.gizzard.scheduler.{JsonJob, JsonCodec, MemoryJobQueue, KestrelJobQueue, JobConsumer}
+
+import net.lag.kestrel.{QueueCollection, PersistentQueue}
+import net.lag.kestrel.config.QueueConfig
 
 trait SchedulerType
 trait KestrelScheduler extends SchedulerType {
@@ -107,6 +107,7 @@ trait Scheduler {
   var errorRetryDelay             = 900.seconds
   var perFlushItemLimit           = 1000
   var jitterRate                  = 0.0f
+  var isReplicated: Boolean       = true
 
   var _jobQueueName: Option[String] = None
   def jobQueueName_=(s: String) { _jobQueueName = Some(s) }
@@ -118,7 +119,7 @@ trait Scheduler {
   def badJobQueueName_=(s: String) { _badJobQueueName = Some(s) }
   def badJobQueueName: String = _badJobQueueName.getOrElse(name + "_bad_jobs")
 
-  def apply(codec: JsonCodec): gizzard.scheduler.JobScheduler = {
+  def apply(codec: JsonCodec, jobAsyncReplicator: scheduler.JobAsyncReplicator): gizzard.scheduler.JobScheduler = {
     val (jobQueue, errorQueue, badJobQueue) = schedulerType match {
       case kestrel: KestrelScheduler => {
         val persistentJobQueue = kestrel(jobQueueName)
@@ -155,6 +156,8 @@ trait Scheduler {
       errorLimit,
       perFlushItemLimit,
       jitterRate,
+      isReplicated,
+      jobAsyncReplicator,
       jobQueue,
       errorQueue,
       badJobQueue

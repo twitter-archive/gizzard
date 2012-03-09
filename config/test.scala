@@ -13,18 +13,9 @@ trait Credentials extends Connection {
   val password = ""
 }
 
-object GizzardMemoization {
-  var nsQueryEvaluator: QueryEvaluatorFactory = null
-}
-
 object TestQueryEvaluator extends QueryEvaluator {
-  override def apply() = {
-    if (GizzardMemoization.nsQueryEvaluator == null) {
-      GizzardMemoization.nsQueryEvaluator = super.apply()
-    }
-
-    GizzardMemoization.nsQueryEvaluator
-  }
+  singletonFactory = true
+  database.memoize = true
 }
 
 class TestScheduler(val name: String) extends Scheduler {
@@ -46,6 +37,7 @@ new GizzardServer {
   jobRelay.priority = Priority.High.id
 
   nameServerReplicas = Seq(new Mysql {
+    queryEvaluator = TestQueryEvaluator
     val connection = new Connection with Credentials {
       val hostnames = Seq("localhost")
       val database  = "gizzard_test"
