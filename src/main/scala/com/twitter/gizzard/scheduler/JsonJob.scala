@@ -57,13 +57,6 @@ class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob(jobs) with JsonJo
 }
 
 /**
- * A JobConsumer that encodes JsonJobs into a string and logs them at error level.
- */
-class JsonJobLogger(logger: Logger) extends JobConsumer {
-  def put(job: JsonJob) = logger.error(job.toString)
-}
-
-/**
  * A parser that can reconstitute a JsonJob from a map of key/values. Usually registered with a
  * JsonCodec.
  */
