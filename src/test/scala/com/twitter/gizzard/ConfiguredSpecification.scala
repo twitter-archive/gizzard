@@ -21,6 +21,11 @@ object ConfiguredSpecification {
   val eval = new Eval
   val config =
     try { eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
+  def resetAsyncReplicatorQueues(config: gizzard.config.GizzardServer) {
+    val file = new File(config.jobAsyncReplicator.path)
+    file.mkdirs
+    file.listFiles.foreach { _.delete() }
+  }
 }
 
 trait ConfiguredSpecification extends Specification {
@@ -42,7 +47,9 @@ trait IntegrationSpecification extends Specification {
   def testServer(i: Int) = {
     val port = 8000 + (i - 1) * 3
     val name = "testserver" + i
-    new TestServer(TestServerConfig(name, port)) with TestServerFacts {
+    val config = TestServerConfig(name, port)
+    ConfiguredSpecification.resetAsyncReplicatorQueues(config)
+    new TestServer(config) with TestServerFacts {
       val enum = i
       val nsDatabaseName = "gizzard_test_"+name+"_ns"
       val databaseName   = "gizzard_test_"+name
@@ -101,6 +108,7 @@ trait IntegrationSpecification extends Specification {
       createTestServerDBs(s)
       s.nameServer.reload()
       s.remoteClusterManager.reload()
+      s.jobAsyncReplicator.reconfigure()
       s.nameServer.shardManager.setForwarding(s.forwarding)
       s.shardManager.createAndMaterializeShard(s.sqlShardInfo)
       s.nameServer.reload()

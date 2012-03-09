@@ -6,10 +6,12 @@ import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.ConfiguredSpecification
+import com.twitter.gizzard.nameserver.JobRelay
 
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
   "JobScheduler" should {
+    val asyncReplicator = mock[JobAsyncReplicator]
     val queue = mock[JobQueue]
     val errorQueue = mock[JobQueue]
     val badJobQueue = mock[JobConsumer]
@@ -19,15 +21,21 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val shardId = ShardId("fake", "shard")
 
     var jobScheduler: JobScheduler = null
+    var replicatingJobScheduler: JobScheduler = null
     val liveThreads = new AtomicInteger(0)
+
+    val jsonBytes = "jsonBytes".getBytes("UTF-8")
 
     val MAX_ERRORS = 100
     val MAX_FLUSH = 10
     val JITTER_RATE = 0.01f
 
     doBefore {
-      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE,
+      jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE, false, asyncReplicator,
                                       queue, errorQueue, badJobQueue) {
+      replicatingJobScheduler =
+        new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE, true, asyncReplicator,
+                         queue, errorQueue, badJobQueue)
         override def processWork() {
           liveThreads.incrementAndGet()
           try {
@@ -194,6 +202,38 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
         jobScheduler.process()
       }
+
+      "replicating" in {
+        expect {
+          one(queue).get() willReturn Some(ticket1)
+          one(ticket1).job willReturn job1
+          one(job1).shouldReplicate willReturn true
+          one(job1).wasReplicated willReturn false
+          one(job1).toJsonBytes willReturn jsonBytes
+          one(asyncReplicator).enqueue(jsonBytes)
+          one(job1).setReplicated
+          one(job1).apply()
+          one(job1).nextJob willReturn None
+          one(ticket1).ack()
+        }
+
+        replicatingJobScheduler.process()
+      }
+
+      "already replicated" in {
+        expect {
+          one(queue).get() willReturn Some(ticket1)
+          one(ticket1).job willReturn job1
+          one(job1).shouldReplicate willReturn true
+          one(job1).wasReplicated willReturn true
+          one(job1).apply()
+          one(job1).nextJob willReturn None
+          one(ticket1).ack()
+        }
+
+        replicatingJobScheduler.process()
+      }
+
     }
   }
 }
