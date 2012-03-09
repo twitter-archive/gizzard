@@ -42,6 +42,7 @@ extends Process with JobConsumer {
   var workerThreads: Iterable[BackgroundProcess] = Nil
   @volatile var running = false
   private var _activeThreads = new AtomicInteger
+  private val queues = List(queue, errorQueue, badJobQueue)
 
   def activeThreads = _activeThreads.get()
 
@@ -83,9 +84,7 @@ extends Process with JobConsumer {
 
   def start() = {
     if (!running) {
-      queue.start()
-      errorQueue.start()
-      badJobQueue.start()
+      queues.foreach(_.start())
       running = true
       log.debug("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
@@ -96,17 +95,13 @@ extends Process with JobConsumer {
 
   def pause() {
     log.debug("Pausing work in JobScheduler: %s", queue)
-    queue.pause()
-    errorQueue.pause()
-    badJobQueue.pause()
+    queues.foreach(_.pause())
     shutdownWorkerThreads()
   }
 
   def resume() = {
     log.debug("Resuming work in JobScheduler: %s", queue)
-    queue.resume()
-    errorQueue.resume()
-    badJobQueue.resume()
+    queues.foreach(_.resume())
     workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
     workerThreads.foreach { _.start() }
   }
@@ -114,9 +109,7 @@ extends Process with JobConsumer {
   def shutdown() {
     if(running) {
       log.debug("Shutting down JobScheduler: %s", queue)
-      queue.shutdown()
-      errorQueue.shutdown()
-      badJobQueue.shutdown()
+      queues.foreach(_.shutdown())
       shutdownWorkerThreads()
       retryTask.shutdown()
       running = false

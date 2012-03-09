@@ -13,6 +13,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val queue = mock[JobQueue]
     val errorQueue = mock[JobQueue]
     val badJobQueue = mock[JobQueue]
+    val jobRelatedQueues = List(queue, errorQueue, badJobQueue)
     val job1 = mock[JsonJob]
     val ticket1 = mock[Ticket]
     val codec = mock[JsonCodec]
@@ -24,6 +25,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
     val MAX_ERRORS = 100
     val MAX_FLUSH = 10
     val JITTER_RATE = 0.01f
+
 
     doBefore {
       jobScheduler = new JobScheduler("test", 1, 1.minute, MAX_ERRORS, MAX_FLUSH, JITTER_RATE,
@@ -41,9 +43,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
     "start & shutdown" in {
       expect {
-        one(queue).start()
-        one(errorQueue).start()
-        one(badJobQueue).start()
+        jobRelatedQueues.foreach(one(_).start())
         one(queue).isShutdown willReturn false
       }
 
@@ -56,9 +56,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       jobScheduler.isShutdown mustEqual false
 
       expect {
-        one(queue).shutdown()
-        one(errorQueue).shutdown()
-        one(badJobQueue).shutdown()
+        jobRelatedQueues.foreach(one(_).shutdown())
         one(queue).isShutdown willReturn true
       }
 
@@ -71,17 +69,13 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
     "pause & resume" in {
       expect {
-        one(queue).start()
-        one(errorQueue).start()
-        one(badJobQueue).start()
+        jobRelatedQueues.foreach(one(_).start())
       }
 
       jobScheduler.start()
 
       expect {
-        one(queue).pause()
-        one(errorQueue).pause()
-        one(badJobQueue).pause()
+        jobRelatedQueues.foreach(one(_).pause())
       }
 
       jobScheduler.pause()
@@ -90,9 +84,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       liveThreads.get() mustEqual 0
 
       expect {
-        one(queue).resume()
-        one(errorQueue).resume()
-        one(badJobQueue).resume()
+        jobRelatedQueues.foreach(one(_).resume())
       }
 
       jobScheduler.resume()
@@ -101,9 +93,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
       liveThreads.get() mustEqual 1
 
       expect {
-        one(queue).shutdown()
-        one(errorQueue).shutdown()
-        one(badJobQueue).shutdown()
+        jobRelatedQueues.foreach(one(_).shutdown())
       }
 
       jobScheduler.shutdown()
