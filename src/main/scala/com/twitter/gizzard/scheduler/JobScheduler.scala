@@ -36,7 +36,7 @@ class JobScheduler(
   jobAsyncReplicator: JobAsyncReplicator,
   val queue: JobQueue,
   val errorQueue: JobQueue,
-  val badJobQueue: JobConsumer)
+  val badJobQueue: JobQueue)
 extends Process with JobConsumer {
 
   private val log = Logger.get(getClass.getName)
@@ -44,6 +44,7 @@ extends Process with JobConsumer {
   var workerThreads: Iterable[BackgroundProcess] = Nil
   @volatile var running = false
   private var _activeThreads = new AtomicInteger
+  private val queues = List(queue, errorQueue, badJobQueue)
 
   def activeThreads = _activeThreads.get()
 
@@ -85,8 +86,7 @@ extends Process with JobConsumer {
 
   def start() = {
     if (!running) {
-      queue.start()
-      errorQueue.start()
+      queues.foreach(_.start())
       running = true
       log.debug("Starting JobScheduler: %s", queue)
       workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
@@ -97,15 +97,13 @@ extends Process with JobConsumer {
 
   def pause() {
     log.debug("Pausing work in JobScheduler: %s", queue)
-    queue.pause()
-    errorQueue.pause()
+    queues.foreach(_.pause())
     shutdownWorkerThreads()
   }
 
   def resume() = {
     log.debug("Resuming work in JobScheduler: %s", queue)
-    queue.resume()
-    errorQueue.resume()
+    queues.foreach(_.resume())
     workerThreads = (0 until threadCount).map { makeWorker(_) }.toList
     workerThreads.foreach { _.start() }
   }
@@ -113,8 +111,7 @@ extends Process with JobConsumer {
   def shutdown() {
     if(running) {
       log.debug("Shutting down JobScheduler: %s", queue)
-      queue.shutdown()
-      errorQueue.shutdown()
+      queues.foreach(_.shutdown())
       shutdownWorkerThreads()
       retryTask.shutdown()
       running = false
@@ -172,6 +169,7 @@ extends Process with JobConsumer {
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {
               badJobQueue.put(job)
+              Logger.get("bad_jobs").error(job.toString)
               Stats.incr("job-bad-count")
             } else {
               errorQueue.put(job)

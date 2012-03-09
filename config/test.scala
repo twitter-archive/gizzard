@@ -25,7 +25,6 @@ class TestScheduler(val name: String) extends Scheduler {
   }
 
   errorLimit  = 25
-  badJobQueue = new JsonJobLogger { name = "bad_jobs" }
 }
 
 new GizzardServer {
