@@ -9,6 +9,8 @@ import com.twitter.gizzard.scheduler.JsonJob
 /**
  * Wrap an object's method calls in a logger that sends the method name, arguments, and elapsed
  * time to a transactional logger.
+ *
+ * TODO: This proxy should no longer be needed once Gizzard services have switched to Finagle.
  */
 class LoggingProxy[T <: AnyRef](
   consumers: Seq[TransactionalStatsConsumer], statGrouping: String, name: Option[String])(implicit manifest: Manifest[T]) {
