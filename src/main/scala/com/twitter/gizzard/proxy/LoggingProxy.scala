@@ -22,9 +22,9 @@ class LoggingProxy[T <: AnyRef](
       val startTime = Time.now
       try {
         val ret = method()
-        // TODO: Move the following code to after the catch.
         ret match {
           case f: Future[_] => {
+            println("LogginProxy: async ret = " + f)
             f onSuccess { _ =>
               handleDone(namePrefix, startTime)
             } onFailure { throwable =>
@@ -32,9 +32,12 @@ class LoggingProxy[T <: AnyRef](
             }
           }
 
-          case _ => handleDone(namePrefix, startTime)
+          case _ => {
+            println("LogginProxy: sync ret = " + ret)
+            handleDone(namePrefix, startTime)
+            ret
+          }
         }
-        ret
       } catch {
         case t: Throwable =>
           handleException(namePrefix, startTime, t)
