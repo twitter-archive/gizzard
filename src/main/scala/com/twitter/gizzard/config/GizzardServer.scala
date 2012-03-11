@@ -9,6 +9,9 @@ import com.twitter.conversions.time._
 import com.twitter.gizzard.shards
 import com.twitter.gizzard.nameserver
 import com.twitter.gizzard.proxy
+import com.twitter.util.StorageUnit
+import com.twitter.conversions.storage._
+import net.lag.kestrel.config.QueueConfig
 
 trait GizzardServer {
   def jobQueues: Map[Int, Scheduler]
@@ -19,6 +22,7 @@ trait GizzardServer {
   var jobRelay: JobRelay               = new JobRelay
   var manager: Manager                 = new Manager with TThreadServer
   var jobInjector: JobInjector         = new JobInjector with THsHaServer
+  var jobAsyncReplicator: JobAsyncReplicator = new JobAsyncReplicator
 
   var queryStats: StatsCollection = new StatsCollection { }
   var jobStats: StatsCollection = new StatsCollection {
@@ -65,6 +69,43 @@ trait JobInjector extends TServer {
   var port = 7921
 }
 
+class JobAsyncReplicator {
+  var path = "/tmp"
+  var maxItems: Int                 = Int.MaxValue
+  var maxSize: StorageUnit          = Long.MaxValue.bytes
+  var maxItemSize: StorageUnit      = Long.MaxValue.bytes
+  var maxAge: Option[Duration]      = None
+  var maxJournalSize: StorageUnit   = 16.megabytes
+  var maxMemorySize: StorageUnit    = 128.megabytes
+  var maxJournalOverflow: Int       = 10
+  var discardOldWhenFull: Boolean   = false
+  var keepJournal: Boolean          = true
+  var syncJournal: Boolean          = false
+  var multifileJournal: Boolean     = false
+  var expireToQueue: Option[String] = None
+  var maxExpireSweep: Int           = Int.MaxValue
+  var fanoutOnly: Boolean           = false
+  var threadsPerCluster: Int        = 4
+
+  def aConfig = QueueConfig(
+    maxItems           = maxItems,
+    maxSize            = maxSize,
+    maxItemSize        = maxItemSize,
+    maxAge             = maxAge,
+    maxJournalSize     = maxJournalSize,
+    maxMemorySize      = maxMemorySize,
+    maxJournalOverflow = maxJournalOverflow,
+    discardOldWhenFull = discardOldWhenFull,
+    keepJournal        = keepJournal,
+    syncJournal        = syncJournal,
+    multifileJournal   = multifileJournal,
+    expireToQueue      = expireToQueue,
+    maxExpireSweep     = maxExpireSweep,
+    fanoutOnly         = fanoutOnly
+  )
+
+  def apply(jobRelay: => nameserver.JobRelay) = new scheduler.JobAsyncReplicator(jobRelay, aConfig, path, threadsPerCluster)
+}
 
 // XXX: move StatsCollection, etc. to separate file
 trait TransactionalStatsConsumer {

@@ -1,6 +1,7 @@
 package com.twitter.gizzard.testserver
 
 import java.sql.{ResultSet, SQLException}
+import java.io.File
 import com.twitter.querulous
 import com.twitter.querulous.evaluator.{QueryEvaluatorFactory, QueryEvaluator}
 import com.twitter.querulous.config.Connection
@@ -28,6 +29,8 @@ package object config {
   }
 
   object TestQueryEvaluator extends querulous.config.QueryEvaluator {
+    singletonFactory = true
+    database.memoize = true
     database.pool = new ApachePoolingDatabase {
       sizeMin = 3
       sizeMax = 3
@@ -96,6 +99,7 @@ package object config {
         nameServerReplicas = testNameServerReplicas(name)
         jobInjector.port   = iPort
         manager.port       = mPort
+        jobAsyncReplicator.path = "/tmp/" + queueBase + "_replication"
 
         val server             = new TestTHsHaServer { val name = "TestGizzardService"; val port = sPort }
         val databaseConnection = new TestDBConnection { val database = "gizzard_test_" + name }

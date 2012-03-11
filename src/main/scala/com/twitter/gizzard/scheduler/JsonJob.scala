@@ -20,6 +20,7 @@ trait JsonJob {
   var nextJob: Option[JsonJob] = None
   var errorCount: Int = 0
   var errorMessage: String = "(none)"
+  private[this] var replicated: Boolean = false
 
   def loggingName = {
     val className = getClass.getName
@@ -32,10 +33,14 @@ trait JsonJob {
   def toMap: Map[String, Any]
 
   def shouldReplicate = true
+  def wasReplicated = replicated
+  def setReplicated() { replicated = true }
   def className = getClass.getName
 
   def toJsonBytes = {
-    Json.encode(Map(className -> (toMap ++ Map("error_count" -> errorCount, "error_message" -> errorMessage))))
+    Json.encode(Map(className -> (toMap ++ Map("error_count" -> errorCount,
+                                               "error_message" -> errorMessage,
+                                               "wasReplicated" -> replicated))))
   }
 
   def toJson = new String(toJsonBytes, "UTF-8")
@@ -52,13 +57,6 @@ class JsonNestedJob(jobs: Iterable[JsonJob]) extends NestedJob(jobs) with JsonJo
 }
 
 /**
- * A JobConsumer that encodes JsonJobs into a string and logs them at error level.
- */
-class JsonJobLogger(logger: Logger) extends JobConsumer {
-  def put(job: JsonJob) = logger.error(job.toString)
-}
-
-/**
  * A parser that can reconstitute a JsonJob from a map of key/values. Usually registered with a
  * JsonCodec.
  */
@@ -66,10 +64,12 @@ trait JsonJobParser {
   def parse(json: Map[String, Any]): JsonJob = {
     val errorCount = json.getOrElse("error_count", 0).asInstanceOf[Int]
     val errorMessage = json.getOrElse("error_message", "(none)").asInstanceOf[String]
+    val replicated = json.getOrElse("replicated", false).asInstanceOf[Boolean]
 
     val job = apply(json)
     job.errorCount   = errorCount
     job.errorMessage = errorMessage
+    if (replicated) job.setReplicated()
     job
   }
 
