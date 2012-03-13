@@ -32,6 +32,7 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
     p += (("JobWithTasks".r, new JsonNestedJobParser(this)))
     p += (("SchedulableWithTasks".r, new JsonNestedJobParser(this)))
     p += (("ReplicatingJob".r, new BadJsonJobParser(this)))
+    p += (("BadJsonJob".r, new BadJsonJobParser(this)))
     p
   }
 
