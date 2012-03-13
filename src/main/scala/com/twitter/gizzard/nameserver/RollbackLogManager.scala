@@ -2,6 +2,7 @@ package com.twitter.gizzard.nameserver
 
 import java.util.UUID
 import java.nio.ByteBuffer
+import scala.collection.mutable
 import scala.math.Ordering
 
 import com.twitter.gizzard.shards.RoutingNode
@@ -9,6 +10,8 @@ import com.twitter.gizzard.thrift
 
 
 class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
+  import RollbackLogManager._
+
   def create(logName: String): ByteBuffer = {
     val idArray = new Array[Byte](RollbackLogManager.UUID_BYTES)
     val id = ByteBuffer.wrap(idArray)
@@ -27,11 +30,40 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
     shard.write.foreach(_.logEntryPush(unwrap(logId), entry))
 
   /**
-   * @return the entry with the highest id on all replicas: note that this means
+   * @return the entries with the highest ids on all replicas: note that this means
    * that logs cannot be rolled back while any nameserver replicas are unavailable.
    */
-  def entryPeek(logId: ByteBuffer): Option[thrift.LogEntry] =
-    shard.read.map(_.logEntryPeek(unwrap(logId))).max(RollbackLogManager.EntryOrdering)
+  def entryPeek(logId: ByteBuffer, count: Int): Seq[thrift.LogEntry] = {
+    // collect k from each shard
+    val descendingEntryLists = shard.read.map(_.logEntryPeek(unwrap(logId), count))
+    // calculate top-k
+    // TODO: this is not the hot path, but we should eventually do an actual linear merge
+    count match {
+      case 1 =>
+        val heads = descendingEntryLists.flatMap(_.lastOption)
+        if (!heads.isEmpty)
+          Seq(heads.max(EntryOrdering))
+        else
+          Nil
+      case _ =>
+        val q = new mutable.PriorityQueue[thrift.LogEntry]()(EntryOrdering)
+        val result = mutable.Buffer[thrift.LogEntry]()
+        descendingEntryLists.foreach { q ++= _ }
+        val iterator = q.iterator
+        // take the first k non-equal entries
+        var gathered = 0
+        var lastId = Int.MinValue
+        while (gathered < count && iterator.hasNext) {
+          val entry = iterator.next
+          if (entry.id != lastId) {
+            result += entry
+            lastId = entry.id
+            gathered += 1
+          }
+        }
+        result
+    }
+  }
 
   def entryPop(logId: ByteBuffer, entryId: Int): Unit =
     shard.write.foreach(_.logEntryPop(unwrap(logId), entryId))
@@ -50,11 +82,8 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
 object RollbackLogManager {
   val UUID_BYTES = 16
   // TODO: Scala 2.8.1 doesn't have maxBy
-  object EntryOrdering extends Ordering[Option[thrift.LogEntry]] {
-    override def compare(a: Option[thrift.LogEntry], b: Option[thrift.LogEntry]) =
-      Ordering.Int.compare(
-        a.map(_.id).getOrElse(Int.MinValue),
-        b.map(_.id).getOrElse(Int.MinValue)
-      )
+  object EntryOrdering extends Ordering[thrift.LogEntry] {
+    override def compare(a: thrift.LogEntry, b: thrift.LogEntry) =
+      Ordering.Int.compare(a.id, b.id)
   }
 }

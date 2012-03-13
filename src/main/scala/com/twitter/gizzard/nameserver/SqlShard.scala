@@ -371,11 +371,12 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
       entry.getContent
     )
 
-  def logEntryPeek(logId: Array[Byte]): Option[thrift.LogEntry] =
-    // select the 'last' live entry (which may not exist)
-    queryEvaluator.selectOne(
-      "SELECT id, content FROM log_entries WHERE log_id = ? AND deleted = false ORDER BY log_id, id DESC LIMIT 1",
-      logId
+  def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry] =
+    // select the 'last' K live entries
+    queryEvaluator.select(
+      "SELECT id, content FROM log_entries WHERE log_id = ? AND deleted = false ORDER BY log_id, id DESC LIMIT ?",
+      logId,
+      count
     ) { row =>
       new thrift.LogEntry(row.getInt("id"), ByteBuffer.wrap(row.getBytes("content")))
     }

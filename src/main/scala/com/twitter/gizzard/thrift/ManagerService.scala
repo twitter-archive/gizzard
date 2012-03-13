@@ -153,8 +153,8 @@ extends Manager.Iface {
     rollbackLogManager.get(log_name).orNull
   def log_entry_push(log_id: ByteBuffer, entry: LogEntry): Unit =
     rollbackLogManager.entryPush(log_id, entry)
-  def log_entry_peek(log_id: ByteBuffer): LogEntry =
-    rollbackLogManager.entryPeek(log_id).orNull
+  def log_entry_peek(log_id: ByteBuffer, count: Int): JList[LogEntry] =
+    rollbackLogManager.entryPeek(log_id, count)
   def log_entry_pop(log_id: ByteBuffer, log_entry_id: Int): Unit =
     rollbackLogManager.entryPop(log_id, log_entry_id)
 

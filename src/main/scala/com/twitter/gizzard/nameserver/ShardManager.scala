@@ -96,6 +96,6 @@ trait ShardManagerSource {
   @throws(classOf[ShardException]) def logCreate(id: Array[Byte], logName: String): Unit
   @throws(classOf[ShardException]) def logGet(logName: String): Option[Array[Byte]]
   @throws(classOf[ShardException]) def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit
-  @throws(classOf[ShardException]) def logEntryPeek(logId: Array[Byte]): Option[thrift.LogEntry]
+  @throws(classOf[ShardException]) def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry]
   @throws(classOf[ShardException]) def logEntryPop(logId: Array[Byte], entryId: Int): Unit
 }

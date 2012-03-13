@@ -131,7 +131,7 @@ service Manager {
   // push the given content as a log entry to the end of the given log
   void log_entry_push(1: binary log_id, 2: LogEntry log_entry)
   // peek at (but don't remove) the last entry in the log
-  LogEntry log_entry_peek(1: binary log_id)
+  list<LogEntry> log_entry_peek(1: binary log_id, 2: i32 count)
   // pop (remove) the last entry in the log, which must match the given id
   void log_entry_pop(1: binary log_id, 2: i32 log_entry_id)
 

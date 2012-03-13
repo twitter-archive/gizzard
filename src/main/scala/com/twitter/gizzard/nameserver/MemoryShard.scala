@@ -188,15 +188,15 @@ class MemoryShardManagerSource extends ShardManagerSource {
       throw new RuntimeException("Log entry already exists: " + le)
   }
 
-  def logEntryPeek(rawLogId: Array[Byte]): Option[thrift.LogEntry] = {
+  def logEntryPeek(rawLogId: Array[Byte], count: Int): Seq[thrift.LogEntry] = {
     val logId = ByteBuffer.wrap(rawLogId)
-    val entryOption = logEntries.reverseIterator.find {
-      case e if e.logId == logId && !e.deleted => true
-      case _ => false
-    }
-    entryOption.map { e =>
+    val peeked =
+      logEntries.reverseIterator.collect {
+        case e if e.logId == logId && !e.deleted => e
+      }.take(count)
+    peeked.map { e =>
       new thrift.LogEntry().setId(e.id).setContent(e.content)
-    }
+    }.toSeq
   }
 
   def logEntryPop(rawLogId: Array[Byte], entryId: Int): Unit = {
