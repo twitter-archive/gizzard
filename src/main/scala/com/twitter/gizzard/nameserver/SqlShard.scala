@@ -209,6 +209,8 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     val deletedForwardings = mutable.Buffer[Forwarding]()
     val newUpdatedSeq = latestUpdatedSeq()
 
+    // NOTE: There will be only one row per each forwarding, as forwardings table uses
+    // (table_id, base_source_id) as its primary key.
     queryEvaluator.select("SELECT * FROM forwardings WHERE updated_seq > ?", lastUpdatedSeq) { row =>
       val f  = rowToForwarding(row)
       val buffer = if (row.getBoolean("deleted")) deletedForwardings else updatedForwardings

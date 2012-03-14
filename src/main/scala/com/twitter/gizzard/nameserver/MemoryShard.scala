@@ -36,7 +36,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
   }
 
   def diffState(lastUpdatedSeq: Long) = {
-    NameServerChanges(Nil, Nil, 0L)
+    throw new UnsupportedOperationException("diffState() not supported by MemoryShardManagerSource")
   }
 
   def createShard(shardInfo: ShardInfo) {

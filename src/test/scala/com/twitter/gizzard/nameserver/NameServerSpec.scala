@@ -132,6 +132,16 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     }
 
     "reload nameserver configuration" in {
+      // Here is a list of all the events in time order (* indicates nameserver changes):
+      //  (1*) nameserver data initialized                                                (      updatedSeq = 1L)
+      //  (2)  in doBefore (see above), we call reload() and load the nameserver data     (local updatedSeq = 1L)
+      //  (3*) nameserver data is updated - a leaf node is added to the replicating shard (      updatedSeq = 2L)
+      //  (4)  we call reloadUpdatedForwardings(1L) and update our forwarding tree        (local updatedSeq = 2L)
+      //  (5)  we call reloadUpdatedForwardings(2L) but we find no change - no-op         (local updatedSeq = 2L)
+      //  (6*) nameserver data is updated - it is restored back to the original state     (      updatedSeq = 3L)
+      //  (7)  we call reload() and load reload the original topology                     (local updatedSeq = 3L)
+      //  (8)  we call reloadUpdatedForwardings(3L) but we find no change - no-op         (local updatedSeq = 3L)
+
       val newLinksList = List(new LinkInfo(replicatingInfo.id, shardInfos(3).id, 1), new LinkInfo(replicatingInfo.id, shardInfos(4).id, 1))
       val newReplNode = ReplicatingShard(replicatingInfo, 1, Seq(nodes(3), nodes(4)))
 
@@ -164,23 +174,23 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       }
 
       // This will update our nameserver state to the updated state
-      nameServer.reloadUpdatedForwardings()
+      nameServer.reloadUpdatedForwardings()  // (4)
 
       forwarder.find(1, 2) mustEqual nodes(1)
       forwarder.find(2, 1) mustEqual newReplNode
 
-      nameServer.reloadUpdatedForwardings()
+      nameServer.reloadUpdatedForwardings()  // (5)
 
       forwarder.find(1, 2) mustEqual nodes(1)
       forwarder.find(2, 1) mustEqual newReplNode
 
       // This will revert our nameserver state back to the original state
-      nameServer.reload()
+      nameServer.reload()  // (6)
 
       forwarder.find(1, 2) mustEqual nodes(1)
       forwarder.find(2, 1) mustEqual replNode
 
-      nameServer.reloadUpdatedForwardings()
+      nameServer.reloadUpdatedForwardings()  // (7)
 
       forwarder.find(1, 2) mustEqual nodes(1)
       forwarder.find(2, 1) mustEqual replNode
