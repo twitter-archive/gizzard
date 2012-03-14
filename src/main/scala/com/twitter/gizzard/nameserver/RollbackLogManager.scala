@@ -10,8 +10,6 @@ import com.twitter.gizzard.thrift
 
 
 class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
-  import RollbackLogManager._
-
   def create(logName: String): ByteBuffer = {
     val idArray = new Array[Byte](RollbackLogManager.UUID_BYTES)
     val id = ByteBuffer.wrap(idArray)
@@ -36,33 +34,8 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
   def entryPeek(logId: ByteBuffer, count: Int): Seq[thrift.LogEntry] = {
     // collect k from each shard
     val descendingEntryLists = shard.read.map(_.logEntryPeek(unwrap(logId), count))
-    // calculate top-k
-    // TODO: this is not the hot path, but we should eventually do an actual linear merge
-    count match {
-      case 1 =>
-        val heads = descendingEntryLists.flatMap(_.lastOption)
-        if (!heads.isEmpty)
-          Seq(heads.max(EntryOrdering))
-        else
-          Nil
-      case _ =>
-        val q = new mutable.PriorityQueue[thrift.LogEntry]()(EntryOrdering)
-        val result = mutable.Buffer[thrift.LogEntry]()
-        descendingEntryLists.foreach { q ++= _ }
-        val iterator = q.iterator
-        // take the first k non-equal entries
-        var gathered = 0
-        var lastId = Int.MinValue
-        while (gathered < count && iterator.hasNext) {
-          val entry = iterator.next
-          if (entry.id != lastId) {
-            result += entry
-            lastId = entry.id
-            gathered += 1
-          }
-        }
-        result
-    }
+    // and take the top k
+    RollbackLogManager.topK(descendingEntryLists, count)
   }
 
   def entryPop(logId: ByteBuffer, entryId: Int): Unit =
@@ -81,6 +54,41 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
 
 object RollbackLogManager {
   val UUID_BYTES = 16
+
+  /**
+   * Calculates the top-k entries by id.
+   * TODO: this is not the hot path, but we should eventually do a real linear merge.
+   */
+  def topK(
+    descendingEntryLists: Iterable[Seq[thrift.LogEntry]],
+    count: Int
+  ): Seq[thrift.LogEntry] = count match {
+    case 1 =>
+      val heads = descendingEntryLists.flatMap(_.lastOption)
+      // no optional form of max
+      if (!heads.isEmpty)
+        Seq(heads.max(EntryOrdering))
+      else
+        Nil
+    case _ =>
+      val q = new mutable.PriorityQueue[thrift.LogEntry]()(EntryOrdering)
+      val result = mutable.Buffer[thrift.LogEntry]()
+      descendingEntryLists.foreach { q ++= _ }
+      val iterator = q.iterator
+      // take the first k non-equal entries
+      var gathered = 0
+      var lastId = Int.MinValue
+      while (gathered < count && iterator.hasNext) {
+        val entry = iterator.next
+        if (entry.id != lastId) {
+          result += entry
+          lastId = entry.id
+          gathered += 1
+        }
+      }
+      result
+  }
+
   // TODO: Scala 2.8.1 doesn't have maxBy
   object EntryOrdering extends Ordering[thrift.LogEntry] {
     override def compare(a: thrift.LogEntry, b: thrift.LogEntry) =

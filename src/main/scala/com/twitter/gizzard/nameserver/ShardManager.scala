@@ -98,4 +98,7 @@ trait ShardManagerSource {
   @throws(classOf[ShardException]) def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit
   @throws(classOf[ShardException]) def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry]
   @throws(classOf[ShardException]) def logEntryPop(logId: Array[Byte], entryId: Int): Unit
+
+  /** For JMocker. TODO: switch to a better mocking framework */
+  override def toString() = "<%s>".format(this.getClass)
 }
