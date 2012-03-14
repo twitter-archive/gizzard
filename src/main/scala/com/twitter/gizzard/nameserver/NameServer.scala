@@ -1,6 +1,7 @@
 package com.twitter.gizzard.nameserver
 
 import java.util.TreeMap
+import java.util.concurrent.{ConcurrentMap, ConcurrentHashMap}
 import scala.collection.mutable
 import com.twitter.logging.Logger
 import com.twitter.gizzard.shards._
@@ -34,11 +35,12 @@ class RoutingState(
     }
   }
 
-  def buildForwardingTree(): scala.collection.Map[Int, TreeMap[Long, RoutingNode[Any]]] = {
-    val rv = mutable.Map[Int, TreeMap[Long, RoutingNode[Any]]]()
+  def buildForwardingTree(): ConcurrentMap[Int, TreeMap[Long, RoutingNode[Any]]] = {
+    val rv = new ConcurrentHashMap[Int, TreeMap[Long, RoutingNode[Any]]]()
 
     forwardings foreach { case Forwarding(tableId, baseId, rootShardId) =>
-      val tree = rv.getOrElseUpdate(tableId, new TreeMap[Long, RoutingNode[Any]])
+      rv.putIfAbsent(tableId, new TreeMap[Long, RoutingNode[Any]])
+      val tree = rv.get(tableId)
       tree.put(baseId, constructRoutingNode(rootShardId, 1))
     }
 
@@ -56,7 +58,8 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
   val shardRepository = new ShardRepository
   val shardManager    = new ShardManager(shard, shardRepository)
 
-  @volatile private var forwardingTree: scala.collection.Map[Int, TreeMap[Long, RoutingNode[Any]]] = _
+  @volatile private var forwardingTree: ConcurrentMap[Int, TreeMap[Long, RoutingNode[Any]]] = _
+  @volatile private var lastUpdatedSeq: Long = -1L
 
   // Forwarders
 
@@ -80,38 +83,68 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
     forwarder
   }
 
-  private def recreateInternalShardState() {
-    val infos       = mutable.ArrayBuffer[ShardInfo]()
-    val links       = mutable.ArrayBuffer[LinkInfo]()
-    val forwardings = mutable.ArrayBuffer[Forwarding]()
+  def reload() {
+    log.info("Loading name server configuration...")
+    synchronized {
+      shardManager.prepareReload()
 
-    shardManager.currentState() foreach { state =>
-      infos       ++= state.shards
-      links       ++= state.links
-      forwardings ++= state.forwardings
+      val infos       = mutable.ArrayBuffer[ShardInfo]()
+      val links       = mutable.ArrayBuffer[LinkInfo]()
+      val forwardings = mutable.ArrayBuffer[Forwarding]()
+      val (states, updatedSeq) = shardManager.currentState()
+
+      states foreach { state =>
+        infos       ++= state.shards
+        links       ++= state.links
+        forwardings ++= state.forwardings
+      }
+
+      val routes = new RoutingState(
+        shardRepository.instantiateNode,
+        infos,
+        links,
+        forwardings
+      )
+
+      forwardingTree = routes.buildForwardingTree()
+      lastUpdatedSeq = updatedSeq
     }
+    log.info("Loading name server configuration is done.")
+  }
 
-    val routes = new RoutingState(
-      shardRepository.instantiateNode,
-      infos,
-      links,
-      forwardings
-    )
-
-    forwardingTree = routes.buildForwardingTree()
+  private def constructRoutingNode(shardId: ShardId, weight: Int = 1) : RoutingNode[Any] = {
+    val shardInfo = shardManager.getShard(shardId)
+    val children = shardManager.listDownwardLinks(shardId).map { link => constructRoutingNode(link.downId, link.weight) }
+    shardRepository.instantiateNode(shardInfo, weight, children)
   }
 
   def reloadUpdatedForwardings() {
     log.info("Loading updated name server configuration...")
-    recreateInternalShardState()
-    log.info("Loading updated name server configuration is done.")
-  }
+    synchronized {
+      if (forwardingTree == null) throw new NameserverUninitialized
 
-  def reload() {
-    log.info("Loading name server configuration...")
-    shardManager.reload()
-    recreateInternalShardState()
-    log.info("Loading name server configuration is done.")
+      val changes: NameServerChanges = shardManager.diffState(lastUpdatedSeq)
+      val updatedForwardingsByTableId = changes.updatedForwardings.groupBy(_.tableId)
+      val deletedForwardingsByTableId = changes.deletedForwardings.groupBy(_.tableId)
+      val tableIds = updatedForwardingsByTableId.keySet ++ deletedForwardingsByTableId.keySet
+
+      tableIds foreach { tableId =>
+        val newTreeMap = forwardingTree.get(tableId) match {
+          case null => new TreeMap[Long, RoutingNode[Any]]()
+          case treeMap => new TreeMap[Long, RoutingNode[Any]](treeMap)  // create a shallow copy
+        }
+
+        deletedForwardingsByTableId.get(tableId).getOrElse(Nil) foreach { f => newTreeMap.remove(f.baseId) }
+        updatedForwardingsByTableId.get(tableId).getOrElse(Nil) foreach { f =>
+          newTreeMap.put(f.baseId, constructRoutingNode(f.shardId))
+        }
+
+        forwardingTree.put(tableId, newTreeMap)
+      }
+
+      lastUpdatedSeq = changes.updatedSeq
+    }
+    log.info("Loading updated name server configuration is done.")
   }
 
   // XXX: removing this causes CopyJobSpec to fail.
@@ -132,9 +165,9 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
 
   @throws(classOf[NonExistentShard])
   def findCurrentForwarding[T](tableId: Int, id: Long): RoutingNode[T] = {
-    if(forwardingTree == null) throw new NameserverUninitialized
+    if (forwardingTree == null) throw new NameserverUninitialized
 
-    val rv = forwardingTree.get(tableId) flatMap { treeMap =>
+    val rv = Option(forwardingTree.get(tableId)) flatMap { treeMap =>
       treeMap.floorEntry(mappingFunction(id)) match {
         case null => None
         case item => Some(item.getValue)
@@ -151,10 +184,10 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
   def findForwardings[T](tableId: Int): Seq[RoutingNode[T]] = {
     import scala.collection.JavaConversions._
 
-    if(forwardingTree == null) throw new NameserverUninitialized
+    if (forwardingTree == null) throw new NameserverUninitialized
 
-    val rv = forwardingTree.get(tableId) map { bySourceIds =>
-      bySourceIds.values.toSeq
+    val rv = Option(forwardingTree.get(tableId)) map { treeMap =>
+      treeMap.values.toSeq
     } getOrElse {
       throw new NonExistentShard("No shards for tableId: %s".format(tableId))
     }

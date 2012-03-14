@@ -194,71 +194,28 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
 
   // Forwardings/Shard Management Read Methods
 
-  private def loadState() = dumpStructure(listTables)
-
-  private def updateState(state: Seq[NameServerState], updatedSequence: Long) = {
-    import TreeUtils._
-
-    val oldForwardings = state.flatMap(_.forwardings).map(f => (f.tableId, f.baseId) -> f).toMap
-    val oldLinks       = state.flatMap(_.links).toSet
-    val oldLinksByUpId = mapOfSets(oldLinks)(_.upId)
-    val oldShards      = state.flatMap(_.shards).map(s => s.id -> s).toMap
-    val oldShardIds    = oldShards.keySet
-
-    val newForwardings     = mutable.Map[(Int,Long), Forwarding]()
-    val deletedForwardings = mutable.Map[(Int,Long), Forwarding]()
-
-    queryEvaluator.select("SELECT * FROM forwardings WHERE updated_seq > ?", updatedSequence) { row =>
-      val f  = rowToForwarding(row)
-      val fs = if (row.getBoolean("deleted")) deletedForwardings else newForwardings
-
-      fs += (f.tableId, f.baseId) -> f
-    }
-
-    val newRootIds  = newForwardings.map(_._2.shardId).toSet
-    val newLinks    = descendantLinks(newRootIds)(listDownwardLinks)
-    val newShardIds = newRootIds ++ newLinks.map(_.downId)
-    val newShards   = newShardIds.toList.map(id => id -> getShard(id)).toMap
-
-    val purgeableRootIds  = newRootIds ++ deletedForwardings.map(_._2.shardId)
-    val purgeableLinks    = descendantLinks(purgeableRootIds)(oldLinksByUpId)
-    val purgeableShardIds = purgeableRootIds ++ purgeableLinks.map(_.downId)
-
-    val updatedForwardings = (oldForwardings -- deletedForwardings.keys) ++ newForwardings
-    val updatedLinks       = (oldLinks -- purgeableLinks) ++ newLinks
-    val updatedShards      = (oldShards -- purgeableShardIds) ++ newShards
-
-    val forwardingsByTableId = mapOfSets(updatedForwardings.map(_._2))(_.tableId)
-    val linksByUpId          = mapOfSets(updatedLinks)(_.upId)
-    val tableIds             = forwardingsByTableId.keySet
-
-    def extractor(id: Int) = NameServerState.extractTable(id)(forwardingsByTableId)(linksByUpId)(updatedShards)
-
-    tableIds.map(t => extractor(t)).toSeq
-  }
-
-  @volatile private var _forwardingUpdatedSeq = 0L
-  @volatile private var _currentState: Seq[NameServerState] = null
-
   private def latestUpdatedSeq() = {
     val query = "SELECT counter FROM update_counters WHERE id = 'forwardings'"
     queryEvaluator.selectOne(query)(_.getLong("counter")).getOrElse(0L)
   }
 
-  def currentState() = {
-    synchronized {
-      val nextUpdatedSeq = latestUpdatedSeq()
+  def currentState() : (Seq[NameServerState], Long) = {
+    val updatedSeq = latestUpdatedSeq()
+    (dumpStructure(listTables), updatedSeq)
+  }
 
-      if (_currentState eq null) {
-        _currentState = loadState()
-      } else {
-        _currentState = updateState(_currentState, _forwardingUpdatedSeq)
-      }
+  def diffState(lastUpdatedSeq: Long) : NameServerChanges = {
+    val updatedForwardings = mutable.Buffer[Forwarding]()
+    val deletedForwardings = mutable.Buffer[Forwarding]()
+    val newUpdatedSeq = latestUpdatedSeq()
 
-      _forwardingUpdatedSeq = nextUpdatedSeq
-
-      _currentState
+    queryEvaluator.select("SELECT * FROM forwardings WHERE updated_seq > ?", lastUpdatedSeq) { row =>
+      val f  = rowToForwarding(row)
+      val buffer = if (row.getBoolean("deleted")) deletedForwardings else updatedForwardings
+      buffer += f
     }
+
+    NameServerChanges(updatedForwardings, deletedForwardings, newUpdatedSeq)
   }
 
   def getShard(id: ShardId) = {
@@ -327,13 +284,8 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     queryEvaluator.select("SELECT * FROM shards where busy IN (1, 2, 3)")(rowToShardInfo).toList
   }
 
-  def reload() {
+  def prepareReload() {
     try {
-      synchronized {
-        _currentState         = null
-        _forwardingUpdatedSeq = 0L
-      }
-
       List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
       }
@@ -404,7 +356,7 @@ class SqlRemoteClusterManagerSource(queryEvaluator: QueryEvaluator) extends Remo
     queryEvaluator.select("SELECT * FROM hosts WHERE cluster = ?", c)(rowToHost).toList
   }
 
-  def reload() {
+  def prepareReload() {
     try {
       List("hosts").foreach { table =>
         queryEvaluator.select("DESCRIBE " + table) { row => }
