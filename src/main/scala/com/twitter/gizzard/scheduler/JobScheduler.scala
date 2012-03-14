@@ -162,6 +162,10 @@ extends Process with JobConsumer {
           case e: ShardOfflineException =>
             Stats.incr("job-blocked-count")
             errorQueue.put(job)
+          case e: BadJsonJobException =>
+            badJobQueue.put(job)
+            Logger.get("bad_jobs").error(job.toString)
+            Stats.incr("job-bad-count")
           case e =>
             Stats.incr("job-error-count")
             exceptionLog.error(e, "Job: %s", job)

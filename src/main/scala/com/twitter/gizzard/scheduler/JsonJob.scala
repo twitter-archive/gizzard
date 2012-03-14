@@ -82,3 +82,22 @@ class JsonNestedJobParser(codec: JsonCodec) extends JsonJobParser {
     new JsonNestedJob(taskJsons.map(codec.inflate))
   }
 }
+
+class BadJsonJobException(message: String, cause: Throwable) extends Exception(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
+class BadJsonJob extends JsonJob {
+  errorCount = Integer.MAX_VALUE - 1
+  errorMessage = "Bad Job"
+  override def shouldReplicate = false
+  override def toMap: Map[String, Any] = Map()
+
+  override def apply() {
+    throw new BadJsonJobException("Bad job")
+  }
+}
+
+class BadJsonJobParser(codec: JsonCodec) extends JsonJobParser {
+  def apply(json: Map[String, Any]): JsonJob = new BadJsonJob()
+}
