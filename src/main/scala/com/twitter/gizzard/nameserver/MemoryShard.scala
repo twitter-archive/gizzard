@@ -1,5 +1,6 @@
 package com.twitter.gizzard.nameserver
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable
 import com.twitter.gizzard.shards._
 
@@ -13,6 +14,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
+  val updateVersion = new AtomicLong(0L)
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
     shardTable.find { x =>
@@ -150,6 +152,12 @@ class MemoryShardManagerSource extends ShardManagerSource {
 
   def listTables(): Seq[Int] = {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
+  }
+
+  def getUpdateVersion() : Long = updateVersion.get()
+
+  def incrementVersion() {
+    updateVersion.incrementAndGet()
   }
 
   def reload() { }

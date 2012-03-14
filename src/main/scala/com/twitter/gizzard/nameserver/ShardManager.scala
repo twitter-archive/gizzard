@@ -43,9 +43,11 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def getForwardingForShard(id: ShardId)        = shard.read.any(_.getForwardingForShard(id))
   def getForwardings()                          = shard.read.any(_.getForwardings())
 
-
   def listHostnames() = shard.read.any(_.listHostnames())
   def listTables()    = shard.read.any(_.listTables())
+
+  def getUpdateVersion() = shard.read.any(_.getUpdateVersion())
+  def incrementVersion() { shard.write.foreach(_.incrementVersion()) }
 }
 
 trait ShardManagerSource {
@@ -91,4 +93,7 @@ trait ShardManagerSource {
 
   @throws(classOf[ShardException]) def listHostnames(): Seq[String]
   @throws(classOf[ShardException]) def listTables(): Seq[Int]
+
+  @throws(classOf[ShardException]) def getUpdateVersion() : Long
+  @throws(classOf[ShardException]) def incrementVersion()
 }

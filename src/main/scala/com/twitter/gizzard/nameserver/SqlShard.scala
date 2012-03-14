@@ -261,6 +261,17 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     }
   }
 
+  // Version methods
+  def getUpdateVersion() : Long = {
+    val query = "SELECT counter FROM update_counters WHERE id = 'version'"
+    queryEvaluator.selectOne(query)(_.getLong("counter")).getOrElse(0L)
+  }
+
+  def incrementVersion() {
+    queryEvaluator.execute(
+      "INSERT INTO update_counters (id, counter) VALUES ('version', 1) ON DUPLICATE KEY UPDATE counter = counter + 1")
+  }
+
   def getShard(id: ShardId) = {
     val query = "SELECT * FROM shards WHERE hostname = ? AND table_prefix = ?"
     queryEvaluator.selectOne(query, id.hostname, id.tablePrefix)(rowToShardInfo) getOrElse {
