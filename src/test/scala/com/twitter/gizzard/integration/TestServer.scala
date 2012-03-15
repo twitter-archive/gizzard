@@ -51,14 +51,11 @@ package object config {
     loggers = List(
       new LoggerConfig {
         level = Level.ERROR
-      }, new LoggerConfig {
+      },
+      new LoggerConfig {
         node = "w3c"
         useParents = false
         level = Level.DEBUG
-      }, new LoggerConfig {
-        node = "bad_jobs"
-        useParents = false
-        level = Level.INFO
       },
       new LoggerConfig {
         node = "exception"
