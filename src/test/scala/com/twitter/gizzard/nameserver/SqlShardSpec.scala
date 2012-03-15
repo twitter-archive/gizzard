@@ -27,9 +27,9 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
     doBefore {
       reset(config)
       nsShard = new SqlShardManagerSource(queryEvaluator)
-      nsShard.reload()
+      nsShard.prepareReload()
       remoteClusterShard = new SqlRemoteClusterManagerSource(queryEvaluator)
-      remoteClusterShard.reload()
+      remoteClusterShard.prepareReload()
     }
 
     "be able to dump nameserver structure" in {
@@ -71,35 +71,69 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
       }
 
       shards.foreach { nsShard createShard _ }
-      nsShard.currentState().isEmpty mustEqual true
+      nsShard.currentState()._1.isEmpty mustEqual true
 
       nsShard.addLink(shards(0).id, shards(1).id, 2)
-      nsShard.currentState().isEmpty mustEqual true
+      nsShard.currentState()._1.isEmpty mustEqual true
 
       nsShard.setForwarding(Forwarding(0, 1, shards(0).id))
 
-      val state1 = nsShard.currentState()
+      val (state1, updatedSeq1) = nsShard.currentState()
       state1.length mustEqual 1
       state1.head.forwardings.toList mustEqual List(Forwarding(0, 1, shards(0).id))
       state1.head.links.length mustEqual 1
       state1.head.shards.toList mustEqual List(shards(0), shards(1))
+      updatedSeq1 mustEqual 1L
 
-      nsShard.addLink(shards(0).id, shards(3).id, 2)
+      nsShard.addLink(shards(0).id, shards(3).id, 2)  // This methods updates Forwarding(0) twice
       nsShard.setForwarding(Forwarding(0, 2, shards(4).id))
 
-      val state2 = nsShard.currentState()
+      val (state2, updatedSeq2) = nsShard.currentState()
       state2.length mustEqual 1
       state2.head.forwardings.length mustEqual 2
       state2.head.links.length mustEqual 2
       state2.head.shards.length mustEqual 4
+      updatedSeq2 mustEqual 4L
 
       nsShard.removeLink(shards(0).id, shards(1).id)
 
-      val state3 = nsShard.currentState()
+      val (state3, updatedSeq3) = nsShard.currentState()
       state3.length mustEqual 1
       state3.head.forwardings.length mustEqual 2
       state3.head.links.length mustEqual 1
       state3.head.shards.length mustEqual 3
+      updatedSeq3 mustEqual 5L
+    }
+
+    "be able to diff nameserver structure" in {
+      val shards = (0 to 3).toList.map { i =>
+        new ShardInfo("com.twitter.gizzard.fake.NestableShard", "%02d".format(i), "localhost")
+      }
+      val forwardings = List(Forwarding(0, 1, shards(0).id), Forwarding(0, 2, shards(2).id))
+
+      shards.foreach { nsShard createShard _ }
+      nsShard.addLink(shards(0).id, shards(1).id, 2)
+      nsShard.setForwarding(forwardings(0))
+
+      nsShard.currentState()._2 mustEqual 1L
+      nsShard.diffState(1L) mustEqual NameServerChanges(Nil, Nil, 1L)
+
+      nsShard.setForwarding(forwardings(1))
+
+      nsShard.currentState()._2 mustEqual 2L
+      val diffState2 = nsShard.diffState(1L)
+
+      diffState2.updatedForwardings mustEqual List(forwardings(1))
+      diffState2.deletedForwardings.isEmpty mustEqual true
+      diffState2.updatedSeq mustEqual 2L
+
+      nsShard.addLink(shards(0).id, shards(3).id, 2)
+
+      val diffState3 = nsShard.diffState(2L)
+
+      diffState3.updatedForwardings mustEqual List(forwardings(0))
+      diffState3.deletedForwardings.isEmpty mustEqual true
+      diffState3.updatedSeq mustEqual 4L
     }
 
     "be idempotent" in {

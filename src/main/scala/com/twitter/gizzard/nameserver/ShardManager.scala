@@ -6,8 +6,9 @@ import com.twitter.gizzard.util.TreeUtils
 
 
 class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository) {
-  def reload()                          = shard.write.foreach(_.reload)
+  def prepareReload()                   = shard.write.foreach(_.prepareReload)
   def currentState()                    = shard.read.any(_.currentState)
+  def diffState(lastUpdatedSeq: Long)   = shard.read.any(_.diffState(lastUpdatedSeq))
   def dumpStructure(tableIds: Seq[Int]) = shard.read.any(_.dumpStructure(tableIds))
 
   @throws(classOf[ShardException])
@@ -49,8 +50,9 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
 }
 
 trait ShardManagerSource {
-  @throws(classOf[ShardException]) def reload()
-  @throws(classOf[ShardException]) def currentState(): Seq[NameServerState]
+  @throws(classOf[ShardException]) def prepareReload()
+  @throws(classOf[ShardException]) def currentState(): (Seq[NameServerState], Long)
+  @throws(classOf[ShardException]) def diffState(lastUpdatedSeq: Long): NameServerChanges
   @throws(classOf[ShardException]) def dumpStructure(tableIds: Seq[Int]) = {
     import TreeUtils._
 
