@@ -27,7 +27,8 @@ class ReplicationSpec extends IntegrationSpecification with ConfiguredSpecificat
       List(server1, server3).foreach(_.remoteClusterManager.addRemoteHost(hostFor2))
       List(server2, server3).foreach(_.remoteClusterManager.addRemoteHost(hostFor1))
 
-      servers.foreach(_.remoteClusterManager.reload())
+      servers foreach { _.remoteClusterManager.reload() }
+      servers foreach { _.jobAsyncReplicator.reconfigure() }
     }
 
     doAfter { stopServers(servers: _*) }

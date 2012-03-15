@@ -26,9 +26,13 @@ class JsonCodec(unparsableJobHandler: Array[Byte] => Unit) {
   protected val processors = {
     val p = mutable.Map.empty[Regex, JsonJobParser]
     p += (("JsonNestedJob".r, new JsonNestedJobParser(this)))
+    p += (("ReplicatedJob".r, new ReplicatedJobParser(this)))
+
     // for backward compat:
     p += (("JobWithTasks".r, new JsonNestedJobParser(this)))
     p += (("SchedulableWithTasks".r, new JsonNestedJobParser(this)))
+    p += (("ReplicatingJob".r, new BadJsonJobParser(this)))
+    p += (("BadJsonJob".r, new BadJsonJobParser(this)))
     p
   }
 
