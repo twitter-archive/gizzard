@@ -32,7 +32,11 @@ class MemoryShardManagerSource extends ShardManagerSource {
 
   def currentState() = {
     val tableIds = forwardingTable.map(_.tableId).toSet
-    dumpStructure(tableIds.toSeq)
+    (dumpStructure(tableIds.toSeq), 0L)
+  }
+
+  def diffState(lastUpdatedSeq: Long) = {
+    throw new UnsupportedOperationException("diffState() not supported by MemoryShardManagerSource")
   }
 
   def createShard(shardInfo: ShardInfo) {
@@ -152,7 +156,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
   }
 
-  def reload() { }
+  def prepareReload() { }
 }
 
 class MemoryRemoteClusterManagerSource extends RemoteClusterManagerSource {
@@ -193,5 +197,5 @@ class MemoryRemoteClusterManagerSource extends RemoteClusterManagerSource {
   def listRemoteHosts()                   = hostTable.toList
   def listRemoteHostsInCluster(c: String) = hostTable.filter(_.cluster == c).toList
 
-  def reload() { }
+  def prepareReload() { }
 }
