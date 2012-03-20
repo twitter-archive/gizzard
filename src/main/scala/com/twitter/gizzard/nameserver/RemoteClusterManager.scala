@@ -18,7 +18,7 @@ class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relay
     log.info("Loading remote cluster configuration...")
 
     initialized = true
-    shard.write.foreach(_.reload)
+    shard.write.foreach(_.prepareReload)
 
     val newRemoteClusters = mutable.Map[String, List[Host]]()
 
@@ -52,7 +52,7 @@ class RemoteClusterManager(shard: RoutingNode[RemoteClusterManagerSource], relay
 }
 
 trait RemoteClusterManagerSource {
-  @throws(classOf[ShardException]) def reload()
+  @throws(classOf[ShardException]) def prepareReload()
   @throws(classOf[ShardException]) def addRemoteHost(h: Host)
   @throws(classOf[ShardException]) def removeRemoteHost(h: String, p: Int)
   @throws(classOf[ShardException]) def setRemoteHostStatus(h: String, p: Int, s: HostStatus.Value)
