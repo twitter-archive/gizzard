@@ -63,14 +63,10 @@ object Stats extends FilteredStatsProvider(OStats) {
 
   // Initialize our transaction stack on the current thread if it hasn't already been.
   private def transStack = {
-    val stackOpt = localTransStack()
-    stackOpt match {
-      case Some(stack) => stack
-      case None => {
-        val newStack = new mutable.Stack[TransactionalStatsProvider]
-        localTransStack.update(newStack)
-        newStack
-      }
+    localTransStack() getOrElse {
+      val newStack = new mutable.Stack[TransactionalStatsProvider]
+      localTransStack.update(newStack)
+      newStack
     }
   }
 
