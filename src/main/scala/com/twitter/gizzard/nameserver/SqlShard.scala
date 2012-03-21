@@ -7,6 +7,7 @@ import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.gizzard.util.TreeUtils
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.thrift
+import com.twitter.logging.Logger
 
 
 object SqlShard {
@@ -76,7 +77,7 @@ object SqlShard {
     "logs" -> """
       CREATE TABLE IF NOT EXISTS logs (
           id                        BINARY(16)   NOT NULL,
-          name                      VARCHAR(256) NOT NULL,
+          name                      VARCHAR(128) NOT NULL,
 
           PRIMARY KEY (id),
           UNIQUE KEY id (name)
@@ -95,10 +96,12 @@ object SqlShard {
       """
     )
   val DDLS_MAP = DDLS.toMap
+
+  val log = Logger.get(getClass)
 }
 
-
 class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManagerSource {
+  import SqlShard._
 
   private def rowToShardInfo(row: ResultSet) = {
     ShardInfo(ShardId(row.getString("hostname"), row.getString("table_prefix")), row.getString("class_name"),
@@ -360,8 +363,11 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   def rebuildSchema() {
+    log.info("Rebuilding schemas...")
     SqlShard.DDLS.foreach {
-      case (name, ddl) => queryEvaluator.execute(ddl)
+      case (name, ddl) =>
+        log.info("Schema: " + name)
+        queryEvaluator.execute(ddl)
     }
   }
 }
