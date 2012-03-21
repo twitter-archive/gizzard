@@ -2,11 +2,13 @@ package com.twitter.gizzard.proxy
 
 import com.twitter.logging.Logger
 import com.twitter.util.TimeConversions._
+import com.twitter.util.{Future, Promise}
 import org.specs.Specification
 import org.specs.mock.{ClassMocker, JMocker}
-import com.twitter.gizzard.util.Future
+import com.twitter.gizzard.util.{Future => GizzardFuture}
 import com.twitter.gizzard.{Stats, TransactionalStatsProvider, TransactionalStatsConsumer, SampledTransactionalStatsConsumer}
 import com.twitter.gizzard.ConfiguredSpecification
+import java.util.concurrent._
 
 
 object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -14,6 +16,7 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     def name: String
     def nameParts: Array[String]
     def namePartsSeq: Seq[String]
+    def asyncName: Future[String]
   }
 
   trait Namer {
@@ -31,67 +34,9 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
     }
   }
 
-/*  "LoggingProxy" should {
-    val bob = new Named {
-      def name = "bob"
-      def nameParts = Seq("bob", "marley").toArray
-      def namePartsSeq = Seq("bob", "marley")
-    }
-    val rob = new Namer {
-      def setName(name: String) {}
-    }
-
-    val stats = new FakeLogger
-    val bobProxy = LoggingProxy[Named](stats, "Bob", bob)
-    val filteredBobProxy = LoggingProxy[Named](stats, "Bob", Set("name"), bob)
-    val robProxy = LoggingProxy[Namer](stats, "Rob", rob)
-
-    doAfter {
-      stats.reset
-    }
-
-    "log stats on a proxied object" in {
-      bobProxy.name mustEqual "bob"
-      stats.summary.labels("operation") mustEqual "Bob:name"
-    }
-
-    "log the size of a result set" >> {
-      "when the method returns nothing" >> {
-        robProxy.setName("rob bob")
-        stats.summary.labels.contains("result-count") mustBe false
-      }
-
-      "when the method returns a ref" >> {
-        bobProxy.name mustEqual "bob"
-        stats.summary.labels.contains("result-count") mustBe true
-        stats.summary.labels("result-count").toInt mustEqual 1
-      }
-
-      "when the method returns an array" >> {
-        bobProxy.nameParts.toList mustEqual List("bob", "marley")
-        stats.summary.labels.contains("result-count") mustBe true
-        stats.summary.labels("result-count").toInt mustEqual 2
-      }
-
-      "when the method returns a seq" >> {
-        bobProxy.nameParts.toList mustEqual List("bob", "marley")
-        stats.summary.labels.contains("result-count") mustBe true
-        stats.summary.labels("result-count").toInt mustEqual 2
-      }
-    }
-
-    "only logs methods from the specified set" in {
-      filteredBobProxy.name
-      filteredBobProxy.nameParts
-
-      stats.summary.labels.contains("operation") mustBe true
-      stats.summary.labels("operation") must include("Bob:name")
-      stats.summary.labels("operation") mustNot include("Bob:nameParts")
-    }
-  } */
-
-  "New School Logging Proxy" should {
-    val future = new Future("test", 1, 1, 1.second, 1.second)
+  "Logging Proxy" should {
+    val gFuture = new GizzardFuture("test", 1, 1, 1.second, 1.second)
+    val executor = Executors.newSingleThreadExecutor()
 
     val bob = new Named {
       def name = {
@@ -101,11 +46,21 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       def nameParts = throw new Exception("yarrg!")
       def namePartsSeq = {
         Stats.transaction.record("before thread")
-        val f = future {
+        val f = gFuture {
           Stats.transaction.record("in thread")
           Seq("bob", "marley")
         }
         f.get()
+      }
+      def asyncName = {
+        val promise = new Promise[String]
+        executor.submit(new Runnable {
+          def run = {
+            Thread.sleep(101)
+            promise.setValue("bob")
+          }
+        })
+        promise
       }
     }
 
@@ -116,17 +71,12 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
 
     val sampledStats = new FakeTransactionalStatsConsumer
     val sampledLoggingConsumer = new SampledTransactionalStatsConsumer(sampledStats, 1)
-//    val slowStats = new FakeLogger
-//    val slowDuration = 5.millis
-//    val sampledStats = new FakeLogger
-//    val sampledRate = 1
     val bobProxyFactory = new LoggingProxy[Named](Seq(sampledLoggingConsumer), "request", None)
     val bobProxy = bobProxyFactory(bob)
     val robProxyFactory = new LoggingProxy[Namer](Seq(sampledLoggingConsumer), "request", None)
     val robProxy = robProxyFactory(rob)
 
     doAfter {
-//      slowStats.reset
       sampledStats.reset
     }
 
@@ -135,6 +85,14 @@ object LoggingProxySpec extends ConfiguredSpecification with JMocker with ClassM
       val messages = sampledStats.stats.toSeq.map { _.message }
       messages(0) mustEqual "ack"
       messages(1) must startWith("Total duration:")
+    }
+
+    "log a trace async" in {
+      bobProxy.asyncName.apply()
+      Stats.transactionOpt mustEqual None
+      val messages = sampledStats.stats.toSeq.map { _.message }
+      messages(0) must startWith("Total duration:")
+      sampledStats.stats.get("duration").get.asInstanceOf[Long] must beGreaterThan(100L)
     }
 
     "log a trace across threads" in {

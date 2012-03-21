@@ -2,7 +2,7 @@ package com.twitter.gizzard
 
 import com.twitter.ostrich.stats.{DevNullStats, StatsCollection, Stats => OStats, StatsSummary, StatsProvider, Counter, Metric}
 import com.twitter.logging.Logger
-import com.twitter.util.Time
+import com.twitter.util.{Local, Time}
 import scala.collection.mutable
 import java.util.Random
 
@@ -29,7 +29,7 @@ object Stats extends FilteredStatsProvider(OStats) {
     transactionOpt.getOrElse(DevNullTransactionalStats)
   }
 
-  def transactionOpt = tl.get().headOption
+  def transactionOpt = transStack.headOption
 
   def beginTransaction() {
     val newTransaction = transactionOpt match {
@@ -41,13 +41,13 @@ object Stats extends FilteredStatsProvider(OStats) {
 
   def endTransaction() = {
     transactionOpt match {
-      case Some(t) => tl.get().pop()
+      case Some(t) => transStack.pop()
       case None => DevNullTransactionalStats
     }
   }
 
   def setTransaction(collection: TransactionalStatsProvider) {
-    tl.get().push(collection)
+    transStack.push(collection)
   }
 
   def withTransaction[T <: Any](f: => T): (T, TransactionalStatsProvider) = {
@@ -57,9 +57,19 @@ object Stats extends FilteredStatsProvider(OStats) {
     (rv, t)
   }
 
-  private val tl = new ThreadLocal[mutable.Stack[TransactionalStatsProvider]] {
-    override def initialValue() = new mutable.Stack[TransactionalStatsProvider]()
+  // We use a com.twitter.util.Local instead of a ThreadLocal to hold our transaction
+  // stack so it can be threaded through a Future-based execution context.
+  private val localTransStack = new Local[mutable.Stack[TransactionalStatsProvider]]
+
+  // Initialize our transaction stack on the current thread if it hasn't already been.
+  private def transStack = {
+    localTransStack() getOrElse {
+      val newStack = new mutable.Stack[TransactionalStatsProvider]
+      localTransStack.update(newStack)
+      newStack
+    }
   }
+
   private val rng = new Random
 }
 
