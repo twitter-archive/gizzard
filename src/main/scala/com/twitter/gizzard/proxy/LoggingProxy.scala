@@ -10,7 +10,6 @@ import com.twitter.gizzard.scheduler.JsonJob
  * Wrap an object's method calls in a logger that sends the method name, arguments, and elapsed
  * time to a transactional logger.
  *
- * TODO: This proxy should no longer be needed once Gizzard services have switched to Finagle.
  */
 class LoggingProxy[T <: AnyRef](
   consumers: Seq[TransactionalStatsConsumer], statGrouping: String, name: Option[String])(implicit manifest: Manifest[T]) {
@@ -24,6 +23,9 @@ class LoggingProxy[T <: AnyRef](
       val startTime = Time.now
       try {
         val ret = method()
+        // TODO: The logic below and Stats' use of com.twitter.util.Local ensures our stats below
+        // are updated correctly for async computations, but any stats inside method() wouldn't be.
+        // Replace this eventually with a mechanism more suited to Finagle.
         ret match {
           case f: Future[_] => {
             f onSuccess { _ =>
