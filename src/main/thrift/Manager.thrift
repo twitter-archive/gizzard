@@ -55,6 +55,26 @@ struct Host {
   4: HostStatus status
 }
 
+struct AddLinkRequest {
+  1: required ShardId up_id
+  2: required ShardId down_id
+  3: required i32 weight
+}
+
+struct RemoveLinkRequest {
+  1: required ShardId up_id
+  2: required ShardId down_id
+}
+
+union TransformOperation {
+  1: optional ShardInfo create_shard
+  2: optional ShardId delete_shard
+  3: optional AddLinkRequest add_link
+  4: optional RemoveLinkRequest remove_link
+  5: optional Forwarding set_forwarding
+  6: optional Forwarding remove_forwarding
+}
+
 service Manager {
   void reload_updated_forwardings() throws(1: GizzardException ex)
   void reload_config() throws(1: GizzardException ex)
