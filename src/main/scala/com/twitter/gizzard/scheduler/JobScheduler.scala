@@ -164,7 +164,6 @@ extends Process with JobConsumer {
             errorQueue.put(job)
           case e: BadJsonJobException =>
             badJobQueue.put(job)
-            Logger.get("bad_jobs").error(job.toString)
             Stats.incr("job-bad-count")
           case e =>
             Stats.incr("job-error-count")
@@ -173,7 +172,6 @@ extends Process with JobConsumer {
             job.errorMessage = e.toString
             if (job.errorCount > errorLimit) {
               badJobQueue.put(job)
-              Logger.get("bad_jobs").error(job.toString)
               Stats.incr("job-bad-count")
             } else {
               errorQueue.put(job)
