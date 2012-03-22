@@ -1,80 +1,107 @@
 package com.twitter.gizzard.nameserver
 
+import java.nio.ByteBuffer
 import java.sql.{ResultSet, SQLException, SQLIntegrityConstraintViolationException}
 import scala.collection.mutable
 import com.twitter.querulous.evaluator.QueryEvaluator
 import com.twitter.gizzard.util.TreeUtils
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.thrift
+import com.twitter.logging.Logger
 
 
 object SqlShard {
-  val SHARDS_DDL = """
-CREATE TABLE IF NOT EXISTS shards (
-    class_name              VARCHAR(125) NOT NULL,
-    hostname                VARCHAR(125) NOT NULL,
-    table_prefix            VARCHAR(125) NOT NULL,
-    source_type             VARCHAR(125),
-    destination_type        VARCHAR(125),
-    busy                    TINYINT      NOT NULL DEFAULT 0,
+  // ordered (name -> ddl), and a map for convenience
+  val DDLS =
+    Seq(
+    "shards" -> """
+      CREATE TABLE IF NOT EXISTS shards (
+          class_name              VARCHAR(125) NOT NULL,
+          hostname                VARCHAR(125) NOT NULL,
+          table_prefix            VARCHAR(125) NOT NULL,
+          source_type             VARCHAR(125),
+          destination_type        VARCHAR(125),
+          busy                    TINYINT      NOT NULL DEFAULT 0,
 
-   PRIMARY KEY (hostname, table_prefix),
-   INDEX idx_busy (busy)
-) ENGINE=INNODB
-"""
+        PRIMARY KEY (hostname, table_prefix),
+        INDEX idx_busy (busy)
+      ) ENGINE=INNODB
+      """,
+    "shard_children" -> """
+      CREATE TABLE IF NOT EXISTS shard_children (
+          parent_hostname         VARCHAR(125) NOT NULL,
+          parent_table_prefix     VARCHAR(125) NOT NULL,
+          child_hostname          VARCHAR(125) NOT NULL,
+          child_table_prefix      VARCHAR(125) NOT NULL,
+          weight                  INT          NOT NULL DEFAULT 1,
 
-  val SHARD_CHILDREN_DDL = """
-CREATE TABLE IF NOT EXISTS shard_children (
-    parent_hostname         VARCHAR(125) NOT NULL,
-    parent_table_prefix     VARCHAR(125) NOT NULL,
-    child_hostname          VARCHAR(125) NOT NULL,
-    child_table_prefix      VARCHAR(125) NOT NULL,
-    weight                  INT          NOT NULL DEFAULT 1,
+          PRIMARY KEY (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
+          INDEX idx_parent (parent_hostname, parent_table_prefix, weight),
+          INDEX idx_child (child_hostname, child_table_prefix, weight)
+      ) ENGINE=INNODB
+      """,
+    "forwardings" -> """
+      CREATE TABLE IF NOT EXISTS forwardings (
+          table_id                INT                     NOT NULL,
+          base_source_id          BIGINT                  NOT NULL,
+          shard_hostname          VARCHAR(125)            NOT NULL,
+          shard_table_prefix      VARCHAR(125)            NOT NULL,
+          deleted                 TINYINT                 NOT NULL DEFAULT 0,
+          updated_seq             BIGINT                  NOT NULL,
 
-    PRIMARY KEY (parent_hostname, parent_table_prefix, child_hostname, child_table_prefix),
-    INDEX idx_parent (parent_hostname, parent_table_prefix, weight),
-    INDEX idx_child (child_hostname, child_table_prefix, weight)
-) ENGINE=INNODB
-"""
+          PRIMARY KEY (table_id, base_source_id),
+          UNIQUE uni_shard (shard_hostname, shard_table_prefix),
+          INDEX  idx_updated  (updated_seq)
+      ) ENGINE=INNODB;
+      """,
+    "update_counters" -> """
+      CREATE TABLE IF NOT EXISTS update_counters (
+          id                      VARCHAR(25) NOT NULL,
+          counter                 BIGINT      NOT NULL DEFAULT 0,
 
-  val FORWARDINGS_DDL = """
-CREATE TABLE IF NOT EXISTS forwardings (
-    table_id                INT                     NOT NULL,
-    base_source_id          BIGINT                  NOT NULL,
-    shard_hostname          VARCHAR(125)            NOT NULL,
-    shard_table_prefix      VARCHAR(125)            NOT NULL,
-    deleted                 TINYINT                 NOT NULL DEFAULT 0,
-    updated_seq             BIGINT                  NOT NULL,
+          PRIMARY KEY (id)
+      ) ENGINE=INNODB;
+      """,
+    "hosts" -> """
+      CREATE TABLE IF NOT EXISTS hosts (
+          hostname                VARCHAR(125) NOT NULL,
+          port                    INT          NOT NULL,
+          cluster                 VARCHAR(125) NOT NULL,
+          status                  INT          NOT NULL DEFAULT 0,
 
-    PRIMARY KEY (table_id, base_source_id),
-    UNIQUE uni_shard (shard_hostname, shard_table_prefix),
-    INDEX  idx_updated  (updated_seq)
-) ENGINE=INNODB;
-"""
+          PRIMARY KEY (hostname, port),
+          INDEX idx_cluster (cluster, status)
+      ) ENGINE=INNODB;
+      """,
+    // logs have a UUID id in order to avoid coordination between nameservers
+    "logs" -> """
+      CREATE TABLE IF NOT EXISTS logs (
+          id                        BINARY(16)   NOT NULL,
+          name                      VARCHAR(128) NOT NULL,
 
-  val UPDATE_COUNTER_DDL = """
-CREATE TABLE IF NOT EXISTS update_counters (
-    id                      VARCHAR(25) NOT NULL,
-    counter                 BIGINT      NOT NULL DEFAULT 0,
+          PRIMARY KEY (id),
+          UNIQUE KEY id (name)
+      ) ENGINE=INNODB;
+      """,
+    "log_entries" -> """
+      CREATE TABLE IF NOT EXISTS log_entries (
+          log_id               BINARY(16)      NOT NULL,
+          id                   INT             NOT NULL,
+          content              VARBINARY(1024) NOT NULL,
+          deleted              BOOL            NOT NULL DEFAULT FALSE,
 
-    PRIMARY KEY (id)
-) ENGINE=INNODB;
-"""
+          PRIMARY KEY (log_id, id),
+          FOREIGN KEY (log_id) REFERENCES logs(id) ON DELETE CASCADE
+      ) ENGINE=INNODB;
+      """
+    )
+  val DDLS_MAP = DDLS.toMap
 
-  val HOSTS_DDL = """
-CREATE TABLE IF NOT EXISTS hosts (
-    hostname                VARCHAR(125) NOT NULL,
-    port                    INT          NOT NULL,
-    cluster                 VARCHAR(125) NOT NULL,
-    status                  INT          NOT NULL DEFAULT 0,
-
-    PRIMARY KEY (hostname, port),
-    INDEX idx_cluster (cluster, status)
-) ENGINE=INNODB;
-"""
+  val log = Logger.get(getClass)
 }
 
-
 class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManagerSource {
+  import SqlShard._
 
   private def rowToShardInfo(row: ResultSet) = {
     ShardInfo(ShardId(row.getString("hostname"), row.getString("table_prefix")), row.getString("class_name"),
@@ -286,10 +313,47 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     queryEvaluator.select("SELECT * FROM shards where busy IN (1, 2, 3)")(rowToShardInfo).toList
   }
 
+  def logCreate(id: Array[Byte], logName: String): Unit =
+    queryEvaluator.execute(
+      "INSERT INTO logs (id, name) VALUES (?, ?)",
+      id,
+      logName
+    )
+
+  def logGet(logName: String): Option[Array[Byte]] =
+    queryEvaluator.selectOne("SELECT id FROM logs WHERE name = ?", logName) { res =>
+      res.getBytes("id")
+    }
+
+  def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit =
+    queryEvaluator.execute(
+      "INSERT INTO log_entries (log_id, id, content) VALUES (?, ?, ?)",
+      logId,
+      entry.id,
+      entry.getContent
+    )
+
+  def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry] =
+    // select the 'last' K live entries
+    queryEvaluator.select(
+      "SELECT id, content FROM log_entries WHERE log_id = ? AND deleted = false ORDER BY log_id, id DESC LIMIT ?",
+      logId,
+      count
+    ) { row =>
+      new thrift.LogEntry(row.getInt("id"), ByteBuffer.wrap(row.getBytes("content")))
+    }
+
+  def logEntryPop(logId: Array[Byte], entryId: Int): Unit =
+    queryEvaluator.execute(
+      "UPDATE log_entries SET deleted = true WHERE log_id = ? AND id = ? LIMIT 1",
+      logId,
+      entryId
+    )
+
   def prepareReload() {
     try {
-      List("shards", "shard_children", "forwardings", "update_counters", "hosts").foreach { table =>
-        queryEvaluator.select("DESCRIBE " + table) { row => }
+      SqlShard.DDLS.foreach {
+        case (name, ddl) => queryEvaluator.select("DESCRIBE " + name) { row => }
       }
     } catch {
       case e: SQLException =>
@@ -299,10 +363,12 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   def rebuildSchema() {
-    queryEvaluator.execute(SqlShard.SHARDS_DDL)
-    queryEvaluator.execute(SqlShard.SHARD_CHILDREN_DDL)
-    queryEvaluator.execute(SqlShard.FORWARDINGS_DDL)
-    queryEvaluator.execute(SqlShard.UPDATE_COUNTER_DDL)
+    log.info("Rebuilding schemas...")
+    SqlShard.DDLS.foreach {
+      case (name, ddl) =>
+        log.info("Schema: " + name)
+        queryEvaluator.execute(ddl)
+    }
   }
 }
 
@@ -371,7 +437,6 @@ class SqlRemoteClusterManagerSource(queryEvaluator: QueryEvaluator) extends Remo
   }
 
   def rebuildSchema() {
-    queryEvaluator.execute(SqlShard.HOSTS_DDL)
+    queryEvaluator.execute(SqlShard.DDLS_MAP("hosts"))
   }
-
 }

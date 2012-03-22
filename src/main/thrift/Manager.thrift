@@ -55,6 +55,11 @@ struct Host {
   4: HostStatus status
 }
 
+struct LogEntry {
+  1: required i32 id
+  2: required binary content
+}
+
 service Manager {
   void reload_updated_forwardings() throws(1: GizzardException ex)
   void reload_config() throws(1: GizzardException ex)
@@ -116,6 +121,19 @@ service Manager {
 
   void add_fanout_for(1: i32 priority, 2: string suffix) throws(1: GizzardException ex)
   void remove_fanout_for(1: i32 priority, 2: string suffix) throws(1: GizzardException ex)
+
+  // rollback log management
+
+  // create a new log for the given name (must not already exist), and return a log_id
+  binary log_create(1: string log_name)
+  // return the log_id for the given log_name, which must exist
+  binary log_get(1: string log_name)
+  // push the given content as a log entry to the end of the given log
+  void log_entry_push(1: binary log_id, 2: LogEntry log_entry)
+  // peek at (but don't remove) the last entry in the log
+  list<LogEntry> log_entry_peek(1: binary log_id, 2: i32 count)
+  // pop (remove) the last entry in the log, which must match the given id
+  void log_entry_pop(1: binary log_id, 2: i32 log_entry_id)
 
   // remote host cluster management
 

@@ -3,6 +3,7 @@ package com.twitter.gizzard.nameserver
 import scala.collection.mutable
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.util.TreeUtils
+import com.twitter.gizzard.thrift
 
 
 class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository) {
@@ -93,4 +94,13 @@ trait ShardManagerSource {
 
   @throws(classOf[ShardException]) def listHostnames(): Seq[String]
   @throws(classOf[ShardException]) def listTables(): Seq[Int]
+
+  @throws(classOf[ShardException]) def logCreate(id: Array[Byte], logName: String): Unit
+  @throws(classOf[ShardException]) def logGet(logName: String): Option[Array[Byte]]
+  @throws(classOf[ShardException]) def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit
+  @throws(classOf[ShardException]) def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry]
+  @throws(classOf[ShardException]) def logEntryPop(logId: Array[Byte], entryId: Int): Unit
+
+  /** For JMocker. TODO: switch to a better mocking framework */
+  override def toString() = "<%s>".format(this.getClass)
 }

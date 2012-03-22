@@ -1,5 +1,6 @@
 package com.twitter.gizzard.thrift
 
+import java.nio.ByteBuffer
 import java.util.{List => JList}
 import scala.reflect.Manifest
 import scala.collection.JavaConversions._
@@ -21,6 +22,7 @@ class ManagerService(
   shardManager: ShardManager,
   adminJobManager: AdminJobManager,
   remoteClusterManager: RemoteClusterManager,
+  rollbackLogManager: RollbackLogManager,
   scheduler: PrioritizingJobScheduler)
 extends Manager.Iface {
 
@@ -143,6 +145,18 @@ extends Manager.Iface {
   def add_fanout_for(priority: Int, suffix: String)        = wrapEx(scheduler(priority).addFanout(suffix))
   def remove_fanout_for(priority: Int, suffix: String)     = wrapEx(scheduler(priority).removeFanout(suffix))
 
+  // Rollback log management
+
+  def log_create(log_name: String): ByteBuffer =
+    rollbackLogManager.create(log_name)
+  def log_get(log_name: String): ByteBuffer =
+    rollbackLogManager.get(log_name).orNull
+  def log_entry_push(log_id: ByteBuffer, entry: LogEntry): Unit =
+    rollbackLogManager.entryPush(log_id, entry)
+  def log_entry_peek(log_id: ByteBuffer, count: Int): JList[LogEntry] =
+    rollbackLogManager.entryPeek(log_id, count)
+  def log_entry_pop(log_id: ByteBuffer, log_entry_id: Int): Unit =
+    rollbackLogManager.entryPop(log_id, log_entry_id)
 
   // Remote Host Cluster Management
 
