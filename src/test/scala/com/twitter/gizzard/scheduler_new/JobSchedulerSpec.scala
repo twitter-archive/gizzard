@@ -7,6 +7,7 @@ import org.specs.mock.{ClassMocker, JMocker}
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.ConfiguredSpecification
 import com.twitter.gizzard.nameserver.JobRelay
+import com.twitter.gizzard.Stats
 
 
 class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -180,6 +181,16 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         }
 
         jobScheduler.process()
+      }
+
+      "handle queue errors" in {
+        Stats.clearAll()
+        expect {
+          one(queue).get() willThrow new Exception("bad queue")
+        }
+
+        jobScheduler.process()
+        Stats.getCounter("uncaught-exceptions")() mustEqual 1
       }
 
       "too many errors" in {
