@@ -142,50 +142,56 @@ extends Process with JobConsumer {
 
   // hook to let unit tests stub out threads.
   protected def processWork() {
-    process()
+      process()
   }
 
   def process() {
-    queue.get.foreach { ticket =>
-      _activeThreads.incrementAndGet()
-      try {
-        val job = ticket.job
+    try {
+      queue.get.foreach { ticket =>
+        _activeThreads.incrementAndGet()
         try {
-          if (isReplicated && job.shouldReplicate && !job.wasReplicated) {
-            jobAsyncReplicator.enqueue(job.toJsonBytes)
-            job.setReplicated()
-          }
-          job()
-          Stats.incr("job-success-count")
-        } catch {
-          case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
-          case e: ShardOfflineException =>
-            Stats.incr("job-blocked-count")
-            errorQueue.put(job)
-          case e: BadJsonJobException =>
-            badJobQueue.put(job)
-            Logger.get("bad_jobs").error(job.toString)
-            Stats.incr("job-bad-count")
-          case e =>
-            Stats.incr("job-error-count")
-            exceptionLog.error(e, "Job: %s", job)
-            job.errorCount += 1
-            job.errorMessage = e.toString
-            if (job.errorCount > errorLimit) {
+          val job = ticket.job
+          try {
+            if (isReplicated && job.shouldReplicate && !job.wasReplicated) {
+              jobAsyncReplicator.enqueue(job.toJsonBytes)
+              job.setReplicated()
+            }
+            job()
+            Stats.incr("job-success-count")
+          } catch {
+            case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
+            case e: ShardOfflineException =>
+              Stats.incr("job-blocked-count")
+              errorQueue.put(job)
+            case e: BadJsonJobException =>
               badJobQueue.put(job)
               Logger.get("bad_jobs").error(job.toString)
               Stats.incr("job-bad-count")
-            } else {
-              errorQueue.put(job)
-            }
+            case e =>
+              Stats.incr("job-error-count")
+              exceptionLog.error(e, "Job: %s", job)
+              job.errorCount += 1
+              job.errorMessage = e.toString
+              if (job.errorCount > errorLimit) {
+                badJobQueue.put(job)
+                Logger.get("bad_jobs").error(job.toString)
+                Stats.incr("job-bad-count")
+              } else {
+                errorQueue.put(job)
+              }
+          }
+          job.nextJob match {
+            case None => ticket.ack()
+            case _    => ticket.continue(job.nextJob.get)
+          }
+        } finally {
+          _activeThreads.decrementAndGet()
         }
-        job.nextJob match {
-          case None => ticket.ack()
-          case _    => ticket.continue(job.nextJob.get)
-        }
-      } finally {
-        _activeThreads.decrementAndGet()
       }
+    } catch {
+      case e =>
+        log.error(e, "Uncaught exception in gizzard worker thread")
+        Stats.incr("job-scheduler-uncaught-exceptions")
     }
   }
 }
