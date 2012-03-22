@@ -87,7 +87,7 @@ object SqlShard {
       CREATE TABLE IF NOT EXISTS log_entries (
           log_id               BINARY(16)      NOT NULL,
           id                   INT             NOT NULL,
-          content              VARBINARY(1024) NOT NULL,
+          command              VARBINARY(1024) NOT NULL,
           deleted              BOOL            NOT NULL DEFAULT FALSE,
 
           PRIMARY KEY (log_id, id),
@@ -325,22 +325,24 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
       res.getBytes("id")
     }
 
-  def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit =
+  def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit = {
+    val commandBuffer = TransformCommand.serialize(entry.command)
     queryEvaluator.execute(
-      "INSERT INTO log_entries (log_id, id, content) VALUES (?, ?, ?)",
+      "INSERT INTO log_entries (log_id, id, command) VALUES (?, ?, ?)",
       logId,
       entry.id,
-      entry.getContent
+      commandBuffer
     )
+  }
 
   def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry] =
     // select the 'last' K live entries
     queryEvaluator.select(
-      "SELECT id, content FROM log_entries WHERE log_id = ? AND deleted = false ORDER BY log_id, id DESC LIMIT ?",
+      "SELECT id, command FROM log_entries WHERE log_id = ? AND deleted = false ORDER BY log_id, id DESC LIMIT ?",
       logId,
       count
     ) { row =>
-      new thrift.LogEntry(row.getInt("id"), ByteBuffer.wrap(row.getBytes("content")))
+      new thrift.LogEntry(row.getInt("id"), TransformCommand.deserialize(row.getBytes("command")))
     }
 
   def logEntryPop(logId: Array[Byte], entryId: Int): Unit =

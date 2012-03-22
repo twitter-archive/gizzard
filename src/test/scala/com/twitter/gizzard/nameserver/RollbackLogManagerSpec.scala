@@ -32,7 +32,6 @@ object RollbackLogManagerSpec extends ConfiguredSpecification {
   
   val IdGen = new java.util.concurrent.atomic.AtomicInteger(0)
   def logEntry(
-    id: Int = IdGen.getAndIncrement(),
-    content: ByteBuffer = ByteBuffer.wrap(("" + IdGen.getAndIncrement).getBytes)
-  ) = new thrift.LogEntry(id, content)
+    id: Int = IdGen.getAndIncrement()
+  ) = new thrift.LogEntry(id, null)
 }

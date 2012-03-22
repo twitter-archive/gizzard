@@ -11,7 +11,7 @@ import com.twitter.gizzard.thrift
  * Useful for tests or stubbing out the partitioning scheme.
  */
 object MemoryShardManagerSource {
-  class LogEntry(val logId: ByteBuffer, val id: Int, val content: ByteBuffer, var deleted: Boolean) {
+  class LogEntry(val logId: ByteBuffer, val id: Int, val command: thrift.TransformCommand, var deleted: Boolean) {
     override def equals(o: Any) = o match {
       case that: LogEntry if that.logId == this.logId && that.id == this.id => true
       case _ => false
@@ -185,7 +185,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
     }.headOption
 
   def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit = {
-    val le = new LogEntry(ByteBuffer.wrap(logId), entry.id, entry.content, false)
+    val le = new LogEntry(ByteBuffer.wrap(logId), entry.id, entry.command, false)
     if (!logEntries.contains(le))
       logEntries += le
     else
@@ -199,7 +199,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
         case e if e.logId == logId && !e.deleted => e
       }.take(count)
     peeked.map { e =>
-      new thrift.LogEntry().setId(e.id).setContent(e.content)
+      new thrift.LogEntry().setId(e.id).setCommand(e.command)
     }.toSeq
   }
 

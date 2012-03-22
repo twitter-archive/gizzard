@@ -77,7 +77,7 @@ union TransformCommand {
 
 struct LogEntry {
   1: required i32 id
-  2: required binary content
+  2: required TransformCommand command
 }
 
 service Manager {
@@ -148,7 +148,7 @@ service Manager {
   binary log_create(1: string log_name)
   // return the log_id for the given log_name, which must exist
   binary log_get(1: string log_name)
-  // push the given content as a log entry to the end of the given log
+  // push the given command log entry to the end of the given log
   void log_entry_push(1: binary log_id, 2: LogEntry log_entry)
   // peek at (but don't remove) the last entry in the log
   list<LogEntry> log_entry_peek(1: binary log_id, 2: i32 count)

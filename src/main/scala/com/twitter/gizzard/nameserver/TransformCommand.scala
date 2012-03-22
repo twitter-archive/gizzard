@@ -6,6 +6,7 @@ import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.shards.{ShardId, ShardInfo}
+import com.twitter.util.CompactThriftSerializer
 
 sealed abstract class TransformCommand
 case class CreateShard(shardInfo : ShardInfo) extends TransformCommand
@@ -31,5 +32,14 @@ object TransformCommand {
       case SET_FORWARDING => SetForwarding(thriftCommand.getSet_forwarding().fromThrift)
       case REMOVE_FORWARDING => RemoveForwarding(thriftCommand.getRemove_forwarding().fromThrift)
     }
+  }
+
+  def serialize(thriftCommand: ThriftTransformCommand): Array[Byte] =
+    new CompactThriftSerializer().toBytes(thriftCommand)
+
+  def deserialize(buffer: Array[Byte]): ThriftTransformCommand = {
+    val thriftCommand = new ThriftTransformCommand()
+    new CompactThriftSerializer().fromBytes(thriftCommand, buffer)
+    thriftCommand
   }
 }
