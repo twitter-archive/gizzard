@@ -191,7 +191,7 @@ extends Process with JobConsumer {
     } catch {
       case e =>
         log.error(e, "Uncaught exception in gizzard worker thread")
-        Stats.incr("uncaught-exceptions")
+        Stats.incr("job-scheduler-uncaught-exceptions")
     }
   }
 }

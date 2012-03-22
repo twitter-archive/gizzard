@@ -190,7 +190,7 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
         }
 
         jobScheduler.process()
-        Stats.getCounter("uncaught-exceptions")() mustEqual 1
+        Stats.getCounter("job-scheduler-uncaught-exceptions")() mustEqual 1
       }
 
       "too many errors" in {
