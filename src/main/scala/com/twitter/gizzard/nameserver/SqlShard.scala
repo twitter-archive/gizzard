@@ -326,7 +326,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     }
 
   def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit = {
-    val commandBuffer = TransformCommand.serialize(entry.command)
+    val commandBuffer = TransformOperation.serialize(entry.command)
     queryEvaluator.execute(
       "INSERT INTO log_entries (log_id, id, command) VALUES (?, ?, ?)",
       logId,
@@ -342,7 +342,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
       logId,
       count
     ) { row =>
-      new thrift.LogEntry(row.getInt("id"), TransformCommand.deserialize(row.getBytes("command")))
+      new thrift.LogEntry(row.getInt("id"), TransformOperation.deserialize(row.getBytes("command")))
     }
 
   def logEntryPop(logId: Array[Byte], entryId: Int): Unit =

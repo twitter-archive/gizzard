@@ -11,7 +11,7 @@ import com.twitter.gizzard.thrift
  * Useful for tests or stubbing out the partitioning scheme.
  */
 object MemoryShardManagerSource {
-  class LogEntry(val logId: ByteBuffer, val id: Int, val command: thrift.TransformCommand, var deleted: Boolean) {
+  class LogEntry(val logId: ByteBuffer, val id: Int, val command: thrift.TransformOperation, var deleted: Boolean) {
     override def equals(o: Any) = o match {
       case that: LogEntry if that.logId == this.logId && that.id == this.id => true
       case _ => false

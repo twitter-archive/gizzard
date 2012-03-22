@@ -69,7 +69,7 @@ struct RemoveLinkRequest {
 # a 'commit' object is really just a placeholder, so we represent it here as 1 byte
 typedef bool Commit
 
-union TransformCommand {
+union TransformOperation {
   1: optional ShardInfo create_shard
   2: optional ShardId delete_shard
   3: optional AddLinkRequest add_link
@@ -81,7 +81,7 @@ union TransformCommand {
 
 struct LogEntry {
   1: required i32 id
-  2: required TransformCommand command
+  2: required TransformOperation command
 }
 
 service Manager {
