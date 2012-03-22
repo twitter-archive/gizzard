@@ -15,6 +15,7 @@ case class AddLink(upId : ShardId, downId : ShardId, weight : Int) extends Trans
 case class RemoveLink(upId : ShardId, downId : ShardId) extends TransformCommand
 case class SetForwarding(forwarding : Forwarding) extends TransformCommand
 case class RemoveForwarding(forwarding : Forwarding) extends TransformCommand
+case object Commit extends TransformCommand
 
 object TransformCommand {
   def apply(thriftCommand : ThriftTransformCommand) : TransformCommand = {
@@ -31,6 +32,7 @@ object TransformCommand {
       }
       case SET_FORWARDING => SetForwarding(thriftCommand.getSet_forwarding().fromThrift)
       case REMOVE_FORWARDING => RemoveForwarding(thriftCommand.getRemove_forwarding().fromThrift)
+      case COMMIT => Commit
     }
   }
 

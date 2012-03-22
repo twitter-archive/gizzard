@@ -66,6 +66,9 @@ struct RemoveLinkRequest {
   2: required ShardId down_id
 }
 
+# a 'commit' object is really just a placeholder, so we represent it here as 1 byte
+typedef bool Commit
+
 union TransformCommand {
   1: optional ShardInfo create_shard
   2: optional ShardId delete_shard
@@ -73,6 +76,7 @@ union TransformCommand {
   4: optional RemoveLinkRequest remove_link
   5: optional Forwarding set_forwarding
   6: optional Forwarding remove_forwarding
+  7: optional Commit commit
 }
 
 struct LogEntry {
