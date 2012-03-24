@@ -35,7 +35,9 @@ extends Manager.Iface {
   }
 
   def reload_updated_forwardings() = wrapEx {
-    nameServer.reloadUpdatedForwardings()  }
+    nameServer.reloadUpdatedForwardings()
+  }
+
   def reload_config() = wrapEx {
     nameServer.reload()
     remoteClusterManager.reload()

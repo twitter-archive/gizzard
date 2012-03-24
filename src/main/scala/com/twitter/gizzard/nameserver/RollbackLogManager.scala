@@ -5,19 +5,23 @@ import java.nio.ByteBuffer
 import scala.collection.mutable
 import scala.math.Ordering
 
+import com.twitter.logging.Logger
 import com.twitter.gizzard.shards.RoutingNode
 import com.twitter.gizzard.thrift
 
 
 class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
+  import RollbackLogManager._
+
   def create(logName: String): ByteBuffer = {
-    val idArray = new Array[Byte](RollbackLogManager.UUID_BYTES)
+    val idArray = new Array[Byte](UUID_BYTES)
     val id = ByteBuffer.wrap(idArray)
     val uuid = UUID.randomUUID
     id.asLongBuffer
       .put(uuid.getMostSignificantBits)
       .put(uuid.getLeastSignificantBits)
     shard.write.foreach(_.logCreate(idArray, logName))
+    log.info("Created new rollback log for name '%s' with id %s", logName, uuid)
     id
   }
 
@@ -53,6 +57,8 @@ class RollbackLogManager(shard: RoutingNode[ShardManagerSource]) {
 }
 
 object RollbackLogManager {
+  private val log = Logger.get(getClass.getName)
+
   val UUID_BYTES = 16
 
   /**
