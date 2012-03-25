@@ -372,6 +372,19 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
         queryEvaluator.execute(ddl)
     }
   }
+
+  def batchExecute(commands : Seq[TransformOperation]) {
+    for (cmd <- commands) {
+      cmd match {
+        case CreateShard(shardInfo) => createShard(shardInfo)
+        case DeleteShard(shardId) => deleteShard(shardId)
+        case AddLink(upId, downId, weight) => addLink(upId, downId, weight)
+        case RemoveLink(upId, downId) => removeLink(upId, downId)
+        case SetForwarding(forwarding) => setForwarding(forwarding)
+        case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+      }
+    }
+  }
 }
 
 class SqlRemoteClusterManagerSource(queryEvaluator: QueryEvaluator) extends RemoteClusterManagerSource {

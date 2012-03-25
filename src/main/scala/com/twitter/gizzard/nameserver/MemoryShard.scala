@@ -163,6 +163,19 @@ class MemoryShardManagerSource extends ShardManagerSource {
     parentTable.toList
   }
 
+  def batchExecute(commands : Seq[TransformOperation]) {
+    for (cmd <- commands) {
+      cmd match {
+        case CreateShard(shardInfo) => createShard(shardInfo)
+        case DeleteShard(shardId) => deleteShard(shardId)
+        case AddLink(upId, downId, weight) => addLink(upId, downId, weight)
+        case RemoveLink(upId, downId) => removeLink(upId, downId)
+        case SetForwarding(forwarding) => setForwarding(forwarding)
+        case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+      }
+    }
+  }
+
   def getBusyShards(): Seq[ShardInfo] = {
     shardTable.filter { _.busy.id > 0 }.toList
   }

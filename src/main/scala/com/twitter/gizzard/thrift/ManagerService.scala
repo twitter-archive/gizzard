@@ -13,6 +13,7 @@ import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.scheduler._
+import com.twitter.gizzard.nameserver
 import com.twitter.gizzard.nameserver._
 import com.twitter.logging.Logger
 
@@ -114,6 +115,10 @@ extends Manager.Iface {
   def list_tables(): JList[java.lang.Integer] = wrapEx(shardManager.listTables)
 
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(shardManager.dumpStructure(tableIds.toList).map(_.toThrift))
+
+  def batch_execute(commands : JList[TransformOperation]) {
+    wrapEx(shardManager.batchExecute(commands.map(nameserver.TransformOperation.apply)))
+  }
 
   def copy_shard(shardIds: JList[ShardId]) = {
     wrapEx(adminJobManager.scheduleCopyJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))

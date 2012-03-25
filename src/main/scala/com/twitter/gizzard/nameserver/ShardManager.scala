@@ -12,6 +12,8 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def diffState(lastUpdatedSeq: Long)   = shard.read.any(_.diffState(lastUpdatedSeq))
   def dumpStructure(tableIds: Seq[Int]) = shard.read.any(_.dumpStructure(tableIds))
 
+  def batchExecute(commands : Seq[TransformOperation]) { shard.write.foreach(_.batchExecute(commands)) }
+
   @throws(classOf[ShardException])
   def createAndMaterializeShard(shardInfo: ShardInfo) {
     shard.write.foreach(_.createShard(shardInfo))
@@ -27,7 +29,6 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def shardsForHostname(hostname: String) = shard.read.any(_.shardsForHostname(hostname))
   def listShards()                        = shard.read.any(_.listShards())
   def getBusyShards()                     = shard.read.any(_.getBusyShards())
-
 
   def addLink(upId: ShardId, downId: ShardId, weight: Int) { shard.write.foreach(_.addLink(upId, downId, weight)) }
   def removeLink(upId: ShardId, downId: ShardId)           { shard.write.foreach(_.removeLink(upId, downId)) }
@@ -65,6 +66,8 @@ trait ShardManagerSource {
 
     tableIds.map(extractor)
   }
+
+  @throws(classOf[ShardException]) def batchExecute(commands : Seq[TransformOperation])
 
   @throws(classOf[ShardException]) def createShard(shardInfo: ShardInfo)
   @throws(classOf[ShardException]) def deleteShard(id: ShardId)
