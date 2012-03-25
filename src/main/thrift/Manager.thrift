@@ -116,6 +116,8 @@ service Manager {
 
   list<NameServerState> dump_nameserver(1: list<i32> table_id) throws(1: GizzardException ex)
 
+  void batch_execute(1: list<TransformOperation> commands) throws (1: GizzardException ex)
+
   // job scheduler management
 
   void retry_errors() throws(1: GizzardException ex)
