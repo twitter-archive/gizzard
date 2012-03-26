@@ -3,6 +3,7 @@ package com.twitter.gizzard.scheduler
 import scala.annotation.tailrec
 import com.twitter.util.Time
 import com.twitter.gizzard.nameserver.JobRelay
+import com.twitter.gizzard.Stats
 import net.lag.kestrel.config.QueueConfig
 import net.lag.kestrel.PersistentQueue
 import java.nio.channels.ClosedByInterruptException
