@@ -52,7 +52,9 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
               try {
                 jobRelay(cluster)(Seq(item.data))
                 queue.confirmRemove(item.xid)
+                Stats.incr("jobs-replicated-" + cluster)
               } catch { case e =>
+                Stats.incr("jobs-replication-failed-" + cluster)
                 exceptionLog.error(e, "Exception in job replication for cluster %s: %s", cluster, e.toString)
                 queue.unremove(item.xid)
               }
@@ -82,6 +84,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
       qs.values foreach { _.setup }
 
       for (c <- qs.keys; i <- 0 until threadsPerCluster) {
+        log.info("Starting processor [%d/%d] for cluster %s", i, threadsPerCluster, c)
         threadpool.submit(newProcessor(c))
       }
     }
