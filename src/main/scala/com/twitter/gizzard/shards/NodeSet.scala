@@ -194,6 +194,9 @@ trait NodeIterable[+T] {
   def foreach[U](f: T => U) {
     this foreach { (_, t) => f(t) }
   }
+
+  override def toString() =
+    "<NodeIterable(%s)>".format(rootInfo)
 }
 
 class NodeSet[+T](

@@ -1,5 +1,6 @@
 package com.twitter.gizzard.thrift
 
+import java.nio.ByteBuffer
 import java.util.{List => JList}
 import scala.reflect.Manifest
 import scala.collection.JavaConversions._
@@ -12,6 +13,7 @@ import com.twitter.gizzard.thrift.conversions.Forwarding._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.scheduler._
+import com.twitter.gizzard.nameserver
 import com.twitter.gizzard.nameserver._
 import com.twitter.logging.Logger
 
@@ -21,6 +23,7 @@ class ManagerService(
   shardManager: ShardManager,
   adminJobManager: AdminJobManager,
   remoteClusterManager: RemoteClusterManager,
+  rollbackLogManager: RollbackLogManager,
   scheduler: PrioritizingJobScheduler)
 extends Manager.Iface {
 
@@ -33,7 +36,9 @@ extends Manager.Iface {
   }
 
   def reload_updated_forwardings() = wrapEx {
-    nameServer.reloadUpdatedForwardings()  }
+    nameServer.reloadUpdatedForwardings()
+  }
+
   def reload_config() = wrapEx {
     nameServer.reload()
     remoteClusterManager.reload()
@@ -111,6 +116,10 @@ extends Manager.Iface {
 
   def dump_nameserver(tableIds: JList[java.lang.Integer]) = wrapEx(shardManager.dumpStructure(tableIds.toList).map(_.toThrift))
 
+  def batch_execute(commands : JList[TransformOperation]) {
+    wrapEx(shardManager.batchExecute(commands.map(nameserver.TransformOperation.apply)))
+  }
+
   def copy_shard(shardIds: JList[ShardId]) = {
     wrapEx(adminJobManager.scheduleCopyJob(shardIds.toList.map(_.asInstanceOf[ShardId].fromThrift)))
   }
@@ -143,6 +152,18 @@ extends Manager.Iface {
   def add_fanout_for(priority: Int, suffix: String)        = wrapEx(scheduler(priority).addFanout(suffix))
   def remove_fanout_for(priority: Int, suffix: String)     = wrapEx(scheduler(priority).removeFanout(suffix))
 
+  // Rollback log management
+
+  def log_create(log_name: String): ByteBuffer =
+    rollbackLogManager.create(log_name)
+  def log_get(log_name: String): ByteBuffer =
+    rollbackLogManager.get(log_name).orNull
+  def log_entry_push(log_id: ByteBuffer, entry: LogEntry): Unit =
+    rollbackLogManager.entryPush(log_id, entry)
+  def log_entry_peek(log_id: ByteBuffer, count: Int): JList[LogEntry] =
+    rollbackLogManager.entryPeek(log_id, count)
+  def log_entry_pop(log_id: ByteBuffer, log_entry_id: Int): Unit =
+    rollbackLogManager.entryPop(log_id, log_entry_id)
 
   // Remote Host Cluster Management
 

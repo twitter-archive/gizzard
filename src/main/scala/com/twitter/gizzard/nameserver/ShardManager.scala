@@ -3,6 +3,7 @@ package com.twitter.gizzard.nameserver
 import scala.collection.mutable
 import com.twitter.gizzard.shards._
 import com.twitter.gizzard.util.TreeUtils
+import com.twitter.gizzard.thrift
 
 
 class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository) {
@@ -10,6 +11,8 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def currentState()                    = shard.read.any(_.currentState)
   def diffState(lastUpdatedSeq: Long)   = shard.read.any(_.diffState(lastUpdatedSeq))
   def dumpStructure(tableIds: Seq[Int]) = shard.read.any(_.dumpStructure(tableIds))
+
+  def batchExecute(commands : Seq[TransformOperation]) { shard.write.foreach(_.batchExecute(commands)) }
 
   @throws(classOf[ShardException])
   def createAndMaterializeShard(shardInfo: ShardInfo) {
@@ -26,7 +29,6 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def shardsForHostname(hostname: String) = shard.read.any(_.shardsForHostname(hostname))
   def listShards()                        = shard.read.any(_.listShards())
   def getBusyShards()                     = shard.read.any(_.getBusyShards())
-
 
   def addLink(upId: ShardId, downId: ShardId, weight: Int) { shard.write.foreach(_.addLink(upId, downId, weight)) }
   def removeLink(upId: ShardId, downId: ShardId)           { shard.write.foreach(_.removeLink(upId, downId)) }
@@ -65,6 +67,8 @@ trait ShardManagerSource {
     tableIds.map(extractor)
   }
 
+  @throws(classOf[ShardException]) def batchExecute(commands : Seq[TransformOperation])
+
   @throws(classOf[ShardException]) def createShard(shardInfo: ShardInfo)
   @throws(classOf[ShardException]) def deleteShard(id: ShardId)
   @throws(classOf[ShardException]) def markShardBusy(id: ShardId, busy: Busy.Value)
@@ -93,4 +97,13 @@ trait ShardManagerSource {
 
   @throws(classOf[ShardException]) def listHostnames(): Seq[String]
   @throws(classOf[ShardException]) def listTables(): Seq[Int]
+
+  @throws(classOf[ShardException]) def logCreate(id: Array[Byte], logName: String): Unit
+  @throws(classOf[ShardException]) def logGet(logName: String): Option[Array[Byte]]
+  @throws(classOf[ShardException]) def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit
+  @throws(classOf[ShardException]) def logEntryPeek(logId: Array[Byte], count: Int): Seq[thrift.LogEntry]
+  @throws(classOf[ShardException]) def logEntryPop(logId: Array[Byte], entryId: Int): Unit
+
+  /** For JMocker. TODO: switch to a better mocking framework */
+  override def toString() = "<%s>".format(this.getClass)
 }
