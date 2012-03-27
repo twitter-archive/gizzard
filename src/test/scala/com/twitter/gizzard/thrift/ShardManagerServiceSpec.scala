@@ -17,10 +17,11 @@ object ManagerServiceSpec extends ConfiguredSpecification with JMocker with Clas
   val shardManager         = mock[nameserver.ShardManager]
   val adminJobManager      = mock[AdminJobManager]
   val remoteClusterManager = mock[nameserver.RemoteClusterManager]
+  val rollbackLogManager = mock[nameserver.RollbackLogManager]
   val copier               = mock[CopyJobFactory[AnyRef]]
   val scheduler            = mock[PrioritizingJobScheduler]
   val subScheduler         = mock[JobScheduler]
-  val manager              = new ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, scheduler)
+  val manager              = new ManagerService(nameServer, shardManager, adminJobManager, remoteClusterManager, rollbackLogManager, scheduler)
 
   val shard = mock[RoutingNode[Nothing]]
   val thriftShardInfo1 = new thrift.ShardInfo(new thrift.ShardId("hostname", "table_prefix"),
