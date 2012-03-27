@@ -1,6 +1,7 @@
 package com.twitter.gizzard.scheduler
 
 import scala.annotation.tailrec
+import com.google.common.util.concurrent.ThreadFactoryBuilder
 import com.twitter.util.Time
 import com.twitter.gizzard.nameserver.JobRelay
 import com.twitter.gizzard.Stats
@@ -23,7 +24,9 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
   private val log          = Logger.get(getClass)
   private val exceptionLog = Logger.get("exception")
 
-  private val threadpool = Executors.newCachedThreadPool()
+  private val threadFactory =
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("JobAsyncReplicator-%d").build()
+  private val threadpool = Executors.newCachedThreadPool(threadFactory)
 
   def clusters = queueMap.keySet
   def queues   = queueMap.values.toSeq
@@ -85,7 +88,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
       qs.values foreach { _.setup }
 
       for (c <- qs.keys; i <- 0 until threadsPerCluster) {
-        log.info("Starting processor [%d/%d] for cluster %s", i, threadsPerCluster, c)
+        log.info("Starting processor [%d/%d] for cluster %s", i + 1, threadsPerCluster, c)
         threadpool.submit(newProcessor(c))
       }
     }
