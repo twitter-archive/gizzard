@@ -25,7 +25,7 @@ class JobAsyncReplicator(jobRelay: => JobRelay, queueConfig: QueueConfig, queueR
   private val exceptionLog = Logger.get("exception")
 
   private val threadFactory =
-    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("JobAsyncReplicator-%d").build()
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat("JobAsyncReplicator[%d]").build()
   private val threadpool = Executors.newCachedThreadPool(threadFactory)
 
   def clusters = queueMap.keySet
