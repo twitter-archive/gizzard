@@ -4,7 +4,8 @@ import com.twitter.sbt._
 class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info)
 with CompileThriftFinagle
 with DefaultRepos
-with SubversionPublisher {
+with SubversionPublisher 
+with ProjectDependencies {
 
   def finagleVersion = "1.11.0"
 
@@ -46,4 +47,11 @@ with SubversionPublisher {
     </licenses>
 
   override def subversionRepository = Some("https://svn.twitter.biz/maven-public")
+
+  /* We need stuff from the config directory to run tests in a invocation-path
+   * independent manner.
+   */
+  override def testResources = 
+    descendents(testResourcesPath ##, "*") +++
+    descendents(info.projectPath / "config" ##, "*")
 }
