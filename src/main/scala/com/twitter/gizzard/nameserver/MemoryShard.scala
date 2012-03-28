@@ -1,18 +1,33 @@
 package com.twitter.gizzard.nameserver
 
+import java.nio.ByteBuffer
 import scala.collection.mutable
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.thrift
 
 
 /**
  * NameServer implementation that doesn't actually store anything anywhere.
  * Useful for tests or stubbing out the partitioning scheme.
  */
+object MemoryShardManagerSource {
+  class LogEntry(val logId: ByteBuffer, val id: Int, val command: thrift.TransformOperation, var deleted: Boolean) {
+    override def equals(o: Any) = o match {
+      case that: LogEntry if that.logId == this.logId && that.id == this.id => true
+      case _ => false
+    }
+
+    override def hashCode() = logId.hashCode() + (31 * id)
+  }
+}
 class MemoryShardManagerSource extends ShardManagerSource {
+  import MemoryShardManagerSource._
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
+  val logs = new mutable.ListBuffer[(ByteBuffer,String)]()
+  val logEntries = new mutable.ListBuffer[LogEntry]()
 
   private def find(info: ShardInfo): Option[ShardInfo] = {
     shardTable.find { x =>
@@ -148,12 +163,67 @@ class MemoryShardManagerSource extends ShardManagerSource {
     parentTable.toList
   }
 
+  def batchExecute(commands : Seq[TransformOperation]) {
+    for (cmd <- commands) {
+      cmd match {
+        case CreateShard(shardInfo) => createShard(shardInfo)
+        case DeleteShard(shardId) => deleteShard(shardId)
+        case AddLink(upId, downId, weight) => addLink(upId, downId, weight)
+        case RemoveLink(upId, downId) => removeLink(upId, downId)
+        case SetForwarding(forwarding) => setForwarding(forwarding)
+        case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+      }
+    }
+  }
+
   def getBusyShards(): Seq[ShardInfo] = {
     shardTable.filter { _.busy.id > 0 }.toList
   }
 
   def listTables(): Seq[Int] = {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
+  }
+
+  def logCreate(id: Array[Byte], logName: String): Unit = {
+    val pair = (ByteBuffer.wrap(id), logName)
+    if (!logs.contains(pair))
+      logs += pair
+    else
+      throw new RuntimeException("Log already exists: " + pair)
+  }
+
+  def logGet(logName: String): Option[Array[Byte]] =
+    logs.collect {
+      case (id, `logName`) => id.array
+    }.headOption
+
+  def logEntryPush(logId: Array[Byte], entry: thrift.LogEntry): Unit = {
+    val le = new LogEntry(ByteBuffer.wrap(logId), entry.id, entry.command, false)
+    if (!logEntries.contains(le))
+      logEntries += le
+    else
+      throw new RuntimeException("Log entry already exists: " + le)
+  }
+
+  def logEntryPeek(rawLogId: Array[Byte], count: Int): Seq[thrift.LogEntry] = {
+    val logId = ByteBuffer.wrap(rawLogId)
+    val peeked =
+      logEntries.reverseIterator.collect {
+        case e if e.logId == logId && !e.deleted => e
+      }.take(count)
+    peeked.map { e =>
+      new thrift.LogEntry().setId(e.id).setCommand(e.command)
+    }.toSeq
+  }
+
+  def logEntryPop(rawLogId: Array[Byte], entryId: Int): Unit = {
+    val logId = ByteBuffer.wrap(rawLogId)
+    val entry = logEntries.collect {
+      case e if e.logId == logId && e.id == entryId => e
+    }.headOption.getOrElse { throw new RuntimeException(entryId + " not found for " + logId) }
+    
+    // side effect: mark deleted
+    entry.deleted = true
   }
 
   def prepareReload() { }

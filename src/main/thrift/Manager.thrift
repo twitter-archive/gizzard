@@ -55,6 +55,35 @@ struct Host {
   4: HostStatus status
 }
 
+struct AddLinkRequest {
+  1: required ShardId up_id
+  2: required ShardId down_id
+  3: required i32 weight
+}
+
+struct RemoveLinkRequest {
+  1: required ShardId up_id
+  2: required ShardId down_id
+}
+
+# a 'commit' object is really just a placeholder, so we represent it here as 1 byte
+typedef bool Commit
+
+union TransformOperation {
+  1: optional ShardInfo create_shard
+  2: optional ShardId delete_shard
+  3: optional AddLinkRequest add_link
+  4: optional RemoveLinkRequest remove_link
+  5: optional Forwarding set_forwarding
+  6: optional Forwarding remove_forwarding
+  7: optional Commit commit
+}
+
+struct LogEntry {
+  1: required i32 id
+  2: required TransformOperation command
+}
+
 service Manager {
   void reload_updated_forwardings() throws(1: GizzardException ex)
   void reload_config() throws(1: GizzardException ex)
@@ -96,6 +125,8 @@ service Manager {
 
   list<NameServerState> dump_nameserver(1: list<i32> table_id) throws(1: GizzardException ex)
 
+  void batch_execute(1: list<TransformOperation> commands) throws (1: GizzardException ex)
+
   // job scheduler management
 
   void retry_errors() throws(1: GizzardException ex)
@@ -116,6 +147,19 @@ service Manager {
 
   void add_fanout_for(1: i32 priority, 2: string suffix) throws(1: GizzardException ex)
   void remove_fanout_for(1: i32 priority, 2: string suffix) throws(1: GizzardException ex)
+
+  // rollback log management
+
+  // create a new log for the given name (must not already exist), and return a log_id
+  binary log_create(1: string log_name)
+  // return the log_id for the given log_name, which must exist
+  binary log_get(1: string log_name)
+  // push the given command log entry to the end of the given log
+  void log_entry_push(1: binary log_id, 2: LogEntry log_entry)
+  // peek at (but don't remove) the last entry in the log
+  list<LogEntry> log_entry_peek(1: binary log_id, 2: i32 count)
+  // pop (remove) the last entry in the log, which must match the given id
+  void log_entry_pop(1: binary log_id, 2: i32 log_entry_id)
 
   // remote host cluster management
 
