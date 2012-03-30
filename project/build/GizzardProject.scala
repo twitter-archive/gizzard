@@ -6,7 +6,8 @@ with CompileThriftFinagle
 with DefaultRepos
 with SubversionPublisher {
 
-  def finagleVersion = "1.11.0"
+  def finagleVersion = "3.0.0"
+  def utilVersion = "3.0.0"
 
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
@@ -20,7 +21,7 @@ with SubversionPublisher {
   val finagleThrift   = "com.twitter"          % "finagle-thrift"     % finagleVersion
   val finagleOstrich4 = "com.twitter"          % "finagle-ostrich4"   % finagleVersion
 
-  val utilThrift      = "com.twitter"          % "util-thrift"        % "2.0.0"
+  val utilThrift      = "com.twitter"          % "util-thrift"        % utilVersion
   val jackson         = "org.codehaus.jackson" % "jackson-core-asl"   % "1.9.2"
   val jacksonMap      = "org.codehaus.jackson" % "jackson-mapper-asl" % "1.9.2"
 
