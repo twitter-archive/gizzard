@@ -1,8 +1,9 @@
 package com.twitter.gizzard.shards
 
+import java.util.concurrent.CancellationException
 import com.twitter.conversions.time._
 import org.specs.Specification
-import com.twitter.util.{Try, Return, Throw, Future}
+import com.twitter.util.{Try, Return, Throw, Future, Promise}
 
 
 object NodeSetSpec extends Specification {
@@ -87,11 +88,18 @@ object NodeSetSpec extends Specification {
       (allNormal.read.futureAny { _ => Future(true) } apply())                                 mustEqual true
       (allNormal.read.futureAny { _ => Future[Any](error("oops")) } apply())                   must throwA[Exception]
       (allNormal.read.futureAny { s => Future(if (s.i == 0) s.i else error("oops")) } apply()) mustEqual 0
+      (allNormal.read.futureAny { s => Future(if (s.i == 0) s.i else throw new CancellationException) } apply()) must throwA[CancellationException]
 
       (allBlocked.read.futureAny { _ => Future(true) } apply())   must throwA[ShardOfflineException]
       (allBlackhole.read.futureAny { _ => Future(true) } apply()) must throwA[ShardBlackHoleException]
 
       (mixed.read.futureAny { _ => Future(true) } apply()) mustEqual true
+
+      val p = new Promise[Unit]
+      p onCancellation { p.update(Throw(new CancellationException)) }
+      val f = allNormal.read.futureAny { s => p }
+      f cancel()
+      (f apply()) must throwA[Exception]
     }
 
     "any" in {
