@@ -4,7 +4,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
   <groupId>com.twitter</groupId>
   <artifactId>gizzard</artifactId>
   <packaging>jar</packaging>
-  <version>3.0.14-SNAPSHOT</version>
+  <version>3.0.15-SNAPSHOT</version>
   <parent>
     <groupId>com.twitter</groupId>
     <artifactId>scala-parent</artifactId>
