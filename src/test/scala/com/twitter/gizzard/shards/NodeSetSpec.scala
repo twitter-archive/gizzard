@@ -88,7 +88,15 @@ object NodeSetSpec extends Specification {
       (allNormal.read.futureAny { _ => Future(true) } apply())                                 mustEqual true
       (allNormal.read.futureAny { _ => Future[Any](error("oops")) } apply())                   must throwA[Exception]
       (allNormal.read.futureAny { s => Future(if (s.i == 0) s.i else error("oops")) } apply()) mustEqual 0
-      (allNormal.read.futureAny { s => Future(if (s.i == 0) s.i else throw new CancellationException) } apply()) must throwA[CancellationException]
+
+      // Verify that futureAny does not retry on CancellationException and instead propagates it back as is.
+      var replicasTried = 0
+      val f1 = allNormal.read.futureAny { s =>
+        replicasTried += 1
+        Future[Any](throw new CancellationException)
+      }
+      (f1 apply()) must throwA[CancellationException]
+      replicasTried mustEqual 1
 
       (allBlocked.read.futureAny { _ => Future(true) } apply())   must throwA[ShardOfflineException]
       (allBlackhole.read.futureAny { _ => Future(true) } apply()) must throwA[ShardBlackHoleException]
@@ -97,9 +105,9 @@ object NodeSetSpec extends Specification {
 
       val p = new Promise[Unit]
       p onCancellation { p.update(Throw(new CancellationException)) }
-      val f = allNormal.read.futureAny { s => p }
-      f cancel()
-      (f apply()) must throwA[Exception]
+      val f2 = allNormal.read.futureAny { s => p }
+      f2 cancel()
+      (f2 apply()) must throwA[CancellationException]
     }
 
     "any" in {
