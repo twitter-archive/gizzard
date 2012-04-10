@@ -199,7 +199,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   def removeForwarding(f: Forwarding) { insertOrUpdateForwarding(queryEvaluator, f, true) }
 
   def replaceForwarding(oldId: ShardId, newId: ShardId) {
-    val query       = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ?"
+    val query = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ? AND deleted = false"
 
     queryEvaluator.transaction { t =>
       val forwardings = t.select(query, oldId.hostname, oldId.tablePrefix)(rowToForwarding)
@@ -255,7 +255,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   def listTables() = {
-    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id")).toList.sortWith((a,b) => a < b)
+    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings WHERE deleted = false")(_.getInt("table_id")).toList.sortWith((a,b) => a < b)
   }
 
   def listHostnames() = {
