@@ -26,7 +26,7 @@ class RoutingState(
     m
   }
 
-  private def constructRoutingNode(root: ShardId, weight: Int): RoutingNode[Any] = {
+  private def constructRoutingNode(root: ShardId, weight: Weight): RoutingNode[Any] = {
     infoMap.get(root) map { rootInfo =>
       val children = linkMap.getOrElse(root, Nil) map { case (id, wt) => constructRoutingNode(id, wt) }
       instantiateNode(rootInfo, weight, children)
@@ -112,7 +112,7 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
     log.info("Loading name server configuration is done.")
   }
 
-  private def constructRoutingNode(shardId: ShardId, weight: Int = 1) : RoutingNode[Any] = {
+  private def constructRoutingNode(shardId: ShardId, weight: Weight) : RoutingNode[Any] = {
     val shardInfo = shardManager.getShard(shardId)
     val children = shardManager.listDownwardLinks(shardId).map { link => constructRoutingNode(link.downId, link.weight) }
     shardRepository.instantiateNode(shardInfo, weight, children)

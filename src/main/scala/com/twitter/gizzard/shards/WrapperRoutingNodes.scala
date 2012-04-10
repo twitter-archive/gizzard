@@ -5,7 +5,7 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 
 // ReplicatingShard. Forward and fail over to other children
 
-case class ReplicatingShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+case class ReplicatingShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends RoutingNode[T] {
   protected def loadBalancer() = new LoadBalancer(children).apply()
 
@@ -37,7 +37,7 @@ abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
 
 // BlockedShard. Refuse and fail all traffic.
 
-case class BlockedShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+case class BlockedShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
   protected def leafTransform(l: RoutingNode.Leaf[T]) = {
     l.copy(readBehavior = RoutingNode.Deny, writeBehavior = RoutingNode.Deny)
@@ -47,7 +47,7 @@ extends WrapperRoutingNode[T] {
 
 // BlackHoleShard. Silently refuse all traffic.
 
-case class BlackHoleShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+case class BlackHoleShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
   protected def leafTransform(l: RoutingNode.Leaf[T]) = {
     l.copy(readBehavior = RoutingNode.Ignore, writeBehavior = RoutingNode.Ignore)
@@ -57,7 +57,7 @@ extends WrapperRoutingNode[T] {
 
 // WriteOnlyShard. Fail all read traffic.
 
-case class WriteOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+case class WriteOnlyShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
   protected def leafTransform(l: RoutingNode.Leaf[T]) = {
     l.copy(readBehavior = RoutingNode.Deny)
@@ -67,7 +67,7 @@ extends WrapperRoutingNode[T] {
 
 // ReadOnlyShard. Fail all write traffic.
 
-case class ReadOnlyShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+case class ReadOnlyShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
   protected def leafTransform(l: RoutingNode.Leaf[T]) = {
     l.copy(writeBehavior = RoutingNode.Deny)
@@ -77,7 +77,7 @@ extends WrapperRoutingNode[T] {
 
 // SlaveShard. Silently refuse all write traffic.
 
-case class SlaveShard[T](shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]])
+case class SlaveShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
   protected def leafTransform(l: RoutingNode.Leaf[T]) = {
     l.copy(writeBehavior = RoutingNode.Ignore)

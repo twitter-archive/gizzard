@@ -7,14 +7,14 @@ import com.twitter.logging.Logger
 
 
 abstract class RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]): RoutingNode[T]
+  def instantiate(shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]]): RoutingNode[T]
   def materialize(shardInfo: ShardInfo) {}
 }
 
 // Turn case class or other generic constructors into node factories.
-class ConstructorRoutingNodeFactory[T](constructor: (ShardInfo, Int, Seq[RoutingNode[T]]) => RoutingNode[T])
+class ConstructorRoutingNodeFactory[T](constructor: (ShardInfo, Weight, Seq[RoutingNode[T]]) => RoutingNode[T])
 extends RoutingNodeFactory[T] {
-  def instantiate(info: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = constructor(info, weight, children)
+  def instantiate(info: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]]) = constructor(info, weight, children)
 }
 
 protected[shards] object RoutingNode {
@@ -32,7 +32,7 @@ abstract class RoutingNode[T] {
 
   def shardType = shardInfo.className // XXX: replace with some other thing
   def shardInfo: ShardInfo
-  def weight: Int
+  def weight: Weight
   def children: Seq[RoutingNode[T]]
   protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
 
