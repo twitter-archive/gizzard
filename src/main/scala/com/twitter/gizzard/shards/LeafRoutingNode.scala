@@ -31,14 +31,14 @@ object LeafRoutingNode {
   }
 
   def apply[T](shard: T): LeafRoutingNode[T] = {
-    apply(shard, shard, new ShardInfo("", "", ""), Weight(1, 1, 1))
+    apply(shard, shard, new ShardInfo("", "", ""), Weight.Default)
   }
 
   // XXX: remove when we move to shard replica sets rather than trees.
   object NullNode extends LeafRoutingNode[Null](
     new LeafRoutingNode.WrapperShardFactory(null, null),
     new ShardInfo("NullShardPlaceholder", "null", "null"),
-    1
+    Weight.Default
   )
 }
 

@@ -26,6 +26,12 @@ struct LinkInfo {
   3: i32 weight
 }
 
+struct HostWeightInfo {
+  1: string hostname
+  2: i32 weight_write
+  3: i32 weight_read
+}
+
 struct Forwarding {
   1: i32 table_id
   2: i64 base_id
@@ -37,6 +43,7 @@ struct NameServerState {
   2: list<LinkInfo> links
   3: list<Forwarding> forwardings
   4: i32 table_id
+  5: list<HostWeightInfo> hostWeights
 }
 
 
