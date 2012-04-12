@@ -7,10 +7,9 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 
 case class ReplicatingShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends RoutingNode[T] {
-  protected def loadBalancer() = new LoadBalancer(children).apply()
-
+  protected[shards] val loadBalancer: LoadBalancer = LoadBalancer.WeightedRandom
   protected[shards] def collectedShards(readOnly: Boolean) = {
-    loadBalancer() flatMap { _.collectedShards(readOnly) }
+    loadBalancer.balanced(children, readOnly).flatMap(_.collectedShards(readOnly))
   }
 }
 

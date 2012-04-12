@@ -25,7 +25,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
 
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
     var replicatingShard = new ReplicatingShard(replicatingShardInfo, Weight.Default, shards) {
-      override protected def loadBalancer() = children.toList
+      override protected[shards] val loadBalancer = LoadBalancer.Fixed
     }
 
     "read failover" in {
@@ -188,7 +188,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val List(node1, node2) = List(mock1, mock2) map { LeafRoutingNode(_) }
       val shards = List(node1, node2)
       val shard = new ReplicatingShard[EnufShard](shardInfo, Weight.Default, shards) {
-        override protected def loadBalancer() = children.toList
+        override protected[shards] val loadBalancer = LoadBalancer.Fixed
       }
 
       "first shard has data" in {
