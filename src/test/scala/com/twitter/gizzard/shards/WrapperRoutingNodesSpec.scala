@@ -9,11 +9,11 @@ object WrapperRoutingNodesSpec extends Specification {
   case class Fake(i: Int, readOnly: Boolean)
 
   val leafs = (0 to 1) map { i =>
-    LeafRoutingNode(Fake(i, true), Fake(i, false), new ShardInfo("", i.toString, ""), 1)
+    LeafRoutingNode(Fake(i, true), Fake(i, false), new ShardInfo("", i.toString, ""), Weight.Default)
   }
 
   "BlockedShard" in {
-    val blocked = BlockedShard(new ShardInfo("", "blocked", ""), 1, Seq(leafs(0)))
+    val blocked = BlockedShard(new ShardInfo("", "blocked", ""), Weight.Default, Seq(leafs(0)))
 
     blocked.read.activeShards.size   mustEqual 0
     blocked.read.blockedShards.size  mustEqual 1
@@ -23,7 +23,7 @@ object WrapperRoutingNodesSpec extends Specification {
     (blocked.read all { _.i } head)  must beLike { case Throw(e) => e.isInstanceOf[ShardOfflineException] }
     (blocked.write all { _.i } head) must beLike { case Throw(e) => e.isInstanceOf[ShardOfflineException] }
 
-    val emptyBlocked = BlockedShard[Fake](new ShardInfo("", "blocked", ""), 1, Seq())
+    val emptyBlocked = BlockedShard[Fake](new ShardInfo("", "blocked", ""), Weight.Default, Seq())
 
     emptyBlocked.read.activeShards.size   mustEqual 0
     emptyBlocked.read.blockedShards.size  mustEqual 1
@@ -35,7 +35,7 @@ object WrapperRoutingNodesSpec extends Specification {
   }
 
   "BlackHoleShard" in {
-    val blackhole = BlackHoleShard(new ShardInfo("", "blackhole", ""), 1, Seq(leafs(0)))
+    val blackhole = BlackHoleShard(new ShardInfo("", "blackhole", ""), Weight.Default, Seq(leafs(0)))
 
     blackhole.read.activeShards.size   mustEqual 0
     blackhole.read.blockedShards.size  mustEqual 0
@@ -45,7 +45,7 @@ object WrapperRoutingNodesSpec extends Specification {
     (blackhole.read all { _.i } size)  mustEqual 0
     (blackhole.write all { _.i } size) mustEqual 0
 
-    val emptyBlackhole = BlackHoleShard[Fake](new ShardInfo("", "blackhole", ""), 1, Seq())
+    val emptyBlackhole = BlackHoleShard[Fake](new ShardInfo("", "blackhole", ""), Weight.Default, Seq())
 
     emptyBlackhole.read.activeShards.size   mustEqual 0
     emptyBlackhole.read.blockedShards.size  mustEqual 0
@@ -57,7 +57,7 @@ object WrapperRoutingNodesSpec extends Specification {
   }
 
   "WriteOnlyShard" in {
-    val writeOnly = WriteOnlyShard(new ShardInfo("", "writeonly", ""), 1, Seq(leafs(0)))
+    val writeOnly = WriteOnlyShard(new ShardInfo("", "writeonly", ""), Weight.Default, Seq(leafs(0)))
 
     writeOnly.read.activeShards.size   mustEqual 0
     writeOnly.read.blockedShards.size  mustEqual 1
@@ -69,7 +69,7 @@ object WrapperRoutingNodesSpec extends Specification {
   }
 
   "ReadOnlyShard" in {
-    val readOnly = ReadOnlyShard(new ShardInfo("", "readonly", ""), 1, Seq(leafs(0)))
+    val readOnly = ReadOnlyShard(new ShardInfo("", "readonly", ""), Weight.Default, Seq(leafs(0)))
 
     readOnly.read.activeShards.size   mustEqual 1
     readOnly.read.blockedShards.size  mustEqual 0
@@ -81,7 +81,7 @@ object WrapperRoutingNodesSpec extends Specification {
   }
 
   "SlaveShard" in {
-    val slave = SlaveShard(new ShardInfo("", "slave", ""), 1, Seq(leafs(0)))
+    val slave = SlaveShard(new ShardInfo("", "slave", ""), Weight.Default, Seq(leafs(0)))
 
     slave.read.activeShards.size   mustEqual 1
     slave.read.blockedShards.size  mustEqual 0

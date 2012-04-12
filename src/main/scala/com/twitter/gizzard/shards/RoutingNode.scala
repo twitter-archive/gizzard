@@ -132,7 +132,7 @@ abstract class RoutingNode[T] {
   override def hashCode() = children.hashCode
 
   override def toString() =
-    "<RoutingNode(%s, %s, weight=%d, childCount=%d)>".format(
+    "<RoutingNode(%s, %s, %s, childCount=%d)>".format(
       shardType,
       shardInfo,
       weight,

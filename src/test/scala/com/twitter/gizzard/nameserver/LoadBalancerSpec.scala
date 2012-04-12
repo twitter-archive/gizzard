@@ -6,7 +6,7 @@ import scala.collection.mutable
 import scala.util.Random
 import java.util.concurrent.atomic.AtomicLong
 
-import com.twitter.gizzard.shards.RoutingNode
+import com.twitter.gizzard.shards.{RoutingNode, Weight}
 import com.twitter.gizzard.ConfiguredSpecification
 
 object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassMocker {
@@ -20,9 +20,9 @@ object LoadBalancerSpec extends ConfiguredSpecification with JMocker with ClassM
       val iterations = 1000000
       val tolerance = iterations * .01
       expect {
-        allowing(shard1).weight willReturn 1
-        allowing(shard2).weight willReturn 1
-        allowing(shard3).weight willReturn 1
+        allowing(shard1).weight willReturn Weight.Default
+        allowing(shard2).weight willReturn Weight.Default
+        allowing(shard3).weight willReturn Weight.Default
       }
 
       val histogram = mutable.HashMap[List[RoutingNode[AnyRef]], AtomicLong]()

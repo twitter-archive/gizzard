@@ -178,9 +178,9 @@ extends thrift.TestServer.Iface {
 class TestShardFactory(qeFactory: QueryEvaluatorFactory, conn: Connection) extends ShardFactory[TestShard] {
   def newEvaluator(host: String) = qeFactory(conn.withHost(host))
 
-  def instantiate(info: ShardInfo, weight: Int) = new TestShard(newEvaluator(info.hostname), info, false)
+  def instantiate(info: ShardInfo, weight: Weight) = new TestShard(newEvaluator(info.hostname), info, false)
 
-  def instantiateReadOnly(info: ShardInfo, weight: Int) = instantiate(info, weight)
+  def instantiateReadOnly(info: ShardInfo, weight: Weight) = instantiate(info, weight)
 
   def materialize(info: ShardInfo) {
     val ddl =

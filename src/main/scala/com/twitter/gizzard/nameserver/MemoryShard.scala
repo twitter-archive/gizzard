@@ -180,6 +180,12 @@ class MemoryShardManagerSource extends ShardManagerSource {
     shardTable.filter { _.busy.id > 0 }.toList
   }
 
+  // TODO: not implemented
+  def getHostWeight(hostname: String): Option[thrift.HostWeightInfo] = None
+
+  // TODO: not implemented
+  def listHostWeights(): Seq[thrift.HostWeightInfo] = Seq()
+
   def listTables(): Seq[Int] = {
     forwardingTable.map(_.tableId).toSet.toSeq.sortWith((a,b) => a < b)
   }

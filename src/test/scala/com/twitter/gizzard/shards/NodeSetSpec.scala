@@ -10,20 +10,20 @@ object NodeSetSpec extends Specification {
   case class Fake(i: Int, readOnly: Boolean)
 
   val leafs = (0 to 8) map { i =>
-    LeafRoutingNode(Fake(i, true), Fake(i, false), new ShardInfo("", i.toString, ""), 1)
+    LeafRoutingNode(Fake(i, true), Fake(i, false), new ShardInfo("", i.toString, ""), Weight.Default)
   }
 
   val normals   = leafs take 3
-  val blocked   = leafs drop 3 take 3 map { l =>  BlockedShard(new ShardInfo("","b",""), 1, Seq(l)) }
-  val blackhole = leafs drop 6 take 3 map { l =>  BlackHoleShard(new ShardInfo("","b",""), 1, Seq(l)) }
+  val blocked   = leafs drop 3 take 3 map { l =>  BlockedShard(new ShardInfo("","b",""), Weight.Default, Seq(l)) }
+  val blackhole = leafs drop 6 take 3 map { l =>  BlackHoleShard(new ShardInfo("","b",""), Weight.Default, Seq(l)) }
 
-  val allNormal    = ReplicatingShard(new ShardInfo("","",""), 1, normals)
-  val noNormal     = ReplicatingShard(new ShardInfo("","",""), 1, blocked ++ blackhole)
-  val allBlocked   = ReplicatingShard(new ShardInfo("","",""), 1, blocked)
-  val noBlocked    = ReplicatingShard(new ShardInfo("","",""), 1, normals ++ blackhole)
-  val allBlackhole = ReplicatingShard(new ShardInfo("","",""), 1, blackhole)
-  val noBlackhole  = ReplicatingShard(new ShardInfo("","",""), 1, normals ++ blocked)
-  val mixed        = ReplicatingShard(new ShardInfo("","",""), 1, normals ++ blocked ++ blackhole)
+  val allNormal    = ReplicatingShard(new ShardInfo("","",""), Weight.Default, normals)
+  val noNormal     = ReplicatingShard(new ShardInfo("","",""), Weight.Default, blocked ++ blackhole)
+  val allBlocked   = ReplicatingShard(new ShardInfo("","",""), Weight.Default, blocked)
+  val noBlocked    = ReplicatingShard(new ShardInfo("","",""), Weight.Default, normals ++ blackhole)
+  val allBlackhole = ReplicatingShard(new ShardInfo("","",""), Weight.Default, blackhole)
+  val noBlackhole  = ReplicatingShard(new ShardInfo("","",""), Weight.Default, normals ++ blocked)
+  val mixed        = ReplicatingShard(new ShardInfo("","",""), Weight.Default, normals ++ blocked ++ blackhole)
 
   "NodeIterable" in {
     "activeShards" in {

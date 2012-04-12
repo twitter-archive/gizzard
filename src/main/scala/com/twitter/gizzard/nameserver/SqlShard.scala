@@ -254,6 +254,12 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     }
   }
 
+  // TODO: not implemented
+  def getHostWeight(hostname: String): Option[thrift.HostWeightInfo] = None
+
+  // TODO: not implemented
+  def listHostWeights(): Seq[thrift.HostWeightInfo] = Seq()
+
   def listTables() = {
     queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id")).toList.sortWith((a,b) => a < b)
   }

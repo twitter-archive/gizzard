@@ -3,14 +3,14 @@ package com.twitter.gizzard.fake
 import scala.collection.mutable
 import org.specs.mock.{ClassMocker, JMocker}
 
-import com.twitter.gizzard.shards.{ShardFactory,ShardException,ShardInfo}
+import com.twitter.gizzard.shards.{ShardFactory,ShardException,ShardInfo,Weight}
 
 class NestableShardFactory extends ShardFactory[Shard] {
-  def instantiate(shardInfo: ShardInfo, weight: Int) = {
+  def instantiate(shardInfo: ShardInfo, weight: Weight) = {
     new NestableShard(shardInfo, false)
   }
 
-  def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = {
+  def instantiateReadOnly(shardInfo: ShardInfo, weight: Weight) = {
     new NestableShard(shardInfo, true)
   }
 
