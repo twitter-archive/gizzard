@@ -63,6 +63,12 @@ extends Manager.Iface {
     wrapEx(shardManager.removeLink(upId.fromThrift, downId.fromThrift))
   }
 
+  def set_host_weight(hw: HostWeightInfo) = {
+    wrapEx(shardManager.setHostWeight(hw))
+  }
+  def list_host_weights() = {
+    wrapEx(shardManager.listHostWeights())
+  }
 
   def set_forwarding(forwarding: Forwarding) = {
     wrapEx(shardManager.setForwarding(forwarding.fromThrift))

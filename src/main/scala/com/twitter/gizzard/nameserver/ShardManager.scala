@@ -38,6 +38,8 @@ class ShardManager(shard: RoutingNode[ShardManagerSource], repo: ShardRepository
   def listDownwardLinks(id: ShardId) = shard.read.any(_.listDownwardLinks(id))
   def listLinks()                    = shard.read.any(_.listLinks())
 
+  def setHostWeight(hw: thrift.HostWeightInfo) = shard.write.foreach(_.setHostWeight(hw))
+  def listHostWeights() = shard.read.any(_.listHostWeights())
 
   def setForwarding(forwarding: Forwarding)             { shard.write.foreach(_.setForwarding(forwarding)) }
   def removeForwarding(f: Forwarding)                   { shard.write.foreach(_.removeForwarding(f)) }
@@ -85,8 +87,6 @@ trait ShardManagerSource {
   @throws(classOf[ShardException]) def shardsForHostname(hostname: String): Seq[ShardInfo]
   @throws(classOf[ShardException]) def listShards(): Seq[ShardInfo]
   @throws(classOf[ShardException]) def getBusyShards(): Seq[ShardInfo]
-  @throws(classOf[ShardException]) def getHostWeight(hostname: String): Option[thrift.HostWeightInfo]
-  @throws(classOf[ShardException]) def listHostWeights(): Seq[thrift.HostWeightInfo]
 
 
   @throws(classOf[ShardException]) def addLink(upId: ShardId, downId: ShardId, weight: Int)
@@ -95,6 +95,12 @@ trait ShardManagerSource {
   @throws(classOf[ShardException]) def listUpwardLinks(id: ShardId): Seq[LinkInfo]
   @throws(classOf[ShardException]) def listDownwardLinks(id: ShardId): Seq[LinkInfo]
   @throws(classOf[ShardException]) def listLinks(): Seq[LinkInfo]
+
+
+  @throws(classOf[ShardException]) def setHostWeight(hw: thrift.HostWeightInfo): Unit
+  @throws(classOf[ShardException]) def getHostWeight(hostname: String): Option[thrift.HostWeightInfo]
+  @throws(classOf[ShardException]) def listHostWeights(): Seq[thrift.HostWeightInfo]
+
 
   @throws(classOf[ShardException]) def setForwarding(forwarding: Forwarding)
   @throws(classOf[ShardException]) def removeForwarding(forwarding: Forwarding)
