@@ -45,8 +45,9 @@ object LoadBalancer {
       offset: Int,
       remainingWeight: Int
     ): Unit = {
-      if (offset == buffer.size)
-        return Nil
+      if (offset >= buffer.size - 1)
+        // last item cannot move
+        return
       val limit = random.nextInt(remainingWeight)
       var index = 0
       // select the first item where the sum of the weight is gt the limit
