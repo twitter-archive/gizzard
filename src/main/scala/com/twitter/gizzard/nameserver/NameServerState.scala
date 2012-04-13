@@ -23,7 +23,7 @@ case class NameServerState(
     val thriftForwardings = forwardings.map(_.toThrift)
     val thriftLinks       = links.map(_.toThrift)
     val thriftShards      = shards.map(_.toThrift)
-    new ThriftNameServerState(thriftShards, thriftLinks, thriftForwardings, tableId, hostWeights)
+    new ThriftNameServerState(thriftShards, thriftLinks, thriftForwardings, tableId).setHostWeights(hostWeights)
   }
 }
 

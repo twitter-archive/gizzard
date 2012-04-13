@@ -43,7 +43,7 @@ struct NameServerState {
   2: list<LinkInfo> links
   3: list<Forwarding> forwardings
   4: i32 table_id
-  5: list<HostWeightInfo> hostWeights
+  5: optional list<HostWeightInfo> hostWeights = {}
 }
 
 
