@@ -1,6 +1,7 @@
 package com.twitter.gizzard.shards
 
 import com.twitter.gizzard.nameserver.LoadBalancer
+import RoutingNode._
 
 
 // ReplicatingShard. Forward and fail over to other children
@@ -8,26 +9,27 @@ import com.twitter.gizzard.nameserver.LoadBalancer
 case class ReplicatingShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends RoutingNode[T] {
   protected[shards] val loadBalancer: LoadBalancer = LoadBalancer.WeightedRandom
-  protected[shards] def collectedShards(readOnly: Boolean) = {
-    val tovisit = 
-      if (readOnly) {
-        val (ordered, denied) = loadBalancer.balanced(children)
-        // TODO: nodes 'denied' due to weights should eventually be 'Deny'd via Behavior
-        ordered
-      } else {
-        // TODO: write weights should eventually allow for fractional blocking of shards by
-        // 'Deny'ing a random fraction of writes matching the write weight
-        children
-      }
-    tovisit.flatMap(_.collectedShards(readOnly))
-  }
+  protected[shards] def collectedShards(readOnly: Boolean, rb: Behavior, wb: Behavior) =
+    if (readOnly) {
+      val (ordered, denied) = loadBalancer.balanced(children)
+      val denyReadBehavior = Behavior.Ordering.max(Deny, rb)
+      // rather than filtering nodes that shouldn't receive reads, we Deny them via Behavior
+      ordered.flatMap(_.collectedShards(readOnly, rb, wb)) ++
+        denied.flatMap(_.collectedShards(readOnly, denyReadBehavior, wb))
+    } else {
+      // TODO: write weights should eventually allow for fractional blocking of shards by
+      // 'Deny'ing a random fraction of writes matching the write weight
+      children.flatMap(_.collectedShards(readOnly, rb, wb))
+    }
 }
 
 
 // Base class for all read/write flow wrapper shards
 
 abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
-  protected def leafTransform(l: RoutingNode.Leaf[T]): RoutingNode.Leaf[T]
+  // read and write behavior to be merged with the behavior of children
+  protected def readBehavior: Behavior
+  protected def writeBehavior: Behavior
 
   // XXX: remove when we move to shard replica sets rather than trees.
   private lazy val childrenWithPlaceholder = if (children.isEmpty) {
@@ -36,9 +38,16 @@ abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
     children
   }
 
-  protected[shards] def collectedShards(readOnly: Boolean) = {
+  protected[shards] final def collectedShards(readOnly: Boolean, rb: Behavior, wb: Behavior) = {
     childrenWithPlaceholder flatMap {
-      _.collectedShards(readOnly).map(leafTransform)
+      // apply the strongest of the Leaf behavior and the parent behavior
+      _.collectedShards(readOnly, rb, wb).map { leaf =>
+        // take the strongest behavior in the path to this leaf
+        leaf.copy(
+          readBehavior = Behavior.Ordering.max(this.readBehavior, rb),
+          writeBehavior = Behavior.Ordering.max(this.writeBehavior, wb)
+        )
+      }
     }
   }
 }
@@ -48,9 +57,8 @@ abstract class WrapperRoutingNode[T] extends RoutingNode[T] {
 
 case class BlockedShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
-  protected def leafTransform(l: RoutingNode.Leaf[T]) = {
-    l.copy(readBehavior = RoutingNode.Deny, writeBehavior = RoutingNode.Deny)
-  }
+  protected def readBehavior = Deny
+  protected def writeBehavior = Deny
 }
 
 
@@ -58,9 +66,8 @@ extends WrapperRoutingNode[T] {
 
 case class BlackHoleShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
-  protected def leafTransform(l: RoutingNode.Leaf[T]) = {
-    l.copy(readBehavior = RoutingNode.Ignore, writeBehavior = RoutingNode.Ignore)
-  }
+  protected def readBehavior = Ignore
+  protected def writeBehavior = Ignore
 }
 
 
@@ -68,9 +75,8 @@ extends WrapperRoutingNode[T] {
 
 case class WriteOnlyShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
-  protected def leafTransform(l: RoutingNode.Leaf[T]) = {
-    l.copy(readBehavior = RoutingNode.Deny)
-  }
+  protected def readBehavior = Deny
+  protected def writeBehavior = Allow
 }
 
 
@@ -78,9 +84,8 @@ extends WrapperRoutingNode[T] {
 
 case class ReadOnlyShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
-  protected def leafTransform(l: RoutingNode.Leaf[T]) = {
-    l.copy(writeBehavior = RoutingNode.Deny)
-  }
+  protected def readBehavior = Allow
+  protected def writeBehavior = Deny
 }
 
 
@@ -88,7 +93,6 @@ extends WrapperRoutingNode[T] {
 
 case class SlaveShard[T](shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]])
 extends WrapperRoutingNode[T] {
-  protected def leafTransform(l: RoutingNode.Leaf[T]) = {
-    l.copy(writeBehavior = RoutingNode.Ignore)
-  }
+  protected def readBehavior = Allow
+  protected def writeBehavior = Ignore
 }

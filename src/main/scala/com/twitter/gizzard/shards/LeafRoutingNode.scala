@@ -56,8 +56,10 @@ class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shard
 
   override def shardInfos = Seq(shardInfo)
 
-  protected[shards] def collectedShards(readOnly: Boolean) = {
-    Seq(Leaf(shardInfo, Allow, Allow, if (readOnly) readOnlyShard else readWriteShard))
+  // TODO: for leaves with parent WrapperRoutingNodes, applying Behavior is redundant:
+  // but eventually the wrapping shards should be unnecessary
+  protected[shards] def collectedShards(readOnly: Boolean, rb: Behavior, wb: Behavior) = {
+    Seq(Leaf(shardInfo, rb, wb, if (readOnly) readOnlyShard else readWriteShard))
   }
 
   override def equals(other: Any) = other match {
