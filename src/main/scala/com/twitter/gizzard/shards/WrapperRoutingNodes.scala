@@ -9,7 +9,17 @@ case class ReplicatingShard[T](shardInfo: ShardInfo, weight: Weight, children: S
 extends RoutingNode[T] {
   protected[shards] val loadBalancer: LoadBalancer = LoadBalancer.WeightedRandom
   protected[shards] def collectedShards(readOnly: Boolean) = {
-    loadBalancer.balanced(children, readOnly).flatMap(_.collectedShards(readOnly))
+    val tovisit = 
+      if (readOnly) {
+        val (ordered, denied) = loadBalancer.balanced(children)
+        // TODO: nodes 'denied' due to weights should eventually be 'Deny'd via Behavior
+        ordered
+      } else {
+        // TODO: write weights should eventually allow for fractional blocking of shards by
+        // 'Deny'ing a random fraction of writes matching the write weight
+        children
+      }
+    tovisit.flatMap(_.collectedShards(readOnly))
   }
 }
 

@@ -5,22 +5,20 @@ import scala.collection.mutable
 import com.twitter.gizzard.shards.RoutingNode
 
 trait LoadBalancer {
-  def balanced[T](replicas: Seq[RoutingNode[T]], readOnly: Boolean): Seq[RoutingNode[T]]
+  /** @return (shuffled non-0-weight entries, unordered 0-weight entries) */
+  def balanced[T](replicas: Seq[RoutingNode[T]]): (Seq[RoutingNode[T]], Seq[RoutingNode[T]])
 }
 
 object LoadBalancer {
   object Fixed extends LoadBalancer {
-    override def balanced[T](replicas: Seq[RoutingNode[T]], readOnly: Boolean) =
-      replicas
+    override def balanced[T](replicas: Seq[RoutingNode[T]]) = (replicas, Nil)
   }
 
   object WeightedRandom extends LoadBalancer {
     // "threadsafe enough"
     private val random = new Random
 
-    override def balanced[T](replicas: Seq[RoutingNode[T]], readOnly: Boolean) = {
-      shuffle(if (readOnly) ReadSelector else WriteSelector, replicas)
-    }
+    override def balanced[T](replicas: Seq[RoutingNode[T]]) = shuffle(ReadSelector, replicas)
 
     /**
      * 1) sum all weights
@@ -28,15 +26,17 @@ object LoadBalancer {
      *   a) at each step, choose random number between 0 and the remaining weight
      *   b) select bucket/item as if weights defined a sequential range
      *   c) move selected item to head, and increment offset
+     * @return (shuffled non-0-weight entries, unordered 0-weight entries)
      */
     private[nameserver] final def shuffle[T](
       selector: WeightSelector[T],
       input: Seq[T]
-    ): Seq[T] = {
-      val output = input.filter(selector(_) > 0).toBuffer
+    ): (Seq[T],Seq[T]) = {
+      val (toShuffle, zeros) = input.partition(selector(_) > 0)
+      val buffer = toShuffle.toBuffer
       // shuffle in place
-      shuffle(selector, output, 0, output.map(selector).sum)
-      output
+      shuffle(selector, buffer, 0, buffer.map(selector).sum)
+      (buffer, zeros)
     }
 
     private final def shuffle[T](
@@ -73,8 +73,5 @@ object LoadBalancer {
   type WeightSelector[T] = T => Int
   object ReadSelector extends WeightSelector[RoutingNode[_]] {
     def apply(rn: RoutingNode[_]): Int = rn.weight.read
-  }
-  object WriteSelector extends WeightSelector[RoutingNode[_]] {
-    def apply(rn: RoutingNode[_]): Int = rn.weight.write
   }
 }
