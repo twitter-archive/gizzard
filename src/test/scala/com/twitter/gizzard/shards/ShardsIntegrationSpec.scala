@@ -26,8 +26,8 @@ object ShardsIntegrationSpec extends ConfiguredSpecification with JMocker with C
   }
 
   val factory = new ShardFactory[UserShard] {
-    def instantiate(shardInfo: ShardInfo, weight: Int)         = new UserShard(shardInfo)
-    def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = new UserShard(shardInfo)
+    def instantiate(shardInfo: ShardInfo, weight: Weight)         = new UserShard(shardInfo)
+    def instantiateReadOnly(shardInfo: ShardInfo, weight: Weight) = new UserShard(shardInfo)
     def materialize(shardInfo: ShardInfo) {}
   }
 

@@ -47,7 +47,7 @@ class ShardRepository {
     factory(info.className).materialize(info)
   }
 
-  def instantiateNode[T](info: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
+  def instantiateNode[T](info: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]]) = {
     factory[T](info.className).instantiate(info, weight, children)
   }
 

@@ -159,11 +159,12 @@ extends Process with JobConsumer {
             job()
             Stats.incr("job-success-count")
           } catch {
-            case e: ShardBlackHoleException => Stats.incr("job-blackholed-count")
-            case e: ShardOfflineException =>
+            case _: ShardBlackHoleException =>
+              Stats.incr("job-blackholed-count")
+            case _: ShardOfflineException =>
               Stats.incr("job-blocked-count")
               errorQueue.put(job)
-            case e: BadJsonJobException =>
+            case _: UnparsableJsonException =>
               badJobQueue.put(job)
               Logger.get("bad_jobs").error(job.toString)
               Stats.incr("job-bad-count")

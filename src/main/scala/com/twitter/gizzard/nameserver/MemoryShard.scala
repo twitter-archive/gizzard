@@ -24,6 +24,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
   import MemoryShardManagerSource._
 
   val shardTable = new mutable.ListBuffer[ShardInfo]()
+  val hostWeights = mutable.Map[String,thrift.HostWeightInfo]()
   val parentTable = new mutable.ListBuffer[LinkInfo]()
   val forwardingTable = new mutable.ListBuffer[Forwarding]()
   val logs = new mutable.ListBuffer[(ByteBuffer,String)]()
@@ -163,6 +164,10 @@ class MemoryShardManagerSource extends ShardManagerSource {
     parentTable.toList
   }
 
+  def setHostWeight(hw: thrift.HostWeightInfo) = hostWeights += { (hw.hostname, hw) }
+  def getHostWeight(hostname: String) = hostWeights.get(hostname)
+  def listHostWeights() = hostWeights.values.toSeq
+
   def batchExecute(commands : Seq[TransformOperation]) {
     for (cmd <- commands) {
       cmd match {
@@ -172,6 +177,7 @@ class MemoryShardManagerSource extends ShardManagerSource {
         case RemoveLink(upId, downId) => removeLink(upId, downId)
         case SetForwarding(forwarding) => setForwarding(forwarding)
         case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+        case Commit => // noop
       }
     }
   }

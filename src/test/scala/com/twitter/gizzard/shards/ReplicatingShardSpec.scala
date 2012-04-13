@@ -10,7 +10,7 @@ import com.twitter.gizzard.ConfiguredSpecification
 
 
 object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
-  def blackhole[T](n: RoutingNode[T]) = new BlackHoleShard(new ShardInfo("", "", ""), 1, Seq(n))
+  def blackhole[T](n: RoutingNode[T]) = new BlackHoleShard(new ShardInfo("", "", ""), Weight.Default, Seq(n))
 
   "ReplicatingShard" should {
     val shardId = ShardId("fake", "shard")
@@ -18,14 +18,14 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
     val shard2 = mock[Shard]
     val shard3 = mock[Shard]
     val List(node1, node2, node3) = List(shard1, shard2, shard3).zipWithIndex map { case (s, i) =>
-      LeafRoutingNode(s, s, new ShardInfo("", "shard"+ (i + 1), "fake"), 1)
+      LeafRoutingNode(s, s, new ShardInfo("", "shard"+ (i + 1), "fake"), Weight.Default)
     }
 
     val shards = List(node1, node2)
 
     val replicatingShardInfo = new ShardInfo("", "replicating_shard", "hostname")
-    var replicatingShard = new ReplicatingShard(replicatingShardInfo, 1, shards) {
-      override protected def loadBalancer() = children.toList
+    var replicatingShard = new ReplicatingShard(replicatingShardInfo, Weight.Default, shards) {
+      override protected[shards] val loadBalancer = LoadBalancer.Fixed
     }
 
     "read failover" in {
@@ -119,7 +119,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = List(blackhole(node1), node2)
-          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          val holed = ReplicatingShard(replicatingShardInfo, Weight.Default, ss)
           holed.write.par.foreach(_.put("name", "alice"))
         }
 
@@ -130,7 +130,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = shards.map(blackhole)
-          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          val holed = ReplicatingShard(replicatingShardInfo, Weight.Default, ss)
           holed.write.par.foreach(_.put("name", "alice"))
         }
       }
@@ -159,7 +159,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = List(blackhole(node1), node2)
-          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          val holed = ReplicatingShard(replicatingShardInfo, Weight.Default, ss)
           holed.write.foreach(_.put("name", "alice"))
         }
 
@@ -170,7 +170,7 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
           }
 
           val ss = shards.map(blackhole)
-          val holed = ReplicatingShard(replicatingShardInfo, 1, ss)
+          val holed = ReplicatingShard(replicatingShardInfo, Weight.Default, ss)
           holed.write.foreach(_.put("name", "alice"))
         }
       }
@@ -187,8 +187,8 @@ object ReplicatingShardSpec extends ConfiguredSpecification with JMocker {
       val mock2 = mock[EnufShard]
       val List(node1, node2) = List(mock1, mock2) map { LeafRoutingNode(_) }
       val shards = List(node1, node2)
-      val shard = new ReplicatingShard[EnufShard](shardInfo, 1, shards) {
-        override protected def loadBalancer() = children.toList
+      val shard = new ReplicatingShard[EnufShard](shardInfo, Weight.Default, shards) {
+        override protected[shards] val loadBalancer = LoadBalancer.Fixed
       }
 
       "first shard has data" in {

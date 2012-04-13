@@ -190,6 +190,7 @@ class SqlShardSpec extends ConfiguredSpecification with JMocker with ClassMocker
         nsShard.removeForwarding(Forwarding(0, 0, a.id))
         nsShard.removeForwarding(Forwarding(0, 0, a.id))
         nsShard.getForwardings.size mustEqual 0
+        nsShard.listTables.size mustEqual 0
       }
 
     }

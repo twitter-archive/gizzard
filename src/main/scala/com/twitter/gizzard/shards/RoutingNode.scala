@@ -7,22 +7,35 @@ import com.twitter.logging.Logger
 
 
 abstract class RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]): RoutingNode[T]
+  def instantiate(shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]]): RoutingNode[T]
   def materialize(shardInfo: ShardInfo) {}
 }
 
 // Turn case class or other generic constructors into node factories.
-class ConstructorRoutingNodeFactory[T](constructor: (ShardInfo, Int, Seq[RoutingNode[T]]) => RoutingNode[T])
+class ConstructorRoutingNodeFactory[T](constructor: (ShardInfo, Weight, Seq[RoutingNode[T]]) => RoutingNode[T])
 extends RoutingNodeFactory[T] {
-  def instantiate(info: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = constructor(info, weight, children)
+  def instantiate(info: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]]) = constructor(info, weight, children)
 }
 
 protected[shards] object RoutingNode {
-  // XXX: use real behavior once ShardStatus lands
+  /**
+   * Behaviors are applied during a descending walk from a root RoutingNode: the
+   * strongest behavior in the path to a Leaf is applied. Thus, 'Allow'ing an operation
+   * is equivalent to not having an opinion.
+   */
   sealed trait Behavior
   case object Allow extends Behavior
   case object Deny extends Behavior
   case object Ignore extends Behavior
+  object Behavior {
+    // orders behaviors from weakest to strongest in ascending order
+    val Ordering = math.Ordering.Int.on[Behavior] {
+      case Allow => 0
+      case Deny => 1
+      case Ignore => 2
+    }
+  }
+
   case class Leaf[T](info: ShardInfo, readBehavior: Behavior, writeBehavior: Behavior, shard: T)
 }
 
@@ -32,16 +45,17 @@ abstract class RoutingNode[T] {
 
   def shardType = shardInfo.className // XXX: replace with some other thing
   def shardInfo: ShardInfo
-  def weight: Int
+  def weight: Weight
   def children: Seq[RoutingNode[T]]
-  protected[shards] def collectedShards(readOnly: Boolean): Seq[Leaf[T]]
+
+  protected[shards] def collectedShards(readOnly: Boolean, rb: Behavior, wb: Behavior): Seq[Leaf[T]]
 
   protected val exceptionLog = Logger.get("exception")
 
   def shardInfos: Seq[ShardInfo] = children flatMap { _.shardInfos }
 
   protected def nodeSetFromCollected(readOnly: Boolean) = {
-    val m = collectedShards(readOnly) groupBy { l =>
+    val m = collectedShards(readOnly, Allow, Allow) groupBy { l =>
       if (readOnly) l.readBehavior else l.writeBehavior
     }
 
@@ -132,7 +146,7 @@ abstract class RoutingNode[T] {
   override def hashCode() = children.hashCode
 
   override def toString() =
-    "<RoutingNode(%s, %s, weight=%d, childCount=%d)>".format(
+    "<RoutingNode(%s, %s, %s, childCount=%d)>".format(
       shardType,
       shardInfo,
       weight,

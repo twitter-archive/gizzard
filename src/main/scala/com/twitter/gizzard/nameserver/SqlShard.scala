@@ -62,6 +62,7 @@ object SqlShard {
           PRIMARY KEY (id)
       ) ENGINE=INNODB;
       """,
+    // -remote- hosts
     "hosts" -> """
       CREATE TABLE IF NOT EXISTS hosts (
           hostname                VARCHAR(125) NOT NULL,
@@ -93,6 +94,16 @@ object SqlShard {
           PRIMARY KEY (log_id, id),
           FOREIGN KEY (log_id) REFERENCES logs(id) ON DELETE CASCADE
       ) ENGINE=INNODB;
+      """,
+    // multiplicative weights for hosts, which are applied to shards at materialization time
+    "host_weights" -> """
+      CREATE TABLE IF NOT EXISTS host_weights (
+          hostname                VARCHAR(125) NOT NULL,
+          weight_write            DOUBLE       NOT NULL,
+          weight_read             DOUBLE       NOT NULL,
+
+          PRIMARY KEY (hostname)
+      ) ENGINE=INNODB;
       """
     )
   val DDLS_MAP = DDLS.toMap
@@ -117,6 +128,9 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
              ShardId(row.getString("child_hostname"), row.getString("child_table_prefix")),
              row.getInt("weight"))
   }
+
+  private def rowToHostWeightInfo(r: ResultSet) =
+    new thrift.HostWeightInfo(r.getString("hostname"), r.getDouble("weight_write"), r.getDouble("weight_read"))
 
 
   // Forwardings/Shard Management Write Methods
@@ -199,7 +213,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   def removeForwarding(f: Forwarding) { insertOrUpdateForwarding(queryEvaluator, f, true) }
 
   def replaceForwarding(oldId: ShardId, newId: ShardId) {
-    val query       = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ?"
+    val query = "SELECT * FROM forwardings WHERE shard_hostname = ? AND shard_table_prefix = ? AND deleted = false"
 
     queryEvaluator.transaction { t =>
       val forwardings = t.select(query, oldId.hostname, oldId.tablePrefix)(rowToForwarding)
@@ -255,7 +269,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   def listTables() = {
-    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings")(_.getInt("table_id")).toList.sortWith((a,b) => a < b)
+    queryEvaluator.select("SELECT DISTINCT table_id FROM forwardings WHERE deleted = false")(_.getInt("table_id")).toList.sortWith((a,b) => a < b)
   }
 
   def listHostnames() = {
@@ -275,6 +289,26 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
     val query = "SELECT * FROM shard_children WHERE child_hostname = ? AND child_table_prefix = ? ORDER BY weight DESC"
     queryEvaluator.select(query, id.hostname, id.tablePrefix)(rowToLinkInfo).toList
   }
+
+
+  def setHostWeight(hw: thrift.HostWeightInfo) =
+    queryEvaluator.execute(
+      "INSERT INTO host_weights (hostname, weight_write, weight_read) VALUES (?, ?, ?) " +
+        "ON DUPLICATE KEY UPDATE weight_write=VALUES(weight_write), weight_read=VALUES(weight_read)",
+      hw.hostname,
+      hw.weight_write,
+      hw.weight_read
+    )
+
+  def getHostWeight(hostname: String) =
+    queryEvaluator.selectOne(
+      "SELECT * FROM host_weights WHERE hostname = ?",
+      hostname
+    )(rowToHostWeightInfo)
+
+  def listHostWeights() =
+    queryEvaluator.select("SELECT * FROM host_weights")(rowToHostWeightInfo)
+
 
   def listShards() = {
     queryEvaluator.select("SELECT * FROM shards")(rowToShardInfo).toList
@@ -382,6 +416,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
         case RemoveLink(upId, downId) => removeLink(upId, downId)
         case SetForwarding(forwarding) => setForwarding(forwarding)
         case RemoveForwarding(forwarding) => removeForwarding(forwarding)
+        case Commit => // noop
       }
     }
   }
