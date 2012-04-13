@@ -1,5 +1,6 @@
 package com.twitter.gizzard.shards
 
+import java.util.concurrent.CancellationException
 import scala.annotation.tailrec
 import scala.collection.generic.CanBuild
 import com.twitter.util.{Try, Return, Throw, Future, Promise}
@@ -97,9 +98,7 @@ trait NodeIterable[+T] {
     if (activeShards.isEmpty && blockedShards.isEmpty) {
       Future.exception(new ShardBlackHoleException(rootInfo.id))
     } else {
-      val promise = new Promise[R]
-      _futureAny(iterator, promise, f)
-      promise
+      _futureAny(iterator, f)
     }
   }
 
@@ -108,20 +107,18 @@ trait NodeIterable[+T] {
   }
 
   protected final def _futureAny[T1 >: T, R](
-    iter: Iterator[(ShardId, T1)],
-    promise: Promise[R],
-    f: (ShardId, T1) => Future[R]
-  ) {
-
+      iter: Iterator[(ShardId, T1)],
+      f: (ShardId, T1) => Future[R]): Future[R] = {
     if (iter.hasNext) {
       val (id, s) = iter.next
-
-      f(id, s) respond {
-        case Return(r) => promise.setValue(r)
-        case Throw(e)  => _futureAny(iter, promise, f)
+      f(id, s) rescue {
+        // No point in continuing to iterate if the exception was due to
+        // Future cancellation.
+        case e: CancellationException => Future.exception(e)
+        case _ => _futureAny(iter, f)
       }
     } else {
-      promise.setException(new ShardOfflineException(rootInfo.id))
+      Future.exception(new ShardOfflineException(rootInfo.id))
     }
   }
 

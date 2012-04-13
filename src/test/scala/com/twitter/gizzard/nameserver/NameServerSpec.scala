@@ -15,10 +15,11 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
     var nameServer: NameServer            = null
     var forwarder: MultiForwarder[AnyRef] = null
 
+    val hostname = "localhost"
     val shardInfos = (1 until 6).toList map { id =>
-      new ShardInfo(ShardId("localhost", id.toString), SQL_SHARD, "a", "b", Busy.Normal)
+      new ShardInfo(ShardId(hostname, id.toString), SQL_SHARD, "a", "b", Busy.Normal)
     }
-    val replicatingInfo = new ShardInfo(ShardId("localhost", "replicating"), "ReplicatingShard", "", "", Busy.Normal)
+    val replicatingInfo = new ShardInfo(ShardId(hostname, "replicating"), "ReplicatingShard", "", "", Busy.Normal)
 
     val linksList        = List(new LinkInfo(replicatingInfo.id, shardInfos(3).id, 1))
     val shardForwardings = List(
@@ -28,8 +29,10 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       new Forwarding(2, 1, replicatingInfo.id)
     )
 
-    val nameServerState = NameServerState(shardInfos :+ replicatingInfo, linksList, shardForwardings, 1)
+    // TODO: test host weights
+    val nameServerState = NameServerState(shardInfos :+ replicatingInfo, linksList, Seq(), shardForwardings, 1)
 
+    val w            = Weight.Default
     val shard        = mock[AnyRef]
     var shardFactory = mock[ShardFactory[AnyRef]]
     var nodes: Seq[LeafRoutingNode[AnyRef]]        = null
@@ -39,20 +42,20 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       expect {
         one(nameServerShard).prepareReload()
         one(nameServerShard).currentState() willReturn (Seq(nameServerState), 1L)
-        2.of(shardFactory).instantiateReadOnly(shardInfos(0), 1) willReturn shard
-        2.of(shardFactory).instantiate(shardInfos(0), 1) willReturn shard
-        2.of(shardFactory).instantiateReadOnly(shardInfos(1), 1) willReturn shard
-        2.of(shardFactory).instantiate(shardInfos(1), 1) willReturn shard
-        2.of(shardFactory).instantiateReadOnly(shardInfos(2), 1) willReturn shard
-        2.of(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
-        2.of(shardFactory).instantiateReadOnly(shardInfos(3), 1) willReturn shard
-        2.of(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
-        one(shardFactory).instantiateReadOnly(shardInfos(4), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(4), 1) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(0), w) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(0), w) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(1), w) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(1), w) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(2), w) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(2), w) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(3), w) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(3), w) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(4), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(4), w) willReturn shard
       }
 
-      nodes        = shardInfos map { new LeafRoutingNode(shardFactory, _, 1) }
-      replNode     = ReplicatingShard(replicatingInfo, 1, Seq(nodes(3)))
+      nodes        = shardInfos map { new LeafRoutingNode(shardFactory, _, w) }
+      replNode     = ReplicatingShard(replicatingInfo, w, Seq(nodes(3)))
 
       nameServer = new NameServer(LeafRoutingNode(nameServerShard), identity)
       forwarder  = nameServer.configureMultiForwarder[AnyRef](
@@ -74,8 +77,8 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "find current forwarding" in {
       expect {
-        never(shardFactory).instantiate(shardInfos(1), 1) willReturn shard
-        never(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
+        never(shardFactory).instantiate(shardInfos(1), w) willReturn shard
+        never(shardFactory).instantiate(shardInfos(3), w) willReturn shard
       }
 
       forwarder.find(1, 2) mustEqual nodes(1)
@@ -84,9 +87,9 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
     "find forwardings" in {
       expect {
-        never(shardFactory).instantiate(shardInfos(0), 1) willReturn shard
-        never(shardFactory).instantiate(shardInfos(1), 1) willReturn shard
-        never(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
+        never(shardFactory).instantiate(shardInfos(0), w) willReturn shard
+        never(shardFactory).instantiate(shardInfos(1), w) willReturn shard
+        never(shardFactory).instantiate(shardInfos(2), w) willReturn shard
       }
 
       forwarder.findAll(1) must haveTheSameElementsAs(List(nodes(0), nodes(1), nodes(2)))
@@ -100,10 +103,11 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
         one(nameServerShard).listDownwardLinks(replicatingInfo.id) willReturn linksList
         one(nameServerShard).getShard(shardInfos(3).id)            willReturn shardInfos(3)
         one(nameServerShard).listDownwardLinks(shardInfos(3).id)   willReturn List[LinkInfo]()
-        one(shardFactory).instantiateReadOnly(shardInfos(2), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
-        one(shardFactory).instantiateReadOnly(shardInfos(3), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(2), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(2), w) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(3), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(3), w) willReturn shard
+        3.of(nameServerShard).getHostWeight(shardInfos(3).id.hostname) willReturn None
       }
 
       forwarder.findShardById(shardInfos(2).id)   mustEqual Some(nodes(2))
@@ -114,13 +118,14 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       val floatingShard = ShardInfo(ShardId("localhost", "floating"), SQL_SHARD, "a", "b", Busy.Normal)
 
       expect {
-        2.of(shardFactory).instantiateReadOnly(floatingShard, 1)
-        2.of(shardFactory).instantiate(floatingShard, 1)
+        2.of(shardFactory).instantiateReadOnly(floatingShard, w)
+        2.of(shardFactory).instantiate(floatingShard, w)
+        one(nameServerShard).getHostWeight(floatingShard.id.hostname) willReturn None
         one(nameServerShard).getShard(floatingShard.id)          willReturn floatingShard
         one(nameServerShard).listDownwardLinks(floatingShard.id) willReturn List[LinkInfo]()
       }
 
-      forwarder.findShardById(floatingShard.id) mustEqual Some(new LeafRoutingNode(shardFactory, floatingShard, 1))
+      forwarder.findShardById(floatingShard.id) mustEqual Some(new LeafRoutingNode(shardFactory, floatingShard, w))
     }
 
     "create shard" in {
@@ -143,7 +148,7 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
       //  (8)  we call reloadUpdatedForwardings(3L) but we find no change - no-op         (local updatedSeq = 3L)
 
       val newLinksList = List(new LinkInfo(replicatingInfo.id, shardInfos(3).id, 1), new LinkInfo(replicatingInfo.id, shardInfos(4).id, 1))
-      val newReplNode = ReplicatingShard(replicatingInfo, 1, Seq(nodes(3), nodes(4)))
+      val newReplNode = ReplicatingShard(replicatingInfo, Weight.Default, Seq(nodes(3), nodes(4)))
 
       expect {
         one(nameServerShard).diffState(1L) willReturn NameServerChanges(Seq(shardForwardings(3)), Nil, 2L)
@@ -161,16 +166,17 @@ object NameServerSpec extends ConfiguredSpecification with JMocker with ClassMoc
 
         one(nameServerShard).diffState(3L) willReturn NameServerChanges(Nil, Nil, 3L)
 
-        one(shardFactory).instantiateReadOnly(shardInfos(0), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(0), 1) willReturn shard
-        one(shardFactory).instantiateReadOnly(shardInfos(1), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(1), 1) willReturn shard
-        one(shardFactory).instantiateReadOnly(shardInfos(2), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(2), 1) willReturn shard
-        2.of(shardFactory).instantiateReadOnly(shardInfos(3), 1) willReturn shard
-        2.of(shardFactory).instantiate(shardInfos(3), 1) willReturn shard
-        one(shardFactory).instantiateReadOnly(shardInfos(4), 1) willReturn shard
-        one(shardFactory).instantiate(shardInfos(4), 1) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(0), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(0), w) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(1), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(1), w) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(2), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(2), w) willReturn shard
+        2.of(shardFactory).instantiateReadOnly(shardInfos(3), w) willReturn shard
+        2.of(shardFactory).instantiate(shardInfos(3), w) willReturn shard
+        one(shardFactory).instantiateReadOnly(shardInfos(4), w) willReturn shard
+        one(shardFactory).instantiate(shardInfos(4), w) willReturn shard
+        3.of(nameServerShard).getHostWeight(hostname) willReturn None
       }
 
       // This will update our nameserver state to the updated state

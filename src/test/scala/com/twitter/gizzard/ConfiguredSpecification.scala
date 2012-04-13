@@ -9,6 +9,7 @@ import java.net.InetSocketAddress
 import org.apache.thrift.protocol.TBinaryProtocol
 import com.twitter.finagle.thrift.ThriftClientFramedCodec
 import com.twitter.util.Eval
+import com.twitter.io.TempFile
 
 import com.twitter.gizzard
 import com.twitter.gizzard.nameserver.{Forwarding, Host}
@@ -20,7 +21,13 @@ import com.twitter.gizzard.testserver.config.TestServerConfig
 object ConfiguredSpecification {
   val eval = new Eval
   val config =
-    try { eval[gizzard.config.GizzardServer](new File("config/test.scala")) } catch { case e => e.printStackTrace(); throw e }
+    try { 
+      val configFile = TempFile.fromResourcePath("/test.scala")
+      eval[gizzard.config.GizzardServer](configFile) 
+    } catch { 
+      case e => e.printStackTrace(); throw e 
+    }
+
   def resetAsyncReplicatorQueues(config: gizzard.config.GizzardServer) {
     val file = new File(config.jobAsyncReplicator.path)
     file.mkdirs

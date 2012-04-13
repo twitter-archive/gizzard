@@ -2,13 +2,13 @@ package com.twitter.gizzard.shards
 
 
 trait ShardFactory[+T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int): T
-  def instantiateReadOnly(shardInfo: ShardInfo, weight: Int): T
+  def instantiate(shardInfo: ShardInfo, weight: Weight): T
+  def instantiateReadOnly(shardInfo: ShardInfo, weight: Weight): T
   def materialize(shardInfo: ShardInfo)
 }
 
 class LeafRoutingNodeFactory[T](shardFactory: ShardFactory[T]) extends RoutingNodeFactory[T] {
-  def instantiate(shardInfo: ShardInfo, weight: Int, children: Seq[RoutingNode[T]]) = {
+  def instantiate(shardInfo: ShardInfo, weight: Weight, children: Seq[RoutingNode[T]]) = {
     val factory = shardFactory
     new LeafRoutingNode(factory, shardInfo, weight)
   }
@@ -20,34 +20,34 @@ class LeafRoutingNodeFactory[T](shardFactory: ShardFactory[T]) extends RoutingNo
 
 object LeafRoutingNode {
   private class WrapperShardFactory[T](readOnlyShard: => T, readWriteShard: => T) extends ShardFactory[T] {
-    def instantiate(shardInfo: ShardInfo, weight: Int)         = readWriteShard
-    def instantiateReadOnly(shardInfo: ShardInfo, weight: Int) = readOnlyShard
+    def instantiate(shardInfo: ShardInfo, weight: Weight)         = readWriteShard
+    def instantiateReadOnly(shardInfo: ShardInfo, weight: Weight) = readOnlyShard
     def materialize(shardInfo: ShardInfo) {}
   }
 
   // convenience constructors for manual tree creation.
-  def apply[T](readOnlyShard: T, readWriteShard: T, info: ShardInfo, weight: Int): LeafRoutingNode[T] = {
+  def apply[T](readOnlyShard: T, readWriteShard: T, info: ShardInfo, weight: Weight): LeafRoutingNode[T] = {
     new LeafRoutingNode(new WrapperShardFactory(readOnlyShard, readWriteShard), info, weight)
   }
 
   def apply[T](shard: T): LeafRoutingNode[T] = {
-    apply(shard, shard, new ShardInfo("", "", ""), 1)
+    apply(shard, shard, new ShardInfo("", "", ""), Weight.Default)
   }
 
   // XXX: remove when we move to shard replica sets rather than trees.
   object NullNode extends LeafRoutingNode[Null](
     new LeafRoutingNode.WrapperShardFactory(null, null),
     new ShardInfo("NullShardPlaceholder", "null", "null"),
-    1
+    Weight.Default
   )
 }
 
-class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shardInfo: ShardInfo, val weight: Int) extends RoutingNode[T] {
+class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shardInfo: ShardInfo, val weight: Weight) extends RoutingNode[T] {
 
   import RoutingNode._
 
   // convenience constructor for manual creation.
-  def this(factory: ShardFactory[T], weight: Int) = this(factory, new ShardInfo("", "", ""), weight)
+  def this(factory: ShardFactory[T], weight: Weight) = this(factory, new ShardInfo("", "", ""), weight)
 
   val children = Nil
 
@@ -56,8 +56,10 @@ class LeafRoutingNode[T](private[shards] val factory: ShardFactory[T], val shard
 
   override def shardInfos = Seq(shardInfo)
 
-  protected[shards] def collectedShards(readOnly: Boolean) = {
-    Seq(Leaf(shardInfo, Allow, Allow, if (readOnly) readOnlyShard else readWriteShard))
+  // TODO: for leaves with parent WrapperRoutingNodes, applying Behavior is redundant:
+  // but eventually the wrapping shards should be unnecessary
+  protected[shards] def collectedShards(readOnly: Boolean, rb: Behavior, wb: Behavior) = {
+    Seq(Leaf(shardInfo, rb, wb, if (readOnly) readOnlyShard else readWriteShard))
   }
 
   override def equals(other: Any) = other match {

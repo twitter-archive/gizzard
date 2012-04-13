@@ -5,6 +5,7 @@ import java.util.concurrent.{ConcurrentMap, ConcurrentHashMap}
 import scala.collection.mutable
 import com.twitter.logging.Logger
 import com.twitter.gizzard.shards._
+import com.twitter.gizzard.thrift.HostWeightInfo
 
 
 class NonExistentShard(message: String) extends ShardException(message: String)
@@ -13,9 +14,10 @@ class NameserverUninitialized extends ShardException("Please call reload() befor
 
 
 class RoutingState(
-  instantiateNode: (ShardInfo, Int, Seq[RoutingNode[Any]]) => RoutingNode[Any],
+  instantiateNode: (ShardInfo, Weight, Seq[RoutingNode[Any]]) => RoutingNode[Any],
   infos: Iterable[ShardInfo],
   links: Iterable[LinkInfo],
+  hostWeights: Iterable[HostWeightInfo],
   forwardings: Iterable[Forwarding]
 ) {
 
@@ -26,9 +28,13 @@ class RoutingState(
     m
   }
 
-  private def constructRoutingNode(root: ShardId, weight: Int): RoutingNode[Any] = {
+  val hostWeightMap = hostWeights.map{ hw => hw.hostname -> hw }.toMap
+
+  private def constructRoutingNode(root: ShardId, rawWeight: Int): RoutingNode[Any] = {
+    val weight = Weight(rawWeight, hostWeightMap.get(root.hostname))
     infoMap.get(root) map { rootInfo =>
-      val children = linkMap.getOrElse(root, Nil) map { case (id, wt) => constructRoutingNode(id, wt) }
+      val children =
+        linkMap.getOrElse(root, Nil).map { case (id, wt) => constructRoutingNode(id, wt) }
       instantiateNode(rootInfo, weight, children)
     } getOrElse {
       throw new InvalidShard("Expected shard '"+ root +"' to exist, but it wasn't found.")
@@ -90,12 +96,14 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
 
       val infos       = mutable.ArrayBuffer[ShardInfo]()
       val links       = mutable.ArrayBuffer[LinkInfo]()
+      val hostWeights = mutable.ArrayBuffer[HostWeightInfo]()
       val forwardings = mutable.ArrayBuffer[Forwarding]()
       val (states, updatedSeq) = shardManager.currentState()
 
       states foreach { state =>
         infos       ++= state.shards
         links       ++= state.links
+        hostWeights ++= state.hostWeights
         forwardings ++= state.forwardings
       }
 
@@ -103,6 +111,7 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
         shardRepository.instantiateNode,
         infos,
         links,
+        hostWeights,
         forwardings
       )
 
@@ -112,9 +121,17 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
     log.info("Loading name server configuration is done.")
   }
 
-  private def constructRoutingNode(shardId: ShardId, weight: Int = 1) : RoutingNode[Any] = {
+  /**
+   * Constructs a RoutingNode via recursive trips to the ShardManager database.
+   * TODO(hyungoo): is this equivalent to findShardById[Any]?
+   */
+  private def fetchRoutingNode(shardId: ShardId, rawWeight: Int): RoutingNode[Any] = {
     val shardInfo = shardManager.getShard(shardId)
-    val children = shardManager.listDownwardLinks(shardId).map { link => constructRoutingNode(link.downId, link.weight) }
+    val weight = Weight(rawWeight, shardManager.getHostWeight(shardId.hostname))
+    val children =
+      shardManager.listDownwardLinks(shardId).map { link =>
+        fetchRoutingNode(link.downId, link.weight)
+      }
     shardRepository.instantiateNode(shardInfo, weight, children)
   }
 
@@ -136,7 +153,7 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
 
         deletedForwardingsByTableId.get(tableId).getOrElse(Nil) foreach { f => newTreeMap.remove(f.baseId) }
         updatedForwardingsByTableId.get(tableId).getOrElse(Nil) foreach { f =>
-          newTreeMap.put(f.baseId, constructRoutingNode(f.shardId))
+          newTreeMap.put(f.baseId, fetchRoutingNode(f.shardId, 1))
         }
 
         forwardingTree.put(tableId, newTreeMap)
@@ -150,8 +167,9 @@ class NameServer(val shard: RoutingNode[ShardManagerSource], val mappingFunction
   // XXX: removing this causes CopyJobSpec to fail.
   // This method now always falls back to the db.
   @throws(classOf[NonExistentShard])
-  def findShardById[T](id: ShardId, weight: Int): RoutingNode[T] = {
+  def findShardById[T](id: ShardId, rawWeight: Int): RoutingNode[T] = {
     val shardInfo     = shardManager.getShard(id)
+    val weight        = Weight(rawWeight, shardManager.getHostWeight(id.hostname))
     val downwardLinks = shardManager.listDownwardLinks(id)
     val children      = downwardLinks.map(l => findShardById[T](l.downId, l.weight)).toList
 

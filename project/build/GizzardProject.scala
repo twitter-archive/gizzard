@@ -4,7 +4,8 @@ import com.twitter.sbt._
 class GizzardProject(info: ProjectInfo) extends StandardLibraryProject(info)
 with CompileThriftFinagle
 with DefaultRepos
-with SubversionPublisher {
+with SubversionPublisher 
+with ProjectDependencies {
 
   def finagleVersion = "3.0.0"
   def utilVersion = "3.0.0"
@@ -12,7 +13,7 @@ with SubversionPublisher {
   override def filterScalaJars = false
   val scalaTools = "org.scala-lang" % "scala-compiler" % "2.8.1"
 
-  val querulous  = "com.twitter" % "querulous" % "2.7.6"
+  val querulous  = "com.twitter" % "querulous-core" % "2.7.6"
 
   //val kestrel     = "net.lag" % "kestrel" % "1.2.7"
   // remove when moved to libkestrel
@@ -30,7 +31,7 @@ with SubversionPublisher {
 
   // test jars
 
-  val specs     = "org.scala-tools.testing" % "specs_2.8.1" % "1.6.6" % "test" withSources()
+  val specs     = "org.scala-tools.testing" % "specs_2.8.1" % "1.6.6" withSources()
   val objenesis = "org.objenesis" % "objenesis"    % "1.1"    % "test"
   val jmock     = "org.jmock"     % "jmock"        % "2.4.0"  % "test"
   val hamcrest  = "org.hamcrest"  % "hamcrest-all" % "1.1"    % "test"
@@ -47,4 +48,11 @@ with SubversionPublisher {
     </licenses>
 
   override def subversionRepository = Some("https://svn.twitter.biz/maven-public")
+
+  /* We need stuff from the config directory to run tests in a invocation-path
+   * independent manner.
+   */
+  override def testResources = 
+    descendents(testResourcesPath ##, "*") +++
+    descendents(info.projectPath / "config" ##, "*")
 }

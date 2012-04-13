@@ -26,6 +26,12 @@ struct LinkInfo {
   3: i32 weight
 }
 
+struct HostWeightInfo {
+  1: string hostname
+  2: double weight_write
+  3: double weight_read
+}
+
 struct Forwarding {
   1: i32 table_id
   2: i64 base_id
@@ -37,6 +43,7 @@ struct NameServerState {
   2: list<LinkInfo> links
   3: list<Forwarding> forwardings
   4: i32 table_id
+  5: optional list<HostWeightInfo> hostWeights = {}
 }
 
 
@@ -98,6 +105,9 @@ service Manager {
 
   void add_link(1: ShardId up_id, 2: ShardId down_id, 3: i32 weight) throws(1: GizzardException ex)
   void remove_link(1: ShardId up_id, 2: ShardId down_id) throws(1: GizzardException ex)
+
+  void set_host_weight(1: HostWeightInfo hw) throws(1: GizzardException ex)
+  list<HostWeightInfo> list_host_weights() throws(1: GizzardException ex)
 
   void set_forwarding(1: Forwarding forwarding) throws(1: GizzardException ex)
   void replace_forwarding(1: ShardId old_id, 2: ShardId new_id) throws(1: GizzardException ex)

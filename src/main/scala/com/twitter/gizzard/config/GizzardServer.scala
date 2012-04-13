@@ -53,7 +53,7 @@ trait GizzardServer {
   private def asReplicatingNode[T](ts: Seq[T]): shards.RoutingNode[T] = {
     new shards.ReplicatingShard(
       new shards.ShardInfo("", "", ""),
-      0,
+      shards.Weight.Default,
       ts map { shards.LeafRoutingNode(_) }
     )
   }

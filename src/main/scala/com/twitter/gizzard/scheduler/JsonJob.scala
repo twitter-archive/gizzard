@@ -6,7 +6,9 @@ import com.twitter.gizzard.proxy.LoggingProxy
 import com.twitter.gizzard.util.Json
 
 
-class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause)
+class UnparsableJsonException(s: String, cause: Throwable) extends Exception(s, cause) {
+  def this(s: String) = this(s, null)
+}
 
 /**
  * A Job that can encode itself as a json-formatted string. The encoding will be a single-element
@@ -83,10 +85,6 @@ class JsonNestedJobParser(codec: JsonCodec) extends JsonJobParser {
   }
 }
 
-class BadJsonJobException(message: String, cause: Throwable) extends Exception(message, cause) {
-  def this(message: String) = this(message, null)
-}
-
 class BadJsonJob extends JsonJob {
   errorCount = Integer.MAX_VALUE - 1
   errorMessage = "Bad Job"
@@ -94,7 +92,7 @@ class BadJsonJob extends JsonJob {
   override def toMap: Map[String, Any] = Map()
 
   override def apply() {
-    throw new BadJsonJobException("Bad job")
+    throw new UnparsableJsonException("Bad job")
   }
 }
 
