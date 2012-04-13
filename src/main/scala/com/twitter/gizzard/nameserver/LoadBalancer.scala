@@ -43,13 +43,13 @@ object LoadBalancer {
       selector: WeightSelector[T],
       buffer: mutable.Buffer[T],
       offset: Int,
-      remainingWeight: Int
+      remainingWeight: Double
     ): Unit = {
       if (offset >= buffer.size - 1)
         // last item cannot move
         return
-      val limit = random.nextInt(remainingWeight)
-      var index = 0
+      val limit = random.nextDouble * remainingWeight
+      var index: Double = 0.0
       // select the first item where the sum of the weight is gt the limit
       val pop =
         buffer.indexWhere({ rn =>
@@ -70,8 +70,8 @@ object LoadBalancer {
     }
   }
 
-  type WeightSelector[T] = T => Int
+  type WeightSelector[T] = T => Double
   object ReadSelector extends WeightSelector[RoutingNode[_]] {
-    def apply(rn: RoutingNode[_]): Int = rn.weight.read
+    def apply(rn: RoutingNode[_]): Double = rn.weight.read
   }
 }

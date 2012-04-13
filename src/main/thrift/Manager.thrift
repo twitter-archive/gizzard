@@ -28,8 +28,8 @@ struct LinkInfo {
 
 struct HostWeightInfo {
   1: string hostname
-  2: i32 weight_write
-  3: i32 weight_read
+  2: double weight_write
+  3: double weight_read
 }
 
 struct Forwarding {

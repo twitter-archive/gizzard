@@ -64,7 +64,14 @@ extends Manager.Iface {
   }
 
   def set_host_weight(hw: HostWeightInfo) = {
-    wrapEx(shardManager.setHostWeight(hw))
+    wrapEx {
+      require(
+        0.0 <= hw.weight_write && hw.weight_write <= 1.0,
+        "weight_write must be between (inclusive) 1.0 and 0.0"
+      )
+      require(hw.weight_read >= 0.0, "weight_read must be >= 0.0")
+      shardManager.setHostWeight(hw)
+    }
   }
   def list_host_weights() = {
     wrapEx(shardManager.listHostWeights())

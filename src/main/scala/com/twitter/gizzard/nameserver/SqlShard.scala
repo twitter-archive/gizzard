@@ -99,8 +99,8 @@ object SqlShard {
     "host_weights" -> """
       CREATE TABLE IF NOT EXISTS host_weights (
           hostname                VARCHAR(125) NOT NULL,
-          weight_write            INT          NOT NULL,
-          weight_read             INT          NOT NULL,
+          weight_write            DOUBLE       NOT NULL,
+          weight_read             DOUBLE       NOT NULL,
 
           PRIMARY KEY (hostname)
       ) ENGINE=INNODB;
@@ -130,7 +130,7 @@ class SqlShardManagerSource(queryEvaluator: QueryEvaluator) extends ShardManager
   }
 
   private def rowToHostWeightInfo(r: ResultSet) =
-    new thrift.HostWeightInfo(r.getString("hostname"), r.getInt("weight_write"), r.getInt("weight_read"))
+    new thrift.HostWeightInfo(r.getString("hostname"), r.getDouble("weight_write"), r.getDouble("weight_read"))
 
 
   // Forwardings/Shard Management Write Methods
