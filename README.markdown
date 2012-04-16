@@ -57,7 +57,7 @@ partition) they are retried at a later time.
 
 A very simple sample use of Gizzard is [Rowz](http://github.com/twitter/Rowz),
 a distributed key-value store. To get up-and-running with Gizzard quickly,
-clone Rows and start customizing!
+clone Rowz and start customizing!
 
 But first, let’s examine how Gizzard works in more detail.
 
