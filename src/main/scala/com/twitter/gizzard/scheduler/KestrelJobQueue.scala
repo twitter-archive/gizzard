@@ -76,7 +76,14 @@ class KestrelJobQueue[J <: Job](queueName: String, val queue: PersistentQueue, c
       item = queue.removeReceive(System.currentTimeMillis + TIMEOUT, true)
     }
     item.map { qitem =>
-      val decoded = codec.inflate(qitem.data)
+      val decoded = try {
+        codec.inflate(qitem.data)
+      } catch {
+        case e: Throwable =>
+          // outer layers should handle this exception, but make sure it's fully removed.
+          queue.confirmRemove(qitem.xid)
+          throw e
+      }
       new Ticket[J] {
         def job = decoded
         def ack() {

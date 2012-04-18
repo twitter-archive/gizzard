@@ -216,6 +216,14 @@ class JobSchedulerSpec extends ConfiguredSpecification with JMocker with ClassMo
 
         jobScheduler.process()
       }
+
+      "decoder error" in {
+        expect {
+          one(queue).get() willThrow new UnparsableJsonException("Unparsable json", null)
+        }
+
+        jobScheduler.process()
+      }
     }
   }
 }

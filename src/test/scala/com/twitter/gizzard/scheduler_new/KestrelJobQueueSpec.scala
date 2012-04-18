@@ -123,6 +123,17 @@ object KestrelJobQueueSpec extends ConfiguredSpecification with JMocker with Cla
         ticket must beSome[Ticket[Job]].which { _.job == job1 }
         ticket.get.ack()
       }
+
+      "item can't be decoded" in {
+        expect {
+          allowing(queue).isClosed willReturn false
+          one(queue).removeReceive(any[Long], any[Boolean]) willReturn Some(QItem(0, 0, "abc".getBytes, 900))
+          one(codec).inflate("abc".getBytes) willThrow new UnparsableJsonException("Unparsable json", null)
+          one(queue).confirmRemove(900)
+        }
+
+        kestrelJobQueue.get() must throwA[Exception]
+      }
     }
 
     "drainTo" in {

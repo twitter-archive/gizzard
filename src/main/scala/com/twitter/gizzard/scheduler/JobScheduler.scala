@@ -196,7 +196,13 @@ class JobScheduler[J <: Job](val name: String,
   }
 
   def process() {
-    queue.get().foreach { ticket =>
+    (try {
+      queue.get()
+    } catch {
+      case e: Exception =>
+        log.error(e, "Unable to parse job")
+        None
+    }).foreach { ticket =>
       val job = ticket.job
       try {
         job()
