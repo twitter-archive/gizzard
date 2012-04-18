@@ -7,21 +7,50 @@ import com.twitter.gizzard.thrift.conversions.LinkInfo._
 import com.twitter.gizzard.thrift.conversions.ShardId._
 import com.twitter.gizzard.thrift.conversions.ShardInfo._
 import com.twitter.gizzard.thrift.conversions.Forwarding._
+import com.twitter.gizzard.thrift.conversions.CopyDestination._
 import com.twitter.gizzard.thrift.conversions.Host._
 import com.twitter.gizzard.shards._
-import com.twitter.gizzard.scheduler.{CopyDestination, CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler}
+import com.twitter.gizzard.scheduler.{CopyJob, CopyJobFactory, JsonJob, JobScheduler, PrioritizingJobScheduler}
+import com.twitter.gizzard.scheduler.{CopyDestination => SCopyDestination}
 import com.twitter.gizzard.nameserver._
 import net.lag.logging.Logger
+import collection.mutable
 import java.util.{List => JList}
 
 
-class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) extends Manager.Iface {
+class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S], copier: CopyJobFactory[S], alternateCopiers: Seq[CopyJobFactory[S]], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) extends Manager.Iface {
+
+  // back-compat constructor
+  def this(nameServer: NameServer[S], copier: CopyJobFactory[S], scheduler: PrioritizingJobScheduler[J], copyScheduler: JobScheduler[JsonJob]) = this(nameServer, copier, Seq.empty, scheduler, copyScheduler)
+
+  val defaultCopier = copier
+  val copiers = mutable.Map(copier.getClass.getName -> copier)
+  alternateCopiers.foreach(addCopyFactory(_))
+
+  def copierForName(name: String) = {
+    copiers.getOrElse(name, throw new thrift.GizzardException("CopyFactory not found: " + name))
+  }
+
+  def addCopyFactory(copier: CopyJobFactory[S]): Unit = {
+    addCopyFactory(copier.getClass.getName, copier)
+  }
+
+  def addCopyFactory(name: String, copier: CopyJobFactory[S]): Unit = {
+    copiers(name) = copier
+  }
+
   val log = Logger.get(getClass.getName)
 
   def wrapEx[A](f: => A): A = try { f } catch {
-    case ex: Throwable => throw new thrift.GizzardException(ex.getMessage)
+    case ex: thrift.GizzardException => throw ex
+    case ex: Throwable => {
+      if(ex.getMessage != null) {
+        throw new thrift.GizzardException(ex.getMessage)
+      } else {
+        throw new thrift.GizzardException(ex.toString)
+      }
+    }
   }
-
 
   def reload_config() = wrapEx {
     log.info("Reloading forwardings...")
@@ -94,8 +123,14 @@ class ManagerService[S <: shards.Shard, J <: JsonJob](nameServer: NameServer[S],
   def mark_shard_busy(id: ShardId, busy: Int) = {
     wrapEx(nameServer.markShardBusy(id.fromThrift, busy.fromThrift))
   }
+
   def copy_shard(sourceId: ShardId, destinationId: ShardId) = {
-    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, List(CopyDestination(destinationId.fromThrift, None)))))
+    wrapEx(copyScheduler.put(copier(sourceId.fromThrift, List(SCopyDestination(destinationId.fromThrift, None)))))
+  }
+
+  def multicopy_shard(factoryName: String, sourceId: ShardId, thriftDestinations: java.util.List[thrift.CopyDestination]) = {
+    val destinations = thriftDestinations.toSeq.toList.map(_.fromThrift)
+    wrapEx(copyScheduler.put(copierForName(factoryName)(sourceId.fromThrift, destinations)))
   }
 
   def dump_nameserver(tableId: Int) = wrapEx(nameServer.dumpStructure(tableId).toThrift)
