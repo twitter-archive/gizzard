@@ -1,11 +1,15 @@
-# Gizzard: a library for creating distributed datastores
+# Retired
+
+*NB: This project is currently not recommended as a base for new consumers.*
+
+## Gizzard: a library for creating distributed datastores
 
 Check out [Using gizzard](http://github.com/twitter/gizzard/blob/master/doc/using.md)
 for details on requirements, how to build gizzard, and a demo app.
 
 Also check out [the gizzard mailing list](http://groups.google.com/group/gizzard).
 
-## An introduction to sharding
+### An introduction to sharding
 
 Many modern web sites need fast access to an amount of information so large
 that it cannot be efficiently stored on a single computer. A good way to deal
@@ -34,7 +38,7 @@ variety of problems that exist on the web. These new databases are hugely
 promising but for now it is sometimes more practical to build a custom
 solution.
 
-## What is a sharding framework?
+### What is a sharding framework?
 
 Twitter has built several custom distributed data-stores. Many of these
 solutions have a lot in common, prompting us to extract the commonalities so
@@ -61,9 +65,9 @@ clone Rowz and start customizing!
 
 But first, let’s examine how Gizzard works in more detail.
 
-## How does it work?
+### How does it work?
 
-### Gizzard is middleware
+#### Gizzard is middleware
 
 ![diagram](http://github.com/twitter/gizzard/raw/master/doc/middleware.png?raw=true)
 
@@ -77,7 +81,7 @@ runs on the JVM, is quite efficient. One of Twitter’s Gizzard applications
 (FlockDB, our distributed graph database) can serve 10,000 queries per second
 per commodity machine. But your mileage may vary.
 
-### Gizzard supports any datastorage backend
+#### Gizzard supports any datastorage backend
 
 Gizzard is designed to replicate data across any network-available data
 storage service. This could be a relational database, Lucene, Redis, or
@@ -89,7 +93,7 @@ operations are applied in order. It is therefore imperative that the system is
 designed to reach a consistent state regardless of the order in which writes
 are applied.
 
-### Gizzard handles partitioning through a forwarding table
+#### Gizzard handles partitioning through a forwarding table
 
 Gizzard handles partitioning (i.e., dividing exclusive ranges of data across
 many hosts) by mappings *ranges* of data to particular shards. These mappings
@@ -112,7 +116,7 @@ custom forwarding strategies like consistent hashing, but this isn't the
 recommended approach. For some more detail on partitioning schemes, [read
 wikipedia](http://en.wikipedia.org/wiki/Partition_(database)):
 
-### Gizzard handles replication through a replication tree
+#### Gizzard handles replication through a replication tree
 
 Each shard referenced in the forwarding table can be either a physical shard
 or a logical shard. A physical shard is a reference to a particular data
@@ -145,7 +149,7 @@ Alternatively, for better fault tolerance (but higher complexity) you can
 “stripe” partitions across machines so that no machine is a mirror of any
 other.
 
-### Gizzard is fault-tolerant
+#### Gizzard is fault-tolerant
 
 Fault-tolerance is one of the biggest concerns of distributed systems. Because
 such systems involve many computers, there is some likelihood that one (or
@@ -174,7 +178,7 @@ In most cases this is an easy requirement. A demonstration of commutative,
 idempotent writes is given in the Gizzard demo app,
 [Rowz](http://github.com/twitter/Rowz).
 
-### Winged migrations
+#### Winged migrations
 
 It’s sometimes convenient to copy or move data from shards from one computer
 to another. You might do this to balance load across more or fewer machines,
@@ -192,7 +196,7 @@ Because writes will happen out of order (new writes occur before older ones
 and some writes may happen twice), all writes must be idempotent and
 commutative to ensure data consistency.
 
-### How does Gizzard handle write conflicts?
+#### How does Gizzard handle write conflicts?
 
 Write conflicts are when two manipulations to the same record try to change
 the record in differing ways. Because Gizzard does not guarantee that
@@ -204,7 +208,7 @@ delivery of messages with bounded latency and high availability. As mentioned
 above, Rowz illustrates a technique of using time-stamps to only apply
 operations that are "newer". More documentation on this will be forthcoming.
 
-## Contributors
+### Contributors
 
 * Robey Pointer
 * Nick Kallen
