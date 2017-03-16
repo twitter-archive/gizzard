@@ -69,7 +69,7 @@ But first, let’s examine how Gizzard works in more detail.
 
 #### Gizzard is middleware
 
-![diagram](http://github.com/twitter/gizzard/raw/master/doc/middleware.png?raw=true)
+![diagram](https://raw.githubusercontent.com/twitter/gizzard/master/doc/middleware.png?raw=true)
 
 Gizzard operates as a *middleware* networking service. It sits “in the middle”
 between clients (typically, web front-ends like PHP and Ruby on Rails
@@ -100,7 +100,7 @@ many hosts) by mappings *ranges* of data to particular shards. These mappings
 are stored in a forwarding table that specifies lower-bound of a numerical
 range and what shard that data in that range belongs to.
 
-![forwarding table](http://github.com/twitter/gizzard/raw/master/doc/forwarding_table.png)
+![forwarding table](https://raw.githubusercontent.com/twitter/gizzard/master/doc/forwarding_table.png)
 
 To be precise, you provide Gizzard a hash function that, given a key for your
 data (and this key can be application specific), produces a number that
@@ -128,7 +128,7 @@ about how to propagate read and write operations to the children of that
 branch. For example, here is a two-level replication tree. Note that this
 represents just ONE partition (as referenced in the forwarding table):
 
-![Alt text](http://github.com/twitter/gizzard/raw/master/doc/replication_tree.png)
+![Alt text](https://raw.githubusercontent.com/twitter/gizzard/master/doc/replication_tree.png)
 
 The “Replicate” branches in the figure are simple strategies to repeat write
 operations to all children and to balance reads across the children according
@@ -190,7 +190,7 @@ shard is set up between them but a WriteOnly shard is placed in front of
 WriteOnly shard ensures that while the new Shard is bootstrapping, no data is
 read from it (because it has an incomplete picture of the corpus).
 
-![Alt text](http://github.com/twitter/gizzard/raw/master/doc/migration.png)
+![Alt text](https://raw.githubusercontent.com/twitter/gizzard/master/doc/migration.png)
 
 Because writes will happen out of order (new writes occur before older ones
 and some writes may happen twice), all writes must be idempotent and
