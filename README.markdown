@@ -1,6 +1,6 @@
-# Retired
+# STATUS
 
-*NB: This project is currently not recommended as a base for new consumers.*
+Twitter is no longer maintaining this project or responding to issues or PRs.
 
 ## Gizzard: a library for creating distributed datastores
 
