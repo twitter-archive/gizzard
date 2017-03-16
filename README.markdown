@@ -111,10 +111,10 @@ needs.
 This range-based approach differs from the "consistent hashing" technique used
 in many other distributed data-stores. This allows for heterogeneously sized
 partitions so that you easily manage *hotspots*, segments of data that are
-extremely popular. In fact, Gizzard does allows you to implement completely
+extremely popular. In fact, Gizzard does allow you to implement completely
 custom forwarding strategies like consistent hashing, but this isn't the
 recommended approach. For some more detail on partitioning schemes, [read
-wikipedia](http://en.wikipedia.org/wiki/Partition_(database)):
+wikipedia](http://en.wikipedia.org/wiki/Partition_%28database%29).
 
 #### Gizzard handles replication through a replication tree
 
